@@ -1,0 +1,1120 @@
+
+
+
+Network Working Group                                    P. Wouters, Ed.
+Internet-Draft                                                 Xelerance
+Intended status: Standards Track                              J. Gilmore
+Expires: March 2, 2012
+                                                               S. Weiler
+                                                            SPARTA, Inc.
+                                                              T. Kivinen
+                                                               AuthenTec
+                                                           H. Tschofenig
+                                                  Nokia Siemens Networks
+                                                         August 30, 2011
+
+
+        Raw Public Keys for (Datagram) Transport Layer Security
+                    draft-wouters-tls-rawkeys-00.txt
+
+Abstract
+
+   This document describes a mechanism for exchanging raw public keys
+   and their fingerprints in Transport Layer Security (TLS).  The main
+   use case of the provided functionality is in the area of TLS and
+   Datagram TLS (DTLS) when used with devices in a constrained
+   environment, as it is the case with sensors and other embedded
+   devices that are constrained by memory, computational, and
+   communication limitations.
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on March 2, 2012.
+
+Copyright Notice
+
+   Copyright (c) 2011 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 1]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  5
+
+   3.  Changes to the Handshake Message Contents  . . . . . . . . . .  6
+     3.1.  Client Hello . . . . . . . . . . . . . . . . . . . . . . .  6
+     3.2.  Server Hello . . . . . . . . . . . . . . . . . . . . . . .  7
+     3.3.  Server Certificate Payload Content . . . . . . . . . . . .  7
+     3.4.  Certificate Request  . . . . . . . . . . . . . . . . . . .  8
+     3.5.  Client Certificate Payload Content . . . . . . . . . . . .  8
+     3.6.  Other Handshake Messages . . . . . . . . . . . . . . . . .  8
+
+   4.  Certificate Payloads . . . . . . . . . . . . . . . . . . . . .  9
+     4.1.  Raw Public Keys  . . . . . . . . . . . . . . . . . . . . .  9
+     4.2.  Fingerprint of Raw Public Key  . . . . . . . . . . . . . . 13
+
+   5.  Security Considerations  . . . . . . . . . . . . . . . . . . . 14
+
+   6.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 15
+     6.1.  New TLS Certificate Types  . . . . . . . . . . . . . . . . 15
+
+   7.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 16
+
+   8.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+     8.1.  Normative References . . . . . . . . . . . . . . . . . . . 17
+     8.2.  Informative References . . . . . . . . . . . . . . . . . . 18
+
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 2]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+1.  Introduction
+
+   The IETF has two sets of standards for public key certificates, one
+   set for use of X.509 certificates [RFC3280] and one for OpenPGP
+   certificates [RFC4880].  Transport Layer Security (TLS) standards
+   were initially defined to use only X.509 certificates but were later
+   extended with RFC 6091 [RFC6091] to also allow clients and servers to
+   negotiate the use of OpenPGP certificates for a TLS session, and to
+   transport OpenPGP certificates via TLS.
+
+   Traditionally, TLS server public keys are obtained in PKIX containers
+   in-band using the TLS connection and validated using trust anchors
+   based on a [PKIX] certification authority (CA).  This method can add
+   a complicated trust relationship that is difficult to validate.
+   Examples of such complexity can be seen in [Defeating-SSL].
+
+   Alternative methods are available that allow a TLS client to obtain
+   the TLS server public key:
+
+   o  The TLS server public key is obtained from a [PKIX] certificate
+      chain from an [LDAP] server.
+
+   o  The TLS server public key is obtained from a DNSSEC secured RRset
+      using DANE [DANE].
+
+   o  The TLS server public key is provisioned by the operating system
+      and updated via software updates.
+
+   o  A TLS client has connected to the TLS server before and has cached
+      the TLS server certificate chain or TLS server public key for re-
+      use.
+
+   RFC 5246 [RFC5246] does not provide a mechanism for a TLS client to
+   tell the TLS server it is already in possession of the authenticated
+   public key.  Therefore, a TLS server must always send a list of
+   trusted CA keys and its EE certificate containing its public key,
+   even when the TLS client does not require or desire that data for
+   authentication.
+
+   RFC 6066 [RFC6066] allows suppression of the certificate trust anchor
+   chain, but not suppression of the PKIX EE certificate container.
+   These certificate chains are large opague blocks of data containing
+   much more then the public key of the TLS server.  Since the TLS
+   client might only be able to validate the PKIX SubjectPublicKeyInfo
+   via an out-of-band method, it has to explicitly forget any additional
+   information received that was sent by the server that it could not
+   validate.  Furthermore, information that comes in via these
+   certificate chains could contain contradicting or additional
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 3]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+   information that the TLS client cannot validate or trust, such as an
+   expiry date that conflicts with information obtained from DNS or
+   LDAP.  This document specifies a method to suppress sending this
+   additional information.
+
+   This document specifies a way to negotiate the use of raw public keys
+   for a TLS (and DTLS) session, and specifies how to transport these
+   raw public keys (or their fingerprints) via TLS.  The proposed
+   extensions are backward-compatible with the current TLS
+   specification, so that existing client and server implementations
+   that make use of X.509 certificates are not affected.
+
+   The main use case of the provided functionality is in the area of TLS
+   and Datagram TLS (DTLS) when used with devices in a constrained
+   environment, as it is the case with sensors and other embedded
+   devices that that are constrained by memory, computational, and
+   communication limitations.
+
+   Imagine a small embedded device that interacts with a Web server to
+   upload temperature sensor readings at a regular interval.  The
+   software stack uses the Constrained Application Protocol (CoAP), a
+   specialized web transfer protocol for use with constrained networks
+   and nodes for machine-to-machine applications.  CoAP is a UDP-based
+   protocol that can utilize DTLS for its commuication security.  As
+   part of the provisioning procedure the embeded device is configured
+   with the address of a dedicated CoAP server to upload sensor data.
+   For security purposes the public keys are also pre-configured on both
+   devices and the CoAP server is likely to use the provisioned public
+   keys of the embedded devices for access control purposes.
+
+   For packet size reasons and because of the constrained nature of the
+   sensor networking deployment environment with the pre-configured
+   client-server setup the usage of X.509 or PGP certificates represents
+   an unnecessary burden for implementers as well as for those who
+   deploy.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 4]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 5]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+3.  Changes to the Handshake Message Contents
+
+   This section describes the changes to the TLS handshake message
+   contents when raw public keys are to be used for authentication.
+
+3.1.  Client Hello
+
+   In order to indicate the support of multiple certificate types,
+   clients MUST include an extension of type "cert_type" to the extended
+   client hello message.  The "cert_type" TLS extension, which is
+   defined in RFC 6091 [RFC6091], is assigned the value of 9 from the
+   TLS ExtensionType registry.  This value is used as the extension
+   number for the extensions in both the client hello message and the
+   server hello message.  The hello extension mechanism is described in
+   [RFC5246].
+
+   The "cert_type" TLS extension carries a list of supported certificate
+   types the client can use, sorted by client preference.  This
+   extension MUST be omitted if the client only supports X.509
+   certificates.  The "extension_data" field of this extension contains
+   a CertificateTypeExtension structure.  Note that the
+   CertificateTypeExtension structure is being used both by the client
+   and the server, even though the structure is only specified once in
+   this document.  Reusing a single specification for both client and
+   server is common TLS protocol design practice.
+
+   The RFC 6091 [RFC6091] defined CertificateTypeExtension is extended
+   as follows:
+
+
+   enum { client, server } ClientOrServerExtension;
+
+   enum { X.509(0), OpenPGP(1),
+      RawPublicKey(2), Fingerprint_RawPublicKey(3),
+      (255) } CertificateType;
+
+   struct {
+      select(ClientOrServerExtension)
+          case client:
+            CertificateType certificate_types<1..2^8-1>;
+          case server:
+            CertificateType certificate_type;
+      }
+   } CertificateTypeExtension;
+
+
+   No new cipher suites are required to use raw public keys or
+   fingerprints of raw public keys.  All existing cipher suites that
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 6]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+   support a key exchange method compatible with the defined extension
+   can be used.
+
+3.2.  Server Hello
+
+   If the server receives a client hello that contains the "cert_type"
+   extension and chooses a cipher suite then two outcomes are possible.
+   The server MUST either select a certificate type from the
+   certificate_types field in the extended client hello or terminate the
+   session with a fatal alert of type "unsupported_certificate".
+
+   The certificate type selected by the server is encoded in a
+   CertificateTypeExtension structure, which is included in the extended
+   server hello message using an extension of type "cert_type".  Servers
+   that only support X.509 certificates MAY omit including the
+   "cert_type" extension in the extended server hello.
+
+3.3.  Server Certificate Payload Content
+
+   In TLS the contents of the certificate message sent from server to
+   client and vice versa are determined by the negotiated certificate
+   type and the selected cipher suite's key exchange algorithm.
+
+   If the Raw Public Key certificate type (or the fingerprinted version
+   of it) is negotiated, then it is required to present the raw public
+   key (or of the fingerprint of it) in the certificate message.  The
+   public key MUST match the selected key exchange algorithm, as shown
+   below.  This document defines new certificate types that carry raw
+   public keys and the fingerprinted version.
+
+
+
+   Key Exchange Algorithm  |  Type of Public Key
+   ------------------------+--------------------
+   RSA, DHE_RSA, DH_RSA,   |  RSA public key
+   ECDH_RSA, ECDHE_RSA)    |
+   ------------------------+--------------------
+   DHE_DSS, DH_DSS         |  DSA public key
+   ------------------------+--------------------
+   ECDH_ECDSA, ECDHE_ECDSA |  ECC public key
+   ------------------------+--------------------
+
+
+   The content of the certificate payload sent by the server depends on
+   the chosen type of public key crypto system.  Details can be found in
+   Section 4.
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 7]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+3.4.  Certificate Request
+
+   The semantics of this message remain the same as in the TLS
+   specification.  However, if this message is sent, and the negotiated
+   certificate type is RawPublicKey (or Fingerprint_RawPublicKey), the
+   "certificate_authorities" list MUST be empty.
+
+3.5.  Client Certificate Payload Content
+
+   This message is only sent in response to the certificate request
+   message.  The client certificate message is sent using the same
+   formatting as the server certificate message, and it is also required
+   to present a certificate extension payload that matches the
+   negotiated certificate type.  If the RawPublicKey (or the
+   Fingerprint_RawPublicKey) certificate type has been selected and no
+   public key from the client is available, then the server SHOULD
+   respond with a "handshake_failure" fatal alert if the public key
+   cannot be obtained out-of-band.
+
+   The content of the certificate payload sent by the client depends on
+   the chosen type of public key crypto system.  Details can be found in
+   Section 4.
+
+3.6.  Other Handshake Messages
+
+   All the other handshake messages are identical to the TLS
+   specification.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 8]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+4.  Certificate Payloads
+
+   The authors of this document suggest to convey raw public keys (and
+   fingerprints of raw public keys) in Certificate payloads and this
+   section defines the structure of these payloads.
+
+4.1.  Raw Public Keys
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                 [Page 9]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+         enum {
+           SHA-1(0)
+           SHA-224(1),
+           SHA-256(2),
+           SHA-384(3),
+           SHA-512(4),
+           MD5(5)
+         } FingerprintHashFunction;
+
+         enum {
+              empty_key(1),
+              raw_key(2),
+              raw_key_fingerprint(3),
+              (255)
+         } DescriptorType;
+
+         struct {
+             opaque KeyID<8..255>;
+         } EmptyKey_Structure;
+
+         struct {
+             opaque KeyID<8..255>;
+             opaque RawKey<0..2^24-1>;
+         } RawPublicKey_Structure;
+
+         struct {
+             opaque KeyID<8..255>;
+             opaque RawKeyFingerprint<20..255>;
+             FingerprintHashFunction fingerprintHashFunction;
+         } RawPublicKey_Fingerprint_Structure;
+
+         struct {
+              DescriptorType descriptorType;
+              select (descriptorType) {
+                   case empty_key: EmptyKey;
+                   case raw_key: RawPublicKey_Structure;
+                   case raw_key_fingerprint:
+                       RawPublicKey_Fingerprint_Structure;
+              }
+         } Certificate;
+
+
+               Figure 1: Content of the Certificate Payload
+
+   The fields are defined as follows:
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 10]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+   KeyID:
+
+      The KeyID structure contains an identifier for the key structure.
+      No specific syntax or content is mandated by this document.
+
+
+   RawKeyFingerprint:
+
+      The RawKeyFingerprint structure carries the hash of the raw public
+      key.
+
+
+   FingerprintHashFunction:
+
+      The FingerprintHashFunction structure explicitly states the hash
+      function used for computing the fingerprint of the raw public key.
+      More information about the computation can be found in
+      Section 4.2.
+
+
+   RawKey:
+
+      The RawKey structure contains the raw public key as described
+      below for the different types of public key cryptosystems.
+
+   RSA Public Key:
+
+      The raw RSA public key contains a PKCS #1 encoded RSA key, that
+      is, a DER-encoded RSAPublicKey structure (see [RSA] and
+      [RFC3447]).
+
+   Diffie-Hellman Public Key:
+
+      This payload defines a raw Diffie-Hellman (DH) public key and
+      parameters.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 11]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+      struct {
+             opaque dh_p<1..2^16-1>;
+             opaque dh_g<1..2^16-1>;
+             opaque dh_Ys<1..2^16-1>;
+         } DHParams;     /* DH parameters */
+
+         dh_p
+            The prime modulus used for the Diffie-Hellman operation.
+
+         dh_g
+            The generator used for the Diffie-Hellman operation.
+
+         dh_Ys
+            The server's Diffie-Hellman public value (g^X mod p).
+
+
+   Raw ECC Public Key:
+
+      This payload defines a raw Elliptic Curve Cryptography (ECC)
+      public key.  The encoding and the parameters of the ECC public key
+      and parameters are defined in Section 5.4 of RFC 4492 [RFC4492]
+      with 'curve_params' specifying the elliptic curve domain
+      parameters associated with the public key and with 'public'
+      representing the public key itself.
+
+
+          struct {
+               ECParameters    curve_params;
+               ECPoint         public;
+           } ECCParam;
+
+
+   DSS Public Key:
+
+      This payload defines a raw Digital Signature Standard (DSS) public
+      key.  The encoding and the parameters of the DSS public key and
+      parameters are defined in FIPS 186-3 [DSS].  The
+      domain_parameter_seed and counter values that were used to
+      generate p and q are not carried in the structure.
+
+
+          struct {
+             opaque p<1..2^16-1>;
+             opaque q<1..2^16-1>;
+             opaque g<1..2^16-1>;
+           } DSSParam; /* DSS parameters */
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 12]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+4.2.  Fingerprint of Raw Public Key
+
+   The fingerprint value for the RawKeyFingerprint structure is a hash
+   computed as follows:
+
+
+   RawKeyFingerprint = func(RawKey)
+
+   whereby
+
+     - the func() is the hash function indicated in
+       FingerprintHashFunction (e.g., SHA-256)
+     - RawKey is the value of the public key
+       with the encoding defined in this document.
+
+
+   This document defines the following hash functions:
+
+   o  SHA-1: NIST FIPS PUB 180-3 [SHA]
+
+   o  SHA-224: RFC 3874 [RFC3874]
+
+   o  SHA-256: NIST FIPS PUB 180-3 [SHA]
+
+   o  SHA-384: NIST FIPS PUB 180-3 [SHA]
+
+   o  SHA-512: NIST FIPS PUB 180-3 [SHA]
+
+   o  MD5: RFC 1321 [RFC1321]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 13]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+5.  Security Considerations
+
+   This document defines an extension to TLS and therefore inherits the
+   security considerations from TLS as described in [RFC5246] and
+   [RFC6066].
+
+   The protocol for certificate type negotiation is identical in
+   operation to cipher suite negotiation as described in the TLS
+   specification [RFC5246], with the addition of default values when the
+   extension is omitted.  Since those omissions have a unique meaning
+   and the same protection is applied to the values as with cipher
+   suites, it is believed that the security properties of this
+   negotiation are the same as with cipher suite negotiation.
+
+   Raw public keys and fingerprints of them are, unlike certificates,
+   not secured by their own cryptographic mechanism against
+   modification.  As such, this extension assumes that there was an out-
+   of-band procedure to ensure that the public keys (or their
+   fingerprints) have been securely provisioned.  This is not only
+   important from an authentication point of view but also with respect
+   to the authorization procedure.
+
+   The information that is available to participating parties and
+   eavesdroppers (when confidentiality is not available through a
+   previous handshake) is the number and the types of certificates they
+   hold, plus the contents of certificates.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 14]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+6.  IANA Considerations
+
+   With this document IANA is kindly asked to add values to one existing
+   registry.
+
+6.1.  New TLS Certificate Types
+
+   The "TLS Certificate Types" registry was created with RFC 6091
+   [RFC6091] and this document defines two new values, namely
+   RawPublicKey([TBD: Suggested value is 2]), and
+   Fingerprint_RawPublicKey([TBD: Suggested value is 3]).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 15]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+7.  Acknowledgements
+
+   We would like to thank the participants of the CORE and TLS working
+   group session at IETF#81 for their discussions around raw public keys
+   in TLS/DTLS.  Additionally we would like to thank Pasi Eronen for his
+   review comments and the authors of RFC 6091 since this documents
+   builds on their work.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 16]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+8.  References
+
+8.1.  Normative References
+
+   [DSS]      "FIPS PUB 186-3, "Digital Signature Standard", National
+              Institute of Standards and Technology, U.S. Department of
+              Commerce", June 2009.
+
+   [PKIX]     Cooper, D., Santesson, S., Farrell, S., Boeyen, S.,
+              Housley, R., and W. Polk, "Internet X.509 Public Key
+              Infrastructure Certificate and Certificate Revocation List
+              (CRL) Profile", RFC 5280, May 2008.
+
+   [RFC1321]  Rivest, R., "The MD5 Message-Digest Algorithm", RFC 1321,
+              April 1992.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3447]  Jonsson, J. and B. Kaliski, "Public-Key Cryptography
+              Standards (PKCS) #1: RSA Cryptography Specifications
+              Version 2.1", RFC 3447, February 2003.
+
+   [RFC3874]  Housley, R., "A 224-bit One-way Hash Function: SHA-224",
+              RFC 3874, September 2004.
+
+   [RFC4492]  Blake-Wilson, S., Bolyard, N., Gupta, V., Hawk, C., and B.
+              Moeller, "Elliptic Curve Cryptography (ECC) Cipher Suites
+              for Transport Layer Security (TLS)", RFC 4492, May 2006.
+
+   [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246, August 2008.
+
+   [RFC6066]  Eastlake, D., "Transport Layer Security (TLS) Extensions:
+              Extension Definitions", RFC 6066, January 2011.
+
+   [RFC6091]  Mavrogiannopoulos, N. and D. Gillmor, "Using OpenPGP Keys
+              for Transport Layer Security (TLS) Authentication",
+              RFC 6091, February 2011.
+
+   [RSA]      Rivest, R., Shamir, A., and L. Adleman, "A Method for
+              Obtaining Digital Signatures and Public-Key
+              Cryptosystems", February 1978.
+
+   [SHA]      "Federal Information Processing Standards Publication
+              (FIPS PUB) 180-3, Secure Hash Standard (SHS)",
+              October 2008.
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 17]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+8.2.  Informative References
+
+   [DANE]     Hoffman, P. and J. Schlyter, "Using Secure DNS to
+              Associate Certificates with Domain Names For TLS",
+              draft-ietf-dane-protocol-08 (work in progress), July 2011.
+
+   [Defeating-SSL]
+              Marlinspike, M., "New Tricks for Defeating SSL in
+              Practice", February 2009, <http://www.blackhat.com/
+              presentations/bh-dc-09/Marlinspike/
+              BlackHat-DC-09-Marlinspike-Defeating-SSL.pdf>.
+
+   [LDAP]     Sermersheim, J., "Lightweight Directory Access Protocol
+              (LDAP): The Protocol", RFC 4511, June 2006.
+
+   [RFC3280]  Housley, R., Polk, W., Ford, W., and D. Solo, "Internet
+              X.509 Public Key Infrastructure Certificate and
+              Certificate Revocation List (CRL) Profile", RFC 3280,
+              April 2002.
+
+   [RFC4880]  Callas, J., Donnerhacke, L., Finney, H., Shaw, D., and R.
+              Thayer, "OpenPGP Message Format", RFC 4880, November 2007.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 18]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+Authors' Addresses
+
+   Paul Wouters (editor)
+   Xelerance
+   4130 Ramsayville Road
+   Ottawa, On  K1G 3N4
+   Canada
+
+   Phone: +1-647-722-5653
+   Email: paul@xelerance.com
+   URI:   https://www.xelerance.com/
+
+
+   John Gilmore
+   PO Box 170608
+   San Francisco, California  94117
+   USA
+
+   Phone: +1 415 221 6524
+   Email: gnu@toad.com
+   URI:   https://www.toad.com/
+
+
+   Sam Weiler
+   SPARTA, Inc.
+   7110 Samuel Morse Drive
+   Columbia, Maryland  21046
+   US
+
+   Email: weiler@tislabs.com
+
+
+   Tero Kivinen
+   AuthenTec
+   Eerikinkatu 28
+   HELSINKI  FI-00180
+   FI
+
+   Email: kivinen@iki.fi
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 19]
+
+Internet-Draft             TLS Raw Public Keys               August 2011
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.           Expires March 2, 2012                [Page 20]
+
