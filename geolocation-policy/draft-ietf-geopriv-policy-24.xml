@@ -1,0 +1,1836 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc toc="yes" ?>
+<?rfc symrefs="yes" ?>
+<?rfc sortrefs="yes"?>
+<?rfc iprnotified="no" ?>
+<?rfc strict="yes" ?>
+<?rfc compact="no" ?>
+<?rfc subcompact="no" ?>
+
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY RFC4745      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4745.xml'>
+<!ENTITY RFC4119      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4119.xml'>
+<!ENTITY RFC4825      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4825.xml'>
+<!ENTITY RFC5139      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5139.xml'>
+<!ENTITY RFC4079      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4079.xml'>
+<!ENTITY RFC2434      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2434.xml'>
+<!ENTITY RFC5025      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5025.xml'>
+<!ENTITY I-D.thomson-geopriv-geo-shape      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.thomson-geopriv-geo-shape.xml'>
+<!ENTITY I-D.thomson-geopriv-uncertainty      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.thomson-geopriv-uncertainty.xml'>
+<!ENTITY RFC5491      PUBLIC ''  'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5491.xml'>
+]>
+<rfc category="std" ipr="trust200902" docName="draft-ietf-geopriv-policy-24.txt">
+  <front>
+    <title abbrev="Geolocation Policy">Geolocation Policy: A Document Format for Expressing Privacy
+      Preferences for Location Information</title>
+    <author role="editor" initials="H." surname="Schulzrinne" fullname="Henning Schulzrinne">
+      <organization>Columbia University</organization>
+      <address>
+        <postal>
+          <street>Department of Computer Science</street>
+          <street>450 Computer Science Building</street>
+          <city>New York</city>
+          <region>NY</region>
+          <code>10027</code>
+          <country>USA</country>
+        </postal>
+        <phone>+1 212 939 7042</phone>
+        <email>schulzrinne@cs.columbia.edu</email>
+        <uri>http://www.cs.columbia.edu/~hgs</uri>
+      </address>
+    </author>
+    <author role="editor" initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+    <author initials="J." surname="Cuellar" fullname="Jorge R. Cuellar">
+      <organization>Siemens</organization>
+      <address>
+        <postal>
+          <street>Otto-Hahn-Ring 6</street>
+          <city>Munich</city>
+          <region>Bavaria</region>
+          <code>81739</code>
+          <country>Germany</country>
+        </postal>
+        <email>Jorge.Cuellar@siemens.com</email>
+      </address>
+    </author>
+    <author initials="J." surname="Polk" fullname="James Polk">
+      <organization>Cisco</organization>
+      <address>
+        <postal>
+          <street>2200 East President George Bush Turnpike</street>
+          <city>Richardson</city>
+          <region>Texas</region>
+          <code>75082</code>
+          <country>USA</country>
+        </postal>
+        <email>jmpolk@cisco.com</email>
+      </address>
+    </author>
+    <author initials="J." surname="Morris" fullname="John B. Morris, Jr.">
+      <organization/>
+      <address>
+        <postal>
+          <street></street>
+          <city></city>
+          <region></region>
+          <code></code>
+          <country></country>
+        </postal>
+        <email>ietf@jmorris.org</email>
+      </address>
+    </author>
+    <date year="2011"/>
+    <area>Real-time Applications and Infrastructure</area>
+    <workgroup>GEOPRIV</workgroup>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Authorization Policy</keyword>
+    <keyword>Location Privacy</keyword>
+    <abstract>
+      <t>This document defines an authorization policy language for controlling access to location
+        information. It extends the Common Policy authorization framework to provide
+        location-specific access control. More specifically, this document defines condition
+        elements specific to location information in order to restrict access based on the current
+        location of the Target.</t>
+      <t>Furthermore, this document defines two algorithms for reducing the granularity of returned location information. 
+      The first algorithm is defined for usage with civic location information while the other one applies to geodetic location information.
+       Both algorithms come with limitations, i.e. they provide location obfuscation under certain conditions and may therefore not be appropriate for all application domains.</t>      
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="introduction" title="Introduction">
+      <t>Location information needs to be protected against unauthorized access to preserve the
+        privacy of humans. In RFC 3693 <xref target="RFC3693"/>, a protocol-independent model for
+        access to geographic information is defined. The model includes a Location Generator (LG)
+        that determines location information, a Location Server (LS) that authorizes access to
+        location information, a Location Recipient (LR) that requests and receives location
+        information, and a Rule Maker (RM) that writes authorization policies. An authorization
+        policy is a set of rules that regulates an entity's activities with respect to
+        privacy-sensitive information, such as location information. </t>
+      <t>The data object containing location information in the context of this document is referred
+        to as a Location Object (LO). The basic rule set defined in the Presence Information Data
+        Format Location Object (PIDF-LO) <xref target="RFC4119"/> can restrict how long the Location
+        Recipient is allowed to retain the information, and it can prohibit further distribution. It
+        also contains a reference to an enhanced rule set and a human readable privacy policy. The
+        basic rule set, however, does not allow to control access to location information based on
+        specific Location Recipients. This document describes an enhanced rule set that provides
+        richer constraints on the distribution of LOs.</t>
+      <t>The rule set allows the entity that uses the rules defined in this document to restrict the
+        retention and to enforce access restrictions on location data, including prohibiting any
+        dissemination to particular individuals, during particular times or when the Target is
+        located in a specific region. The RM can also stipulate that only certain parts of the
+        Location Object are to be distributed to recipients or that the resolution of parts of the
+        Location Object is reduced.</t>
+      <t>The typical sequence of operations is as follows. A Location Server receives a query for
+        location information for a particular Target. The requestor's identity will likely be revealed 
+        as part of this request for location information. The authenticated identity of the
+        Location Recipient, together with other information provided with the request or
+        generally available to the server, is then used for searching through the rule set. If more
+        than one rule matches the condition element, then the combined permission is evaluated
+        according to the description in Section 10 of <xref target="RFC4745"/>. The result of the
+        rule evalation is applied to the location information, yielding a possibly modified Location
+        Object that is delivered to the Location Recipient.</t>
+      <t>This document does not describe the protocol used to convey location information from the
+        Location Server to the Location Recipient. </t>
+      <t>This document extends the Common Policy framework defined in <xref target="RFC4745"/>. That
+        document provides an abstract framework for expressing authorization rules. As specified
+        there, each such rule consists of conditions, actions and transformations. Conditions
+        determine under which circumstances the entity executing the rules, for example a Location
+        Server, is permitted to apply actions and transformations. Transformations regulate in a
+        location information context how a Location Server modifies the information elements that
+        are returned to the requestor, for example, by reducing the granularity of returned location
+        information.</t>
+      <t>This document defines two algorithms for reducing the granularity of returned location information. 
+        The first algorithm is defined for usage with civic location information (see <xref target="civic-transformation"/>) while the other one applies to geodetic location information (see <xref target="geodetic-transformation"/>).
+       Both algorithms come with limitations, i.e. they provide location obfuscation under certain conditions and may therefore not be appropriate for all application domains. These limitations are documented within the security consideration section (see <xref target="security"/>). It is worth pointing out that the geodetic transformation algorithm <xref target="geodetic-transformation"/> deals with privacy risks related to targets that are stationary, as well as to moving targets. However, with respect to movement there are restriction as to what information can be hidden from an adversary. To cover applications that have more sophisticated privacy requirements additional algorithms may need to be defined. This document forsees extensions in the form of new algorithms and therefore defines a registy (see <xref target="profile-registry"/>).
+</t>
+      <t>The XML schema defined in <xref target="schema"/> extends the Common Policy schema by
+        introducing new child elements to the condition and transformation elements. This document
+        does not define child elements for the action part of a rule.</t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="terminology" title="Terminology">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT",
+        "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in
+        RFC 2119 <xref target="RFC2119"/>.</t>
+      <t>This document reuses the terminology of RFC 3693 <xref target="RFC3693"/>, such as Location
+        Server (LS), Location Recipient (LR), Rule Maker (RM), Target, Location Generator (LG) and
+        Location Object (LO). This document uses the following terminology:</t>
+      <t>
+        <list style="hanging">
+          <t hangText="Presentity or Target:">
+            <vspace blankLines="1"/>RFC 3693 <xref target="RFC3693"/> uses the term Target to
+            identify the object or person of which location information is required. The presence
+            model described in RFC 2778 <xref target="RFC2778"/> uses the term presentity to
+            describe the entity that provides presence information to a presence service. A
+            Presentity in a presence system is a Target in a location information system.<vspace
+              blankLines="1"/>
+          </t>
+          <t hangText="Watcher or Location Recipient:">
+            <vspace blankLines="1"/>The receiver of location information is the Location Recipient
+            (LR) in the terminology of RFC 3693 <xref target="RFC3693"/>. A watcher in a presence
+            system, i.e., an entity that requests presence information about a presentity, is a
+            Location Recipient in a location information system.<vspace blankLines="1"/>
+          </t>
+          <t hangText="Authorization policy:">
+            <vspace blankLines="1"/>An authorization policy is given by a rule set. A rule set
+            contains an unordered list of (policy) rules. Each rule has a condition, an action and a
+            transformation component. <vspace blankLines="1"/>
+          </t>
+          <t hangText="Permission:">
+            <vspace blankLines="1"/>The term permission refers to the action and transformation
+            components of a rule.</t>
+        </list>
+      </t>
+      <t>In this document we use the term Location Servers as the entities that evaluate the
+        geolocation authorization policies. The geolocation privacy architecture is, as motivated in
+        RFC 4079 <xref target="RFC4079"/>, aligned with the presence architecture and a Presence
+        Server is therefore an entity that distributes location information along with other
+        presence-specific XML data elements.</t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Generic Processing">
+      <section title="Structure of Geolocation Authorization Documents">
+        <t> A geolocation authorization document is an XML document, formatted according to the
+          schema defined in <xref target="RFC4745"/>. Geolocation authorization documents inherit
+          the MIME type of common policy documents, application/auth-policy+xml. As described in
+            <xref target="RFC4745"/>, this document is composed of rules which contain three parts -
+          conditions, actions, and transformations. Each action or transformation, which is also
+          called a permission, has the property of being a positive grant of information to the
+          Location Recipient. As a result, there is a well-defined mechanism for combining actions
+          and transformations obtained from several sources. This mechanism is privacy safe, since
+          the lack of any action or transformation can only result in less information being
+          presented to a Location Recipient. </t>
+      </section>
+      <section anchor="rule-transport" title="Rule Transport">
+        <t>There are two ways how the authorization rules described in this document may be conveyed
+          between different parties:</t>
+        <t>
+          <list style="symbols">
+            <t>RFC 4119 <xref target="RFC4119"/> allows enhanced authorization policies to be
+              referenced via a Uniform Resource Locator (URL) in the 'ruleset-reference' element.
+              The ruleset-reference' element is part of the basic rules that always travel with the
+              Location Object. </t>
+            <t>Authorization policies might, for example, also be stored at a Location Server /
+              Presence Server. The Rule Maker therefore needs to use a protocol to create, modify
+              and delete the authorization policies defined in this document. Such a protocol is
+              available with the Extensible Markup Language (XML) Configuration Access Protocol
+              (XCAP) <xref target="RFC4825"/>.</t>
+          </list>
+        </t>
+      </section>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="conditions" title="Location-specific Conditions">
+      <t>This section describes the location-specific conditions of a rule. The
+        &lt;conditions&gt; element contains zero, one or an unbounded number of
+        &lt;location-condition&gt; child element(s). Providing more than one
+        &lt;location-condition&gt; element may not be useful since all child elements of the
+        &lt;conditions&gt; element must evaluate to TRUE in order for the
+        &lt;conditions&gt; element to be TRUE. The &lt;location-condition&gt;
+        element MUST contain at least one &lt;location&gt; child element. The
+        &lt;location-condition&gt; element evaluates to TRUE if any of its child elements is
+        TRUE, i.e., a logical OR. </t>
+      <t>The &lt;location&gt; element has three attributes, namely 'profile', 'xml:lang' and
+        'label'. The 'profile' attribute allows to indicate the location profile that is included as
+        child elements in the &lt;location&gt; element and each profile needs to describe
+        under what conditions each &lt;location&gt; element evaluates to TRUE. This document
+        defines two location profiles, one civic and one geodetic location profile, see <xref
+          target="geodetic-condition"/> and <xref target="civic-condition"/>. The 'label' attribute
+        allows a human readable description to be added to each &lt;location&gt; element. The
+        'xml:lang' attribute contains a language tag providing further information for rendering of
+        the content of the 'label' attribute.</t>
+      <t>The &lt;location-condition&gt; and the &lt;location&gt; elements provide
+        extension points. If an extension is not understood by the entity evaluating the rules then
+        this rule evaluates to FALSE. </t>
+
+      <section anchor="geodetic-condition" title="Geodetic Location Condition Profile">
+
+        <t>The geodetic location profile is identified by the token 'geodetic-condition'. Rule
+          Makers use this profile by placing a <xref target="GML">GML</xref> &lt;Circle&gt;
+          element within the &lt;location&gt; element (as described in Section 5.2.3 of
+            <xref target="RFC5491"/>). </t>
+
+        <t>The &lt;location&gt; element containing the information for the geodetic location
+          profile evaluates to TRUE if the current location of the Target is within the described
+          location. Note that the Target's actual location might be represented by any of the
+          location shapes described in <xref target="RFC5491"/>. If the
+          geodetic location of the Target is unknown then the &lt;location&gt; element
+          containing the information for the geodetic location profile evaluates to FALSE. </t>
+        <t>Implementations are REQUIRED to support the following coordinate reference system based
+          on WGS 84 <xref target="NIMA.TR8350.2-3e"/> based on the European Petroleum Survey Group
+          (EPSG) Geodetic Parameter Dataset (as formalized by the Open Geospatial Consortium (OGC)): </t>
+        <t>
+          <list style="hanging">
+            <t hangText="2D:">WGS 84 (latitude, longitude), as identified by the URN
+              "urn:ogc:def:crs:EPSG::4326". This is a two dimensional CRS.</t>
+
+          </list>
+        </t>
+        <t>A CRS MUST be specified using the above URN notation only, implementations do not need to
+          support user-defined CRSs. </t>
+        <t>Implementations MUST specify the CRS using the "srsName" attribute on the outermost
+          geometry element. The CRS MUST NOT be changed for any sub-elements. The "srsDimension"
+          attribute MUST be omitted, since the number of dimensions in these CRSs is known. </t>
+      </section>
+
+      <section anchor="civic-condition" title="Civic Location Condition Profile">
+
+        <t>The civic location profile is identified by the token 'civic-condition'. Rule Makers use
+          this profile by placing a &lt;civicAddress&gt; element, defined in <xref
+            target="RFC5139"/>, within the &lt;location&gt; element.</t>
+
+        <t> All child elements of &lt;location&gt; element that carry &lt;civicAddress&gt; elements
+          MUST evaluate to TRUE (i.e., logical AND) in order for the &lt;location&gt;
+          element to evaluate to TRUE. For each child element, the value of that element is compared
+          to the value of the same element in the Target's civic location. The child element
+          evaluates to TRUE if the two values are identical based on a bit-by-bit comparison. </t>
+
+        <t>If the civic location of the Target is unknown, then the &lt;location&gt; element
+          containing the information for the civic location profile evaluates to FALSE. This case
+          may occur, for example, if location information has been removed by earlier transmitters
+          of location information or if only the geodetic location is known. In general, it is
+          RECOMMENDED behavior for a LS not to apply a translation from geodetic location to civic
+          location (i.e., geocode the location). </t>
+
+      </section>
+
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Actions">
+      <t>This document does not define location-specific actions. </t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+
+    <section anchor="transformations" title="Transformations">
+      <t>This document defines several elements that allow Rule Makers to specify transformations
+        that <list style="symbols">
+          <t>reduce the accuracy of the returned location information, and </t>
+          <t>set the basic authorization policies carried inside the PIDF-LO.</t>
+        </list>
+      </t>
+      <section title="Set Retransmission-Allowed">
+        <t>This element asks the LS to change or set the value of the
+          &lt;retransmission-allowed&gt; element in the PIDF-LO. The data type of the
+          &lt;set-retransmission-allowed&gt; element is a boolean. </t>
+        <t>If the value of the &lt;set-retransmission-allowed&gt; element is set to TRUE
+          then the &lt;retransmission-allowed&gt; element in the PIDF-LO MUST be set to
+          TRUE. If the value of the &lt;set-retransmission-allowed&gt; element is set to
+          FALSE, then the &lt;retransmission-allowed&gt; element in the PIDF-LO MUST be set
+          to FALSE. </t>
+        <t>If the &lt;set-retransmission-allowed&gt; element is absent then the value of the
+          &lt;retransmission-allowed&gt; element in the PIDF-LO MUST be kept unchanged or,
+          if the PIDF-LO is created for the first time, then the value MUST be set to FALSE.</t>
+      </section>
+      <section title="Set Retention-Expiry">
+        <t>This transformation asks the LS to change or set the value of the
+          &lt;retention-expiry&gt; element in the PIDF-LO. The data type of the
+          &lt;set-retention-expiry&gt; element is an integer.</t>
+        <t> The value provided with the &lt;set-retention-expiry&gt; element indicates
+          seconds and these seconds are added to the current date.</t>
+        <t>If the &lt;set-retention-expiry&gt; element is absent then the value of the
+          &lt;retention-expiry&gt; element in the PIDF-LO is kept unchanged or, if the
+          PIDF-LO is created for the first time, then the value MUST be set to the current date.</t>
+      </section>
+
+      <section anchor="notewell" title="Set Note-Well">
+        <t>This transformation asks the LS to change or set the value of the
+          &lt;note-well&gt; element in the PIDF-LO. The data type of the
+          &lt;set-note-well&gt; element is a string.</t>
+        <t> The value provided with the &lt;set-note-well&gt; element contains a privacy
+          statement as a human readable text string and an 'xml:lang' attribute denotes the language
+          of the human readable text.</t>
+        <t>If the &lt;set-note-well&gt; element is absent, then the value of the
+          &lt;note-well&gt; element in the PIDF-LO is kept unchanged or, if the PIDF-LO is
+          created for the first time, then no content is provided for the &lt;note-well&gt;
+          element.</t>
+      </section>
+
+      <section title="Keep Ruleset Reference">
+        <t>This transformation allows to influence whether the &lt;external-ruleset&gt;
+          element in the PIDF-LO carries the extended authorization rules defined in <xref
+            target="RFC4745"/>. The data type of the &lt;keep-rule-reference&gt; element is
+          Boolean. </t>
+        <t> If the value of the &lt;keep-rule-reference&gt; element is set to TRUE, then the
+          &lt;external-ruleset&gt; element in the PIDF-LO is kept unchanged when included.
+          If the value of the &lt;keep-rule-reference&gt; element is set to FALSE, then the
+          &lt;external-ruleset&gt; element in the PIDF-LO MUST NOT contain a reference to an
+          external rule set. The reference to the ruleset is removed and no rules are carried as
+          MIME bodies (in case of CID URIs). </t>
+        <t>If the &lt;keep-rule-reference&gt; element is absent, then the value of the
+          &lt;external-ruleset&gt; element in the PIDF-LO is kept unchanged when available
+          or, if the PIDF-LO is created for the first time then the &lt;external-ruleset&gt;
+          element MUST NOT be included.</t>
+      </section>
+
+      <section anchor="obfuscation" title="Provide Location">
+        <t>The &lt;provide-location&gt; element contains child elements of a specific
+          location profile that controls the granularity of returned location information. This form
+          of location granularity reduction is also called 'obfuscation' and is defined in <xref
+            target="duckham05"/> as </t>
+        <t>
+          <list style="empty">
+            <t>"the means of deliberately degrading the quality of information about an individual’s
+              location in order to protect that individual’s location privacy." </t>
+          </list>
+        </t>
+        <t> The functionality of location granularity reduction depends on the type of location
+          provided as input. This document defines two profiles for reduction, namely:<vspace
+            blankLines="1"/>
+          <list style="symbols">
+            <t hangText="civic-transformation:">If the &lt;provide-location&gt; element has
+              a &lt;provide-civic&gt; child element then civic location information is
+              disclosed as described in <xref target="civic-transformation"/>, subject to
+                availability.<vspace blankLines="1"/></t>
+
+            <t hangText="geodetic-transformation:">If the &lt;provide-location&gt; element
+              has a &lt;provide-geo&gt; child element then geodetic location information is
+              disclosed as described in <xref target="geodetic-transformation"/>, subject to
+                availability.<vspace blankLines="1"/></t>
+          </list>
+        </t>
+        <t> The &lt;provide-location&gt; element MUST contain the 'profile' attribute if it
+          contains child elements and the 'profile' attribute MUST match with the contained child
+          elements.</t>
+
+        <t> If the &lt;provide-location&gt; element has no child elements then civic, as
+          well as, geodetic location information is disclosed without reducing its granularity,
+          subject to availability. In this case the profile attribute MUST NOT be included.</t>
+
+        <section anchor="civic-transformation" title="Civic Location Profile">
+          <t>This profile uses the token 'civic-transformation'. This profile allows civic location
+            transformations to be specified by means of the &lt;provide-civic&gt; element
+            that restricts the level of civic location information the LS is permitted to disclose.
+            The symbols of these levels are: 'country', 'region', 'city', 'building', 'full'. Each
+            level is given by a set of civic location data items such as &lt;country&gt; and
+            &lt;A1&gt;, ..., &lt;POM&gt;, as defined in <xref target="RFC5139"/>.
+            Each level includes all elements included by the lower levels.</t>
+          <t>The 'country' level includes only the &lt;country&gt; element; the 'region'
+            level adds the &lt;A1&gt; element; the 'city' level adds the &lt;A2&gt;
+            and &lt;A3&gt; elements; the 'building' level and the 'full' level add further
+            civic location data as shown below.</t>
+          <t>
+            <figure>
+              <artwork><![CDATA[
+                           full
+   {<country>, <A1>, <A2>, <A3>, <A4>, <A5>, <A6>, <PRD>, <POD>,
+    <STS>, <HNO>, <HNS>, <LMK>, <LOC>, <PC>, <NAM>, <FLR>,
+    <BLD>,<UNIT>,<ROOM>,<PLC>, <PCN>, <POBOX>, <ADDCODE>, <SEAT>
+    <RD>, <RDSEC>, <RDBR>, <RDSUBBR>, <PRM>, <POM>}
+                            |
+                            |
+                         building
+      {<country>, <A1>, <A2>, <A3>, <A4>, <A5>, <A6>, <PRD>
+      <POD>, <STS>, <HNO>, <HNS>, <LMK>, <PC>,
+      <RD>, <RDSEC>, <RDBR>, <RDSUBBR> <PRM>, <POM>}
+                            |
+                            |
+                          city
+                  {<country>, <A1>, <A2>, <A3>}
+                            |
+                            |
+                          region
+                     {<country>, <A1>}
+                            |
+                            |
+                         country
+                       {<country>}
+                            |
+                            |
+                           none
+                           {}
+]]></artwork>
+            </figure>
+          </t>
+          <t>The default value is "none".</t>
+          <t>The schema of the &lt;provide-civic&gt; element is defined in <xref
+              target="profile-schema"/>.</t>
+        </section>
+        <section anchor="geodetic-transformation" title="Geodetic Location Profile">
+          <t>This profile uses the token 'geodetic-transformation' and refers only to the Coordinate
+            Reference System (CRS) WGS 84 (urn:ogc:def:crs:EPSG::4326, 2D). This profile allows
+            geodetic location transformations to be specified by means of the
+            &lt;provide-geo&gt; element that may restrict the returned geodetic location
+            information based on the value provided in the 'radius' attribute. The value of the
+            'radius' attribute expresses the radius in meters.</t>
+
+          <t>The schema of the &lt;provide-geo&gt; element is defined in <xref
+              target="profile-schema"/>.</t>
+
+<t>The algorithm proceeds in 6 steps. The first two steps are
+independent of the measured position to be obscured. Those
+two steps should be run only once or rather seldom (for
+every region and desired uncertainty).  The steps are:
+<list style="numbers"> 
+<t> Choose a geodesic projection with Cartesian coordinates
+  and a surface you want to cover.  The maximal distortion
+  of the map may not be too much (see notes below).
+</t>
+<t>Given uncertainty "d", choose a grid of so called
+  "landmarks" at a distance (maximal) d of each other.
+</t>
+<t>
+Given a measured location M=(m,n) in the surface, calculate its 4
+      closest landmarks on the grid, with coordinates: SW = (l,b),
+      SE=(r,b), NW=(l,t), NE=(r,t).  Thus l&lt;=m&lt;r and b&lt;=n&lt;t.  See notes
+      below.
+</t>
+<t>Let x=(m-l)/(r-l) and y=(n-b)/(t-b)
+<vspace blankLines="1"/>
+  x and y are thus the local coordinates of the point M in
+  the small grid square that contains it. 0&lt;=x,y&lt;1.
+</t>
+<t>Let P = 0.2887 (=sqrt(3)/6) and q = 0.7113 (=1-p),
+  determine which of the following 8 cases holds:
+            <figure>
+              <artwork><![CDATA[
+  C1. x < p and y < p
+  C2. p <= x < q and y < x and y < 1-x 
+  C3. q <= x and y < p
+
+  C4. p <= y < q and x <= y and y < 1-x 
+  C5. p <= y < q and y < x and 1-x <= y 
+
+  C6. x < p and q <= y
+  C7. p <= x < q and x <= y and 1-x <= y 
+  C8. q <= x and q <= y
+]]></artwork>
+            </figure>
+          </t>
+<t>Depending on the case, let C (=Center) be
+            <figure>
+              <artwork><![CDATA[
+  C1: SW
+  C2: SW or SE 
+  C3: SE
+
+  C4: SW or NW 
+  C5: SE or NE 
+
+  C6: NW
+  C7: NW or NE 
+  C8: NE
+]]></artwork>
+            </figure>
+          </t>
+ </list> 
+ </t>
+ <t>Return the circle with center C and radius d.</t>
+
+<t>Notes:<list style="hanging">
+<t hangText="Regarding Step 1:"><vspace blankLines="1"/>
+The scale of a map is the ratio of a distance on (a
+straight line) on the map to the corresponding air distance
+on the ground. For maps covering larger areas, a map
+projection from a sphere (or ellipsoid) to the plane will
+introduce distortion and the scale of the map is not
+constant. Also, note that the real distance on the ground
+is taken along great circles, which may not correspond to
+straight lines in the map, depending on the projection
+used. Let us measure the (length) distortion of the map as
+the quotient between the maximal and the minimal scales in
+the map. The distortion MUST be below 1.5. (The minimum
+distortion is 1.0: If the region of the map is small, then
+the scale may be taken as a constant over the whole
+map).
+</t>
+<t hangText="Regarding Step3:"><vspace blankLines="1"/>
+ SW is mnemonic for south-west, b for bottom, l for
+left (SW=(l,b)), etc, but the
+directions of the geodesic projection may be arbitrary, and
+thus SW may be not south-west of M but it will be left and
+below M *on the map*.
+</t>
+</list> 
+</t>
+        </section>
+      </section>
+
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+
+    <section anchor="example" title="Examples">
+      <t>This section provides a few examples for authorization rules using the extensions defined
+        in this document. </t>
+      <section title="Rule Example with Civic Location Condition">
+        <t>This example illustrates a single rule that employs the civic location condition. It
+          matches if the current location of the Target equal the content of the child elements of
+          the &lt;location&gt; element. Requests match only if the Target is at a civic
+          location with country set to 'Germany', state (A1) set to 'Bavaria', city (A3) set to
+          'Munich', city division (A4) set to 'Perlach', street name (A6) set to 'Otto-Hahn-Ring'
+          and house number (HNO) set to '6'.</t>
+
+        <t>No actions and transformation child elements are provided in this rule example. The
+          actions and transformation could include presence specific information when the
+          Geolocation Policy framework is applied to the Presence Policy framework (see <xref
+            target="RFC5025"/>). </t>
+        <t>
+          <figure>
+            <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset xmlns="urn:ietf:params:xml:ns:common-policy"
+  xmlns:gp="urn:ietf:params:xml:ns:geolocation-policy">
+
+  <rule id="AA56i09">
+    <conditions>
+      <gp:location-condition>
+        <gp:location 
+          profile="civic-condition"
+          xml:lang="en"
+          label="Siemens Neuperlach site 'Legoland'" 
+          xmlns="urn:ietf:params:xml:ns:pidf:geopriv10:civicAddr">
+          <country>DE</country>
+          <A1>Bavaria</A1>
+          <A3>Munich</A3>
+          <A4>Perlach</A4>
+          <A6>Otto-Hahn-Ring</A6>
+          <HNO>6</HNO>
+        </gp:location>
+      </gp:location-condition>
+    </conditions>
+    <actions/>
+    <transformations/>
+  </rule>
+</ruleset>
+              ]]></artwork>
+          </figure>
+        </t>
+      </section>
+
+
+      <section title="Rule Example with Geodetic Location Condition">
+        <t>This example illustrates a rule that employs the geodetic location condition. The rule
+          matches if the current location of the Target is inside the area specified by the polygon.
+          The polygon uses the EPSG 4326 coordinate reference system. No altitude is included in
+          this example. </t>
+
+        <t>
+          <figure>
+            <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset 
+  xmlns="urn:ietf:params:xml:ns:common-policy"
+  xmlns:gp="urn:ietf:params:xml:ns:geolocation-policy"
+  xmlns:gml="http://www.opengis.net/gml"
+  xmlns:gs="http://www.opengis.net/pidflo/1.0">
+
+  <rule id="BB56A19">
+    <conditions>
+      <gp:location-condition>
+        <gp:location 
+          xml:lang="en"
+          label="Sydney Opera House" 
+          profile="geodetic-condition">          
+          <gs:Circle srsName="urn:ogc:def:crs:EPSG::4326">
+            <gml:pos>-33.8570029378 151.2150070761</gml:pos>
+            <gs:radius uom="urn:ogc:def:uom:EPSG::9001">1500
+            </gs:radius>
+          </gs:Circle>        
+        </gp:location>
+      </gp:location-condition>
+    </conditions>
+    <transformations/>
+  </rule>
+</ruleset>
+             ]]></artwork>
+          </figure>
+        </t>
+      </section>
+
+      <section title="Rule Example with Civic and Geodetic Location Condition">
+
+        <t>This example illustrates a rule that employs a mixed civic and geodetic location
+          condition. Depending on the available type of location information, namely civic or
+          geodetic location information, one of the location elements may match. </t>
+
+        <t>
+          <figure>
+            <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset 
+  xmlns="urn:ietf:params:xml:ns:common-policy"
+  xmlns:gp="urn:ietf:params:xml:ns:geolocation-policy"
+  xmlns:gml="http://www.opengis.net/gml"
+  xmlns:gs="http://www.opengis.net/pidflo/1.0">
+              
+  <rule id="AA56i09">
+    <conditions>
+      <gp:location-condition>
+        <gp:location profile="civic-condition"
+          xmlns="urn:ietf:params:xml:ns:pidf:geopriv10:civicAddr">
+          <country>DE</country>
+          <A1>Bavaria</A1>
+          <A3>Munich</A3>
+          <A4>Perlach</A4>
+          <A6>Otto-Hahn-Ring</A6>
+          <HNO>6</HNO>
+        </gp:location>
+        <gp:location profile="geodetic-condition">
+          <gs:Circle srsName="urn:ogc:def:crs:EPSG::4326">
+             <gml:pos>-34.410649 150.87651</gml:pos>
+             <gs:radius uom="urn:ogc:def:uom:EPSG::9001">1500
+             </gs:radius>
+          </gs:Circle>
+        </gp:location>
+      </gp:location-condition>
+    </conditions>
+    <actions/>
+    <transformations/>
+  </rule>
+</ruleset>
+             ]]></artwork>
+          </figure>
+        </t>
+      </section>
+
+      <section title="Rule Example with Location-based Transformations">
+
+        <t>This example shows the transformations specified in this document. The
+          &lt;provide-civic&gt; element indicates that the available civic location
+          information is reduced to building level granularity. If geodetic location information is
+          requested then a granularity reduction is provided as well.</t>
+        <t>
+          <figure>
+            <artwork><![CDATA[      
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset xmlns="urn:ietf:params:xml:ns:common-policy"
+  xmlns:gp="urn:ietf:params:xml:ns:geolocation-policy"
+  xmlns:lp="urn:ietf:params:xml:ns:basic-location-profiles">
+
+  <rule id="AA56i09">
+    <conditions/>
+    <actions/>
+    <transformations>
+      <gp:set-retransmission-allowed>false
+      </gp:set-retransmission-allowed>
+      <gp:set-retention-expiry>86400</gp:set-retention-expiry>
+      <gp:set-note-well xml:lang="en">My privacy policy goes in here.
+      </gp:set-note-well>
+      <gp:keep-rule-reference>false
+      </gp:keep-rule-reference>
+      
+      <gp:provide-location 
+        profile="civic-transformation">
+        <lp:provide-civic>building</lp:provide-civic>
+      </gp:provide-location>
+      
+      <gp:provide-location 
+        profile="geodetic-transformation">
+        <lp:provide-geo radius="500"/>        
+      </gp:provide-location>
+
+    </transformations>
+  </rule>
+</ruleset>
+              ]]></artwork>
+          </figure>
+        </t>
+
+        <t>The following rule describes the short-hand notation for making the current location of
+          the Target available to Location Recipients without granularity reduction. </t>
+        <t>
+          <figure>
+            <artwork><![CDATA[        
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset xmlns="urn:ietf:params:xml:ns:common-policy"
+    xmlns:gp="urn:ietf:params:xml:ns:geolocation-policy">
+
+    <rule id="AA56ia9">
+        <conditions/>
+        <actions/>
+        <transformations>
+            <gp:provide-location/>
+        </transformations>
+    </rule>
+</ruleset>
+          ]]></artwork>
+          </figure>
+        </t>
+
+      </section>
+
+
+
+      <section title="Location Obfuscation Example"> 
+      
+      <t>Suppose you want a to obscure positions in the
+continental USA.</t>
+
+<t><list style="hanging"> 
+<t hangText="Step 1:"> <vspace blankLines="1"/>
+First you choose a geodesic projection. If you are
+measuring location as latitude and longitude, a natural
+choice is to take a rectangular projection. 
+One latitudinal degree corresponds approximately to
+110.6 kilometers, while a good approximation of a
+longitudinal degree at latitude phi is (pi/180)*M*cos(phi),
+where pi is approximately 3.1415, and M is the Earth's average
+meridional radius, approximately 6,367.5 km. For instance, one
+longitudinal degree at 30 degrees (say, New Orleans) is
+96.39 km, while the formula given offers an estimation of
+96.24, which is good for our purposes.
+<vspace blankLines="1"/>
+We will set up a grid not only for the continental US, but
+for the whole earth between latitudes 25 and 50 degrees,
+and thus will cover also the Mediterranean, South Europe,
+Japan and the north of China. As will be seen below, the
+grid distortion (for not too large grids in this region) is
+approx cos(25)/cos(50), which is 1.4099.
+<vspace blankLines="1"/>
+As origin of our grid, we choose the point at latitude 25
+degrees and longitude 0 (Greenwich). The latitude 25
+degrees is chosen to be just south of Florida and thus south
+of the continental US. (On the south hemisphere the origin
+should be north of the region to be covered; if the region
+crosses the Equator, the origin should be on the Equator.
+In his way it is guaranteed that the latitudinal degree has
+largest distance at the latitude of the origin).
+<vspace blankLines="1"/>
+At 25 degrees one degree in east-west direction corresponds
+approx to (pi/180)*M*cos(25) = 100.72 km.
+<vspace blankLines="1"/>
+The same procedure, basically, produces grids for
+<list style="symbols">
+<t>45 degrees south to 45 degrees north   Tropics and subtropics</t>
+<t>25 to 50 degrees (both north or south) Continental US</t>
+<t>35 to 55 degrees (both north or south) South and Central Europe</t>
+<t>45 to 60 degrees (both north or south) Central and North Europe</t>
+<t>55 to 65 degrees (both north or south) Scandinavia</t>
+<t>60 to 70 degrees (both north or south)</t>
+</list> 
+Since we do not want to often change grid system (this
+would leak more information about obscured locations when
+they are repeatedly visited), the algorithm should prefer
+to use the grids discussed above, with origin at the
+Greenwich meridian and at latitudes o=0, o=25, o=35, o=45,
+0=55, and o=60 degrees (north) or at latitudes o=-25,
+o=-35, o=-45, 0=-55, and o=-60 degrees (the minus to
+indicate "south").
+<vspace blankLines="1"/>
+Our choice for the continental USA is o=25.
+<vspace blankLines="1"/>
+For locations close to the poles, a different projection
+should be used (not discussed here).
+<vspace blankLines="1"/></t>
+<t hangText="Step 2:"><vspace blankLines="1"/> 
+To construct the grid points, we start with our
+chosen origin and place the along the main axes (NS and EW)
+grid points at a distance d of each other.
+<vspace blankLines="1"/>
+We will now construct a grid for a desired uncertainty of
+d = 100km. At our origin, 100 km correspond roughly to d1 =
+100/100.72 = 0.993 degrees on east-west direction and to d2
+= 100/110.6 = 0.904 degrees in north-south direction.
+<vspace blankLines="1"/>
+The (i,j)-point in the grid (i and j are integers) has
+longitude d1*i and latitude 25+d2*j, measured in degrees.
+More generally, if the grid has origin at coordinates
+(0,o), measured in degrees, the (i,j)-point in the grid has
+coordinates (longitude = d1*i, latitude = o+d2*j).
+The grid has almost no distorsion at the latitude of
+the origin, but it has as we go further away from it.
+<vspace blankLines="1"/>
+The distance between two points in the grid at 25
+degrees latitude is indeed approx 100 km, but just above
+the Canadian border, on the 50th degree, it is
+0.993*(pi/180)*M*cos(50) = 70.92km. Thus, the grid
+distortion is 100/70.92 = 1.41, which is acceptable (&lt;1.5).
+(On north-south direction the grid has roughly no
+distortion, the vertical distance between two neighboring
+grid points is approximately 100 km).
+<vspace blankLines="1"/></t>
+<t hangText="Step 3:"><vspace blankLines="1"/>
+Now suppose you measure a position at M, with
+longitude -105 (the minus sign is used to denote 105
+degrees *west*; without minus, the point is in China, 105
+degrees east) and latitude 40 degrees (just north of
+Denver, CO). The point M is 105 degrees west and 15 degrees
+north of our origin (which has longitude 0 and latitude
+25).
+<vspace blankLines="1"/>
+Let "floor" be the function that returns the largest
+integer smaller or equal to a floating point number. To
+calculate SW, the closest point of the grid on the
+south-west of M=(m,n), we calculate
+<vspace blankLines="1"/>
+i= floor(m/d1) = floor(-105/0.993) = -106
+<vspace blankLines="1"/>
+j= floor(n-o/d2) = floor(15/0.904) = 16
+<vspace blankLines="1"/>
+Those are the indexes of SW on the grid. The coordinates of
+SW are then: (d1*i, 25+d2*j) = (-105.242, 39.467).
+<vspace blankLines="1"/>
+Thus:
+<vspace blankLines="1"/>
+l=d1*floor(m/d1)     = -105.243
+<vspace blankLines="1"/>
+r=l+d1               = -105.243+0.993 =  -104.250
+<vspace blankLines="1"/>
+b=o+d2*floor(n-o/d2) = 39.467
+<vspace blankLines="1"/>
+t=b+d2               = 39.467+0.904 = 40.371
+<vspace blankLines="1"/>
+These are the formulas for l,r,b, and t in the general case
+of Cartesian projections based on latitude and longitude.
+<vspace blankLines="1"/></t>
+<t hangText="Step 4:"><vspace blankLines="1"/>
+Calculate x and y, the local coordinates of the
+point M in the small grid square that contains it.  This is
+easy:
+<vspace blankLines="1"/>
+x=(m-l)/(r-l) = [-105 -(-105.243)]/0.993 = 0.245
+<vspace blankLines="1"/>
+y=(n-b)/(t-b) = [40 - 39.467]/0.904 = 0.590
+<vspace blankLines="1"/></t>
+<t hangText="Step 5:"><vspace blankLines="1"/>
+First compare x with p (0.2887) and
+(0.7113). x is smaller than p. Therefore, only cases 1,4 or
+6 could hold.
+<vspace blankLines="1"/>
+Also compare y with p (0.2887) and (0.7113). y is
+between them: p &lt;= y &lt; q. Thus, we must be in case 4. To
+check, compare y (0.59) with x (0.245) and 1-x. y
+is larger than x and smaller than 1-x. We are in case C4 
+(p &lt;= y &lt; q and x &lt;= y and y &lt; 1-x).
+<vspace blankLines="1"/></t>
+<t hangText="Step 6:"><vspace blankLines="1"/> 
+Now we choose either SW or NW as the center of the circle. 
+<vspace blankLines="1"/>
+The obscured location is the Circle with radius 100 km and
+center in SW (coordinates: -105.243, 39.467), or NW
+(coordinates: -105.243, 40.371).
+</t>
+</list> 
+</t>
+      </section> 
+      
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="profile-schema" title="XML Schema for Basic Location Profiles">
+
+      <t>This section defines the location profiles used as child elements of the transformation
+        element.</t>
+
+      <t>
+        <figure>
+          <artwork><![CDATA[      
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema 
+    targetNamespace="urn:ietf:params:xml:ns:basic-location-profiles"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+    elementFormDefault="qualified"
+    attributeFormDefault="unqualified">
+
+    <!-- profile="civic-transformation" -->
+
+    <xs:element name="provide-civic" default="none">
+        <xs:simpleType>
+            <xs:restriction base="xs:string">
+                <xs:enumeration value="full"/>
+                <xs:enumeration value="building"/>
+                <xs:enumeration value="city"/>
+                <xs:enumeration value="region"/>
+                <xs:enumeration value="country"/>
+                <xs:enumeration value="none"/>
+            </xs:restriction>
+        </xs:simpleType>
+    </xs:element>
+
+    <!-- profile="geodetic-transformation" -->
+
+    <xs:element name="provide-geo">
+        <xs:complexType>
+            <xs:attribute name="radius" type="xs:integer"/>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
+              ]]></artwork>
+        </figure>
+      </t>
+
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="schema" title="XML Schema for Geolocation Policy">
+      <t>This section presents the XML schema that defines the Geolocation Policy schema described
+        in this document. The Geolocation Policy schema extends the Common Policy schema (see <xref
+          target="RFC4745"/>).</t>
+      <t>
+        <figure>
+          <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema 
+  targetNamespace="urn:ietf:params:xml:ns:geolocation-policy"
+  xmlns:gp="urn:ietf:params:xml:ns:geolocation-policy" 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified" 
+  attributeFormDefault="unqualified">
+    
+  <!-- Import Common Policy-->
+  <xs:import namespace="urn:ietf:params:xml:ns:common-policy"/>
+  
+  <!-- This import brings in the XML language attribute xml:lang-->
+  <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+    schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+  
+  <!-- Geopriv Conditions -->
+  
+  <xs:element name="location-condition" 
+    type="gp:locationconditionType"/>
+  
+  <xs:complexType name="locationconditionType">
+    <xs:complexContent>
+      <xs:restriction base="xs:anyType">
+        <xs:choice minOccurs="1" maxOccurs="unbounded">  
+          <xs:element name="location" type="gp:locationType" 
+            minOccurs="1" maxOccurs="unbounded"/>
+          <xs:any namespace="##other" processContents="lax" 
+            minOccurs="0" maxOccurs="unbounded"/>
+        </xs:choice>
+      </xs:restriction>
+    </xs:complexContent>
+  </xs:complexType>
+  
+  <xs:complexType name="locationType">
+    <xs:complexContent>
+      <xs:restriction base="xs:anyType">
+        <xs:choice minOccurs="1" maxOccurs="unbounded">
+          <xs:any namespace="##other" processContents="lax" 
+            minOccurs="0" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:attribute name="profile" type="xs:string"/>
+        <xs:attribute name="label" type="xs:string"/>
+        <xs:attribute ref="xml:lang" />        
+      </xs:restriction>
+    </xs:complexContent>
+  </xs:complexType>
+  
+  <!-- Geopriv transformations -->
+  <xs:element name="set-retransmission-allowed" 
+    type="xs:boolean" default="false"/>
+  <xs:element name="set-retention-expiry" 
+    type="xs:integer" default="0"/>
+  <xs:element name="set-note-well"
+    type="gp:notewellType"/>
+  <xs:element name="keep-rule-reference" 
+    type="xs:boolean" default="false"/>
+  
+  <xs:element name="provide-location" 
+    type="gp:providelocationType"/>
+  
+  <xs:complexType name="notewellType">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute ref="xml:lang" />
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <xs:complexType name="providelocationType">
+    <xs:complexContent>
+      <xs:restriction base="xs:anyType">
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:any namespace="##other" processContents="lax" 
+            minOccurs="0" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:attribute name="profile" type="xs:string" />
+      </xs:restriction>
+    </xs:complexContent>
+  </xs:complexType>
+  
+</xs:schema>
+            ]]></artwork>
+        </figure>
+      </t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="XCAP Usage">
+
+      <t> The following section defines the details necessary for clients to manipulate geolocation
+        privacy documents from a server using XCAP. If used as part of a presence system, it uses
+        the same AUID as those rules. See <xref target="RFC5025"/> for a description of the XCAP
+        usage in context with presence authorization rules. </t>
+
+      <section title="Application Unique ID">
+
+        <t>XCAP requires application usages to define a unique application usage ID (AUID) in either
+          the IETF tree or a vendor tree. This specification defines the "geolocation-policy" AUID
+          within the IETF tree, via the IANA registration in <xref target="iana"/>. </t>
+      </section>
+
+      <section title="XML Schema">
+
+        <t>XCAP requires application usages to define a schema for their documents. The schema for
+          geolocation authorization documents is described in <xref target="schema"/>. </t>
+
+      </section>
+
+      <section title="Default Namespace">
+        <t> XCAP requires application usages to define the default namespace for their documents.
+          The default namespace is urn:ietf:params:xml:ns:geolocation-policy. </t>
+      </section>
+      <section title="MIME Type">
+        <t> XCAP requires application usages to defined the MIME type for documents they carry.
+          Geolocation privacy authorization documents inherit the MIME type of common policy
+          documents, application/auth-policy+xml. </t>
+      </section>
+      <section title="Validation Constraints">
+        <t>This specification does not define additional constraints.</t>
+      </section>
+
+      <section title="Data Semantics">
+        <t>This document discusses the semantics of a geolocation privacy authorization.</t>
+      </section>
+
+      <section title="Naming Conventions">
+        <t> When a Location Server receives a request to access location information of some user
+          foo, it will look for all documents within http://[xcaproot]/geolocation-policy/users/foo,
+          and use all documents found beneath that point to guide authorization policy. </t>
+      </section>
+
+      <section title="Resource Interdependencies">
+        <t>This application usage does not define additional resource interdependencies. </t>
+      </section>
+      <section title="Authorization Policies">
+        <t>This application usage does not modify the default XCAP authorization policy, which is
+          that only a user can read, write or modify his/her own documents. A server can allow
+          privileged users to modify documents that they do not own, but the establishment and
+          indication of such policies is outside the scope of this document. </t>
+      </section>
+    </section>
+
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+
+    <section anchor="iana" title="IANA Considerations">
+
+      <t>There are several IANA considerations associated with this specification. </t>
+
+      <section title="Geolocation Policy XML Schema Registration">
+        <t>
+          <list style="hanging">
+            <t hangText="URI:">urn:ietf:params:xml:schema:geolocation-policy</t>
+
+            <t hangText="Registrant Contact:">IETF Geopriv Working Group, Hannes Tschofenig
+              (hannes.tschofenig@nsn.com).</t>
+
+            <t hangText="XML:">The XML schema to be registered is contained in <xref target="schema"
+              />. Its first line is <figure>
+                <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+]]></artwork>
+              </figure> and its last line is<figure>
+                <artwork><![CDATA[
+</xs:schema>
+]]></artwork>
+              </figure></t>
+          </list>
+        </t>
+      </section>
+
+
+
+      <section title="Geolocation Policy Namespace Registration">
+        <t>
+          <list style="hanging">
+            <t hangText="URI:">urn:ietf:params:xml:ns:geolocation-policy</t>
+
+            <t hangText="Registrant Contact:">IETF Geopriv Working Group, Hannes Tschofenig
+              (hannes.tschofenig@nsn.com).</t>
+
+            <t hangText="XML:">
+              <figure>
+                <artwork><![CDATA[
+BEGIN
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+  "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="content-type"
+        content="text/html;charset=iso-8859-1"/>
+  <title>Geolocation Policy Namespace</title>
+</head>
+<body>
+  <h1>Namespace for Geolocation Authorization Policies</h1>
+  <h2>urn:ietf:params:xml:schema:geolocation-policy</h2>
+<p>See <a href="[URL of published RFC]">RFCXXXX 
+    [NOTE TO IANA/RFC-EDITOR: 
+     Please replace XXXX with the RFC number of this
+    specification.]</a>.</p>
+</body>
+</html>
+END
+]]></artwork>
+              </figure>
+            </t>
+          </list>
+        </t>
+      </section>
+
+
+      <section anchor="profile-registry" title="Geolocation Policy Location Profile Registry">
+
+        <t>This document seeks to create a registry of location profile names for the Geolocation
+          Policy framework. Profile names are XML tokens. This registry will operate in accordance
+          with <xref target="RFC2434">RFC 2434</xref>, Standards Action.</t>
+
+        <t>This document defines the following profile names:</t>
+        <t>
+          <list style="hanging">
+            <t hangText="geodetic-condition:"> Defined in <xref target="geodetic-condition"/>.</t>
+            <t hangText="civic-condition:"> Defined in <xref target="civic-condition"/>.</t>
+            <t hangText="geodetic-transformation:"> Defined in <xref
+                target="geodetic-transformation"/>.</t>
+            <t hangText="civic-transformation:"> Defined in <xref target="civic-transformation"
+            />.</t>
+          </list>
+        </t>
+
+      </section>
+
+
+      <section title="Basic Location Profile XML Schema Registration">
+        <t>
+          <list style="hanging">
+            <t hangText="URI:">urn:ietf:params:xml:schema:basic-location-profiles</t>
+
+            <t hangText="Registrant Contact:">IETF Geopriv Working Group, Hannes Tschofenig
+              (hannes.tschofenig@nsn.com).</t>
+
+            <t hangText="XML:">The XML schema to be registered is contained in <xref
+                target="profile-schema"/>. Its first line is <figure>
+                <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+]]></artwork>
+              </figure> and its last line is<figure>
+                <artwork><![CDATA[
+</xs:schema>
+]]></artwork>
+              </figure></t>
+          </list>
+        </t>
+      </section>
+
+
+
+      <section title="Basic Location Profile Namespace Registration">
+        <t>
+          <list style="hanging">
+            <t hangText="URI:">urn:ietf:params:xml:ns:basic-location-profiles</t>
+
+            <t hangText="Registrant Contact:">IETF Geopriv Working Group, Hannes Tschofenig
+              (hannes.tschofenig@nsn.com).</t>
+
+            <t hangText="XML:">
+              <figure>
+                <artwork><![CDATA[
+BEGIN
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+  "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="content-type"
+        content="text/html;charset=iso-8859-1"/>
+  <title>Basic Location Profile Namespace</title>
+</head>
+<body>
+  <h1>Namespace for Basic Location Profile</h1>
+  <h2>urn:ietf:params:xml:schema:basic-location-profiles</h2>
+<p>See <a href="[URL of published RFC]">RFCXXXX 
+    [NOTE TO IANA/RFC-EDITOR: 
+     Please replace XXXX with the RFC number of this
+    specification.]</a>.</p>
+</body>
+</html>
+END
+]]></artwork>
+              </figure>
+            </t>
+          </list>
+        </t>
+      </section>
+
+      <section title="XCAP Application Usage ID">
+
+        <t>This section registers an XCAP Application Usage ID (AUID) according to the IANA
+          procedures defined in <xref target="RFC4825"/>.</t>
+
+        <t> Name of the AUID: geolocation-policy </t>
+
+        <t> Description: Geolocation privacy rules are documents that describe the permissions that
+          a Target has granted to Location Recipients that access information about his/her
+          geographic location. </t>
+
+      </section>
+
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Internationalization Considerations">
+      <t> The policies described in this document are mostly meant for machine-to-machine
+        communications; as such, many of its elements are tokens not meant for direct human
+        consumption. If these tokens are presented to the end user, some localization may need to
+        occur. The policies are, however, supposed to be created with the help of humans and some of
+        the elements and attributes are subject to internationalization considerations. The content
+        of the &lt;label&gt; element is meant to be provided by a human (the Rule Maker) and
+        also displayed to a human. Furthermore, the location condition element (using the civic
+        location profile, see <xref target="civic-condition"/>) and the
+        &lt;set-note-well&gt; element (see <xref target="notewell"/>) may contain
+        non-US-ASCII letters. </t>
+      <t> The geolocation polices utilize XML and all XML processors are required to understand
+        UTF-8 and UTF-16 encodings, and therefore all entities processing these policies MUST
+        understand UTF-8 and UTF-16 encoded XML. Additionally, geolocation policy aware entities
+        MUST NOT encode XML with encodings other than UTF-8 or UTF-16. </t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="security" title="Security Considerations">
+    
+    <section title="Introduction"> 
+      <t>This document aims to allow users to prevent unauthorized access to location information
+      and to restrict access to information dependent on geolocation (via location based conditions). 
+      This is accomplished through the usage of authorization policies. This work builds on a series 
+      of other documents: Security requirements are described in <xref target="RFC3693"/> and a 
+      discussion of generic security threats is available with <xref target="RFC3694"/>. Aspects
+      of combining permissions in cases of multiple occurrence are treated in <xref target="RFC4745"/>).
+      </t>
+       
+      <t>In addition to the authorization policies mechanisms for obfuscating location information are 
+      described. A theoretical treatment of location obfuscation is provided in <xref target="duckham05"/> 
+      and in <xref target="ifip07"/>. <xref target="duckham05"/> provides the foundation and 
+      <xref target="ifip07"/> illustrates three different types of location obfuscation by enlarging 
+      the radius, by shifting the center, and by reducing the radius. This algorithm for geodetic location 
+      information obfuscation makes use of these techniques. 
+      </t>
+      
+      <t>The requirements of location information with respect to privacy protection vary. While the two 
+      obfuscation algorithm in this document provide a basis for protection they have limitations. There 
+      are certainly applications that require a different level of protection and for this purpose the 
+      ability to define and use additional algorithms has been envisioned. New algorithms can be specified 
+      via the available extension mechanism. </t> 
+    </section> 
+     
+    <section title="Obfuscation"> 
+     
+      <t>Whenever location information is returned to a location recipient then it contains the location of the Target. 
+      This is also true when location is obfuscated, i.e. the location server does not lie about the Target's location 
+      but instead hides it within a larger location shape. However, even without the Target's movement there is danger 
+      to reveal information over time. While the target's location is hidden within the privacy region the size of that 
+      returned region matters as well as the precise location of the Target within that region. Returning location shapes
+      that are randomly computed will over time real more and more informationa bout the Target. </t>
+      <t>Consider the drawing in <xref target="static"/>, which shows three ellipses, a dotted area in the middle, and the Target's 
+      true location marked as 'x'. The ellipses illustrate the location shapes as received by a potential location recipient over time
+      for requests of a target's location information. Collecting information about the returned location information over time 
+      allows the location recipient to narrow the potential location of the target down to the dotted area in the center of the graph.</t>
+      <t>For this purpose the algorithm described in <xref target="geodetic-transformation"/> uses a grid
+      that ensures to report the same location information whenever the target remains in the same geographical 
+      area.</t>    
+      <t>
+      <figure anchor="static" title="Obfuscation: A Static Target">
+      <artwork><![CDATA[
+                ,-----.
+        ,----,-'.      `-.
+     ,-'    /    `-.      \
+   ,'      / _...._ `.     \
+  /       ,-'......`._\     :
+ ;       /|...........\:    |
+ |      / :.....x......+    ;
+ :     |   \...........;|  /
+  \    |    \........./ | /
+   `.  \     `-.....,' ,''
+     '-.\       `-----'|
+        ``.-----'    ,'
+           `._    _,'
+              `'''
+      ]]></artwork>
+      </figure>
+      </t>
+
+      <t> When the Target is moving then the location transformations reveal information when switching 
+      from one privacy region to another one. For example, when a transformation indicates that civic 
+      location is provided at a 'building' level of granularity. Consequently, floor levels, room numbers, 
+      etc. would be hidden. However, when the Target moves from one building to the next one then the 
+      movement would still be recognizable as the disclosed location information would be reflected by the 
+      new civic location information indicating the new building. With additional knowledge about building 
+      entrances and floor plans it would be possible to learn additional amount of information.</t>
+        
+      <t>The algorithm presented in <xref target="geodetic-transformation"/> has some measures against leaking
+  information when moving, switching from one privacy region to another one, and also when the user is visiting 
+  regularly the same location. The first issue is the following: if you provide a different location information 
+  (privacy region) only when the previous one is not valid anymore, you will be disclosing the moment where you 
+  are in a certain border (namely: leaving the previous privacy region). The second issue is the following: 
+  Suppose a user goes home every night. If the reported obfuscated locations are all randomly different, an 
+  analysis will probably soon reveal the home location with high precision. Of course, the combination of an 
+  obscured location with public geographic information (highways, lakes, mountains, cities, etc) may render a 
+  much precise location information than desired. But even without it, just observing movements, once or in a 
+  regular repetitive way, any obscuring algorithm will leak information about velocities or positions. Suppose 
+  a user wants to disclose location information with a radius of r. The privacy region, a circle with that radius,
+  has an area of A = pi * r^2. An opponent, observing the movements, will deduce that the information that the 
+  target is, was, or regularly visits, a region of size A1, smaller than A. The quotient of the sizes A1/A 
+  should be, even in the worst case, larger than a fixed known number, in order that the user knows what is the 
+  maximal information leakage he has. The choices of 6.5.2 are such that this maximum leakage can be established: 
+  by any statistical procedures, without using geographic information (highways, etc. as discussed above), the 
+  quotient A1/A is larger than 0.13 (= 1/(5*1.5) ). Thus, for instance, when choosing a provided location of 
+  size 1000 km^2, he will be leaking, in worst case, the location within a region of size 130 km^2.
+  </t>  
+
+    </section> 
+
+    <section title="Usability"> 
+    
+      <t>There is the risk that end users are specifying their location-based policies in such a way
+        that very small changes in location yields a significantly different level of information
+        disclosure. For example, a user might want to set authorization policies differently when
+        they are in a specific geographical area (e.g., at home, in the office). Location might be
+        the only factor in the policy that triggers a very different action and transformation to be
+        executed. The accuracy of location information is not always sufficient to unequivocally
+        determine whether a location is within a specific boundary <xref
+          target="I-D.thomson-geopriv-uncertainty"/>. In some situations uncertainty in location
+        information could produce unexpected results for end users. Providing adequate
+        user feedback about potential errors arising from these limitation can help prevent
+        unintentional information leakage.</t>
+      <t>Users might create policies that are non-sensical.
+        <!-- For example, a user may express an authorization 
+        policy in the following way: "Show my location unless I'm in seat 32A". -->
+        To avoid such cases the software used to create the authorization policies should perform
+        consistency checks and when authorization policies are uploaded to the policy servers then
+        further checks are performed. When XCAP is used to upload authorization policies then
+        built-in features of XCAP can be utilized to convey error messages back to the user about an
+        error condition. Section 8.2.5 of <xref target="RFC4825"/> indicates that some degree of
+        application specific checking is provided when authorization policies are added, modified or
+        deleted. The XCAP protocol may return a 409 response with a response that may contain a
+        detailed conflict report containing the &lt;constraint-failure&gt; element. A human
+        readable description of the problem can be indicated in the 'phrase' attribute of that
+        element.</t>
+    </section> 
+    
+      <!--- 
+   
+   
+   <?xml version="1.0" encoding="UTF-8"?>
+   <xcap-error xmlns="urn:ietf:params:xml:ns:xcap-error">
+    <constraint-failure 
+        phrase="The authorization policy that was uploaded is non-sensical. 
+        Please correct your policy by, for example, providing a larger 
+        location condition.">
+    </constraint-failure>
+   </xcap-error>
+
+   -->
+
+    </section>
+  </middle>
+  <back>
+    <references title="Normative References">
+      <reference anchor="RFC2119">
+        <front>
+          <title abbrev="RFC Key Words">Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author initials="S." surname="Bradner" fullname="Scott Bradner">
+            <organization>Harvard University</organization>
+          </author>
+          <date month="March" year="1997"/>
+        </front>
+        <format type="TXT" octets="4723" target="ftp://ftp.isi.edu/in-notes/rfc2119.txt"/>
+      </reference> &RFC5139; &RFC4745; <reference anchor="GML">
+        <front>
+          <title>OpenGIS Geography Markup Language (GML) Implementation Specification, Version 3.00,
+            OGC 02 023r4</title>
+          <author fullname="OpenGIS" initials="" surname="OpenGIS">
+            <organization/>
+          </author>
+          <date year="2003" month="January"/>
+        </front>
+        <seriesInfo value="http://www.opengeospatial.org/docs/02-023r4.pdf" name=""/>
+        <format type="PDF" target="http://www.opengeospatial.org/docs/02-023r4.pdf"/>
+      </reference>
+      <reference anchor="NIMA.TR8350.2-3e">
+        <front>
+          <title>US National Imagery and Mapping Agency, "Department of Defense (DoD) World Geodetic
+            System 1984 (WGS 84), Third Edition, NIMA TR8350.2</title>
+          <author fullname="OpenGIS" initials="" surname="OpenGIS">
+            <organization/>
+          </author>
+          <date year="2000" month="January"/>
+        </front>
+        <seriesInfo value=" " name=""/>
+        <format type=" " target=" "/>
+      </reference> &RFC5491; </references>
+    <references title="Informative References"> &RFC4825; &RFC4119; <reference
+        anchor="RFC2778">
+        <front>
+          <title>A Model for Presence and Instant Messaging</title>
+          <author initials="M." surname="Day" fullname="Mark Day">
+            <organization>SightPath, Inc.</organization>
+            <address>
+              <postal>
+                <street>135 Beaver Street</street>
+                <city>Waltham</city>
+                <region>MA</region>
+                <code>02452</code>
+                <country>US</country>
+              </postal>
+              <email>mday@alum.mit.edu</email>
+            </address>
+          </author>
+          <author initials="J." surname="Rosenberg" fullname="Jonathan Rosenberg">
+            <organization>dynamicsoft</organization>
+            <address>
+              <postal>
+                <street>200 Executive Drive</street>
+                <street>Suite 120</street>
+                <city>West Orange</city>
+                <region>NJ</region>
+                <code>07046</code>
+                <country>US</country>
+              </postal>
+              <email>jdrosen@dynamicsoft.com</email>
+            </address>
+          </author>
+          <author initials="H." surname="Sugano" fullname="Hiroyasu Sugano">
+            <organization>Fujitsu Laboratories Ltd.</organization>
+            <address>
+              <postal>
+                <street>64 Nishiwaki</street>
+                <street>Ohkubo-cho</street>
+                <city>Akashi</city>
+                <region/>
+                <code>674-8555</code>
+                <country>JP</country>
+              </postal>
+              <email>suga@flab.fujitsu.co.jp</email>
+            </address>
+          </author>
+          <date year="2000" month="February"/>
+          <abstract>
+            <t>This document defines an abstract model for a presence and instant messaging system.
+              It defines the various entities involved, defines terminology, and outlines the
+              services provided by the system. The goal is to provide a common vocabulary for
+              further work on requirements for protocols and markup for presence and instant
+              messaging.</t>
+          </abstract>
+        </front>
+        <seriesInfo name="RFC" value="2778"/>
+        <format type="TXT" octets="35153" target="ftp://ftp.isi.edu/in-notes/rfc2778.txt"/>
+      </reference> &RFC4079; &RFC5025; &I-D.thomson-geopriv-geo-shape; &RFC2434;
+      &I-D.thomson-geopriv-uncertainty; <reference anchor="RFC3694">
+        <front>
+          <title>Threat Analysis of the Geopriv Protocol</title>
+          <author fullname="M. Danley" initials="M." surname="Danley">
+            <organization/>
+          </author>
+          <author fullname="D. Mulligan" initials="D." surname="Mulligan">
+            <organization/>
+          </author>
+          <author fullname="J. Morris" initials="J." surname="Morris">
+            <organization/>
+          </author>
+          <author fullname="J. Peterson" initials="J." surname="Peterson">
+            <organization/>
+          </author>
+          <date year="2004" month="February"/>
+        </front>
+        <seriesInfo value="3694" name="RFC"/>
+        <format octets="44364" type="TXT" target="ftp://ftp.isi.edu/in-notes/rfc3694.txt"/>
+      </reference>
+      <reference anchor="RFC3693">
+        <front>
+          <title>Geopriv Requirements</title>
+          <author fullname="J. Cuellar" initials="J." surname="Cuellar">
+            <organization/>
+          </author>
+          <author fullname="J. Morris" initials="J." surname="Morris">
+            <organization/>
+          </author>
+          <author fullname="D. Mulligan" initials="D." surname="Mulligan">
+            <organization/>
+          </author>
+          <author fullname="J. Peterson" initials="J." surname="Peterson">
+            <organization/>
+          </author>
+          <author fullname="J. Polk" initials="J." surname="Polk">
+            <organization/>
+          </author>
+          <date year="2004" month="February"/>
+        </front>
+        <seriesInfo value="3693" name="RFC"/>
+        <format octets="68881" type="TXT" target="ftp://ftp.isi.edu/in-notes/rfc3693.txt"/>
+      </reference>
+      <reference anchor="duckham05">
+        <front>
+          <title>A formal model of obfuscation and negotiation for location privacy. In Proc. of the
+            3rd International Conference PERVASIVE 2005,Munich, Germany</title>
+          <author fullname="M. Duckham" initials="M." surname="Duckham">
+            <organization/>
+          </author>
+          <author fullname="L. Kulik" initials="L." surname="Kulik">
+            <organization/>
+          </author>
+          <date year="2005" month="May"/>
+        </front>
+      </reference>
+      <reference anchor="ifip07">
+        <front>
+          <title>Location-privacy protection through obfuscation-based techniques, in: Proceedings
+            of the 21st Annual IFIP WG 11.3 Working Conference on Data and Applications Security,
+            Redondo Beach, CA, USA</title>
+          <author fullname="C.A. Ardagna" initials="C.A." surname="Ardagna">
+            <organization/>
+          </author>
+          <author fullname="M. Cremonini" initials="M." surname="Cremonini">
+            <organization/>
+          </author>
+          <author fullname="E. Damiani" initials="E." surname="Damiani">
+            <organization/>
+          </author>
+          <author fullname="S. De Capitani di Vimercati" initials="S."
+            surname="De Capitani di Vimercati">
+            <organization/>
+          </author>
+          <author fullname="S. Samarati" initials="S." surname="Samarati">
+            <organization/>
+          </author>
+          <date year="2007" month="July"/>
+        </front>
+      </reference>
+    </references>
+    <section title="Acknowledgments">
+      <t>This document is informed by the discussions within the IETF GEOPRIV working group,
+        including discussions at the GEOPRIV interim meeting in Washington, D.C., in 2003.</t>
+      <t> We particularly want to thank Allison Mankin &lt;mankin@psg.com&gt;, Randall
+        Gellens &lt;rg+ietf@qualcomm.com&gt;, Andrew Newton
+        &lt;anewton@ecotroph.net&gt;, Ted Hardie &lt;hardie@qualcomm.com&gt;, Jon
+        Peterson &lt;jon.peterson@neustar.biz&gt; for their help in improving the quality of
+        this document.</t>
+      <t>We would like to thank Christian Guenther for his help with an earlier version of this
+        document. Furthermore, we would like to thank Johnny Vrancken for his document reviews in
+        September 2006, December 2006 and January 2007. James Winterbottom provided a detailed
+        review in November 2006. Richard Barnes gave a detailed review in February 2008.</t>
+      <t>This document uses text from <xref target="I-D.thomson-geopriv-geo-shape"/>. Therefore, we
+        would like to thank Martin Thomson for his work in <xref
+          target="I-D.thomson-geopriv-geo-shape"/>. We would also like to thank Martin Thomson, Matt
+        Lepinski and Richard Barnes for their comments regarding the geodetic location
+        transformation procedure. Richard provided us with a detailed text proposal. </t>
+      <t>Robert Sparks, Martin Thomson, and Warren Kumari deserve thanks for their input on the location 
+      obfuscation discussion. Robert implemented various versions of the algorithm in the graphical 
+      language "Processing" and thereby helped us tremendously to understand problems with the
+      previously illustrated algorithm.</t>
+      <t>We would like to thank Dan Romascanu, Yoshiko Chong and Jari Urpalainen for their last call
+        comments. </t>
+      <t>Finally, we would like to thank the following individuals for their feedback as part of the
+        IESG, GenArt, and SecDir review: Jari Arkko, Eric Gray, Russ Housley, Carl Reed, Martin
+        Thomson, Lisa Dusseault, Chris Newman, Jon Peterson, Sam Hartman, Cullen Jennings, Tim Polk,
+        and Brian Rosen.</t>
+    </section>
+    <section title="Pseudo-Code">
+    <t>This section provides an informal description for the algorithm described 
+    in <xref target="geodetic-transformation"/> in form of pseudo-code.</t>
+    <t>
+          <figure>
+            <artwork><![CDATA[
+Constants
+
+  P = sqrt(3)/6  //  approx 0.2887
+  q = 1 - p      //  approx 0.7113
+  
+Parameters
+  
+  prob:  real  // prob is a parameter in the range
+        //  0.5 <= prob <=1
+        // recommended is a value for prob between 0.7 and 0.9
+        // the default of prob is 0.8
+  
+Inputs
+  
+  M = (m,n) : real * real 
+        // M is a pair of reals: m and n
+        // m is the longitude and n the latitude,
+        // respectively, of the measured location
+        // The values are given as real numbers, in the
+        // range: -180 < m <= 180; -90 < n < 90
+        // minus values for longitude m correspond to "West"
+        // minus values for latitude n correspond to "South"
+  
+  radius : integer // the 'radius' or uncertainity,
+        // measured in meters
+  
+  prev-M = (prev-m1, prev-n1): real * real 
+        // the *previously* provided location, if available
+        // prev-m1 is the longitude and
+        // prev-n1 the latitude, respectively
+  
+  o : real
+
+  // this is the reference latitude for the geodesic projection
+  // The value of 'o' is chosen according to the table below.
+  // The area you want to project MUST be included in
+  // between a minimal latitude and a maximal latitude
+  // given by the two first columns of the table.
+  // (Otherwise the transformation is not available).
+  
+  //    +------+------+--------------------------+-------+
+  //    | min  | max  |                          |       | 
+  //    | lat  | lat  |        Examples          |  o    | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      | Tropics and subtropics   |       | 
+  //    | -45  |  45  | Africa                   |  0    | 
+  //    |      |      | Australia                |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      | Continental US           |       | 
+  //    |  25  |  50  | Mediterranean            |   25  | 
+  //    |      |      | most of China            |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    |  35  |  55  | South and Central        |   35  | 
+  //    |      |      |      Europe              |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    |  45  |  60  | Central and North        |   45  | 
+  //    |      |      |       Europe             |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    |  55  |  65  | most of Scandinavia      |   55  | 
+  //    |      |      |                          |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    |  60  |  70  |                          |   60  | 
+  //    |      |      |                          |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      | most of                  |       | 
+  //    | -50  | -25  |    Chile and Argentina   |  -50  | 
+  //    |      |      | New Zealand              |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    | -35  | -55  |                          |  -35  | 
+  //    |      |      |                          |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    | -45  | -60  |                          |  -45  | 
+  //    |      |      |                          |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    | -55  | -65  |                          |  -55  | 
+  //    |      |      |                          |       | 
+  //    +------+------+--------------------------+-------+
+  //    |      |      |                          |       | 
+  //    | -60  | -70  |                          |  -60  | 
+  //    |      |      |                          |       | 
+  //    +------+------+--------------------------+-------+
+  
+Outputs
+  
+  M1 = (m1,n1) : real * real // longitude and latitude,
+        // respectively, of the provided location
+
+Local Variables
+
+  d, d1, d2, l, r, b, t, x, y: real
+  SW, SE, NW, NE: real * real
+     // pairs of real numbers, interpreted as coordinates
+     // lomgitude and latitude, respectively
+
+  temp : Integer[1..8]
+
+Function
+  choose(Ma, Mb: real * real): real * real;
+     // This function chooses either Ma or Mb
+     // depending on the parameter 'prob'
+     // and on prev-M1, the previous value of M1:
+     // If prev-M1 == Ma choose Ma with probability 'prob'
+     // If prev-M1 == Mb choose Mb with probability 'prob'
+     // Else choose Ma or Mb with probability 1/2
+  Begin
+  rand:= Random[0,1];
+     // a real random number between 0 and 1
+  If     prev-M1 == Ma Then 
+         If rand < prob Then choose := Ma;
+                        Else choose := Mb;  EndIf
+  Elseif prev-M1 == Mb Then 
+         If rand < prob Then choose := Mb;
+                        Else choose := Ma;  EndIf
+  Else								  
+         If rand < 0.5  Then choose := Ma;
+                        Else choose := Mb;  EndIf
+  End // Function choose
+
+Main  // main procedure
+  Begin
+  d := radius/1000;  // uncertainity, measured in km
+  
+  d1:= (d * 180) / (pi*M*cos(o));
+  
+  d2:= d / 110.6;
+  
+  l := d1*floor(m/d1)
+        // "floor"  returns the largest integer
+        // smaller or equal to a floating point number
+  r := l+d1;
+  b := o+d2*floor(n-o/d2);
+  t := b+d2;
+  
+  x := (m-l)/(r-l);
+  y := (n-b)/(t-b);
+  
+  SW := (l,b);
+  SE := (r,b);
+  NW := (l,t);
+  NE := (r,t);
+  
+  If     x < p and y < p      Then M1 := SW;
+  Elseif x < p and q <= y     Then M1 := NW;
+  Elseif q <= x and y < p     Then M1 := SE;
+  Elseif q <= x and q <= y    Then M1 := NE;
+  Elseif p <= x and x < q and y < x  and y < 1-x   
+         Then M1 := choose(SW,SE);
+  Elseif p <= y and y < q and x <= y and y < 1-x   
+         Then M1 := choose(SW,NW);
+  Elseif p <= y and y < q and y < x  and 1-x <= y  
+         Then M1 := choose(SE,NE);
+  Elseif p <= x and x < q and x <= y and 1-x <= y  
+         Then M1 := choose(NW,NE);
+  Endif
+
+  End //  Main
+                ]]></artwork>
+        </figure>
+      </t>
+
+    </section>
+    
+  </back>
+</rfc>
