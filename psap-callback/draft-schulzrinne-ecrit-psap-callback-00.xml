@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+	<!ENTITY RFC5031 PUBLIC '' 
+	'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5031.xml'>
+	<!ENTITY RFC2119 PUBLIC '' 
+	'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+	<!ENTITY RFC5012 PUBLIC '' 
+	'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5012.xml'>
+	<!ENTITY I-D.patel-ecrit-sos-parameter PUBLIC '' 
+	'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.patel-ecrit-sos-parameter.xml'>
+	<!ENTITY I-D.ietf-ecrit-framework PUBLIC '' 
+	'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-ecrit-framework.xml'>
+]>
+<rfc category="info" ipr="trust200902" docName="draft-schulzrinne-ecrit-psap-callback-00.txt">
+	<?rfc toc="yes" ?>
+	<?rfc symrefs="yes" ?>
+	<?rfc sortrefs="yes"?>
+	<?rfc iprnotified="no" ?>
+	<?rfc strict="yes" ?>
+	<front>
+		<title abbrev="PSAP Callback Marking">Marking of Calls initiated by Public Safety Answering
+			Points (PSAPs)</title>
+
+		<author initials="H." surname="Schulzrinne" fullname="Henning Schulzrinne">
+			<organization>Columbia University</organization>
+			<address>
+				<postal>
+					<street>Department of Computer Science</street>
+					<street>450 Computer Science Building</street>
+					<city>New York</city>
+					<region>NY</region>
+					<code>10027</code>
+					<country>US</country>
+				</postal>
+				<phone>+1 212 939 7004</phone>
+				<email>hgs+ecrit@cs.columbia.edu</email>
+				<uri>http://www.cs.columbia.edu</uri>
+			</address>
+		</author>
+		<author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+			<organization>Nokia Siemens Networks</organization>
+			<address>
+				<postal>
+					<street>Linnoitustie 6</street>
+					<city>Espoo</city>
+					<code>02600</code>
+					<country>Finland</country>
+				</postal>
+				<phone>+358 (50) 4871445</phone>
+				<email>Hannes.Tschofenig@gmx.net</email>
+				<uri>http://www.tschofenig.priv.at</uri>
+			</address>
+		</author>
+		<date year="2009"/>
+		<workgroup>ECRIT</workgroup>
+		<abstract>
+			<t>After an emerency call is completed it is possible that the need for further
+				communication between the call-taker and the emergency caller arises. For example,
+				further assistance may be needed but the communication previously got interrupted. A
+				call-taker may trigger a callback towards the emergency caller using the contact
+				information provided with the initial emergency call. This callback would then be
+				treated like any other call. As a consequence, it may get blocked by authorization
+				policies configured by the person seeking help or may get forwarded to his answering
+				machine.</t>
+			<t>The current ECRIT framework document addresses callbacks in a limited fashion and
+				thereby covers a few scenarios. This document discusses shortcomings and raises the
+				question whether additional solution techniques are needed.</t>
+		</abstract>
+	</front>
+	<middle>
+
+		<!-- ****************************************************************************************** -->
+
+
+		<section anchor="intro" title="Introduction">
+			<t>Summoning police, the fire department or an ambulance in emergencies is one of the
+				fundamental and most-valued functions of the telephone. As telephone functionality
+				moves from circuit-switched telephony to Internet telephony, its users rightfully
+				expect that this core functionality will continue to work at least as well as it has
+				for the legacy technology. New devices and services are being made available that
+				could be used to make a request for help, which are not traditional telephones, and
+				users are increasingly expecting them to be used to place emergency calls.</t>
+			<t>Regulatory requirements demand that the emergency call itself provides enough
+				information to allow the call-taker to initiate a call back to the emergency caller
+				in case the call dropped or to interact with the emergency caller later in case of
+				questions. Such a call, referred as PSAP callback subsequently in this document,
+				may, however, be blocked or forwarded to an answering machine as SIP entities (SIP
+				proxies as well as the SIP UA itself) cannot associate the potential importantance
+				of the call based on the SIP signaling.</t>
+			<t>
+				<list style="empty">
+					<t>Note that the authors are, however, not aware of regulatory requirements for
+						providing preferential treatment of callbacks initiated by the call-taker at
+						the PSAP towards the emergency caller nor that these calls have to be
+						treated in any form differently from any other call.</t>
+				</list>
+			</t>
+			<t>Section 10 of <xref target="I-D.ietf-ecrit-framework"/> discusses the identifiers
+				required for callbacks. Section 13 of <xref target="I-D.ietf-ecrit-framework"/>
+				provides the following guidance regarding callback handling:</t>
+			<t>
+				<list style="empty">
+					<t> A UA may be able to determine a PSAP call back by examining the domain of
+						incoming calls after placing an emergency call and comparing that to the
+						domain of the answering PSAP from the emergency call. Any call from the same
+						domain and directed to the supplied Contact header or AoR after an emergency
+						call should be accepted as a call-back from the PSAP if it occurs within a
+						reasonable time after an emergency call was placed. </t>
+				</list>
+			</t>
+			<t>This approach mimics a stateful packet filtering firewall and is indeed helpful in a
+				number of cases but it may fail in others. Below, we discuss a few cases where this
+				approach fails. </t>
+
+			<section title="Multi-Stage Resolution">
+				<t>Consider the following emergency call routing scenario shown in <xref
+						target="stages"/> where routing towards the PSAP occurs in several stages.
+					An emergency call uses a SIP UA that does not run LoST on the end point. Hence,
+					the call is marked with the 'urn:service:sos' Service URN <xref target="RFC5031"
+					/>. The user's VoIP provider receives the emergency call and determines where to
+					route it. Local configuration or a LoST lookup might, in our example, reveal
+					that emergency calls are routed via a dedicated provider FooBar and targeted to
+					a specific entity, referred as esrp1@foobar.com. FooBar does not handle
+					emergency calls itself but performs another resolution step to let calls enter
+					the emergency services network and in this case another resolution step takes
+					place and esrp-a@esinet.org is determined as the recipient, pointing to an edge
+					device at the IP-based emergency services network. Inside the emergency services
+					there might be more sophisticated routing taking place somewhat depending on the
+					existing structure of the emergency services infrastructure.</t>
+				<t/>
+				<t>
+					<figure anchor="stages" title="Multi-Stage Resolution">
+						<artwork><![CDATA[
+                                   ,-------.
+ +----+                          ,'         `.
+ | UA |--- urn:service:sos      /  Emergency  \
+ +----+   \                    |   Services    |
+           \  ,-------.        |   Network     |
+            ,'         `.      |               |
+           /   VoIP      \     |               |
+          (    Provider   )    |               |
+           \             /     |               |
+            `.         ,'      |               |
+              '---+---'        |   +------+    |
+                  |            |   |PSAP  |    |
+          esrp1@foobar.com     |   +--+---+    |
+                  |            |      |        |
+                  |            |      |        |
+              ,---+---.        |      |        |
+            ,'         `.      |      |        |
+           /   Provider  \     |      |        |
+          +    FooBar     )    |      |        |
+           \             /     |      |        |
+            `.         ,'      |   +--+---+    |
+              '---+---'        | +-+ESRP  |    |
+                  |            | | +------+    |
+                  |            | |             |
+                  +------------+-+             |
+             esrp-a@esinet.org |               |
+                                \             /
+                                 `.         ,'
+                                   '-------'
+                   ]]></artwork>
+					</figure>
+				</t>
+			</section>
+
+			<section title="Call Forwarding">
+
+
+				<t>Imagine the following case where an emergency call enters an emergency network
+					(state.org) via an ERSP but then gets forwarded to a different emergency
+					services network (in our example to police-town.org, fire-town.org or
+					medic-town.org). The same considerations apply when the the police, fire and
+					ambulance networks are part of the state.org sub-domains (e.g.,
+					police.state.org). </t>
+				<t>
+					<figure anchor="fwd" title="Call Forwarding">
+						<artwork><![CDATA[
+                                ,-------.
+                              ,'         `.
+                             /  Emergency  \
+                            |   Services    |
+                            |   Network     |
+                            |   (state.org) |
+                            |               |
+                            |               |
+                            |   +------+    |
+                            |   |PSAP  +--+ |
+                            |   +--+---+  | |
+                            |      |      | |
+                            |      |      | |
+                            |      |      | |
+                            |      |      | |
+                            |      |      | |
+                            |   +--+---+  | |
+          ------------------+---+ESRP  |  | |
+          esrp-a@state.org  |   +------+  | |
+                            |             | |
+                            |    Call Fwd | |
+                            |     +-+-+---+ |
+                             \    | | |    /
+                              `.  | | |  ,'
+                                '-|-|-|-'           ,-------.
+                         Police   | | | Fire      ,'         `.
+                     +------------+ | +----+     /  Emergency  \
+      ,-------.      |              |      |    |   Services    |
+    ,'         `.    |              |      |    |   Network     |
+   /  Emergency  \   |          Ambulance  |    | fire-town.org |
+  |   Services    |  |              |      |    |               |
+  |   Network     |  |              +----+ |    |   +------+    |
+  |police-town.org|  |     ,-------.     | +----+---+PSAP  |    |
+  |               |  |   ,'         `.   |      |   +------+    |
+  |   +------+    |  |  /  Emergency  \  |      |               |
+  |   |PSAP  +----+--+ |   Services    | |      |               ,
+  |   +------+    |    |   Network     | |      `~~~~~~~~~~~~~~~
+  |               |    |medic-town.org | |
+  |               ,    |               | |
+  `~~~~~~~~~~~~~~~     |   +------+    | |
+                       |   |PSAP  +----+ +
+                       |   +------+    |
+                       |               |
+                       |               ,
+                       `~~~~~~~~~~~~~~~
+                   ]]></artwork>
+					</figure>
+				</t>
+			</section>
+
+			<section title="PSTN Interworking">
+
+				<t>In case an emergency call enters the PSTN, as shown in <xref target="pstn"/>,
+					there is no guarantee that the callback some time later does leave the same
+					PSTN/VoIP gateway or that the same end point identifier is used in the forward
+					as well as in the backward direction making it difficult to reliably detect PSAP
+					callbacks.</t>
+				<t>
+					<figure anchor="pstn" title="PSTN Interworking">
+						<artwork><![CDATA[
+  +-----------+
+  | PSTN      |-------------+
+  | Calltaker |             |
+  | Bob       |<--------+   |
+  +-----------+         |   v
+             -------------------
+         ////                   \\\\      +------------+
+        |                           |     |PSTN / VoIP |
+        |             PSTN          |---->|Gateway     |
+         \\\\                   ////      |            |
+             -------------------          +----+-------+
+                        ^                      |
+                        |                      |
+                  +-------------+              |  +--------+
+                  |             |              |  |VoIP    |
+                  | PSTN / VoIP |              +->|Service |
+                  | Gateway     |                 |Provider|
+                  |             |<------Invite----|   Y    |
+                  +-------------+                 +--------+
+                                                   |     ^
+                                                   |     |
+                                                 Invite Invite
+                                                   |     |
+                                                   V     |
+                                                  +-------+
+                                                  | SIP   |
+                                                  | UA    |
+                                                  | Alice |
+                                                  +-------+
+                   ]]></artwork>
+					</figure>
+				</t>
+			</section>
+
+		</section>
+
+		<!-- ****************************************************************************************** -->
+
+		<section anchor="terminology" title="Terminology">
+			<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+				NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as
+				described in <xref target="RFC2119"/>.</t>
+			<t>Emergency services related terminology is borrowed from <xref target="RFC5012"/>.</t>
+		</section>
+		<!-- ****************************************************************************************** -->
+
+		<section title="Requirements">
+
+
+			<t>From the previously presented scenarios, the following generic requirements can be
+				crafted:</t>
+
+			<t>
+				<list style="hanging">
+
+					<t hangText="Reliable Identification:"><vspace blankLines="1"/> The solution
+						approach MUST offer a way to reliable detect a PSAP callback in light of the
+						challenges presented in <xref target="intro"/>. </t>
+
+					<t hangText="Resistance Against Security Vulnerabilities:"><vspace
+							blankLines="1"/> The main possibility of attack involves use of the PSAP
+						callback marking to bypass blacklists, ignore call forwarding procedures and
+						similar features to interact with users and to raise their attention. For
+						example, using PSAP callback marking devices would be able to recognize
+						these types of incoming messages leading to the device overriding user
+						interface configurations, such as vibrate-only mode. As such, the
+						requirement is ensure that only PSAPs can issue callbacks. This may require
+						secure identification of the calling party. </t>
+
+					<t hangText="Fallback to Normal Call"><vspace blankLines="1"/>When the newly
+						defined extension is not recognized by intermediaries or other entities then
+						it MUST NOT lead to a failure of the call handling procedure but rather a
+						fall-back to a call that did not have any marking provided.</t>
+
+				</list>
+			</t>
+			<t>A further differentiation has to be made with respect to relationship between the
+				person who previously received the emergency call and the person who triggers the
+				callback. The choices are: <list style="symbols">
+					<t>The callback has to be made using the same UA. </t>
+					<t>The callback has to made by the same user but potentially with a different
+						UA.</t>
+					<t>A different user from a different UA can make the callback.</t>
+				</list>
+			</t>
+			<t>[Editor' Note: A requirement has to be formulated.]</t>
+		</section>
+
+		<!-- ****************************************************************************************** -->
+
+		<section title="Solution Approaches">
+			<t>This version of the document does not yet contain any specific solution approaches.
+				An example solution can be found in an earlier version of <xref
+					target="I-D.patel-ecrit-sos-parameter"/>. The usage of the In-Reply-To header is
+				another one.</t>
+			<t> Solution categories can be clustered into three areas: </t>
+			<t>
+				<list style="numbers">
+					<t>Verify that the caller is a PSAP </t>
+					<t>Verify that the call is related to an emergency, but not necessarily an
+						earlier emergency call. This might include public notification
+						(authority-to-citizen). </t>
+					<t>Verify that the call is returning an earlier emergency call.</t>
+				</list>
+			</t>
+			<t> These solution differ in their semantics and in the security impact or user
+			choice.</t>
+		</section>
+
+		<!-- ****************************************************************************************** -->
+
+		<section title="Security Considerations">
+			<t>This document provides discussions problems of PSAP callbacks and lists requirements,
+				some of which illustrate security challenges. The current version does not yet
+				provide a specific solution but rather starts with overall architectural
+				observations.</t>
+			<t>An important aspect from a security point of view is the relationship between the
+				emergency services network and the VSP (assuming that the emergency call travels via
+				the VSP and not directly between the SIP UA and the PSAP). If there is a strong
+				trust relationship between the PSAP operator and the VSP (for example based on a
+				peering relationship) without any intermediate VoIP providers then the
+				identification of a PSAP call back is less problematic than in the case where the
+				two entities have not entered in some form of relationship that would allow the VSP
+				to verify whether the marked callback message indeed came from a legitimate
+			source.</t>
+		</section>
+
+		<!-- ****************************************************************************************** -->
+
+		<section title="Acknowledgements">
+			<t>We would like to thank members from the ECRIT working group, in particular Brian
+				Rosen and Milan Patel, for their discussions around PSAP callbacks. </t>
+		</section>
+
+		<!-- ****************************************************************************************** -->
+
+	</middle>
+	<back>
+		<references title="Informative References"> &RFC2119; </references>
+
+		<references title="Informative References"> &I-D.patel-ecrit-sos-parameter;
+			&I-D.ietf-ecrit-framework; &RFC5031; &RFC5012; </references>
+
+	</back>
+
+</rfc>

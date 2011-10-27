@@ -1,0 +1,1009 @@
+
+
+
+ECRIT                                                     H. Schulzrinne
+Internet-Draft                                       Columbia University
+Intended status: Informational                             H. Tschofenig
+Expires: March 25, 2011                           Nokia Siemens Networks
+                                                                M. Patel
+                                                                  Nortel
+                                                      September 21, 2010
+
+
+             Public Safety Answering Point (PSAP) Callbacks
+                 draft-ietf-ecrit-psap-callback-00.txt
+
+Abstract
+
+   After an emergency call is completed (either prematurely terminated
+   by the emergency caller or normally by the call-taker) it is possible
+   that the call-taker feels the need for further communication or for a
+   clarification.  For example, the call may have been dropped by
+   accident without the call-taker having sufficient information about
+   the current situation of a wounded person.  A call-taker may trigger
+   a callback towards the emergency caller using the contact information
+   provided with the initial emergency call.  This callback could, under
+   certain circumstances, then be treated like any other call and as a
+   consequence, it may get blocked by authorization policies or may get
+   forwarded to an answering machine.
+
+   The IETF emergency services architecture addresses callbacks in a
+   limited fashion and thereby covers a couple of scenarios.  This
+   document discusses some shortcomings and raises the question whether
+   additional solution techniques are needed.
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on March 25, 2011.
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 1]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+Copyright Notice
+
+   Copyright (c) 2010 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+     1.1.  Routing Asymmetry  . . . . . . . . . . . . . . . . . . . .  3
+     1.2.  Multi-Stage Resolution . . . . . . . . . . . . . . . . . .  4
+     1.3.  Call Forwarding  . . . . . . . . . . . . . . . . . . . . .  5
+     1.4.  PSTN Interworking  . . . . . . . . . . . . . . . . . . . .  7
+     1.5.  Network-based Service URN Resolution . . . . . . . . . . .  7
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  9
+   3.  Design Approaches  . . . . . . . . . . . . . . . . . . . . . . 10
+   4.  Topics for Investigation . . . . . . . . . . . . . . . . . . . 13
+   5.  Security Considerations  . . . . . . . . . . . . . . . . . . . 14
+   6.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 15
+   7.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+     7.1.  Informative References . . . . . . . . . . . . . . . . . . 16
+     7.2.  Informative References . . . . . . . . . . . . . . . . . . 16
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 2]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+1.  Introduction
+
+   Summoning police, the fire department or an ambulance in emergencies
+   is one of the fundamental and most-valued functions of the telephone.
+   As telephone functionality moves from circuit-switched telephony to
+   Internet telephony, its users rightfully expect that this core
+   functionality will continue to work at least as well as it has for
+   the legacy technology.  New devices and services are being made
+   available that could be used to make a request for help, which are
+   not traditional telephones, and users are increasingly expecting them
+   to be used to place emergency calls.
+
+   Regulatory requirements demand that the emergency call itself
+   provides enough information to allow the call-taker to initiate a
+   call back to the emergency caller in case the call dropped or to
+   interact with the emergency caller in case of further questions.
+   Such a call, referred as PSAP callback subsequently in this document,
+   may, however, be blocked or forwarded to an answering machine as SIP
+   entities (SIP proxies as well as the SIP UA itself) cannot associate
+   the potential importantance of the call based on the SIP signaling.
+
+      Note that the authors are, however, not aware of regulatory
+      requirements for providing preferential treatment of callbacks
+      initiated by the call-taker at the PSAP towards the emergency
+      caller.
+
+   Section 10 of [I-D.ietf-ecrit-framework] discusses the identifiers
+   required for callbacks, namely AOR URI and a globally routable URI in
+   a Contact: header.  Section 13 of [I-D.ietf-ecrit-framework] provides
+   the following guidance regarding callback handling:
+
+      A UA may be able to determine a PSAP call back by examining the
+      domain of incoming calls after placing an emergency call and
+      comparing that to the domain of the answering PSAP from the
+      emergency call.  Any call from the same domain and directed to the
+      supplied Contact header or AoR after an emergency call should be
+      accepted as a call-back from the PSAP if it occurs within a
+      reasonable time after an emergency call was placed.
+
+   This approach mimics a stateful packet filtering firewall and is
+   indeed helpful in a number of cases.  It is also relatively simple to
+   implement.  Below, we discuss a few cases where this approach fails.
+
+1.1.  Routing Asymmetry
+
+   In some deployment environments it is common to have incoming and
+   outgoing SIP messaging to use different routes.
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 3]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+                                                   ,-------.
+                                                 ,'         `.
+                      ,-------.                 /  Emergency  \
+                    ,'         `.              |   Services    |
+                   /  VoIP       \      I      |   Network     |
+                  |   Provider    |     n      |               |
+                  |               |     t      |               |
+                  |               |     e      |               |
+                  |   +-------+   |     r      |               |
+               +--+---|Inbound|<--+-----m      |               |
+               |  |   |Proxy  |   |     e      |   +------+    |
+               |  |   +-------+   |     d      |   |PSAP  |    |
+               |  |               |     i      |   +--+---+    |
+     +----+    |  |               |     a-+    |      |        |
+     | UA |<---+  |               |     t |    |      |        |
+     |    |----+  |               |     e |    |      |        |
+     +----+    |  |               |       |    |      |        |
+               |  |               |     P  |   |      |        |
+               |  |               |     r  |   |      |        |
+               |  |   +--------+  |     o   |  |      |        |
+               +--+-->|Outbound|--+---->v   |  |   +--+---+    |
+                  |   |Proxy   |  |     i    | | +-+ESRP  |    |
+                  |   +--------+  |     d    | | | +------+    |
+                  |               |     e     || |             |
+                  |               |     r     |+-+             |
+                   \             /             |               |
+                    `.         ,'               \             /
+                      '-------'                  `.         ,'
+                                                   '-------'
+
+                  Figure 1: Example for Routing Asymmetry
+
+1.2.  Multi-Stage Resolution
+
+   Consider the following emergency call routing scenario shown in
+   Figure 2 where routing towards the PSAP occurs in several stages.  An
+   emergency call uses a SIP UA that does not run LoST on the end point.
+   Hence, the call is marked with the 'urn:service:sos' Service URN
+   [RFC5031].  The user's VoIP provider receives the emergency call and
+   determines where to route it.  Local configuration or a LoST lookup
+   might, in our example, reveal that emergency calls are routed via a
+   dedicated provider FooBar and targeted to a specific entity, referred
+   as esrp1@foobar.com.  FooBar does not handle emergency calls itself
+   but performs another resolution step to let calls enter the emergency
+   services network and in this case another resolution step takes place
+   and esrp-a@esinet.org is determined as the recipient, pointing to an
+   edge device at the IP-based emergency services network.  Inside the
+   emergency services there might be more sophisticated routing taking
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 4]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+   place somewhat depending on the existing structure of the emergency
+   services infrastructure.
+
+
+                                      ,-------.
+    +----+                          ,'         `.
+    | UA |--- urn:service:sos      /  Emergency  \
+    +----+   \                    |   Services    |
+              \  ,-------.        |   Network     |
+               ,'         `.      |               |
+              /   VoIP      \     |               |
+             (    Provider   )    |               |
+              \             /     |               |
+               `.         ,'      |               |
+                 '---+---'        |   +------+    |
+                     |            |   |PSAP  |    |
+             esrp1@foobar.com     |   +--+---+    |
+                     |            |      |        |
+                     |            |      |        |
+                 ,---+---.        |      |        |
+               ,'         `.      |      |        |
+              /   Provider  \     |      |        |
+             +    FooBar     )    |      |        |
+              \             /     |      |        |
+               `.         ,'      |   +--+---+    |
+                 '---+---'        | +-+ESRP  |    |
+                     |            | | +------+    |
+                     |            | |             |
+                     +------------+-+             |
+                esrp-a@esinet.org |               |
+                                   \             /
+                                    `.         ,'
+                                      '-------'
+
+               Figure 2: Example for Multi-Stage Resolution
+
+1.3.  Call Forwarding
+
+   Imagine the following case where an emergency call enters an
+   emergency network (state.org) via an ERSP but then gets forwarded to
+   a different emergency services network (in our example to police-
+   town.org, fire-town.org or medic-town.org).  The same considerations
+   apply when the the police, fire and ambulance networks are part of
+   the state.org sub-domains (e.g., police.state.org).
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 5]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+                                   ,-------.
+                                 ,'         `.
+                                /  Emergency  \
+                               |   Services    |
+                               |   Network     |
+                               |   (state.org) |
+                               |               |
+                               |               |
+                               |   +------+    |
+                               |   |PSAP  +--+ |
+                               |   +--+---+  | |
+                               |      |      | |
+                               |      |      | |
+                               |      |      | |
+                               |      |      | |
+                               |      |      | |
+                               |   +--+---+  | |
+             ------------------+---+ESRP  |  | |
+             esrp-a@state.org  |   +------+  | |
+                               |             | |
+                               |    Call Fwd | |
+                               |     +-+-+---+ |
+                                \    | | |    /
+                                 `.  | | |  ,'
+                                   '-|-|-|-'           ,-------.
+                            Police   | | | Fire      ,'         `.
+                        +------------+ | +----+     /  Emergency  \
+         ,-------.      |              |      |    |   Services    |
+       ,'         `.    |              |      |    |   Network     |
+      /  Emergency  \   |          Ambulance  |    | fire-town.org |
+     |   Services    |  |              |      |    |               |
+     |   Network     |  |              +----+ |    |   +------+    |
+     |police-town.org|  |     ,-------.     | +----+---+PSAP  |    |
+     |               |  |   ,'         `.   |      |   +------+    |
+     |   +------+    |  |  /  Emergency  \  |      |               |
+     |   |PSAP  +----+--+ |   Services    | |      |               ,
+     |   +------+    |    |   Network     | |      `~~~~~~~~~~~~~~~
+     |               |    |medic-town.org | |
+     |               ,    |               | |
+     `~~~~~~~~~~~~~~~     |   +------+    | |
+                          |   |PSAP  +----+ +
+                          |   +------+    |
+                          |               |
+                          |               ,
+                          `~~~~~~~~~~~~~~~
+
+                   Figure 3: Example for Call Forwarding
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 6]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+1.4.  PSTN Interworking
+
+   In case an emergency call enters the PSTN, as shown in Figure 4,
+   there is no guarantee that the callback some time later does leave
+   the same PSTN/VoIP gateway or that the same end point identifier is
+   used in the forward as well as in the backward direction making it
+   difficult to reliably detect PSAP callbacks.
+
+
+     +-----------+
+     | PSTN      |-------------+
+     | Calltaker |             |
+     | Bob       |<--------+   |
+     +-----------+         |   v
+                -------------------
+            ////                   \\\\      +------------+
+           |                           |     |PSTN / VoIP |
+           |             PSTN          |---->|Gateway     |
+            \\\\                   ////      |            |
+                -------------------          +----+-------+
+                           ^                      |
+                           |                      |
+                     +-------------+              |  +--------+
+                     |             |              |  |VoIP    |
+                     | PSTN / VoIP |              +->|Service |
+                     | Gateway     |                 |Provider|
+                     |             |<------Invite----|   Y    |
+                     +-------------+                 +--------+
+                                                      |     ^
+                                                      |     |
+                                                    Invite Invite
+                                                      |     |
+                                                      V     |
+                                                     +-------+
+                                                     | SIP   |
+                                                     | UA    |
+                                                     | Alice |
+                                                     +-------+
+
+                  Figure 4: Example for PSTN Interworking
+
+1.5.  Network-based Service URN Resolution
+
+   The mechanism described in [I-D.ietf-ecrit-framework] assumes that
+   all devices at the call signaling path store information about the
+   domain of the communication recipient.  This is necessary to match
+   the stored domain name against the domain of the sender when an
+   incoming call arrives.
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 7]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+   However, the IETF emergency services architecture also considers
+   those cases where the resolution from the Service URN to the PSAP URI
+   happens somewhere in the network rather than immediately at the end
+   point itself.  In such a case, the end device is therefore not able
+   to match the domain of the sender with any information from the
+   outgoing emergency call.
+
+   Figure 5 shows this message exchange graphically.
+
+
+        ,-------.
+      ,'         `.
+     /  Emergency  \
+    |   Services    |
+    |   Network     |
+    |police-town.org|
+    |               |
+    |   +------+    |    Invite to police.example.com
+    |   |PSAP  +<---+------------------------+
+    |   |      +----+------------------+     ^
+    |   +------+    |Invite from       |     |
+    |               ,police.example.com|     |
+    `~~~~~~~~~~~~~~~                   v     |
+    +--------+                        ++-----+-+
+    |        |            query       |VoIP    |
+    | LoST   |<-----------------------|Service |
+    | Server |   police.example.com   |Provider|
+    |        |----------------------->|        |
+    +--------+                        +--------+
+                                       |     ^
+                                 Invite|     | Invite
+                                   from|     | to
+                     police.example.com|     | urn:service:sos
+                                       V     |
+                                      +-------+
+                                      | SIP   |
+                                      | UA    |
+                                      | Alice |
+                                      +-------+
+
+        Figure 5: Example for Network-based Service URN Resolution
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 8]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
+
+   Emergency services related terminology is borrowed from [RFC5012].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                 [Page 9]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+3.  Design Approaches
+
+   The starting point of the investigations is the currently provided
+   functionality in Section 13 of [I-D.ietf-ecrit-framework].  It
+   focuses on identifying a response to a previously made emergency
+   call.  As described in the introduction this approach is quite coarse
+   grained since any call from the PSAP's domain is given preferential
+   treatment.  This approach is, however, likely going to be practical.
+   Still there are a couple of limitations, as discussed in this
+   document.
+
+   To expand on the initially provided solution the following
+   description starts with attempt to identify the caller as a PSAP.
+   There are two approaches for accomplishing this functionality.
+
+
+                    +----------+
+                    | List of  |+
+                    | valid    ||
+                    | PSAP ids ||
+                    +----------+|
+                     +----------+
+                         *
+                         * whitelist
+                         *
+                         V
+      Incoming      +----------+    Normal
+      SIP Msg       | SIP      |+   Treatment
+     -------------->| Entity   ||=============>
+      + Identity    |          ||(if not in whitelist)
+                    +----------+|
+                    +----------+
+                         ||
+                         ||
+                         || Preferential
+                         || Treatment
+                         ++=============>
+                           (in whitelist)
+
+                  Figure 6: Identity-based Authorization
+
+   In Figure 6 an interaction is presented that allows a SIP entity to
+   make a policy decision whether to bypass installed authorization
+   policies and thereby providing preferential treatment.  To make this
+   decision the sender's identity is compared with a whitelist of valid
+   PSAPs.  The identity assurances in SIP can come in different forms,
+   such as SIP Identity [RFC4474] or with P-Asserted-Identity [RFC3325].
+   The former technique relies on a cryptographic assurance and the
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 10]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+   latter on a chain of trust.
+
+   The establishment of a whitelist with PSAP identities is
+   operationally complex and does not easily scale world wide.  When
+   there is a local relationship between the VSP/ASP and the PSAP then
+   populating the whitelist is far simpler.
+
+   An alternative approach to an identity based authorization model is
+   outlined in Figure 7.  In fact, RFC 4484 [RFC4484] already
+   illustrated the basic requirements for this technique.
+
+
+                  +----------+
+                  | List of  |+
+                  | trust    ||
+                  | anchor   ||
+                  +----------+|
+                   +----------+
+                       *
+                       *
+                       *
+                       V
+    Incoming      +----------+    Normal
+    SIP Msg       | SIP      |+   Treatment
+   -------------->| Entity   ||=============>
+    + trait       |          ||(no indication
+                  +----------+| of PSAP)
+                  +----------+
+                       ||
+                       ||
+                       || Preferential
+                       || Treatment
+                       ++=============>
+                         (indicated as
+                          PSAP)
+
+                    Figure 7: Trait-based Authorization
+
+   In a trait-based authorization scenario an incoming SIP message
+   contains a form of trait, i.e. some form of assertion.  The assertion
+   contains an indication that the sending party has the role of a PSAP
+   (or similar emergency services entity).  The assertion is either
+   cryptographically protected to enable end-to-end verification or an
+   chain of trust security model has to be assumed.  In Figure 7 we
+   assume an end-to-end security model where trust anchors are
+   provisioned to ensure the ability for a SIP entity to verify the
+   received assertion.
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 11]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+   From a solution point of view various approaches are feasible, such
+   as SIP SAML (see [I-D.ietf-sip-saml]) or URI Parameters for
+   indicating the Calling Party's Category and Originating Line
+   Information (see [I-D.patel-dispatch-cpc-oli-parameter]).
+
+   Still, a drawback of the outlined approaches above is that it does
+   not allow any mechanism to distinguish different types of calls
+   initiated by PSAPs.  Not every call from a PSAP is indeed a response
+   to an emergency call.
+
+   This leads us to another mechanism on top of the previously presented
+   onces, namely the indication is that the communication attempt is of
+   emergency nature.  As such, it is a slight modification of the one
+   presented previously.  In addition to the indication that the calling
+   party is a PSAP there is an expression that the specific call is of
+   emergency services nature.  This indication cannot be verified by
+   external parties, similarly to the emergency call marking for a
+   citizen-to-authority emergency call using a Service URN, because it
+   heavily depends on the intention of the call taker itself.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 12]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+4.  Topics for Investigation
+
+   When you make an IP-based emergency call to an IP-based PSAP then the
+   PSAP will get two pieces of identity information about the emergency
+   caller:
+
+   o  Contact-URI: Information that uniquely identifies the device the
+      call came from.
+
+   o  Address of Record: Long-term contact information
+
+   Should the callback functionality be tied to a previous emergency
+   call setup and as such enabled only for a specific time?  For
+   example, preferential treatment for callbacks could be provided only
+   within one hour after the initial emergency call was made.
+
+   Is it expected that the callback reaches primarily the device that
+   initiated the emergency call?  In some cases the device that was used
+   to originally initiate the call does not respond anymore to a
+   callback (e.g. imagine a fixed line phone that was used to report a
+   fire in a house and is out of order soon afterwards).  Since the
+   initial emergency call provided a second contact mechanism (namely
+   the address of record) it could be used by the call taker as well.
+   Should this communication also experience the same type of override
+   privilege as the initially transmitted callback to the emergency
+   caller's device?
+
+   Should any restrictions be made regarding the media being used for
+   callback?  Is it acceptable to return an instant message when the
+   caller started the conversation with audio?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 13]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+5.  Security Considerations
+
+   This document provides discussions problems of PSAP callbacks and
+   explores the design space.
+
+   An important aspect from a security point of view is the relationship
+   between the emergency services network and the VSP (assuming that the
+   emergency call travels via the VSP and not directly between the SIP
+   UA and the PSAP).  If there is some form of relationship between the
+   emergency services operator and the VSP then the identification of a
+   PSAP call back is less problematic than in the case where the two
+   entities have not entered in some form of relationship that would
+   allow the VSP to verify whether the marked callback message indeed
+   came from a legitimate source.
+
+   The main attack surface can be seen in the usage of PSAP callback
+   marking to bypass blacklists, ignore call forwarding procedures and
+   similar features to interact with users and to get their attention.
+   For example, using PSAP callback marking devices would be able to
+   recognize these types of incoming messages leading to the device
+   overriding user interface configurations, such as vibrate-only mode.
+   As such, the requirement is to ensure that the mechanisms described
+   in this document can not be used for malicious purposes, including
+   SPIT.
+
+   It is important that PSAP callback marked SIP messages, which cannot
+   be verified adequately, are treated like a call that does not have
+   any marking attached instead of failing the call processing
+   procedure.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 14]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+6.  Acknowledgements
+
+   We would like to thank members from the ECRIT working group, in
+   particular Brian Rosen, for their discussions around PSAP callbacks.
+   The working group discussed the topic of callbacks at their virtual
+   interim meeting in February 2010 and the following persons provided
+   valuable input: John Elwell, Bernard Aboba, Cullen Jennings, Keith
+   Drage, Marc Linsner, Roger Marshall, Dan Romascanu, Geoff Thompson,
+   Milan Patel, Janet Gunn.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 15]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+7.  References
+
+7.1.  Informative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+7.2.  Informative References
+
+   [I-D.ietf-ecrit-framework]
+              Rosen, B., Schulzrinne, H., Polk, J., and A. Newton,
+              "Framework for Emergency Calling using Internet
+              Multimedia", draft-ietf-ecrit-framework-11 (work in
+              progress), July 2010.
+
+   [I-D.ietf-sip-saml]
+              Tschofenig, H., Hodges, J., Peterson, J., Polk, J., and D.
+              Sicker, "SIP SAML Profile and Binding",
+              draft-ietf-sip-saml-07 (work in progress), March 2010.
+
+   [I-D.patel-dispatch-cpc-oli-parameter]
+              Patel, M., Jesske, R., and M. Dolly, "Uniform Resource
+              Identifier (URI) Parameters for indicating the Calling
+              Party's Category and Originating Line Information",
+              draft-patel-dispatch-cpc-oli-parameter-03 (work in
+              progress), June 2010.
+
+   [I-D.patel-ecrit-sos-parameter]
+              Patel, M., "SOS Uniform Resource Identifier (URI)
+              Parameter for Marking of Session Initiation Protocol (SIP)
+              Requests related to Emergency Services",
+              draft-patel-ecrit-sos-parameter-09 (work in progress),
+              July 2010.
+
+   [RFC3325]  Jennings, C., Peterson, J., and M. Watson, "Private
+              Extensions to the Session Initiation Protocol (SIP) for
+              Asserted Identity within Trusted Networks", RFC 3325,
+              November 2002.
+
+   [RFC4474]  Peterson, J. and C. Jennings, "Enhancements for
+              Authenticated Identity Management in the Session
+              Initiation Protocol (SIP)", RFC 4474, August 2006.
+
+   [RFC4484]  Peterson, J., Polk, J., Sicker, D., and H. Tschofenig,
+              "Trait-Based Authorization Requirements for the Session
+              Initiation Protocol (SIP)", RFC 4484, August 2006.
+
+   [RFC5012]  Schulzrinne, H. and R. Marshall, "Requirements for
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 16]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+              Emergency Context Resolution with Internet Technologies",
+              RFC 5012, January 2008.
+
+   [RFC5031]  Schulzrinne, H., "A Uniform Resource Name (URN) for
+              Emergency and Other Well-Known Services", RFC 5031,
+              January 2008.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 17]
+
+Internet-Draft            PSAP Callback Marking           September 2010
+
+
+Authors' Addresses
+
+   Henning Schulzrinne
+   Columbia University
+   Department of Computer Science
+   450 Computer Science Building
+   New York, NY  10027
+   US
+
+   Phone: +1 212 939 7004
+   Email: hgs+ecrit@cs.columbia.edu
+   URI:   http://www.cs.columbia.edu
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+   Milan Patel
+   Nortel
+   Maidenhead Office Park, Westacott Way
+   Maidenhead  SL6 3QH
+   UK
+
+   Email: milanpa@nortel.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schulzrinne, et al.      Expires March 25, 2011                [Page 18]
+
+
