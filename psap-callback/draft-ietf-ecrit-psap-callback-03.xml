@@ -193,7 +193,7 @@
           comparing that to the domain of the answering PSAP from the
           emergency call. Any call from the same domain and directed to the
           supplied Contact header or AoR after an emergency call should be
-          accepted as a call-back from the PSAP if it occurs within a
+          accepted as a callback from the PSAP if it occurs within a
           reasonable time after an emergency call was placed.</t>
         </list></t>
 
@@ -223,11 +223,11 @@
 
     <section anchor="scenarios" title="Callback Scenarios">
    
-     <t>This section illustrates a number of scenarios where the currently specified solution, as specified in <xref target="I-D.ietf-ecrit-phonebcp"/>, for preferential treatment of callbacks fails.</t> 
+     <t>This section illustrates a number of scenarios where the currently specified solution, as specified in <xref target="I-D.ietf-ecrit-phonebcp"/>, for preferential treatment of callbacks fails. As explained in <xref target="intro"/> a SIP entity examines an incoming PSAP call back by comparing the domain of the PSAP with the destination domain of the emergency call.</t> 
      
       <section title="Routing Asymmetry">
         <t>In some deployment environments it is common to have incoming and
-        outgoing SIP messaging to use different SIP infrastructure elements for routing.</t>
+        outgoing SIP messaging routed through different SIP entities. <xref target="asymmetry"/> shows this graphically whereby a VoIP provider uses different SIP proxies for inbound and for outbound call handling. Unless they two devices are state synchronized the callback hitting the inbound proxy would get treated like any other call since the emergency call established state information at the outbound proxy only. </t>
 
         <t><figure anchor="asymmetry" title="Example for Routing Asymmetry">
             <artwork>
@@ -266,56 +266,46 @@
           </figure></t>
       </section>
 
-      <section title="Multi-Stage Resolution">
+      <section anchor="multistage" title="Multi-Stage Routing">
         <t>Consider the following emergency call routing scenario shown in
         <xref target="stages"></xref> where routing towards the PSAP occurs in
-        several stages. An emergency call uses a SIP UA that does not run LoST
-        on the end point. Hence, the call is marked with the 'urn:service:sos'
-        Service URN <xref target="RFC5031"></xref>. The user's VoIP provider
-        receives the emergency call and determines where to route it. Local
-        configuration or a LoST lookup might, in our example, reveal that
-        emergency calls are routed via a dedicated provider FooBar and
-        targeted to a specific entity, referred as esrp1@foobar.com. FooBar
-        does not handle emergency calls itself but performs another resolution
-        step to let calls enter the emergency services network and in this
-        case another resolution step takes place and esrp-a@esinet.org is
-        determined as the recipient, pointing to an edge device at the
-        IP-based emergency services network. Inside the emergency services
-        there might be more sophisticated routing taking place somewhat
-        depending on the existing structure of the emergency services
-        infrastructure.</t>
-
-        <t><figure anchor="stages" title="Example for Multi-Stage Resolution">
+        several stages. In this scenario we consider a SIP UA that uses LoST to learn 
+        the next hop destination closer to the PSAP. This call is then sent to the user's VoIP provider. 
+        The user's VoIP provider
+        receives the emergency call and creates state based on the destination domain, namely state.com. 
+        It then routes it to the indicated ESRP. 
+        When the ESRP receives it it needs to decide what the next hop is to get it closer to the PSAP. 
+        In our example the next hop is the PSAP with the URI psap@town.com.</t>
+        
+        <t>When a callback is sent from psap@town.com towards the emergency caller the call 
+        will get normal treatment by the VoIP providers inbound proxy since the domain of the PSAP 
+        does not match the stored state information.</t>
+        
+        <t><figure anchor="stages" title="Example for Multi-Stage Routing">
             <artwork><![CDATA[
-                                   ,-------.
- +----+                          ,'         `.
- | UA |--- urn:service:sos      /  Emergency  \
- +----+   \                    |   Services    |
-           \  ,-------.        |   Network     |
-            ,'         `.      |               |
-           /   VoIP      \     |               |
-          (    Provider   )    |               |
-           \             /     |               |
-            `.         ,'      |               |
-              '---+---'        |   +------+    |
-                  |            |   |PSAP  |    |
-          esrp1@foobar.com     |   +--+---+    |
-                  |            |      |        |
-                  |            |      |        |
-              ,---+---.        |      |        |
-            ,'         `.      |      |        |
-           /   Provider  \     |      |        |
-          +    FooBar     )    |      |        |
-           \             /     |      |        |
-            `.         ,'      |   +--+---+    |
-              '---+---'        | +-+ESRP  |    |
-                  |            | | +------+    |
-                  |            | |             |
-                  +------------+-+             |
-             esrp-a@esinet.org |               |
-                                \             /
-                                 `.         ,'
-                                   '-------'
+
+                                      ,-------.
+    +----+                          ,'         `.
+    | UA |--- esrp1@foobar.com     /  Emergency  \
+    +----+   \                    |   Services    |
+              \  ,-------.        |   Network     |
+               ,'         `.      |               |
+              /   VoIP      \     |   +------+    |
+             (    Provider   )    |   |PSAP  |    |
+              \             /     |   +--+---+    |
+               `.         ,'      |      |
+                 '---+---'        |      |        |
+                     |            |psap@town.com  |
+             esrp@state.com       |      |        |
+                     |            |      |        |
+                     |            |      |        |
+                     |            |   +--+---+    |
+                     +------------+---+ESRP  |    |
+                                  |   +------+    |
+                                  |               |
+                                   \             /
+                                    `.         ,'
+                                      '-------'
                               ]]></artwork>
           </figure></t>
       </section>
@@ -327,7 +317,14 @@
         police-town.org, fire-town.org or medic-town.org). The same
         considerations apply when the the police, fire and ambulance networks
         are part of the state.org sub-domains (e.g., police.state.org).</t>
-
+    
+        <t>Similarly to the previous scenario the problem here is with the 
+        wrong state information being established during the emergency call 
+        setup procedure. A callback would originate in the police-town.org, fire-town.org or medic-town.org
+        domain whereas the emergency caller's SIP UA or the VoIP outbound proxy has 
+        stored state.org.</t>
+        
+        
         <t><figure anchor="fwd" title="Example for Call Forwarding">
             <artwork><![CDATA[
                                 ,-------.
@@ -379,6 +376,56 @@
           </figure></t>
       </section>
 
+      <section title="Network-based Service URN Resolution">
+       
+
+        <t>The IETF emergency services architecture also considers
+        cases where the resolution from the Service URN to the PSAP URI
+        does not only happen at the SIP UA itself but at intermedidate SIP entities, 
+        such as the user's VoIP provider.</t>
+
+        <t><xref target="late-binding"></xref> shows this message exchange
+        of the outgoing emergency call and the incoming PSAP graphically.
+        While the state information stored at the VoIP provider is correct 
+        the state allocated at the SIP UA is not. </t>
+
+        <t><figure anchor="late-binding"
+            title="Example for Network-based Service URN Resolution">
+            <artwork><![CDATA[
+     ,-------.
+   ,'         `.
+  /  Emergency  \
+ |   Services    |
+ |   Network     |
+ |police-town.org|
+ |               |
+ |   +------+    |    Invite to police.example.com
+ |   |PSAP  +<---+------------------------+
+ |   |      +----+------------------+     ^
+ |   +------+    |Invite from       |     |
+ |               ,police.example.com|     |
+ `~~~~~~~~~~~~~~~                   v     |
+ +--------+                        ++-----+-+
+ |        |            query       |VoIP    |
+ | LoST   |<-----------------------|Service |
+ | Server |   police.example.com   |Provider|
+ |        |----------------------->|        |
+ +--------+                        +--------+
+                                    |     ^
+                              Invite|     | Invite
+                                from|     | to
+                  police.example.com|     | urn:service:sos
+                                    V     |
+                                   +-------+
+                                   | SIP   |
+                                   | UA    |
+                                   | Alice |
+                                   +-------+
+                              ]]></artwork>
+          </figure></t>
+      </section>
+      
+      
       <section title="PSTN Interworking">
         <t>In case an emergency call enters the PSTN, as shown in <xref
         target="pstn"></xref>, there is no guarantee that the callback some
@@ -419,60 +466,9 @@
                                                   +-------+
                               ]]></artwork>
           </figure></t>
-      </section>
-
-      <section title="Network-based Service URN Resolution">
-        <t>The mechanism described in <xref
-        target="I-D.ietf-ecrit-framework"></xref> assumes that all devices at
-        the call signaling path store information about the domain of the
-        communication recipient. This is necessary to match the stored domain
-        name against the domain of the sender when an incoming call
-        arrives.</t>
-
-        <t>However, the IETF emergency services architecture also considers
-        those cases where the resolution from the Service URN to the PSAP URI
-        happens somewhere in the network rather than immediately at the end
-        point itself. In such a case, the end device is therefore not able to
-        match the domain of the sender with any information from the outgoing
-        emergency call.</t>
-
-        <t><xref target="late-binding"></xref> shows this message exchange
-        graphically.</t>
-
-        <t><figure anchor="late-binding"
-            title="Example for Network-based Service URN Resolution">
-            <artwork><![CDATA[
-     ,-------.
-   ,'         `.
-  /  Emergency  \
- |   Services    |
- |   Network     |
- |police-town.org|
- |               |
- |   +------+    |    Invite to police.example.com
- |   |PSAP  +<---+------------------------+
- |   |      +----+------------------+     ^
- |   +------+    |Invite from       |     |
- |               ,police.example.com|     |
- `~~~~~~~~~~~~~~~                   v     |
- +--------+                        ++-----+-+
- |        |            query       |VoIP    |
- | LoST   |<-----------------------|Service |
- | Server |   police.example.com   |Provider|
- |        |----------------------->|        |
- +--------+                        +--------+
-                                    |     ^
-                              Invite|     | Invite
-                                from|     | to
-                  police.example.com|     | urn:service:sos
-                                    V     |
-                                   +-------+
-                                   | SIP   |
-                                   | UA    |
-                                   | Alice |
-                                   +-------+
-                              ]]></artwork>
-          </figure></t>
+          
+          <t>Note: This scenario is considered outside the scope of this 
+          document. The specified solution does not support this use case.</t>
       </section>
     </section>
 
@@ -609,7 +605,6 @@
 
       &RFC5234;
     </references>
-  </back>
   
   
     <!-- ****************************************************************************************** -->
@@ -737,6 +732,7 @@
     </section> 
     
   </section> 
-  
+    </back>
+
    
 </rfc>
