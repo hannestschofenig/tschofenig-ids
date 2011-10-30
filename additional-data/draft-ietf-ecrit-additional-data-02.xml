@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" []>
+<rfc category="std" ipr="trust200902" docName="draft-ietf-ecrit-additional-data-02.txt">
+  <?rfc toc="yes" ?>
+  <?rfc symrefs="yes" ?>
+  <?rfc sortrefs="yes"?>
+  <?rfc compact="no" ?>
+  <?rfc iprnotified="no" ?>
+  <?rfc strict="yes" ?>
+  <front>
+    <title abbrev="Additional Call Data">Additional Data related to an Emergency Call</title>
+    <author fullname="Brian Rosen" initials="B.R" surname="Rosen">
+      <organization>NeuStar</organization>
+      <address>
+        <postal>
+          <street>470 Conrad Dr.</street>
+          <city>Mars</city>
+          <region>PA</region>
+          <code>16046</code>
+          <country>US</country>
+        </postal>
+        <phone>+1 724 382 1051</phone>
+        <email>br@brianrosen.net</email>
+      </address>
+    </author>
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+       <author initials="R." surname="Marshall" fullname="Roger Marshall">
+      <organization>TeleCommunication Systems, Inc.</organization>
+      <address>
+        <postal>
+          <street>2401 Elliott Avenue</street>
+          <city>Seattle</city>
+          <region>WA</region>
+          <code>98121</code>
+          <country>US</country>
+        </postal>
+        <phone>+1 206 792 2424</phone>
+        <email>rmarshall@telecomsys.com</email>
+        <uri>http://www.telecomsys.com</uri>
+      </address>
+    </author>
+    <date year="2011"/>
+    <area>RAI</area>
+    <workgroup>ECRIT</workgroup>
+    <keyword>I-D</keyword>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Additional Data</keyword>
+    <keyword>Emergency Services</keyword>
+    <keyword>Call Information</keyword>
+    <abstract>
+      <t>When an emergency call is sent to a Public Safety Answering Point (PSAP), the device that sends it, as well as any service
+        provider in the path of the call, or access network may have information about the call which the PSAP may be
+        able to use. This document describes an XML data structure that contains this kind of
+        information in a standardized form. A URI that points to the structure can be included in
+        the SIP signaling with the call, or the data may be included in the body of a SIP message. </t>
+
+    </abstract>
+  </front>
+  <middle>
+
+    <!-- ******************************************************************************* -->
+    <section anchor="introduction" title="Introduction">
+    
+      <t>As communications devices increasingly utilize the
+   Internet to interconnect and communicate, users will expect to use
+   such devices to request help. The Internet Protocol suite provides 
+   many advantages
+   but also requires re-thinking of the traditional emergency calling architecture. 
+   The IETF emergency services architecture, as described in <xref target="I-D.ietf-ecrit-framework"/> and 
+   <xref target="I-D.ietf-ecrit-phonebcp"/>, offers a much richer communication exchange and thereby better 
+   situational awareness for call takers. The richness comes in various forms, including the
+   multi-media communication capabilities (via voice, video, instant messaging, and real-time text),
+   but also via more extensive flow of information. Sharing information between various actors 
+   will enable more intelligent decision making and therefore better
+        response in case of an emergency. A pre-requisite is to offer the technical capabilities to
+        let call takers to gain access to this information stored elsewhere (granted that are 
+        authorized to access it). </t>
+   
+   <t>In general, there are four types of data exchanged:
+   
+   <list style="hanging"> 
+   <t hangText="Data Associated with a Call:">A lot of information is carried in the call setup procedure itself (as part of the SIP headers as well as in the body of the SIP message, e.g., for example supported capabilities of the device). This also includes information about the emergency caller's identity. </t>
+   <t hangText="Data Associated with a Location:">Location information is available via the PIDF-LO element, which includes
+   civic and geospatial location, information about the entity that provided the data, information about how the location was obtained (as expressed by the &lt;method&gt; element, see Section 2.2.3 of <xref target="RFC4119"/>, and the values registered in http://www.iana.org/assignments/method-tokens/method-tokens.xml), and which entity or
+   organization supplied location information (beyond the
+   domain information that can be inferred from a signing certificate) available via the &lt;provided-by&gt; element. </t>
+   <t hangText="Data Associated with a Caller:">This is personal data about a caller, including medical information.</t>
+   <t hangText="Data associated with a PSAP:">When a PSAP handles a call it develops information about the call, which must be passed to subsequent PSAPs, dispatchers and/or responders.</t>
+   </list> 
+   </t>
+   
+      <t>When an emergency call is sent to a PSAP, there is a rich set of data in the SIP message used for the call setup,
+       but the device, as well as any other service provider in the path may have even
+        more information useful for a PSAP. This information may include the identity
+        and contact information of the service provider, subscriber identity and contact
+        information, the type of service the provider offers, what kind of device the user
+        has, etc. Some data is device or service dependent data. For
+        example, a car telematics system or service may have crash information. A medical monitoring
+        device may have sensor data. While the details of the information may vary by device or
+        service, there needs to be a common way to send such data to a PSAP. </t>
+        
+      <t>This document focuses on the data that can be obtained about a call
+   and a mechanism for transporting it in an existing SIP header field,
+   the Call-Info header, which is specified in Section 20.9 of <xref target="RFC3261"/>. 
+   For this purpose a new token, namely
+   'emergencyCallData' is defined to be carried in the "purpose"
+   parameter.  If the "purpose" parameter is set to 'emergencyCallData'
+   then the Call-Info header contains a HTTPS URL that points to a data
+   structure with information about the call or a CID that allows the
+   data structure to be placed in the body of the message. <xref target="example"/> shows a SIP INVITE example 
+   containing such a Call-Info header. In addition,
+   this document describes a "provided-by" namespace per <xref target="RFC4119"/> for
+   passing information known to the access network.</t>
+
+   <t>The data is defined as a series of "blocks" that represent a class of
+   information.  Each of the blocks is a MIME type, and an extensible
+   set of these types constitute the data structure.  A registry is
+   defined to list the block types that may be included.
+   </t>
+      <t>The data structure contains an element which itself is a URI that has device or service
+        dependent data. Thus the common Additional Data about a Call defined by this document
+        contains a 'hook', in the form of a URI, for a device or service dependent data structure.</t>
+
+    </section>
+
+    <!-- ******************************************************************************* -->
+
+    <section title="Terminology">
+      <t> The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+        NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in <xref target="RFC2119">RFC 2119</xref>.</t>
+    </section>
+
+    <!-- ******************************************************************************* -->
+
+
+    <section title="Call-Info Specification">
+    
+   <t>The Additional Data about a Call is information specific to a call
+   known by the device that sends it or a service provider in the path
+   of a call or in the access network the call originates in.  The
+   Additional Data about a Call is a set of information blocks.  Each
+   block is a MIME type, and any set of blocks may be included in the
+   set.</t>
+
+   <t>Three mechanisms are provided to transport the data set.  A URI to
+   the data set may be inserted in a SIP INVITE or MESSAGE transaction
+   with a Call-Info header containing a purpose of "emergenyCallData".
+   If the data is provided by reference, it may be retrieved with an
+   HTTPS Get from the URI.  The URI MUST specify an HTTPS scheme, and
+   TLS protection for the data MUST be negotiated.</t>
+
+   <t>The data may be supplied by value in a SIP INVITE or MESSAGE message.
+   In this case, Content Indirection <xref target="RFC2392"/> is used, with the CID URL
+   pointing to the body of the message.</t>
+      
+      <t> More than one Call-Info header with an emergencyCallData purpose can be expected. The
+        device may insert one, and any intermediary service provider may insert its own. When there
+        are multiple intermediaries each intermediary may each insert one. For example, a device may
+        provide one, a telematics service provider may provide one and the mobile carrier handling
+        the call may provide one. </t>
+        
+  <t> The access network may supply Additional Data about a Call.  For this
+   purpose, this document defines a namespace and adds the namespace to
+   the "provided-by" registry defined by <xref target="RFC4119"/>.</t>
+
+   <t>Additional Data about a Call is defined as a series of blocks.  Each
+   block is defined as a mime type, with an XML data structure.  MIME-
+   multipart is used to enclose the set of blocks constituting the
+   information provided by an entity (service provider or device).  The
+   sections below define the blocks.</t>
+   
+  </section> 
+  
+    <!-- ******************************************************************************* -->
+  
+      <section title="Data Provider Information Block">
+      
+      <t>This block is intended to be provided by any service provider in the
+   path of the call or the access network provider.  It includes
+   identification and contact information.  This block SHOULD be
+   provided for every service provider in the path of the call, and the
+   access network provider.  Devices also use this block to provide
+   identifying information.  The MIME type is "addDataProviderInfo".</t>
+   
+   
+      <section title="Data Provider String"> 
+   
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Data Provider String<vspace blankLines="1"/></t>
+            <t hangText="Use:">Required<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;DataProviderString&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">This is a plain language string suitable for displaying the
+              name of the service provider that created the additional data structure. If the device
+              created the structure the value is identical to the contact header in the SIP Invite.
+              This data is required and should reflect the contact information of the owner of the
+                device.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:"> Inform the call taker about the identity of the entity
+              providing the additional call data structure.</t>
+            <t hangText="How Used by Call Taker:">Allows the call taker to interpret the data in
+              this structure. The source of the information often influences how the information is
+              used, believed or verified. </t>
+          </list>
+        </t>
+      </section>
+      <section title="Data Provider ID">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Data Provider ID<vspace blankLines="1"/></t>
+            <t hangText="Use:">Conditional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;ProviderID&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">A jurisdiction specific code for the provider shown in the
+              &lt;DataProvidedBy&gt; element that created the structure of the call. NOTE:
+              In the US, the NENA Company ID must appear here. Additional information may be found
+              at http://www.nena.org/nena-company-id. The NENA Company ID shall be in the form of
+              any URI for example: urn:nena:companyid:&lt;NENA Company ID&gt;. This data is
+              required unless the additional data structure is provided by the device.<vspace
+                blankLines="1"/></t>
+            <t hangText="Reason for Need:">Inform the call taker about the identity of the entity
+              providing the additional call data structure.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Where jurisdictions have lists of providers the
+              Provider Company ID can lead to a wealth of information associated with the code.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Data Provider Contact URI">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Data Provider Contact URI<vspace blankLines="1"/></t>
+            <t hangText="Use:">Required<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;ContractURI&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">For a Service Provider the contact SHOULD be a contact
+              URI. This must be a SIP URI. If a telephone number is the contact
+              address it should be provided in the form of
+              sip:telephonenumber@serviceprovider:user=phone. If the call is from a device, this
+              data is required and should reflect the contact information of the owner of the
+                device.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Additional data providers may need to be contacted for
+              error or other unusual circumstances.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">To contact the supplier of the additional data
+              provider structure.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Data Provider Languages(s) Supported">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Data Provider Language(s) supported<vspace blankLines="1"/></t>
+            <t hangText="Use:">Conditional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;LanguagePreference&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Provided by’s alpha 2-character code as defined in ISO
+              639-1:2002 (http://www.iso.org/iso/catalogue_detail?csnumber=22109) Codes for the
+              representation of names of languages -- Part 1: Alpha-2 code Multiple instances of
+              this element may occur. Order is significant; preferred language should appear first.
+              This data is required unless the message is from a data only device.<vspace
+                blankLines="1"/></t>
+            <t hangText="Reason for Need:">Information needed to determine if 9-1-1 Authority can
+              communicate with the Service Provider or if language line will be needed.<vspace
+                blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">If call taker cannot speak language(s) supported
+              by the Service Provider, language line will need to be added in to conversation.</t>
+          </list>
+        </t>
+      </section>
+      <section title="vCARD of Data Provider">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">vCARD of Data Provider<vspace blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;DataProviderContact&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">There are many fields in the vCARD. The creator of the data
+              structure is encouraged to provide as much information as they have available. A
+              minimum of subscriber provided by’s name, address and general contact number should be
+                provided.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Information needed to determine additional contact
+                information.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Assists call taker by providing additional contact
+              information that may not be included in the SIP invite or the PIDF-LO. Can display a
+              picture of the caller to the call taker.</t>
+          </list>
+        </t>
+      </section>
+    </section> 
+
+
+    <!-- ******************************************************************************* -->
+
+      <section title="Service Information">
+      
+        <section title="Service Environment"> 
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Service Environment<vspace blankLines="1"/></t>
+            <t hangText="Use:">Required<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;SvcEnvironment&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">This defines if the call service type is a Business or
+              Residence caller. Currently, the only valid entries are Business or Residence.<vspace
+                blankLines="1"/></t>
+            <t hangText="Reason for Need:">To assist in determining equipment and manpower
+                requirements.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Information may be used to determine equipment and
+              manpower requirements for emergency responders.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Service Delivered by Provider to End User">
+       <t>This block describes the service that the service provider provides	
+			to the caller. It SHOULD be included by all SPs in the path of the	
+			call. The mime type is "addCallSvcInfo".
+		</t>
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Service Delivered by Provider to End User<vspace
+                blankLines="1"/></t>
+            <t hangText="Use:">Required<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;SvcDelByProvider&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">This defines the type of service the end user has subscribed
+              to. The implied mobility of this service can not be relied upon. A registry will
+              reflect the following valid entries: <list style="symbols">
+                <t>Mobile Telephone Service: Includes Satellite, CDMA, GSM, Wi-Fi, WiMAX, LTE (Long
+                  Term Evolution) </t>
+                <t>Fixed Public Pay/Coin telephones: Any coin or credit card operated device. </t>
+                <t> One way outbound service </t>
+                <t>Inmate call/service </t>
+                <t>Soft dialtone/quick service/warm disconnect/suspended </t>
+                <t>Multi-line telephone system (MLTS): Includes all PBX, Centrex, key systems,
+                  Shared Tenant Service. </t>
+                <t>Sensor, unattended: Includes devices that generate DATA ONLY. This is one-way
+                  information exchange and there will be no other form of communication. </t>
+                <t> Sensor, attended: Includes devices that are supported by a monitoring service
+                  provider or automatically open a two-way communication path. </t>
+                <t> Wireline: Plain Old Telephone Service (POTS). </t>
+                <t> VoIP Telephone Service: A type of service that offers communication over
+                  internet protocol, such as Fixed, Nomadic, Mobile, Unknown </t>
+              </list>
+              <vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Knowing the type of service may assist the PSAP with the
+              handling of the call.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Calltaker may be able to determine if the caller
+              is stationary or mobile and if they will have voice communications with the caller or
+              is it a data only event.</t>
+          </list>
+        </t>
+       </section>
+      </section> 
+      
+    <!-- ******************************************************************************* -->
+
+      <section title="Device Information">
+
+       <t>	This block provides information about the device used to place the	
+			call. It should be provided by any service provider that knows what	
+			device is being used, and by the device itself. The mime type is	
+			"addDataDevInfo".
+			</t> 
+			
+ 		<section title="Device Classification">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Device Classification<vspace blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;DeviceClassification&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">If the device provides the data structure, the device
+              information should be provided. If the Service Provider provides the structure and it
+              knows what the device is, the Service Provider should provide the device information.
+              Often the carrier does not know what the device is. It is possible to receive 2 data
+              structures, one created by the device and one created by the Service Provider.
+              Information about the device, not how it is being used. This data element defines the
+              kind of device making the emergency call. A registry will reflect the following valid
+              entries: <list style="symbols">
+                <t>Cordless handset</t>
+                <t>Fixed phone</t>
+                <t>Mobile handset</t>
+                <t>ATA – analog terminal adapter</t>
+                <t>Satellite phone</t>
+                <t>Stationary computing device (alarm system, data sensor)</t>
+                <t>Guardian devices</t>
+                <t>Desktop PC</t>
+                <t>Laptop computing device</t>
+                <t>Tablet computing device</t>
+                <t>Alarm system</t>
+                <t>Data sensor</t>
+                <t>Personal beacons (spot)</t>
+                <t>Auto telematics (indicates VEDS data set)</t>
+                <t>Trucking telematics</t>
+                <t>Farm equipment telematics</t>
+                <t>Marine telematics</t>
+                <t>PDA (personal digital assistant)</t>
+                <t>PND (personal navigation device)</t>
+                <t>Smart phone</t>
+                <t>Internet tablet</t>
+                <t>Gaming console</t>
+                <t>Video phone</t>
+                <t>Other text device</t>
+                <t>Not Available</t>
+              </list>
+              <vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">The device classification describes the capability of the
+              calling device. For example, does the device require human intervention to initiate a
+              call or is this call the result of programmed instructions. Does the calling device
+              have the ability to rebid for location or condition changes? Is this device
+              interactive or a one-way reporting device?<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">May assist with location of caller. For example, a
+              cordless handset may be outside or next door. May provide calltaker some context about
+              the caller.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Device Manufacturer">
+
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Device Manufacturer<vspace blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;DeviceMfgr&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Manufacturer is electronically stored on the device.
+              Different devices may use different conventions to provide their information. We need
+              to know what it represents, so a registry is in order. Need to be able to standardize
+              as much as possible with a uniform naming convention. A registry will reflect the
+              valid entries.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Used by PSAP management for post-mortem
+                investigation/resolution.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Probably not used by calltaker, but by PSAP
+              management.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Device Model Number">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Device Model Number<vspace blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;DeviceModelNr&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Model number is electronically stored on the device.<vspace
+                blankLines="1"/></t>
+            <t hangText="Reason for Need:">Used by PSAP management for after action
+                investigation/resolution.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Probably not used by calltaker, but by PSAP
+              management.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Unique Device Identifier">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Unique Device Identifier<vspace blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;UniqueDeviceID&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Characters that identify the specific device making the call
+              or creating an event.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">May be needed when trying to obtain a subpoena to obtain
+              customer information in instances where location info did not display or someone is
+              making false emergency calls. May also be used when working with safe houses that are
+              using non-initialized phones.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Probably not used by calltaker they would need to
+              refer to management for investigation.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Type of Device Identifier">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Type of Device Identifier<vspace blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;TypeOfDeviceID&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Identifies the type of device identifier being generated in
+              the unique device identifier data element. A registry will reflect the following valid
+              entries: <list style="symbols">
+                <t>MEID (CDMA)</t>
+                <t>ESN (Electronic Serial Number - superseded by MEID) </t>
+                <t> MAC (Media Access Control) Address - any IEEE device with an Ethernet, Wi-Fi
+                  connection </t>
+                <t> WiMAX has a device certificate </t>
+                <t> IMEI (International Mobile Equipment Identifier - GSM) </t>
+                <t> Unique Device Identifier (Unique identifier for medical devices) </t>
+                <t> RFID (Radio Frequency Identification) </t>
+                <t> Sensors (types to be identified in a future document version) </t>
+                <t> Manufacturer Serial Number </t>
+              </list>
+              <vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Calls from uninitiated devices would give an identifier
+              that could be associated with erroneous calls --- use the number to identify what type
+              of capabilities there are. Could also use this information to block specific types of
+                calls.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Additional information that may be used to assist
+              with call handling.</t>
+          </list>
+        </t>
+      </section>
+      <section title="Device/Service Specific Additional Data Structure">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Device/service specific additional data structure<vspace
+                blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;devicespecificSchema&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">A URI representing additional data whose schema is specific
+              to the device or service which created it. An example is the VEDs structure for a
+              vehicle telematics device. The structure can be referenced via URI and used in the
+              policy routing function business rules/policies or for access by call takers or
+              responders. Non-NENA XML schemas must be registered. Some possible sources are:               
+              <list style="symbols">
+                <t>NPAC </t>
+                <t> Hazmat International Association of Fire Chiefs </t>
+                <t> DHS/EPA E-Plan for HazMat </t>
+                <t> NFPA - National Fire Protection Association </t>
+                <t>National Alliance for Public Safety GIS (NA-PSG) </t>
+                <t>US DOT Pipeline and Hazardous Materials Safety Administration (PHMSA) examples of
+                  additional data. </t>
+                <t>Fire Service Data Model </t>
+                <t>IEEE 1512 - USDOT Model for traffic incidents </t>
+                <t>Smart Building (NIST) </t>
+                <t>VEDS</t>
+              </list>
+              Different data may be created by each
+                  classification; i.e., telematics creates VEDS data set - can be different types of
+                  data depending on device. May want to describe type of data for each device.
+              <vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">This data element will allow for identification of
+              externally defined schemas, which may have additional data that will assist in
+              emergency response.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">This data element will allow the end user
+              (calltaker or first responder) to know what type of additional data may be available
+              to aid in providing the needed emergency services.</t>
+          </list>
+        </t>
+      </section>
+     </section>
+    <!-- ******************************************************************************* -->
+
+      <section title="Telephone Number Privacy Indicator">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Telephone Number Privacy Indicator<vspace blankLines="1"/></t>
+            <t hangText="Use:">Required<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;TNPrivacyIndicator&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Some State regulations require that Non-Published subscriber
+              name remains private to all including 9-1-1. Where this regulation is in place, the
+              end user’s name must be overlaid with blanks or the verbiage, “Non-Published
+                Number.”<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Some State regulations require that Non-Published
+              subscriber name remains private to all including emergency calls. Where this
+              regulation is in place, the end user’s name must be overlaid with blanks or the
+              verbiage, “Non-Published Number”.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">This is not beneficial to PSAPs; however, they
+              must follow state regulations. This indicator will allow for coding that overlays the
+              non-published subscriber name with the verbiage “Non-Published Number.”</t>
+          </list>
+        </t>
+      </section>
+
+    <!-- ******************************************************************************* -->
+      
+      <section title="Owner/Subscriber Information"> 
+				
+	 <t>This block describes the owner of the device (if provided by the	
+			device) or the subscriber information, if provided by a service	
+			provider. The contact location is not necessarily the location of	
+			the caller or incident, but is rather the nominal contact address.	
+			The mime type is "addCallSub".</t>
+			
+      <section title="vCARD for Subscriber’s Data">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">vCARD for Subscriber’s Data<vspace blankLines="1"/></t>
+            <t hangText="Use:">Required<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;SubscriberData&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Information known by the Service Provider about the
+              subscriber; i.e., Name, Address, Calling Party Number, Main Telephone Number and any
+              other data. If the subscriber is an enterprise, this is the vCARD of the enterprise
+              and the Company Name is used not the Name of the Caller. The telephone number is the
+              main telephone number at the location of the call. The address should be where the
+              call is originating from.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Critical information required for proper call handling
+              and dispatching.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Critical information required for proper call
+              handling and dispatching.</t>
+          </list>
+        </t>
+      </section>
+    </section>
+
+    <!-- ******************************************************************************* -->
+
+    <section anchor="schema" title="XML Schema">
+      <t>
+        <figure anchor="schema-fig" title="XML Schema">
+          <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema 
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+    xmlns="urn:nena:xml:ns:es:NG:Call"
+    targetNamespace="urn:nena:xml:ns:es:NG:Call" 
+    elementFormDefault="qualified"
+    attributeFormDefault="unqualified" version="1.0">
+    <xsd:include schemaLocation="NGTypeLib.xsd"/>
+    <xsd:element name="DataAssociatedWithCall">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="DataProvidedBy" 
+                    type="sourceProviderType" minOccurs="0"/>
+                <xsd:element ref="CallerDataURL" minOccurs="0"/>
+                <xsd:element ref="ServiceEnvironment"/>
+                <xsd:element ref="ServiceDeliveredByProvider"/>
+                <xsd:element ref="DeviceClassification"/>
+                <xsd:element ref="DeviceManufacturer"/>
+                <xsd:element name="DeviceModel" type="xsd:token"/>
+                <xsd:element name="DeviceID" type="xsd:token"/>
+                <xsd:element ref="DeviceIDType"/>
+                <xsd:element name="DeviceSpecificSchema" 
+                    type="ExtensionType" minOccurs="0"/>
+                <xsd:element ref="PrivacyIndicator"/>
+                <xsd:element ref="SubscribervCARD"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="CallerDataURL" type="xsd:anyURI">
+    </xsd:element>
+    <xsd:element name="ServiceDeliveredByProvider" type="xsd:token">
+    </xsd:element>
+    <xsd:element name="DeviceClassification" type="xsd:token">
+    </xsd:element>
+    <xsd:element name="DeviceManufacturer" type="xsd:token">
+    </xsd:element>
+    <xsd:element name="DeviceIDType" type="xsd:token">
+    </xsd:element>
+    <xsd:element name="PrivacyIndicator" type="privacyIndicatorType">
+    </xsd:element>
+    <xsd:simpleType name="privacyIndicatorType">
+        <xsd:restriction base="xsd:token">
+            <xsd:enumeration value="Published"/>
+            <xsd:enumeration value="Non-Published"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:element name="SubscribervCARD" type="vCARDType">
+    </xsd:element>
+</xsd:schema>
+            ]]></artwork>
+        </figure>
+      </t>
+
+    </section>
+
+    <!-- ******************************************************************************* -->
+
+<section anchor="example" title="Example"> 
+
+      <t>
+        <figure title="Example: Attaching Additional Data via CID to a SIP INVITE">
+          <artwork><![CDATA[
+   INVITE sips:bob@biloxi.example.com SIP/2.0
+   Via: SIPS/2.0/TLS pc33.atlanta.example.com;branch=z9hG4bK74bf9
+   Max-Forwards: 70
+   To: Bob <sips:bob@biloxi.example.com>
+   From: Alice <sips:alice@atlanta.example.com>;tag=9fxced76sl
+   Call-ID: 3848276298220188511@atlanta.example.com
+   Call-Info: <http://wwww.example.com/alice/photo.jpg> ;purpose=icon,
+     <http://www.example.com/alice/> ;purpose=info, 
+     <cid:1234567890@atlanta.example.com> ;purpose=emergencyCallData
+   Geolocation: <cid:target123@atlanta.example.com>
+   Geolocation-Routing: no
+   Accept: application/sdp, application/pidf+xml
+   CSeq: 31862 INVITE
+   Contact: <sips:alice@atlanta.example.com>
+   Content-Type: multipart/mixed; boundary=boundary1
+
+   Content-Length: ...
+
+   --boundary1
+
+   Content-Type: application/sdp
+
+   ...SDP goes here
+
+   --boundary1
+
+   Content-Type: application/pidf+xml
+   Content-ID: <target123@atlanta.example.com>
+
+   …PIDF-LO goes here
+
+   --boundary1--
+
+   Content-Type: application/pidf+xml
+   Content-ID: <1234567890@atlanta.example.com>
+
+   …Additional Data goes here
+
+   --boundary1--
+            ]]></artwork>
+        </figure>
+      </t>
+    </section> 
+
+
+    <!-- ******************************************************************************* -->
+
+    <section title="Security Considerations">
+
+      <t>The information in this data structure will usually be considered private. HTTPS is
+        specified to require the provider of the information to validate the credentials of the
+        requester. While the creation of a PKI that has global scope may be difficult, the
+        alternatives to creating devices and services that can provide critical information securely
+        are more daunting.</t>
+      <t>The Call-info header with purpose='emergencyCallData' MUST only be sent on an emergency
+        call, which can be ascertained by the presence of an emergency service urn in a Route header
+        of a SIP message.</t>
+      <t>&lt;how recipient validates credentials of sender&gt;</t>
+      <t>&lt;how sender validates credentials of recipient&gt;</t>
+      <t>&lt;how sender validates credentials of anyone requesting device dependent
+      data&gt;</t>
+      
+      <t>There is much private data in this information. Local regulations	
+			may govern what data must be provided in emergency calls, but in	
+			general, the emergency call system is often aided by the kinds of	
+			information described in this document. There is a tradeoff between	
+			the privacy considerations and the utility of the data. Certainly,	
+			if the data cannot be protected, due to failure of the TLS mechanisms	
+			described here, data not required by regulation SHOULD not be sent.
+		</t>
+    </section>
+
+    <!-- ******************************************************************************* -->
+
+    <section title="IANA Considerations">
+
+      <section title="'emergencyCallData' Purpose Parameter Value">
+        <t> This document defines the 'emergencyCallData' value for the "purpose" parameter of the
+          Call-Info header field. A reference to this RFC (in double brackets) has been added to the
+          existing "purpose" Call-Info parameter entry in the SIP Parameters registry, which
+          currently looks as follows:</t>
+
+        <t>
+          <figure>
+            <artwork><![CDATA[
+                                    Predefined
+   Header Field    Parameter Name     Values     Reference
+   -------------   --------------   ---------   ---------
+   Call-Info         purpose           Yes      [RFC3261][RFC5367]
+            ]]></artwork>
+          </figure>
+        </t>
+      </section>
+
+	  <section title="URN Sub-Namespace Registration for provided-by Registry Entry">
+	  
+	  <t>This section registers the namespace specified in ??? in the	
+			provided-by registry established by RFC4119.</t>
+      </section>
+				
+	  <section title="MIME Registrations">
+			<t>TBD</t>
+      </section>
+      
+      <section title="URN Sub-Namespace Registration for
+urn:ietf:params:xml:ns:additional-data">
+        <t> This section registers a new XML namespace, as per the guidelines in <xref
+            target="RFC3688"/>. </t>
+        <t>
+          <list style="hanging">
+            <t hangText="URI:"> urn:ietf:params:xml:ns:additional-data</t>
+            <t hangText="Registrant Contact:"> IETF, ECRIT working group,
+              &lt;ecrit@ietf.org&gt;, as delegated by the IESG
+              &lt;iesg@ietf.org&gt;. </t>
+            <t hangText="XML:">
+              <figure>
+                <artwork>
+                  <![CDATA[
+   BEGIN
+   <?xml version="1.0"?>
+   <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+     "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+   <html xmlns="http://www.w3.org/1999/xhtml">
+   <head>
+     <meta http-equiv="content-type"
+           content="text/html;charset=iso-8859-1"/>
+     <title>Additional Data Namespace</title>
+   </head>
+   <body>
+     <h1>Namespace for Additional Data </h1>
+     <h2>urn:ietf:params:xml:ns:additional-data</h2>
+   <p>See [TBD].</p>
+   </body>
+   </html>
+   END
+   ]]>
+                </artwork>
+              </figure>
+            </t>
+          </list>
+        </t>
+      </section>
+
+
+      <section title="Additional Data Schema Registration">
+        <t>This specification registers a schema, as per the guidelines in <xref target="RFC3688"/>.</t>
+        <t>
+          <list style="hanging">
+            <t>URI: urn:ietf:params:xml:schema:additional-data</t>
+            <t>Registrant Contact: IETF, ECRIT Working Group (geopriv@ietf.org), as delegated by the
+              IESG (iesg@ietf.org).</t>
+            <t>XML: The XML can be found as the sole content of <xref target="schema"/>.</t>
+          </list>
+        </t>
+      </section>
+
+    </section>
+
+    <!-- ******************************************************************************* -->
+
+    <section title="Acknowledgments">
+
+      <t>The authors would like to thank the following persons for their work in the NENA Data
+        Technical Committee: Delaine Arnold (Data Technical Committee Chair), Marc Berryman, Erica
+        Aubut (Data Technical Committee Vice-Chair), Susan Sherwood, Ric Atkins, Patty Bluhm, Eileen
+        Boroski, David Connel, Maryls Davis, Paul-David de la Rosby, Gordon Chinander, David
+        Froneberger, Marilyn Haroutunian, Roger Hixson, Rick Jones, Roger Marshall, Tom Muehleisen,
+        Ira Pyles, Carl Reed, Susan Seet, and Skip Walls. The authors would also like to thank Tom
+        Breen, Technical Committee Chair/Liaison; Busam, Technical Committee Vice-Chair/Liaison;
+        Pete Eggimann, Operations Committee Chair/Liaison; Wendy Lively, Operations Committee
+        Chair/Liaison; Roger Hixson, Technical Director; and Rick Jones, Operations Issues Director
+        for their support and assistance.</t>
+    </section>
+
+
+    <!-- ******************************************************************************* -->
+
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <?rfc include="reference.RFC.2119" ?>
+      <?rfc include="reference.RFC.3688" ?>
+      <?rfc include="reference.RFC.2392"?>
+      <?rfc include="reference.RFC.4119"?>
+      <?rfc include="reference.RFC.3261"?>
+    </references>
+    <references title="Informational References">
+      <?rfc include="reference.I-D.ietf-ecrit-phonebcp"?>
+      <?rfc include="reference.I-D.ietf-ecrit-framework"?>    </references>
+   </back>
+</rfc>
