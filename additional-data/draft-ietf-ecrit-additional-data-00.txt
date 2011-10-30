@@ -1,0 +1,1345 @@
+
+
+
+ECRIT                                                           B. Rosen
+Internet-Draft                                                   NeuStar
+Intended status: Standards Track                           H. Tschofenig
+Expires: March 25, 2011                           Nokia Siemens Networks
+                                                      September 21, 2010
+
+
+              Additional Data related to an Emergency Call
+                draft-ietf-ecrit-additional-data-00.txt
+
+Abstract
+
+   When an emergency call is sent to a PSAP, the device that sends it,
+   as well as any service provider in the path of the call may have
+   information about the call which the PSAP may be able to use.  This
+   document describes an XML data structure that contains this kind of
+   information in a standardized form.  A URI that points to the
+   structure can be included in the SIP signaling with the call.
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on March 25, 2011.
+
+Copyright Notice
+
+   Copyright (c) 2010 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 1]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  4
+   3.  Additional Data about a Call . . . . . . . . . . . . . . . . .  5
+     3.1.  Data Provided by . . . . . . . . . . . . . . . . . . . . .  5
+     3.2.  Provided by Company ID . . . . . . . . . . . . . . . . . .  6
+     3.3.  Provided by Contact URI  . . . . . . . . . . . . . . . . .  6
+     3.4.  Provided by Languages(s) supported . . . . . . . . . . . .  7
+     3.5.  vCARD of Provided By . . . . . . . . . . . . . . . . . . .  7
+     3.6.  Service Environment  . . . . . . . . . . . . . . . . . . .  8
+     3.7.  Service Delivered by Provider to End User  . . . . . . . .  8
+     3.8.  Device Classification  . . . . . . . . . . . . . . . . . . 10
+     3.9.  Device Manufacturer  . . . . . . . . . . . . . . . . . . . 11
+     3.10. Device Model Number  . . . . . . . . . . . . . . . . . . . 12
+     3.11. Unique Device Identifier . . . . . . . . . . . . . . . . . 12
+     3.12. Type of Device Identifier  . . . . . . . . . . . . . . . . 13
+     3.13. Device/service specific additional data structure  . . . . 14
+     3.14. Telephone Number Privacy Indicator . . . . . . . . . . . . 15
+     3.15. vCARD for Subscriber's Data  . . . . . . . . . . . . . . . 16
+   4.  XML Schema . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+   5.  Security Considerations  . . . . . . . . . . . . . . . . . . . 19
+   6.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 20
+     6.1.  'emergencyCallData' Purpose Parameter Value  . . . . . . . 20
+     6.2.  URN Sub-Namespace Registration for
+           urn:ietf:params:xml:ns:additional-data . . . . . . . . . . 20
+     6.3.  Additional Data Schema Registration  . . . . . . . . . . . 21
+   7.  Acknowledgments  . . . . . . . . . . . . . . . . . . . . . . . 22
+   8.  Normative References . . . . . . . . . . . . . . . . . . . . . 23
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 24
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 2]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+1.  Introduction
+
+   When an emergency call is sent to a PSAP, there is a rich set of data
+   in the headers with the call, but the device, as well as any other
+   service provider in the path may have even more information that
+   would be useful to a PSAP.  This information may include the identity
+   and contact information of the service provider, subscriber identity
+   and contact information, the type of service the service provider
+   provides, what kind of device the user has, etc.  Some kinds of
+   devices or services have device or service dependent data.  For
+   example, a car telematics system or service may have crash
+   information.  A medical monitoring device may have sensor data.
+   While the details of the information may vary by device or service,
+   there needs to be a common way to send such data to a PSAP.
+
+   For the call takers this will enable more intelligent decision making
+   and therefore better response in case of an emergency.  A pre-
+   requisite is to offer the technical capabilities to let call takers
+   to gain access to this information stored elsewhere (granted that
+   they have authorization to access it).
+
+   This document focuses on the data that can be obtained about a call
+   and an existing SIP header field, the Call-Info header, is used for
+   this purpose by defining a new token, namely 'emergencyCallData'
+   carried in the "purpose" parameter.  If the "purpose" parameter set
+   to 'emergencyCallData' then the Call-Info contains a HTTPS URL that
+   points to an XML data structure with information about the call.  The
+   initial XML data structure was defined by a working group within the
+   National Emergency Number Association (NENA) and is included in this
+   document.
+
+   The data structure contains an element which itself is a URI that has
+   device or service dependent data.  Thus the common Additional Data
+   about a Call defined by this document contains a 'hook', in the form
+   of a URI for a device or service dependent data structure.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 3]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 4]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+3.  Additional Data about a Call
+
+   The Additional Data about a Call is information specific to a call
+   known by the device that sends it or a service provider in the path
+   of a call.  The Additional Data about a Call is an XML data
+   structure.  An HTTPS URI to that structure may be inserted in a SIP
+   INVITE or MESSAGE transaction with a Call-Info header containing a
+   purpose of "emergenyCallData".  The data, which must conform to the
+   schema in Section 4 may be retrieved with an HTTPS Get. HTTPS MUST be
+   used.
+
+   More than one Call-Info header with an emergencyCallData purpose can
+   be expected.  The device may insert one, and any intermediary service
+   provider may insert its own.  When there are multiple intermediaries
+   each intermediary may each insert one.  For example, a device may
+   provide one, a telematics service provider may provide one and the
+   mobile carrier handling the call may provide one.
+
+3.1.  Data Provided by
+
+   Data Element:  Data Provided by
+
+
+   Use:  Required
+
+
+   XML Element:  <DataProvidedBy>
+
+
+   Description:  This is a plain language string suitable for displaying
+      the name of the service provider that created the additional data
+      structure.  If the device created the structure the value is
+      identical to the contact header in the SIP Invite.  This data is
+      required and should reflect the contact information of the owner
+      of the device.
+
+
+   Reason for Need:  Inform the call taker about the identity of the
+      entity providing the additional call data structure.
+
+   How Used by Call Taker:  Allows the call taker to interpret the data
+      in this structure.  The source of the information often influences
+      how the information is used, believed or verified.
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 5]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+3.2.  Provided by Company ID
+
+   Data Element:  Provided by Company ID
+
+
+   Use:  Conditional
+
+
+   XML Element:  <ProviderCompanyID>
+
+
+   Description:  A jurisdiction specific code for the provider shown in
+      the <DataProvidedBy> element that created the structure of the
+      call.  NOTE: In the US, the NENA Company ID must appear here.
+      Additional information may be found at
+      http://www.nena.org/nena-company-id.  The NENA Company ID shall be
+      in the form of any URI for example: urn:nena:companyid:<NENA
+      Company ID>.  This data is required unless the additional data
+      structure is provided by the device.
+
+
+   Reason for Need:  Inform the call taker about the identity of the
+      entity providing the additional call data structure.
+
+
+   How Used by Call Taker:  Where jurisdictions have lists of providers
+      the Provider Company ID can lead to a wealth of information
+      associated with the code.
+
+3.3.  Provided by Contact URI
+
+   Data Element:  Provided by Contact URI
+
+
+   Use:  Required
+
+
+   XML Element:  <ContractURI>
+
+
+   Description:  For a Service Provider the contact should be a 24x7
+      contact number.  If provided by an entity without a 24X7, they
+      must provide the provided by contact information.  This must be a
+      SIP URI.  If a telephone number is the contact address it should
+      be provided in the form of
+      sip:telephonenumber@serviceprovider:user=phone.  If the call is
+      from a device, this data is required and should reflect the
+      contact information of the owner of the device.
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 6]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+   Reason for Need:  Additional data providers may need to be contacted
+      for error or other unusual circumstances.
+
+
+   How Used by Call Taker:  To contact the supplier of the additional
+      data provider structure.
+
+3.4.  Provided by Languages(s) supported
+
+   Data Element:  Provided by Language(s) supported
+
+
+   Use:  Conditional
+
+
+   XML Element:  <LanguagePreference>
+
+
+   Description:  Provided by's alpha 2-character code as defined in ISO
+      639-1:2002
+      (http://www.iso.org/iso/catalogue_detail?csnumber=22109) Codes for
+      the representation of names of languages -- Part 1: Alpha-2 code
+      Multiple instances of this element may occur.  Order is
+      significant; preferred language should appear first.  This data is
+      required unless the message is from a data only device.
+
+
+   Reason for Need:  Information needed to determine if 9-1-1 Authority
+      can communicate with the Service Provider or if language line will
+      be needed.
+
+
+   How Used by Call Taker:  If call taker cannot speak language(s)
+      supported by the Service Provider, language line will need to be
+      added in to conversation.
+
+3.5.  vCARD of Provided By
+
+   Data Element:  vCARD of Provided By
+
+
+   Use:  Optional
+
+
+   XML Element:  <ProvidedByContact>
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 7]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+   Description:  There are many fields in the vCARD.  The creator of the
+      data structure is encouraged to provide as much information as
+      they have available.  A minimum of subscriber provided by's name,
+      address and contact number should be provided.
+
+
+   Reason for Need:  Information needed to determine additional contact
+      information.
+
+
+   How Used by Call Taker:  Assists call taker by providing additional
+      contact information that may not be included in the SIP invite or
+      the PIDF-LO.  Can display a picture of the caller to the call
+      taker.
+
+3.6.  Service Environment
+
+   Data Element:  Service Environment
+
+
+   Use:  Required
+
+
+   XML Element:  <SvcEnvironment>
+
+
+   Description:  This defines if the call service type is a Business or
+      Residence caller.  Currently, the only valid entries are Business
+      or Residence.
+
+
+   Reason for Need:  To assist in determining equipment and manpower
+      requirements.
+
+
+   How Used by Call Taker:  Information may be used to determine
+      equipment and manpower requirements for emergency responders.
+
+3.7.  Service Delivered by Provider to End User
+
+   Data Element:  Service Delivered by Provider to End User
+
+
+   Use:  Required
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 8]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+   XML Element:  <SvcDelByProvider>
+
+
+   Description:  This defines the type of service the end user has
+      subscribed to.  The implied mobility of this service can not be
+      relied upon.  A registry will reflect the following valid entries:
+
+      *  Mobile Telephone Service: Includes Satellite, CDMA, GSM, Wi-Fi,
+         WiMAX, LTE (Long Term Evolution)
+
+      *  Fixed Public Pay/Coin telephones: Any coin or credit card
+         operated device.
+
+      *  One way outbound service
+
+      *  Inmate call/service
+
+      *  Soft dialtone/quick service/warm disconnect/suspended
+
+      *  Multi-line telephone system (MLTS): Includes all PBX, Centrex,
+         key systems, Shared Tenant Service.
+
+      *  Sensor, unattended: Includes devices that generate DATA ONLY.
+         This is one-way information exchange and there will be no other
+         form of communication.
+
+      *  Sensor, attended: Includes devices that are supported by a
+         monitoring service provider or automatically open a two-way
+         communication path.
+
+      *  Wireline: Plain Old Telephone Service (POTS).
+
+      *  VoIP Telephone Service: A type of service that offers
+         communication over internet protocol, such as Fixed, Nomadic,
+         Mobile, Unknown
+
+
+   Reason for Need:  Knowing the type of service may assist the PSAP
+      with the handling of the call.
+
+
+   How Used by Call Taker:  Calltaker may be able to determine if the
+      caller is stationary or mobile and if they will have voice
+      communications with the caller or is it a data only event.
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                 [Page 9]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+3.8.  Device Classification
+
+   Data Element:  Device Classification
+
+
+   Use:  Optional
+
+
+   XML Element:  <DeviceClassification>
+
+
+   Description:  If the device provides the data structure, the device
+      information should be provided.  If the Service Provider provides
+      the structure and it knows what the device is, the Service
+      Provider should provide the device information.  Often the carrier
+      does not know what the device is.  It is possible to receive 2
+      data structures, one created by the device and one created by the
+      Service Provider.  Information about the device, not how it is
+      being used.  This data element defines the kind of device making
+      the emergency call.  A registry will reflect the following valid
+      entries:
+
+      *  Cordless handset
+
+      *  Fixed phone
+
+      *  Mobile handset
+
+      *  ATA - analog terminal adapter
+
+      *  Satellite phone
+
+      *  Stationary computing device (alarm system, data sensor)
+
+      *  Guardian devices
+
+      *  Desktop PC
+
+      *  Laptop computing device
+
+      *  Tablet computing device
+
+      *  Alarm system
+
+      *  Data sensor
+
+      *  Personal beacons (spot)
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 10]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+      *  Auto telematics (indicates VEDS data set)
+
+      *  Trucking telematics
+
+      *  Farm equipment telematics
+
+      *  Marine telematics
+
+      *  PDA (personal digital assistant)
+
+      *  PND (personal navigation device)
+
+      *  Smart phone
+
+      *  Internet tablet
+
+      *  Gaming console
+
+      *  Video phone
+
+      *  Other text device
+
+      *  Not Available
+
+
+   Reason for Need:  The device classification describes the capability
+      of the calling device.  For example, does the device require human
+      intervention to initiate a call or is this call the result of
+      programmed instructions.  Does the calling device have the ability
+      to rebid for location or condition changes?  Is this device
+      interactive or a one-way reporting device?
+
+
+   How Used by Call Taker:  May assist with location of caller.  For
+      example, a cordless handset may be outside or next door.  May
+      provide calltaker some context about the caller.
+
+3.9.  Device Manufacturer
+
+   Data Element:  Device Manufacturer
+
+
+   Use:  Optional
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 11]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+   XML Element:  <DeviceMfgr>
+
+
+   Description:  Manufacturer is electronically stored on the device.
+      Different devices may use different conventions to provide their
+      information.  We need to know what it represents, so a registry is
+      in order.  Need to be able to standardize as much as possible with
+      a uniform naming convention.  A registry will reflect the valid
+      entries.
+
+
+   Reason for Need:  Used by PSAP management for post-mortem
+      investigation/resolution.
+
+
+   How Used by Call Taker:  Probably not used by calltaker, but by PSAP
+      management.
+
+3.10.  Device Model Number
+
+   Data Element:  Device Model Number
+
+
+   Use:  Optional
+
+
+   XML Element:  <DeviceModelNr>
+
+
+   Description:  Model number is electronically stored on the device.
+
+
+   Reason for Need:  Used by PSAP management for after action
+      investigation/resolution.
+
+
+   How Used by Call Taker:  Probably not used by calltaker, but by PSAP
+      management.
+
+3.11.  Unique Device Identifier
+
+   Data Element:  Unique Device Identifier
+
+
+   Use:  Optional
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 12]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+   XML Element:  <UniqueDeviceID>
+
+
+   Description:  Characters that identify the specific device making the
+      call or creating an event.
+
+
+   Reason for Need:  May be needed when trying to obtain a subpoena to
+      obtain customer information in instances where location info did
+      not display or someone is making false emergency calls.  May also
+      be used when working with safe houses that are using non-
+      initialized phones.
+
+
+   How Used by Call Taker:  Probably not used by calltaker they would
+      need to refer to management for investigation.
+
+3.12.  Type of Device Identifier
+
+   Data Element:  Type of Device Identifier
+
+
+   Use:  Optional
+
+
+   XML Element:  <TypeOfDeviceID>
+
+
+   Description:  Identifies the type of device identifier being
+      generated in the unique device identifier data element.  A
+      registry will reflect the following valid entries:
+
+      *  MEID (CDMA)
+
+      *  ESN (Electronic Serial Number - superseded by MEID)
+
+      *  MAC (Media Access Control) Address - any IEEE device with an
+         Ethernet, Wi-Fi connection
+
+      *  WiMAX has a device certificate
+
+      *  IMEI (International Mobile Equipment Identifier - GSM)
+
+      *  Unique Device Identifier (Unique identifier for medical
+         devices)
+
+      *  RFID (Radio Frequency Identification)
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 13]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+      *  Sensors (types to be identified in a future document version)
+
+      *  Manufacturer Serial Number
+
+
+   Reason for Need:  Calls from uninitiated devices would give an
+      identifier that could be associated with erroneous calls --- use
+      the number to identify what type of capabilities there are.  Could
+      also use this information to block specific types of calls.
+
+
+   How Used by Call Taker:  Additional information that may be used to
+      assist with call handling.
+
+3.13.  Device/service specific additional data structure
+
+   Data Element:  Device/service specific additional data structure
+
+
+   Use:  Optional
+
+
+   XML Element:  <devicespecificSchema>
+
+
+   Description:  A URI representing additional data whose schema is
+      specific to the device or service which created it.  An example is
+      the VEDs structure for a vehicle telematics device.  The structure
+      can be referenced via URI and used in the policy routing function
+      business rules/policies or for access by call takers or
+      responders.  Non-NENA XML schemas must be registered.  Some
+      possible sources are:
+
+      *  NPAC
+
+      *  Hazmat International Association of Fire Chiefs
+
+      *  DHS/EPA E-Plan for HazMat
+
+      *  NFPA - National Fire Protection Association
+
+      *  National Alliance for Public Safety GIS (NA-PSG)
+
+      *  US DOT Pipeline and Hazardous Materials Safety Administration
+         (PHMSA) examples of additional data.
+
+      *  Fire Service Data Model
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 14]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+      *  IEEE 1512 - USDOT Model for traffic incidents
+
+      *  Smart Building (NIST)
+
+      *  VEDS
+
+      Different data may be created by each classification; i.e.,
+      telematics creates VEDS data set - can be different types of data
+      depending on device.  May want to describe type of data for each
+      device.
+
+
+   Reason for Need:  This data element will allow for identification of
+      externally defined schemas, which may have additional data that
+      will assist in emergency response.
+
+
+   How Used by Call Taker:  This data element will allow the end user
+      (calltaker or first responder) to know what type of additional
+      data may be available to aid in providing the needed emergency
+      services.
+
+3.14.  Telephone Number Privacy Indicator
+
+   Data Element:  Telephone Number Privacy Indicator
+
+
+   Use:  Required
+
+
+   XML Element:  <TNPrivacyIndicator>
+
+
+   Description:  Some State regulations require that Non-Published
+      subscriber name remains private to all including 9-1-1.  Where
+      this regulation is in place, the end user's name must be overlaid
+      with blanks or the verbiage, "Non-Published Number."
+
+
+   Reason for Need:  Some State regulations require that Non-Published
+      subscriber name remains private to all including emergency calls.
+      Where this regulation is in place, the end user's name must be
+      overlaid with blanks or the verbiage, "Non-Published Number".
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 15]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+   How Used by Call Taker:  This is not beneficial to PSAPs; however,
+      they must follow state regulations.  This indicator will allow for
+      coding that overlays the non-published subscriber name with the
+      verbiage "Non-Published Number."
+
+3.15.  vCARD for Subscriber's Data
+
+   Data Element:  vCARD for Subscriber's Data
+
+
+   Use:  Required
+
+
+   XML Element:  <SubscriberData>
+
+
+   Description:  Information known by the Service Provider about the
+      subscriber; i.e., Name, Address, Calling Party Number, Main
+      Telephone Number and any other data.  If the subscriber is an
+      enterprise, this is the vCARD of the enterprise and the Company
+      Name is used not the Name of the Caller.  The telephone number is
+      the main telephone number at the location of the call.  The
+      address should be where the call is originating from.
+
+
+   Reason for Need:  Critical information required for proper call
+      handling and dispatching.
+
+
+   How Used by Call Taker:  Critical information required for proper
+      call handling and dispatching.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 16]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+4.  XML Schema
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <xsd:schema
+       xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+       xmlns="urn:nena:xml:ns:es:NG:Call"
+       targetNamespace="urn:nena:xml:ns:es:NG:Call"
+       elementFormDefault="qualified"
+       attributeFormDefault="unqualified" version="1.0">
+       <xsd:include schemaLocation="NGTypeLib.xsd"/>
+       <xsd:element name="DataAssociatedWithCall">
+           <xsd:complexType>
+               <xsd:sequence>
+                   <xsd:element name="DataProvidedBy"
+                       type="sourceProviderType" minOccurs="0"/>
+                   <xsd:element ref="CallerDataURL" minOccurs="0"/>
+                   <xsd:element ref="ServiceEnvironment"/>
+                   <xsd:element ref="ServiceDeliveredByProvider"/>
+                   <xsd:element ref="DeviceClassification"/>
+                   <xsd:element ref="DeviceManufacturer"/>
+                   <xsd:element name="DeviceModel" type="xsd:token"/>
+                   <xsd:element name="DeviceID" type="xsd:token"/>
+                   <xsd:element ref="DeviceIDType"/>
+                   <xsd:element name="DeviceSpecificSchema"
+                       type="ExtensionType" minOccurs="0"/>
+                   <xsd:element ref="PrivacyIndicator"/>
+                   <xsd:element ref="SubscribervCARD"/>
+               </xsd:sequence>
+           </xsd:complexType>
+       </xsd:element>
+       <xsd:element name="CallerDataURL" type="xsd:anyURI">
+       </xsd:element>
+       <xsd:element name="ServiceDeliveredByProvider" type="xsd:token">
+       </xsd:element>
+       <xsd:element name="DeviceClassification" type="xsd:token">
+       </xsd:element>
+       <xsd:element name="DeviceManufacturer" type="xsd:token">
+       </xsd:element>
+       <xsd:element name="DeviceIDType" type="xsd:token">
+       </xsd:element>
+       <xsd:element name="PrivacyIndicator" type="privacyIndicatorType">
+       </xsd:element>
+       <xsd:simpleType name="privacyIndicatorType">
+           <xsd:restriction base="xsd:token">
+               <xsd:enumeration value="Published"/>
+               <xsd:enumeration value="Non-Published"/>
+           </xsd:restriction>
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 17]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+       </xsd:simpleType>
+       <xsd:element name="SubscribervCARD" type="vCARDType">
+       </xsd:element>
+   </xsd:schema>
+
+                           Figure 1: XML Schema
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 18]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+5.  Security Considerations
+
+   The information in this data structure will usually be considered
+   private.  HTTPS is specified to require the provider of the
+   information to validate the credentials of the requester.  While the
+   creation of a PKI that has global scope may be difficult, the
+   alternatives to creating devices and services that can provide
+   critical information securely are more daunting.
+
+   The Call-info header with purpose='emergencyCallData' MUST only be
+   sent on an emergency call, which can be ascertained by the presence
+   of an emergency service urn in a Route header of a SIP message.
+
+   <how recipient validates credentials of sender>
+
+   <how sender validates credentials of recipient>
+
+   <how sender validates credentials of anyone requesting device
+   dependent data>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 19]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+6.  IANA Considerations
+
+6.1.  'emergencyCallData' Purpose Parameter Value
+
+   This document defines the 'emergencyCallData' value for the "purpose"
+   parameter of the Call-Info header field.  A reference to this RFC (in
+   double brackets) has been added to the existing "purpose" Call-Info
+   parameter entry in the SIP Parameters registry, which currently looks
+   as follows:
+
+
+                                       Predefined
+      Header Field    Parameter Name     Values     Reference
+      -------------   --------------   ---------   ---------
+      Call-Info         purpose           Yes      [RFC3261][RFC5367]
+
+6.2.  URN Sub-Namespace Registration for
+      urn:ietf:params:xml:ns:additional-data
+
+   This section registers a new XML namespace, as per the guidelines in
+   [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:additional-data
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+        <title>Additional Data Namespace</title>
+      </head>
+      <body>
+        <h1>Namespace for Additional Data </h1>
+        <h2>urn:ietf:params:xml:ns:additional-data</h2>
+      <p>See [TBD].</p>
+      </body>
+      </html>
+      END
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 20]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+6.3.  Additional Data Schema Registration
+
+   This specification registers a schema, as per the guidelines in
+   [RFC3688].
+
+      URI: urn:ietf:params:xml:schema:additional-data
+
+      Registrant Contact: IETF, ECRIT Working Group (geopriv@ietf.org),
+      as delegated by the IESG (iesg@ietf.org).
+
+      XML: The XML can be found as the sole content of Section 4.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 21]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+7.  Acknowledgments
+
+   The authors would like to thank the following persons for their work
+   in the NENA Data Technical Committee: Delaine Arnold (Data Technical
+   Committee Chair), Marc Berryman, Erica Aubut (Data Technical
+   Committee Vice-Chair), Susan Sherwood, Ric Atkins, Patty Bluhm,
+   Eileen Boroski, David Connel, Maryls Davis, Paul-David de la Rosby,
+   Gordon Chinander, David Froneberger, Marilyn Haroutunian, Roger
+   Hixson, Rick Jones, Roger Marshall, Tom Muehleisen, Ira Pyles, Carl
+   Reed, Susan Seet, and Skip Walls.  The authors would also like to
+   thank Tom Breen, Technical Committee Chair/Liaison; Busam, Technical
+   Committee Vice-Chair/Liaison; Pete Eggimann, Operations Committee
+   Chair/Liaison; Wendy Lively, Operations Committee Chair/Liaison;
+   Roger Hixson, Technical Director; and Rick Jones, Operations Issues
+   Director for their support and assistance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 22]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+8.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3688]  Mealling, M., "The IETF XML Registry", BCP 81, RFC 3688,
+              January 2004.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 23]
+
+Internet-Draft             Additional Data URI            September 2010
+
+
+Authors' Addresses
+
+   Brian Rosen
+   NeuStar
+   470 Conrad Dr.
+   Mars, PA  16046
+   US
+
+   Phone: +1 724 382 1051
+   Email: br@brianrosen.net
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen & Tschofenig       Expires March 25, 2011                [Page 24]
+
+
