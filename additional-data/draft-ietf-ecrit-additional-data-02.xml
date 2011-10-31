@@ -87,7 +87,7 @@
    but also via more extensive flow of information. Sharing information between various actors 
    will enable more intelligent decision making and therefore better
         response in case of an emergency. A pre-requisite is to offer the technical capabilities to
-        let call takers to gain access to this information stored elsewhere (granted that are 
+        let call takers to gain access to this information stored elsewhere (granted that they are 
         authorized to access it). </t>
    
    <t>In general, there are four types of data exchanged:
@@ -122,7 +122,14 @@
    then the Call-Info header contains a HTTPS URL that points to a data
    structure with information about the call or a CID that allows the
    data structure to be placed in the body of the message. <xref target="example"/> shows a SIP INVITE example 
-   containing such a Call-Info header. In addition,
+   containing such a Call-Info header. 
+   </t>
+   <t>Besides a service provider in the path of a call, the access network (which in the IETF emergency call
+   architecture provides location in the form of a PIDF-LO <xref target="RFC4119"/>) also has similar information
+   that would be valuable to the PSAP.  This information is not specific to the location itsef, but rather to the
+   immmediate circumstances about the provision of the location (who the access network is, how to contact that entity, 
+   what kind of service the access network provides, possibly subscriber data, etc.).  This data is in nearly every
+   respect similar to the data known by services providers in the path of the call.  For this reason,
    this document describes a "provided-by" namespace per <xref target="RFC4119"/> for
    passing information known to the access network.</t>
 
@@ -227,8 +234,9 @@
               &lt;DataProvidedBy&gt; element that created the structure of the call. <!-- NOTE:
               In the US, the NENA Company ID must appear here. Additional information may be found
               at http://www.nena.org/nena-company-id. The NENA Company ID shall be in the form of
-              any URI for example: urn:nena:companyid:&lt;NENA Company ID&gt;. --> This data is
-              required unless the additional data structure is provided by the device.<vspace
+              any URI for example: urn:nena:companyid:&lt;NENA Company ID&gt;. --> This data SHOULD be provided if 
+              the local jurisdiction maintains such an ID list.  For example, in North America, this would be
+              a "NENA Company ID".  Devices would not typically use this element.<vspace
                 blankLines="1"/></t>
             <t hangText="Reason for Need:">Inform the call taker about the identity of the entity
               providing the additional call data structure.<vspace blankLines="1"/></t>
@@ -248,7 +256,8 @@
               address it should be provided in the form of
               sip:telephonenumber@serviceprovider:user=phone. If the call is from a device, this
               data is required and should reflect the contact information of the owner of the
-                device.<vspace blankLines="1"/></t>
+                device.  This should be a URI to a 24/7 support organization tasked to provide PSAP support
+                for this emergency call.<vspace blankLines="1"/></t>
             <t hangText="Reason for Need:">Additional data providers may need to be contacted for
               error or other unusual circumstances.<vspace blankLines="1"/></t>
             <t hangText="How Used by Call Taker:">To contact the supplier of the additional data
@@ -266,13 +275,14 @@
               639-1:2002 (http://www.iso.org/iso/catalogue_detail?csnumber=22109) Codes for the
               representation of names of languages -- Part 1: Alpha-2 code Multiple instances of
               this element may occur. Order is significant; preferred language should appear first.
-              This data is required unless the message is from a data only device.<vspace
+              This data is required if a Data Provider Contact URI is provided.  The content must reflect the languages
+              supported at the contact URI.<vspace
                 blankLines="1"/></t>
             <t hangText="Reason for Need:">Information needed to determine if emergency service authority can
               communicate with the service provider or if language line will be needed.<vspace
                 blankLines="1"/></t>
             <t hangText="How Used by Call Taker:">If call taker cannot speak language(s) supported
-              by the service provider, language line will need to be added in to conversation.</t>
+              by the service provider, at translation service will need to be added in to the conversation.</t>
           </list>
         </t>
       </section>
@@ -283,14 +293,11 @@
             <t hangText="Use:">Optional<vspace blankLines="1"/></t>
             <t hangText="XML Element:">&lt;DataProviderContact&gt;<vspace blankLines="1"/></t>
             <t hangText="Description:">There are many fields in the vCARD and the creator of the data
-              structure is encouraged to provide as much information as they have available. A
-              minimum of subscriber provided by’s name, address and general contact number should be
-                provided. For encoding of the vCard this specification uses the XML-based encoding specified in <xref target="RFC6351"/>.<vspace blankLines="1"/></t>
+              structure is encouraged to provide as much information as they have available. For encoding of the vCard this specification uses the XML-based encoding specified in <xref target="RFC6351"/>.<vspace blankLines="1"/></t>
             <t hangText="Reason for Need:">Information needed to determine additional contact
                 information.<vspace blankLines="1"/></t>
             <t hangText="How Used by Call Taker:">Assists call taker by providing additional contact
-              information that may not be included in the SIP invite or the PIDF-LO. Can display a
-              picture of the caller to the call taker.</t>
+              information that may not be included in the SIP invite or the PIDF-LO.</t>
           </list>
         </t>
       </section>
@@ -324,10 +331,10 @@
                     type="xs:string" minOccurs="1" maxOccurs="1"/>
                 <xs:element name="DataProviderString" 
                     type="xs:string" minOccurs="1" maxOccurs="1"/>
-                <xs:element name="ContractURI" type="xs:anyURI"
+                <xs:element name="ContactURI" type="xs:anyURI"
                     minOccurs="1" maxOccurs="1"/>
                 <xs:element name="Language" type="ad:iso3166a2" 
-                    minOccurs="0" maxOccurs="1"/>
+                    minOccurs="0" maxOccurs=<any>/>
                 <xs:element name="DataProviderContact" 
                     type="vc:vcards" minOccurs="0" maxOccurs="1">
             </xs:sequence>
@@ -376,7 +383,7 @@
             <t hangText="XML Element:">&lt;SvcDelByProvider&gt;<vspace blankLines="1"/></t>
             <t hangText="Description:">This defines the type of service the end user has subscribed
               to. The implied mobility of this service can not be relied upon. A registry will
-              reflect the following valid entries: <list style="symbols">
+              reflect the following initial valid entries: <list style="symbols">
                 <t>Mobile Telephone Service: Includes Satellite, CDMA, GSM, Wi-Fi, WiMAX, LTE (Long
                   Term Evolution) </t>
                 <t>Fixed Public Pay/Coin telephones: Any coin or credit card operated device. </t>
@@ -393,12 +400,14 @@
                 <t> VoIP Telephone Service: A type of service that offers communication over
                   internet protocol, such as Fixed, Nomadic, Mobile, Unknown </t>
               </list>
+              There can be more than one value returned.  For example, a VoIP prison telephone service is a
+              reasonable conbination.
               <vspace blankLines="1"/></t>
             <t hangText="Reason for Need:">Knowing the type of service may assist the PSAP with the
               handling of the call.<vspace blankLines="1"/></t>
-            <t hangText="How Used by Call Taker:">Calltaker may be able to determine if the caller
-              is stationary or mobile and if they will have voice communications with the caller or
-              is it a data only event.</t>
+            <t hangText="How Used by Call Taker:">Calltakers often use this information to determine what kinds of questions
+            to ask callers, and how much to rely on supportive information.  An emergency call from a prison is treated differently
+            that a call from a sensor device.</t>
           </list>
         </t>
        </section>
@@ -506,10 +515,7 @@
             <t hangText="Data Element:">Device Manufacturer<vspace blankLines="1"/></t>
             <t hangText="Use:">Optional<vspace blankLines="1"/></t>
             <t hangText="XML Element:">&lt;DeviceMfgr&gt;<vspace blankLines="1"/></t>
-            <t hangText="Description:">Manufacturer is electronically stored on the device.
-              Different devices may use different conventions to provide their information. We need
-              to know what it represents, so a registry is in order. A registry will reflect the
-              valid entries.<vspace blankLines="1"/></t>
+            <t hangText="Description:">The plain language name of the manufacturer of the device.<vspace blankLines="1"/></t>
             <t hangText="Reason for Need:">Used by PSAP management for post-mortem
                 investigation/resolution.<vspace blankLines="1"/></t>
             <t hangText="How Used by Call Taker:">Probably not used by calltaker, but by PSAP
@@ -523,7 +529,7 @@
             <t hangText="Data Element:">Device Model Number<vspace blankLines="1"/></t>
             <t hangText="Use:">Optional<vspace blankLines="1"/></t>
             <t hangText="XML Element:">&lt;DeviceModelNr&gt;<vspace blankLines="1"/></t>
-            <t hangText="Description:">Model number is electronically stored on the device.<vspace
+            <t hangText="Description:">Model number of the device.<vspace
                 blankLines="1"/></t>
             <t hangText="Reason for Need:">Used by PSAP management for after action
                 investigation/resolution.<vspace blankLines="1"/></t>
@@ -538,12 +544,10 @@
             <t hangText="Data Element:">Unique Device Identifier<vspace blankLines="1"/></t>
             <t hangText="Use:">Optional<vspace blankLines="1"/></t>
             <t hangText="XML Element:">&lt;UniqueDeviceID&gt;<vspace blankLines="1"/></t>
-            <t hangText="Description:">Characters that identify the specific device making the call
+            <t hangText="Description:">String that identify the specific device making the call
               or creating an event.<vspace blankLines="1"/></t>
-            <t hangText="Reason for Need:">May be needed when trying to obtain a subpoena to obtain
-              customer information in instances where location info did not display or someone is
-              making false emergency calls. May also be used when working with safe houses that are
-              using non-initialized phones.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Uniquely identifies the device as opposed to any signaling
+            identifiers encountered in the call signaling stream.<vspace blankLines="1"/></t>
             <t hangText="How Used by Call Taker:">Probably not used by calltaker they would need to
               refer to management for investigation.</t>
           </list>
@@ -568,29 +572,25 @@
                 <t> RFID (Radio Frequency Identification) </t>
                 <t> Sensors (types to be identified in a future document version) </t>
                 <t> Manufacturer Serial Number </t>
+                <t> Other</t>
               </list>
               <vspace blankLines="1"/></t>
-            <t hangText="Reason for Need:">Calls from uninitiated devices would give an identifier
-              that could be associated with erroneous calls --- use the number to identify what type
-              of capabilities there are. Could also use this information to block specific types of
-                calls.<vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Identifies how to interpret the Unique Device Identifier.<vspace blankLines="1"/></t>
             <t hangText="How Used by Call Taker:">Additional information that may be used to assist
               with call handling.</t>
           </list>
         </t>
       </section>
-      <section title="Device/Service Specific Additional Data Structure">
+      <section title="Device/Service Specific Additional Data Structure Type">
         <t>
           <list style="hanging">
-            <t hangText="Data Element:">Device/service specific additional data structure<vspace
+            <t hangText="Data Element:">Type of Device/service specific additional data structure<vspace
                 blankLines="1"/></t>
-            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
-            <t hangText="XML Element:">&lt;devicespecificSchema&gt;<vspace blankLines="1"/></t>
-            <t hangText="Description:">A URI representing additional data whose schema is specific
-              to the device or service which created it. An example is the VEDs structure for a
-              vehicle telematics device. The structure can be referenced via URI and used in the
-              policy routing function business rules/policies or for access by call takers or
-              responders. Some possible sources are:               
+            <t hangText="Use:">Conditional.  MUST be provided when Device/service specific additional URI is provided
+            <vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;devicespecificType&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">Value from a registry defined by this document to describe the type of data 
+            that can be retrieved from the Device/service specific additional data structure.  Initial values are:               
               <list style="symbols">
                 <t>NPAC </t>
                 <t> Hazmat International Association of Fire Chiefs </t>
@@ -604,10 +604,7 @@
                 <t>Smart Building (NIST) </t>
                 <t>VEDS</t>
               </list>
-              Different data may be created by each
-                  classification; i.e., telematics creates VEDS data set - can be different types of
-                  data depending on device. May want to describe type of data for each device.
-              <vspace blankLines="1"/></t>
+               <vspace blankLines="1"/></t>
             <t hangText="Reason for Need:">This data element will allow for identification of
               externally defined schemas, which may have additional data that will assist in
               emergency response.<vspace blankLines="1"/></t>
@@ -617,7 +614,30 @@
           </list>
         </t>
       </section>
-      
+      <section title="Device/Service Specific Additional Data Structure">
+        <t>
+          <list style="hanging">
+            <t hangText="Data Element:">Device/service specific additional data structure<vspace
+                blankLines="1"/></t>
+            <t hangText="Use:">Optional<vspace blankLines="1"/></t>
+            <t hangText="XML Element:">&lt;devicespecificSchema&gt;<vspace blankLines="1"/></t>
+            <t hangText="Description:">A URI representing additional data whose schema is specific
+              to the device or service which created it. An example is the VEDs structure for a
+              vehicle telematics device. The URI, when dereferenced, MUST yield a data structure 
+              defined by the Device/service specific additional data type value.
+              Different data may be created by each
+                  classification; i.e., telematics creates VEDS data set - can be different types of
+                  data depending on device. May want to describe type of data for each device.
+              <vspace blankLines="1"/></t>
+            <t hangText="Reason for Need:">Provides device/service specific data that may be used by the
+            call taker and/or responders.<vspace blankLines="1"/></t>
+            <t hangText="How Used by Call Taker:">Provide information to guide call takers to select appropriate responders,
+            give appropriate pre-arrival instructions to callers, and advise responders of what to be prepared for.  May
+            be used by responders to guide assistance provided.</t>
+          </list>
+        </t>
+      </section>
+     
       <section title="addDataDevInfo XML Schema">
       
             <t>
@@ -646,6 +666,8 @@
                 <xs:element name="UniqueDeviceID" 
                     type="xs:string" minOccurs="0" maxOccurs="1"/>
                 <xs:element name="TypeOfDeviceID" 
+                    type="xs:string" minOccurs="0" maxOccurs="1"/>
+               <xsd:element name="devicespecificType" 
                     type="xs:string" minOccurs="0" maxOccurs="1"/>
                 <xsd:element name="devicespecificSchema" 
                     type="xsd:anyURI" minOccurs="0" maxOccurs="1"/>
@@ -701,7 +723,7 @@
             <t hangText="Data Element:">vCARD for Subscriber’s Data<vspace blankLines="1"/></t>
             <t hangText="Use:">Required<vspace blankLines="1"/></t>
             <t hangText="XML Element:">&lt;SubscriberData&gt;<vspace blankLines="1"/></t>
-            <t hangText="Description:">Information known by the service provider about the
+            <t hangText="Description:">Information known by the service provider or device about the
               subscriber; i.e., Name, Address, Calling Party Number, Main Telephone Number and any
               other data. If the subscriber is an enterprise, this is the vCARD of the enterprise
               and the Company Name is used not the Name of the Caller. The telephone number is the
@@ -1412,6 +1434,7 @@
     <references title="Informational References">
       <?rfc include="reference.I-D.ietf-ecrit-phonebcp"?>
       <?rfc include="reference.I-D.ietf-ecrit-framework"?>
-      <?rfc include="reference.I-D.iab-privacy-considerations"?>          </references>
+      <?rfc include="reference.I-D.iab-privacy-considerations"?>      
+    </references>
    </back>
 </rfc>
