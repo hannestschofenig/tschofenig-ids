@@ -1,0 +1,1001 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE rfc SYSTEM 'rfc2629.dtd'>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+<?rfc toc="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc compact="no" ?>
+<?rfc sortrefs="yes" ?>
+<?rfc strict="yes" ?>
+<?rfc linkmailto="yes" ?>
+
+
+<rfc ipr="trust200902" docName="draft-ietf-kitten-sasl-oauth-00.txt" category="std">
+
+  <front>
+    <title abbrev="A SASL/GSS-API Mechanism for OAuth">A SASL and GSS-API Mechanism for OAuth</title>
+    <author fullname="William Mills" initials="W." surname="Mills">
+      <organization>Yahoo! Inc.</organization>
+      <address>
+        <postal>
+          <street/>
+          <city/>
+          <code/>
+          <region/>
+          <country/>
+        </postal>
+        <phone/>
+        <email>wmills@yahoo-inc.com </email>
+      </address>
+    </author>
+    <author fullname="Tim Showalter" initials="T." surname="Showalter">
+      <organization>Yahoo! Inc.</organization>
+      <address>
+        <postal>
+          <street/>
+          <city/>
+          <code/>
+          <region/>
+          <country/>
+          </postal>
+        <phone/>
+        <email>timshow@yahoo-inc.com</email>
+      </address>
+    </author>
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+
+    <date year="2011"/>
+    <workgroup>KITTEN</workgroup>
+
+    <abstract>
+      <t>
+        OAuth enables a third-party
+   application to obtain limited access to a protected resource, either on
+   behalf of a resource owner by orchestrating an approval interaction, or by allowing the
+   third-party application to obtain access on its own behalf.
+   </t>
+      <t>This document defines how an application client uses OAuth over the Simple Authentication and Security Layer (SASL) or the Generic Security Service Application Program Interface (GSS-API) to access a protected resource at a resource serve, and additionally defines
+	authorization and token issuing endpoint discovery. Thereby, it enables
+	schemes defined within the OAuth framework for non-HTTP-based application protocols.
+      </t> 
+      <t>Clients typically store the user's long term credential. This does, however, lead to 
+      significant security vulnerabilities, for example, when such a credential leaks. A significant benefit of OAuth for usage in those clients is that the password is replaced by a token. Tokens typically provided limited access rights and can be managed and
+        revoked separately from the user's long-term credential (password).
+	</t>
+    </abstract>
+  </front>
+
+  <middle>
+
+    <!-- ******************************************************************** -->
+
+    <section title="Introduction">
+
+<t>OAuth <xref target="I-D.ietf-oauth-v2"/> enables a third-party
+   application to obtain limited access to a protected resource, either on
+   behalf of a resource owner by orchestrating an approval interaction, or by allowing the
+   third-party application to obtain access on its own behalf. The core OAuth
+        specification <xref target="I-D.ietf-oauth-v2"/> does not define the interaction between the 
+        client and the resource server with the access to a protected resource using an Access Token. 
+        This functionality is described in two separate specifications, namely <xref
+        target="I-D.ietf-oauth-v2-bearer"/>, and <xref
+        target="I-D.ietf-oauth-v2-http-mac"/>, whereby the focus is on an HTTP-based environment only.
+    </t> 
+          
+      <t><xref target="oauth-exchange"/> shows the abstract message flow as shown in Figure 1 of <xref target="I-D.ietf-oauth-v2"/>.</t>
+       
+      <t>
+        <figure anchor="oauth-exchange" title="Abstract OAuth 2.0 Protocol Flow">
+          <artwork><![CDATA[
+     +--------+                               +---------------+
+     |        |--(A)- Authorization Request ->|   Resource    |
+     |        |                               |     Owner     |
+     |        |<-(B)-- Authorization Grant ---|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(C)-- Authorization Grant -->| Authorization |
+     | Client |                               |     Server    |
+     |        |<-(D)----- Access Token -------|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(E)----- Access Token ------>|    Resource   |
+     |        |                               |     Server    |
+     |        |<-(F)--- Protected Resource ---|               |
+     +--------+                               +---------------+
+]]></artwork>
+        </figure>
+      </t>
+
+  <t>This document  takes
+        advantage of the OAuth protocol and its deployment base to provide a way to use 
+        SASL <xref target="RFC4422"/> as well as the GSS-API <xref target="RFC2743"/> to gain access to resources when using non-HTTP-based protocols,
+        such as the Internet Message Access Protocol (IMAP) <xref target="RFC3501"/>, which is what this memo uses in the examples.</t>
+
+<t>The Simple Authentication and Security Layer (SASL) is a framework
+   for providing authentication and data security services in
+   connection-oriented protocols via replaceable mechanisms.  It
+   provides a structured interface between protocols and mechanisms.
+   The resulting framework allows new protocols to reuse existing
+   mechanisms and allows old protocols to make use of new mechanisms.
+   The framework also provides a protocol for securing subsequent
+   protocol exchanges within a data security layer.</t>
+   
+<t>
+The Generic Security Service Application Program Interface (GSS-API)
+   <xref target="RFC2743"/> provides a framework for applications to support multiple
+   authentication mechanisms through a unified interface. </t>
+
+<t>
+ This document
+  defines a SASL mechanism for OAuth, but it conforms to the new
+   bridge between SASL and the GSS-API called GS2 <xref target="RFC5801"/>.  This means
+   that this document defines both a SASL mechanism and a GSS-API
+   mechanism.  Implementers may be interested in 
+either the SASL, the GSS-API, or even both mechanisms. To
+   faciliate these two variants, the description has been split into two
+   parts, one part that provides normative references for those interested in the SASL OAuth mechanism (see <xref target="SASL-OAUTH"/>), and a second part for those implementers that wish to implement the GSS-API portion (see <xref target="GSSAPI-OAUTH"/>).
+</t>
+
+<t>When OAuth is integrated into SASL and the GSS-API the high-level steps are as follows:
+<list style="empty"> 
+<t>  (A)  The client requests authorization from the resource owner.  The
+        authorization request can be made directly to the resource owner
+        (as shown), or preferably indirectly via the authorization
+        server as an intermediary.</t>
+<t>   (B)  The client receives an authorization grant which is a credential
+        representing the resource owner's authorization, expressed using
+        one of four grant types defined in this specification or using
+        an extension grant type.  The authorization grant type depends
+        on the method used by the client to request authorization and
+        the types supported by the authorization server.</t>
+<t>   (C)  The client requests an access token by authenticating with the
+        authorization server and presenting the authorization grant.</t>
+<t>   (D)  The authorization server authenticates the client and validates
+        the authorization grant, and if valid issues an access token.</t>
+<t>   (E)  The client requests the protected resource from the resource
+        server and authenticates by presenting the access token.</t>
+<t>   (F)  The resource server validates the access token, and if valid,
+        serves the request.</t>
+</list> 
+</t>
+
+    <t>Steps (E) and (F) are not defined in <xref
+          target="I-D.ietf-oauth-v2"/> and are the main functionality specified within this document. 
+       Additionally, an optional discovery exchange is defined. Consequently, the message exchange shown in <xref target="overview"/> is the result of this specification.
+      (1) and (2) denote the optional discovery exchange steps that may happen before the OAuth 2.0 protocol 
+      exchange messages in steps (A)-(D) are executed. Steps (E) and (F) also defined in this specification. 
+      </t>
+      <t>
+        <figure anchor="overview" title="OAuth SASL Architecture">
+          <artwork><![CDATA[
+                                                              ----+
+   +--------+                                  +---------------+  |
+   |        |--(A)-- Authorization Request --->|   Resource    |  |
+   |        |                                  |     Owner     |  |Plain
+   |        |<-(B)------ Access Grant ---------|               |  |OAuth
+   |        |                                  +---------------+  |2.0
+   |        |                                                     | 
+   |        |         Client Credentials &     +---------------+  |
+   |        |--(C)------ Access Grant -------->| Authorization |  |
+   | Client |                                  |     Server    |  |
+   |        |<-(D)------ Access Token ---------|               |  |
+   |        |      (w/ Optional Refresh Token) +---------------+  |
+   |        |                                                 ----+
+   |        |
+   |        |                                                 ----+
+   |        |        (Optional discovery)      +---------------+  |
+   |        |--(1)------- User Name  --------->|               |  |
+   | Client |                                  |               |  |
+   |        |<-(2)------ Authentication -------|               |  |
+   |        |          endpoint information    |    Resource   |  |OAuth
+   |        |                                  |     Server    |  |over
+   |        |--(E)------ Access Token -------->|               |  |SASL/
+   |        |                                  |               |  |GSS-
+   |        |<-(F)---- Protected Resource -----|               |  |API
+   +--------+                                  +---------------+  |
+                                                              ----+
+]]></artwork>
+        </figure>
+      </t>
+
+      <t>
+        <list style="empty">
+          <t>Note: The discovery procedure in OAuth is still work in progress. Hence, the discovery
+            components described in this document should be considered incomplete and a tentative
+            proposal. In general, there is a trade off between a generic, externally available
+            defined discovery mechanisms (such as Webfinger using host-meta <xref
+              target="I-D.hammer-hostmeta"/>, or <xref target="I-D.jones-simple-web-discovery"/>) and configuration information exchanged in-band between
+            the SASL communication endpoints. </t>
+        </list>
+      </t>
+      
+            <t>It is worthwhile to note that this specification is also compatible with OAuth 1.0a <xref
+        target="RFC5849"/>.</t>
+
+    </section>
+
+    <!-- ******************************************************************** -->
+
+    <section anchor="terminology" title="Terminology">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT",
+        "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in
+	<xref target="RFC2119"/>.</t>
+      <t>The reader is assumed to be familiar with the terms used in the OAuth 2.0 specification <xref
+          target="I-D.ietf-oauth-v2"/>.</t>
+      <t>In examples, "C:" and "S:" indicate lines sent by the client and server respectively. Line
+        breaks have been inserted for readability.</t>
+      <t>Note that the IMAP SASL specification requires base64 encoding message, not this memo.</t>
+    </section>
+
+    <!-- ******************************************************************** -->
+
+    <section anchor="SASL-OAUTH" title="OAuth SASL Mechanism Specification">
+
+      <t>SASL is used as a generalized authentication method in a variety of application layer protocols. This
+        document defines two SASL mechanisms for usage with OAuth: "OAUTH" and "OAUTH-PLUS". The "OAUTH" SASL
+        mechanism provides bearer token alike semantic for SASL while "OAUTH-PLUS" provides a semantic similar to 
+        OAuth MAC authentication by utilizing a channel binding mechanism <xref target="RFC5056"/>.</t>
+
+
+      <section title="Channel Binding">
+	
+	<t>If the specification for the underlying
+        authorization scheme requires a security layer, such as TLS <xref target="RFC5246"/>, the server 
+	SHOULD only offer a mechanism where channel binding can be enabled.</t>
+
+	  <t>The channel binding data is computed by the client based on it's choice of
+	  preferred channel binding type.   As specified in <xref target="RFC5056"/>, the
+	  channel binding information MUST start with the channel binding unique prefix, followed
+	  by a colon (ASCII 0x3A), followed by a base64 encoded channel binding
+	  payload.  The channel binding payload is the raw data from the channel binding
+	  type if the raw channel binding data is less than 500 bytes. If the raw channel binding data is 500 bytes or
+	  larger then a SHA-1 <xref target="RFC3174"/> hash of
+	  the raw channel binding data is computed.</t>
+
+	    <t>If the client is using tls-unique for a channel binding then the raw channel
+	    binding data equals the first TLS finished message.  This is under the 500 byte
+	    limit, so the channel binding payload sent to the server would be the base64
+	    encoded first TLS finished message.</t>
+	    
+	    <t>In the case where the client has chosen tls-endpoint, the raw channel binding
+	    data is the certificate of the server the client connected to, which will
+	    frequently be 500 bytes or more. If it is then the channel binding payload
+	    is the base64 encoded SHA-1 hash of the server certificate.</t>
+      </section>
+
+
+      <section title="Initial Client Response">
+        <t>The SASL client response is formatted as an HTTP <xref target="RFC2616"/> request.  The HTTP request is limited in
+        that the path MUST be "/".  In the OAUTH mechanism no query string is allowed.  The following  header lines are
+        defined in the client response: 
+	<list><t>
+	  <list style="hanging">
+            <t hangText="User (OPTIONAL):">Contains the user identifier being authenticated, and is
+              provided to allow correct discovery information to be returned.</t>
+            <t hangText="Host (REQUIRED):">Contains the host name to which the client connected.</t>
+            <t hangText="Authorization (REQUIRED):">An HTTP Authorization header.</t>
+          </list>
+        </t></list>
+        </t>
+        <t> The user name is provided by the client to allow the discovery information to be
+        customized for the user, a given server could allow multiple authenticators and it needs to
+        return the correct one. For instance, a large ISP could provide mail service for 
+          several domains who manage their own user information. For instance, users at foo-example.com
+          could be authenticated by an OAuth service at https://oauth.foo-example.com/, and users at
+          bar-example.com could be authenticated by https://oauth.bar-example.com, but both could be served
+          by a hypothetical IMAP server running at a third domain, imap.example.net. </t>
+
+	  <section title="Query String in OAUTH-PLUS">
+	    <t> In the OAUTH-PLUS mechanism the channel binding information is carried in
+	    the query string.  OAUTH-PLUS defines following query parameter(s):
+	      <list><t>
+		<list style="hanging">
+		  <t hangText="cbdata (REQUIRED):">Contains the
+		  base64 encoded channel binding data, properly 
+		  escaped as an HTML query parameter value.</t>
+		</list>
+	      </t></list>
+	    </t>
+	  </section>
+
+
+      </section>
+
+      <section title="Server's Response">
+        <t>The server validates the response per the specification for the authorization
+        scheme used. If the authorization scheme used includes signing of the request
+        parameters the client must provide a complete HTTP style request that satisfies
+	the data requirements for the scheme in use.  
+	</t>
+	<t>In the OAUTH-PLUS mechanism the server examines the channel binding data,
+        extracts the channel binding unique prefix, and extracts the raw channel biding
+        data based on the channel binding type used.  It then computes it's own copy of
+        the channel binding payload and compares that to the payload sent by the client in
+        the query parameters of the tunneled HTTP request.  Those two must be equal for
+        channel binding to succeed.
+	</t>
+        <t> The server responds to a successfully verified client message by completing the SASL
+          negotiation. The authentication scheme MUST carry the user ID to be used as the 
+	  authorization identity (identity to act as). The server
+          MUST use that ID as the user being authorized, that is the user assertion
+          we accept and not other information such as from the URL or
+          "User:" header. </t>
+        <t> The server responds to failed authentication by sending discovery information
+          in an HTTP style response with the HTTP status code set to 401, and then
+	  failing the authentication.   
+	</t>
+	<t>If channel binding is in use and the channel
+	  binding fails the server responds with a minimal HTTP response without discovery
+          information and the HTTP status code set to 412 to indicate that the channel
+	  binding precondition failed.  If the authentication scheme in use does not include
+	  signing the server SHOULD revoke the presented credential and the client SHOULD
+          discard that credential.
+	</t>
+ </section>
+ 
+	 <section title="Mapping to SASL Identities">
+	     <t> Some OAuth mechanisms can provide both an authorization identity and an  
+	     authentication identity.  An example of this is OAuth 1.0a <xref target="RFC5849"/> where 
+	     the consumer key (oauth_consumer_key) identifies the entity using to token which equates to the 
+	     SASL authentication identity, and is authenticated using the shared secret.  The 
+	     authorization identity in the OAuth 1.0a case is carried in the token (per the requirement 
+	     above), which SHOULD validated independently.  The server MAY use a consumer key or
+	     other comparable identity in the OAuth authorization scheme as the SASL authentication identity.
+	     If an appropriate authentication identity is not available the server MUST use the 
+	     identity asserted in the token.</t>
+        
+      </section>
+
+      <section title="Discovery Information">
+        <t>The server MUST send discovery information in response to a failed authentication 
+          exchange or a request with an empty Authorization header. If discovery information is
+          returned it MUST include an authentication
+          endpoint appropriate for the user. If the "User" header is present the discovery
+          information MUST be for that user. Discovery information is provided by the server to the
+	  client to allow a client to discover the appropriate OAuth authentication and token
+	  endpoints. The client then uses that information to obtain the access token needed for
+	  OAuth authentication. The client SHOULD cache and re-use the user specific discovery
+	  information for service endpoints. </t>
+	<t>Discovery information makes use of both the WWW-Authenticate header as defined
+        in HTTP Authentication: Basic and Digest Access Authentication  <xref target="RFC2617"/> and Link headers as
+        defined in <xref target="RFC5988"/>.  The following elements are defined for discovery information:  
+	    <list style="hanging">
+            <t hangText="WWW-Authenticate"> A WWW-Authenticate header for each authentication scheme
+	      supported by the server.  Authentication scheme names are case
+	      insensitive. The following <xref target="RFC2617"/> authentication
+	      parameters are defined:
+	      	    <list style="hanging">
+		    <t hangText="realm">REQUIRED -- (as defined by RFC2617)</t>
+		    <t hangText="scope">OPTIONAL -- A quoted string.  This provides the
+		        client an OAuth 2 scope known to be valid for the resource.</t>
+		    </list>
+	    </t>
+            <t hangText="oauth2-authenticator"> An <xref target="RFC5988"/> Link header specifying
+	        the <xref target="I-D.ietf-oauth-v2"/> authentication endpoint.  This link has an
+		OPTIONAL link-extension "scheme", if included this link applies ONLY to the
+		specified scheme.
+	    </t>
+            <t hangText="oauth2-token"> An <xref target="RFC5988"/> Link header specifying
+	        the <xref target="I-D.ietf-oauth-v2"/> token endpoint.  This link has an
+		OPTIONAL link-extension "scheme", if included this link applies ONLY to the
+		specified scheme.
+	    </t>
+            <t hangText="oauth-initiate"> (Optional) An <xref target="RFC5988"/> Link header specifying
+	        the OAuth1.0a <xref target="RFC5849"/> initiation endpoint.  The server MUST send this if
+		"OAuth"  is included in the supported list of HTTP authentication schemes for the
+		server. 
+	    </t>
+            <t hangText="oauth-authorize"> (Optional) An <xref target="RFC5988"/> Link header specifying
+	        the OAuth1.0a <xref target="RFC5849"/> authentication endpoint.  The server MUST send this if
+		"OAuth"  is included in the supported list of HTTP authentication schemes for the
+		server. 
+	    </t>
+            <t hangText="oauth-token"> (Optional) An <xref target="RFC5988"/> Link header specifying
+	        the OAuth1.0a <xref target="RFC5849"/> token endpoint.  The server MUST send this if
+                "OAuth"  is included in the supported list of HTTP authentication schemes for the
+		server.  This link type has one link-extension "grant-types" which is a space
+		separated list of the OAuth 2.0 grant types that can be used at the token
+		endpoint to obtain a token.
+	    </t>
+          </list>
+        </t>
+        <t>Usage of the URLs provided in the discovery information is defined in the relevant 
+          specifications. If the server supports multiple authenticators the discovery information
+          returned for unknown users MUST be consistent with the discovery information for known
+          users to prevent user enumeration. The OAuth 2.0 specification <xref
+	  target="I-D.ietf-oauth-v2"/> supports multiple types of authentication schemes and the server
+	  MUST specify at least one supported authentication scheme in the discovery information. The server
+          MAY support multiple schemes and MAY support schemes not listed in the discovery
+          information.</t>
+	<t>If the resource server provides a scope the client SHOULD always request scoped
+	tokens from the token endpoint.  The client MAY use a scope other than the one
+	provided by the resource server.  Scopes other than those advertised by the
+	resource server must be defined by the resource owner and provided in service
+	documentation (which is beyond the scope of this memo).
+	</t>
+      </section>
+
+      <section title="Use of Signature Type Authorization">
+        <t>This mechanism  supports authorization using signatures, which requires that both client and
+          server construct the string to be signed. OAuth 2 is designed for
+          authentication/authorization to access specific URIs. SASL is designed for user authentication,
+          and has no facility for being more specific. In this mechanism we require an HTTP style
+          format specifically to support signature type authentication, but this is extremely
+          limited. The HTTP style request is limited to a path of "/". This 
+	  mechanism is in the SASL model, but is
+          designed so that no changes are needed if there is a revision of SASL which supports more
+          specific resource authorization, e.g. IMAP access to a specific folder or FTP access
+          limited to a specific directory. </t>
+        <t> Using the example in the MAC specification <xref target="I-D.ietf-oauth-v2-http-mac"/>
+        as a starting point, on an IMAP server running on port 143 and given
+        the MAC style authorization request (with long lines wrapped for readability) below: 
+<figure>
+            <artwork><![CDATA[
+GET / HTTP/1.1 
+Host: server.example.com 
+User: user@example.com
+Authorization: MAC token="h480djs93hd8",timestamp="137131200",
+               nonce="dj83hs9s",signature="YTVjyNSujYs1WsDurFnvFi4JK6o="
+
+]]></artwork>
+          </figure>
+        </t>
+
+        <t>The normalized request string would be constructed per the MAC specification <xref
+            target="I-D.ietf-oauth-v2-http-mac" />. In this example the normalized
+            request string with the new line separator character is represented by
+	    "\n" for display purposes only would be:<figure> 
+            <artwork><![CDATA[
+h480djs93hi8\n
+137131200\n
+dj83hs9s\n
+\n
+GET\n
+server.example.com\n
+143\n
+/\n
+\n
+]]></artwork>
+          </figure>
+        </t>
+      </section>
+      
+           
+    </section>
+
+    <!-- ******************************************************************** -->
+
+<section anchor="GSSAPI-OAUTH" title="GSS-API OAuth Mechanism Specification"> 
+
+<t>Note: The normative references in this section are informational for SASL
+   implementers, but they are normative for GSS-API implementers.</t>
+
+<t>The SASL OAuth mechanism is also a GSS-API mechanism and the messages 
+   described in <xref target="SASL-OAUTH"/> are the same, but
+   <list style="numbers"> 
+   <t>the GS2 header on the client's
+   first message is excluded when OAUTH is used as a GSS-API
+   mechanism, and</t>
+   <t>initial context token
+   header is prefixed to the client's first authentication message
+   (context token), as described in Section 3.1 of RFC 2743,
+   </t>
+   </list> 
+   </t>
+
+   <t>The GSS-API mechanism OID for OAuth is [[TBD: IANA]].</t>
+
+   <t>OAuth security contexts always have the mutual_state flag
+   (GSS_C_MUTUAL_FLAG) set to TRUE.  OAuth supports credential
+   delegation, therefore security contexts may have the
+   deleg_state flag (GSS_C_DELEG_FLAG) set to either TRUE or FALSE.
+   </t>
+
+   <t>The mutual authentication property of this mechanism relies on
+   successfully comparing the TLS server identity with the negotiated
+   target name.  Since the TLS channel is managed by the application
+   outside of the GSS-API mechanism, the mechanism itself is unable to
+   confirm the name while the application is able to perform this
+   comparison for the mechanism.  For this reason, applications MUST
+   match the TLS server identity with the target name, as discussed in
+   <xref target="RFC6125"/>.</t>
+
+   <t>The OAuth mechanism does not support per-message tokens or
+   GSS_Pseudo_random.</t>
+
+   <t>OAuth supports a standard generic name syntax for acceptors, such as
+   GSS_C_NT_HOSTBASED_SERVICE (see <xref target="RFC2743"/>, Section 4.1).  
+   These
+   service names MUST be associated with the  "entityID" claimed by
+   the RP.
+
+   OAuth supports only a single name type for initiators:
+   GSS_C_NT_USER_NAME.  GSS_C_NT_USER_NAME is the default name type.
+
+   The query, display, and exported name syntaxes for OAuth principal
+   names are all the same.  There is no OAuth-specific name syntax;
+   applications SHOULD use generic GSS-API name types, such as
+   GSS_C_NT_USER_NAME and GSS_C_NT_HOSTBASED_SERVICE (see <xref target="RFC2743"/>,
+
+   Section 4).  The exported name token does, of course, conform to
+   <xref target="RFC2743"/>, Section 3.2, but the "NAME" part of the token should be
+   treated as a potential input string to the OAuth name normalization
+   rules.
+</t>
+
+</section> 
+
+
+    <!-- ******************************************************************** -->
+
+
+    <section title="Examples">
+      <t>These example illustrate exchanges between an IMAP client and an IMAP server.</t>
+
+      <section title="Successful Bearer Token Exchange">
+
+        <t>This example shows a successful OAuth 2.0 bearer token exchange with an initial client
+          response. Note that line breaks are inserted for readability.</t>
+        <t>
+          <figure>
+            <artwork><![CDATA[
+S: * IMAP4rev1 Server Ready 
+C: t0 CAPABILITY 
+S: * CAPABILITY IMAP4rev1 AUTH=OAUTH
+S: t0 OK Completed
+C: t1 AUTHENTICATE OAUTH R0VUIC8gSFRUUC8xLjENCkhvc3Q6IGltYXAuZXhhbXBs
+      ZS5jb20NCkF1dGhvcml6YXRpb246IEJFQVJFUiAidkY5ZGZ0NHFtVGMyTnZiM1J
+      sY2tCaGJIUmhkbWx6ZEdFdVkyOXRDZz09Ig0KDQo=
+S: +
+S: t1 OK SASL authentication succeeded
+]]></artwork>
+          </figure>
+        </t>
+        <t>As required by IMAP <xref target="RFC3501"/>, the payloads are base64-encoded. The
+          decoded initial client response is: <figure>
+            <artwork><![CDATA[
+GET / HTTP/1.1 
+Host: imap.example.com 
+Authorization: BEARER "vF9dft4qmTc2Nvb3RlckBhbHRhdmlzdGEuY29tCg=="
+]]></artwork>
+          </figure>
+        </t>
+        <t>The line containing just a "+" and a space is an empty response from the server. This response contains
+          discovery information, and in the success case no discovery information is necessary so the
+          response is empty. Like other messages, and in accordance with the IMAP SASL binding, the
+          empty response is base64-encoded. </t>
+      </section>
+
+    <!-- ******************************************************************** -->
+      <section title="MAC Authentication with Channel Binding">
+        <t>This example shows a channel binding failure.  The example sends the same
+        request as above, but in the context of an OAUTH-PLUS exchange the channel binding
+	information is missing. Note that line breaks are inserted for
+        readability.</t>
+        <t>
+          <figure>
+            <artwork><![CDATA[
+S: * CAPABILITY IMAP4rev1 AUTH=OAUTH SASL-IR IMAP4rev1 Server Ready 
+S: t0 OK Completed 
+C: t1 AUTHENTICATE MAC R0VUIC8/Y2JkYXRhPSJTRzkzSUdKcFp5QnBjeUJoSUZSTVV5Q
+   m1hVzVoYkNCdFpYTnpZV2RsUHdvPSIgSFRUUC8xLjENCkhvc3Q6IHNlcnZlci5leGFtcG
+   xlLmNvbQ0KVXNlcjogdXNlckBleGFtcGxlLmNvbQ0KQXV0aG9yaXphdGlvbjogTUFDIHR
+   va2VuPSJoNDgwZGpzOTNoZDgiLHRpbWVzdGFtcD0iMTM3MTMxMjAwIixub25jZT0iZGo4
+   M2hzOXMiLHNpZ25hdHVyZT0iV1c5MUlHMTFjM1FnWW1VZ1ltOXlaV1F1SUFvPSINCg0K
+S: +
+S: t1 OK SASL authentication succeeded
+]]></artwork>
+          </figure>
+        </t>
+        <t>As required by IMAP <xref target="RFC3501"/>, the payloads are
+      base64-encoded. The
+          decoded initial client response is: <figure>
+            <artwork><![CDATA[
+GET /?cbdata="SG93IGJpZyBpcyBhIFRMUyBmaW5hbCBtZXNzYWdlPwo=" HTTP/1.1
+Host: server.example.com
+User: user@example.com
+Authorization: MAC token="h480djs93hd8",timestamp="137131200",
+               nonce="dj83hs9s",signature="WW91IG11c3QgYmUgYm9yZWQuIAo="
+]]></artwork>
+          </figure>
+        </t>
+        <t>The line containing just a "+" and a space is an empty response from the server. This response contains
+          discovery information, and in the success case no discovery information is necessary so the
+          response is empty. Like other messages, and in accordance with the IMAP SASL binding, the
+          empty response is base64-encoded.
+        </t>
+      </section>
+
+    <!-- ******************************************************************** -->
+
+      <section title="Failed Exchange">
+        <t>This example shows a failed exchange because of the empty Authorization header, which is
+          how a client can query for discovery information. Note that line breaks are inserted for
+          readability.</t>
+        <t>
+          <figure>
+            <artwork><![CDATA[
+S: * CAPABILITY IMAP4rev1 AUTH=OAUTH SASL-IR IMAP4rev1 Server Ready 
+S: t0 OK Completed 
+C: t1 AUTHENTICATE OAUTH R0VUIC8gSFRUUC8xLjENClVzZXI6IHNjb290ZXJAYW
+   x0YXZpc3RhLmNvbQ0KSG9zdDogaW1hcC55YWhvby5jb20NCkF1dGhlbnRpY2F0ZT
+   ogDQoNCg==
+S: + SFRUUC8xLjEgNDAxIFVuYXV0aG9yaXplZA0KV1dXLUF1dGhlbnRpY2F0ZTogQk
+   VBUkVSIHJlYWxtPSJleGFtcGxlLmNvbSINCkxpbms6IDxodHRwczovL2xvZ2luLn
+   lhaG9vLmNvbS9vYXV0aD4gcmVsPSJvYXV0aDItYXV0aGVudGljYXRvciIgIA0KTG
+   luazogPGh0dHBzOi8vbG9naW4ueWFob28uY29tL29hdXRoPiByZWw9Im91YXRoMi
+   10b2tlbiINCg0K
+S: t1 NO SASL authentication failed
+]]></artwork>
+          </figure>
+        </t>
+        <t> The decoded initial client response is: <figure>
+            <artwork><![CDATA[
+GET / HTTP/1.1 
+User: alice@example.com 
+Host: imap.example.com 
+Authorization: 
+            ]]></artwork>
+          </figure>
+        </t>
+        <t> The decoded server discovery response is: <figure>
+            <artwork><![CDATA[
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: BEARER realm="example.com"
+Link: <https://login.example.com/oauth> rel="oauth2-authenticator"
+Link: <https://login.example.com/oauth> rel="oauth2-token"
+            ]]></artwork>
+          </figure>
+        </t>
+      </section>
+
+    <!-- ******************************************************************** -->
+      <section title="Failed Channel Binding">
+        <t>This example shows a channel binding failure in a discovery request. 
+        The channel binding information is empty.  Note that line breaks are inserted for
+        readability.</t>
+        <t>
+          <figure>
+            <artwork><![CDATA[
+S: * CAPABILITY IMAP4rev1 AUTH=OAUTH SASL-IR IMAP4rev1 Server Ready 
+S: t0 OK Completed 
+C: t1 AUTHENTICATE OAUTH R0VUIC8/Y2JkYXRhPSIiIEhUVFAvMS4xDQpVc2VyOi
+   BhbGljZUBleGFtcGxlLmNvbQ0KSG9zdDogaW1hcC5leGFtcGxlLmNvbQ0KQXV0aG
+   9yaXphdGlvbjoNCg0K
+S: + SFRUUC8xLjEgNDEyIFByZWNvbmRpdGlvbiBGYWlsZWQNCg0KDQo=
+S: t1 NO SASL authentication failed
+]]></artwork>
+          </figure>
+        </t>
+        <t> The decoded initial client response is: <figure>
+            <artwork><![CDATA[
+GET /?cbdata="" HTTP/1.1 
+User: alice@example.com 
+Host: imap.example.com 
+Authorization: 
+            ]]></artwork>
+          </figure>
+        </t>
+        <t> The decoded server response is: <figure>
+            <artwork><![CDATA[
+HTTP/1.1 412 Precondition Failed
+            ]]></artwork>
+          </figure>
+        </t>
+      </section>
+
+    <!-- ******************************************************************** -->
+
+    </section>
+
+    <!-- ******************************************************************** -->
+
+
+    <section title="Security Considerations">
+      <t> This mechanism does not provide a security layer, but does provide a provision for
+        channel binding. The OAuth 2 specification <xref
+          target="I-D.ietf-oauth-v2"/> allows for a variety of usages, and the security properties
+        of these profiles vary. The usage of bearer tokens, for example, provide security features
+        similar to cookies. Applications using this mechanism SHOULD exercise the same level of care
+        using this mechanism as they would in using the SASL PLAIN mechanism. In
+        particular, TLS 1.2 or an equivalent secure channel MUST be implemented and its
+        usage is RECOMMENDED. 
+	</t>
+      <t> Channel binding in this mechanism has different properties based on the authentication
+        scheme used.  Channel binding to TLS with a
+	bearer token provides only a binding to the TLS layer.  Authentication schemes like MAC 
+	tokens have a signature over the channel binding information. These provide additional
+        protection against a man in the middle attacks, and the MAC authorization header is bound to the
+	channel and only valid in that context.  
+	</t>
+      <t> It is possible that SASL will be authenticating a connection and the life of that 
+        connection may outlast the life of the token used to authenticate
+        it. This is a common problem in application protocols where connections are long-lived, and
+        not a problem with this mechanism per se.  Servers MAY unilaterally disconnect
+        clients in accordance with the application protocol.
+	</t>
+      <t>An OAuth credential is not equivalent to the password or primary account
+        credential. There are protocols like  XMPP that allow actions like change
+        password.  The server SHOULD ensure that actions taken in the authenticated
+        channel are appropriate to the strength of the presented credential.
+        </t>
+      <t> It is possible for an application server running on Evil.example.com to tell a client to
+        request a token from Good.example.org. A client following these instructions will pass a
+        token from Good to Evil. This is by design, since it is possible that Good and Evil are
+        merely names, not descriptive, and that this is an innocuous activity between cooperating
+        two servers in different domains. For instance, a site might operate their authentication
+        service in-house, but outsource their mail systems to an external entity. </t>
+        
+          <t>Tokens have a lifetime associated with them. Reducing both the lifetime of a token provides security benefits in case that tokens leak. In addition a previously obtained
+        token MAY be revoked or rendered invalid at any time. The client MAY request a new access token for each
+        connection to a resource server, but it SHOULD cache and re-use access credentials that appear
+        to be valid.</t>
+
+    </section>
+
+    <!-- ******************************************************************** -->
+
+    <section title="IANA Considerations">
+     <section title="SASL Registration">
+      <t> The IANA is requested to register the following SASL profile: <list style="empty">
+          <t>SASL mechanism profile: OAUTH</t>
+          <t>Security Considerations: See this document</t>
+          <t>Published Specification: See this document</t>
+          <t>For further information: Contact the authors of this document.</t>
+          <t>Owner/Change controller: the IETF</t>
+          <t>Note: None</t>
+        </list>
+      </t>
+      <t> The IANA is requested to register the following SASL profile: <list style="empty">
+          <t>SASL mechanism profile: OAUTH-PLUS</t>
+          <t>Security Considerations: See this document</t>
+          <t>Published Specification: See this document</t>
+          <t>For further information: Contact the authors of this document.</t>
+          <t>Owner/Change controller: the IETF</t>
+          <t>Note: None</t>
+        </list>
+      </t>
+     </section>
+     <section title="GSS-API Registration">
+        <t>IANA is further requested to assign an OID for this GSS mechanism
+   in the SMI numbers registry, with the prefix of
+   iso.org.dod.internet.security.mechanisms (1.3.6.1.5.5) and to
+   reference this specification in the registry.</t>
+    </section> 
+
+     <section title="Link Type Registration">
+      <t> Pursuant to <xref target="RFC5988"/> The following link type registrations 
+      [[will be]] registered by mail to link-relations@ietf.org.
+      </t>
+
+      <section title="OAuth 2 Authentication Endpoint">
+      <t>
+      <list style='symbols'>
+          <t>
+	      Relation Name: oauth2-authenticator
+          </t>
+          <t>
+	      Description: An OAuth 2.0 authentication endpoint. 
+          </t>
+          <t>
+	      Reference:
+          </t>
+          <t>
+	      Notes: This link type indicates an OAuth 2.0 authentication endpoint
+	      that can be used for user authentication/authorization for the endpoint
+	      providing the link.
+          </t>
+          <t>
+	      Application Data: [optional]
+          </t>
+	</list>
+        </t>
+      </section>
+      <section title="OAuth 2 Token Endpoint">
+      <t>
+        <list style='symbols'>
+          <t>Relation Name: oauth2-token</t>
+          <t>
+	      Description: The OAuth token endpoint used to get tokens for access.
+          </t>
+          <t>
+	      Reference:
+          </t>
+          <t>
+	      Notes: The OAuth 2.0 token endpoint to be used for obtaining tokens
+	      to access the endpoint providing the link.
+          </t>
+          <t>
+	      Application Data: This link type has one link-extension "grant-types",
+	      which is the OAuth 2.0 grant types that can be used at the token endpoint
+	      to obtain a token.  This is not an exclusive list, it provides a hint
+	      to the application of what SHOULD be valid.  A token endpoint MAY support
+	      additional grant types not advertised by a resource endpoint.
+          </t>
+	</list>
+      </t>
+      </section>
+      <section title="OAuth 1.0a Request Initiation Endpoint">
+      <t>
+        <list style='symbols'>
+          <t>Relation Name: oauth-initiate</t>
+          <t>
+	      Description: The OAuth 1.0a request initiation endpoint used to get tokens for access.
+          </t>
+          <t>Reference: </t>
+          <t>
+	      Notes: The OAuth 1.0a  endpoint used to initiate the sequence, this temporary
+	      request is what the user approves to grant access to the resource.
+          </t>
+          <t>Application Data: </t>
+	</list>
+      </t>
+      </section>
+      <section title="OAuth 1.0a Authorization Endpoint">
+      <t>
+        <list style='symbols'>
+          <t>Relation Name: oauth-authorize</t>
+          <t>
+	      Description: The OAuth 1.0a authorization endpoint used to approve an access request.
+          </t>
+          <t>Reference: </t>
+          <t>
+	      Notes: 
+          </t>
+          <t>Application Data: </t>
+	</list>
+      </t>
+      </section>
+      <section title="OAuth 1.0a Token Endpoint">
+      <t>
+        <list style='symbols'>
+          <t>Relation Name: oauth-token</t>
+          <t>
+	      Description: The OAuth 1.0a token endpoint used to get tokens for access.
+          </t>
+          <t>Reference: </t>
+          <t>
+	      Notes: 
+          </t>
+          <t>Application Data: </t>
+	</list>
+      </t>
+      </section>
+     </section>
+
+    </section>
+
+
+
+    <!-- ******************************************************************** -->
+
+
+    <section  title='Appendix A -- Document History'>
+      <t>
+        [[ to be removed by RFC editor before publication as an RFC ]]
+      </t>
+
+      <t>
+        -04
+      </t>
+      <t>
+        <list style='symbols'>
+          <t>
+	  Editorial clean-up and text in introduction improved.
+          </t>
+	  <t>
+Added GSS-API support	  
+</t>
+        </list>
+      </t>
+
+      <t>
+        -03
+      </t>
+      <t>
+        <list style='symbols'>
+          <t>
+	  Fixing channel binding, not tls-unique specific.  Also defining how the CB data is
+	  properly generated.
+          </t>
+	  <t>
+	  Various small editorial changes and embarassing spelling fixes.
+	  </t>
+        </list>
+      </t>
+
+      <t>
+        -02
+      </t>
+      <t>
+        <list style='symbols'>
+          <t>
+	  Filling out Channel Binding
+          </t>
+          <t>
+	  Added text clarifying how to bind to the 2 kinds of SASL identities.
+          </t>
+        </list>
+      </t>
+
+      <t>
+        -01
+      </t>
+      <t>
+        <list style='symbols'>
+          <t>
+	      Bringing this into line with draft 12 of the core spec, the 
+	      bearer token spec, and references the MAC token spec
+          </t>
+          <t>
+	      Changing discovery over to using the Link header construct from RFC5988.
+          </t>
+          <t>
+	      Added the seeds of channel binding.
+          </t>
+        </list>
+      </t>
+
+      <t>
+        -00
+      </t>
+      <t>
+        <list style='symbols'>
+          <t>
+            Initial revision
+          </t>
+        </list>
+      </t>
+    </section>
+
+    <!-- ******************************************************************** -->
+
+  </middle>
+
+  <back>
+
+    <references title="Normative References">
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2616.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2617.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.3174.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4422.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5056.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5849.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5929.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5988.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2743.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5801.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6125.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-v2.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-v2-bearer.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-v2-http-mac.xml' ?>
+    </references>
+
+    <references title="Informative References">
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.3501.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.hammer-hostmeta.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.jones-simple-web-discovery.xml' ?>      
+      
+    </references>
+
+
+  </back>
+</rfc>
