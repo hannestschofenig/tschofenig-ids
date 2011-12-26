@@ -138,9 +138,8 @@ client hello, MUST contain the CachedInformation structure.
             <artwork>
               <![CDATA[
       enum {
-           certificate_chain(1), trusted_cas(2), certificate(3) (255)
+           certificate_chain(1), trusted_cas(2) (255)
       } CachedInformationType;
-
 
       struct {
            CachedInformationType type;
@@ -207,35 +206,29 @@ The server MAY support other cached objects that are not present in the extensio
 </t>
 
 <t>Following a successful exchange of "cached_information" extensions,
-   the server MAY substitute cached information in the handshake
-   exchange with a matching CachedObject from the client hello
-   "cached_information" extension.
-</t>
-<t>A substitution syntax that defines how the CachedObject structure is
-   carried in the handshake message MUST be defined for each
-   CachedInformationType in a way that does not violate the syntax of
-   the handshake message. The substitution syntax for
-   certificate_chain(1) and trusted_cas(2) is provided below.</t>
+   the server MAY send fingerprints of the cached information in the handshake
+   exchange as a replacement for the exchange of the full data. 
+   <xref target="certificate_chain"/> and <xref target="trusted_cas"/> defines the syntax of the 
+fingerprinted information.</t>
 
-<t>The handshake protocol MUST proceed using the cached information as
+<t>The handshake protocol MUST proceed using the information as
    if it was provided in the handshake protocol. The Finished message
    MUST be calculated over the actual data exchanged in the handshake
    protocol. That is, the Finished message will be calculated over the
    hash values of cached information objects and not over the cached
    information that were omitted from transmission.</t>
 
-<t>The server MUST NOT include more than one CachedObject as
-   substitution for the cached information.</t>
+<t>The server MUST NOT include more than one fingerprint for a single information element, i.e., at maximum only one CachedObject structure 
+per replaced information is provided.</t>
 
 
-<section title="Substitution Syntax for certificate_chain">
+<section anchor="certificate_chain" title="Fingerprint of the Certificate Chain">
 
-<t>When an object of type certificate_chain is provided in the client
-   hello, the server MAY substitute the cached information with a
-   matching hash value received from the client by expanding the
-   Certificate handshake message as follows.</t>
+<t>When an object of type 'certificate_chain' is provided in the client
+   hello, the server MAY send a fingerprint instead of the complete certificate chain as shown below.</t>
 
-<t>Original handshake message syntax defined in RFC 5246 <xref target="RFC5246"/>:</t>
+<t>The original handshake message syntax is defined in RFC 5246 <xref target="RFC5246"/> and has the following 
+structure:</t>
 
         <t><figure>
             <artwork>
@@ -248,8 +241,7 @@ The server MAY support other cached objects that are not present in the extensio
 ]]></artwork>
           </figure></t>
 		  
-<t>Substitution syntax is defined by expanding the syntax of the opaque
-   ASN.1Cert structure:</t>
+<t>By using the extension defined in this document the following information is sent:</t>
         <t><figure>
             <artwork>
               <![CDATA[
@@ -259,22 +251,23 @@ struct {
 ]]></artwork>
           </figure></t>
 
+<t>The opaque ASN.1Cert structure is replaced with the CachedObject structure defined in this document.</t>
+		  
  <t>Note:  <xref target="I-D.wouters-tls-oob-pubkey"/> allows a PKIX
- certificate containing ONLY the SubjectPublicKeyInfo instead of the full information typically found in a certificate. 
+ certificate containing only the SubjectPublicKeyInfo instead of the full information typically found in a certificate. 
  Hence, when this specification is used in combination with <xref target="I-D.wouters-tls-oob-pubkey"/> 
  and the negotiated certificate type is RawPublicKey then the TLS server sends the hashed 
 Certificate element that contains a ASN.1Cert with the mentioned raw public key.</t>
    
    </section> 
 
-<section title="Substitution Syntax for trusted_cas">
+<section anchor="trusted_cas" title="Fingerprint for Trusted CAs">
 
-<t>When a hash for an object of type trusted_cas is provided in the
-   client hello, the server MAY substitute the cached information with a
-   matching hash value received from the client by expanding the
-   CertificateRequest handshake message as follows.</t>
+<t>When a hash for an object of type 'trusted_cas' is provided in the
+   client hello, the server MAY send a fingerprint instead of the complete certificate authorities information as shown below.</t>
 
-<t>Original handshake message syntax defined in RFC 5246 <xref target="RFC5246"/>:</t>
+<t>The original handshake message syntax is defined in RFC 5246 <xref target="RFC5246"/> and has the following 
+structure:</t>
 
            <t><figure>
             <artwork>
@@ -286,18 +279,26 @@ Certificate element that contains a ASN.1Cert with the mentioned raw public key.
           SignatureAndHashAlgorithm
             supported_signature_algorithms<2^16-1>;
           DistinguishedName certificate_authorities<0..2^16-1>;
-      } CertificateRequest
+      } CertificateRequest;
 ]]></artwork>
           </figure></t>
-<t>The substitution syntax is defined by expanding the syntax of the
-   opaque DistinguishedName structure:</t>
-   
+		  <t>By using the extension defined in this document the following information is sent:</t>
+
         <t><figure>
             <artwork>
               <![CDATA[
-      CachedObject DistinguishedName<1..2^16-1>;
+       struct {
+          ClientCertificateType certificate_types<1..2^8-1>;
+          SignatureAndHashAlgorithm
+            supported_signature_algorithms<2^16-1>;
+          CachedObject DistinguishedName<1..2^16-1>;
+       } CertificateRequest;
 ]]></artwork>
           </figure></t>
+		  
+		  
+<t>The opaque DistinguishedName structure is replaced with the CachedObject structure defined in this document.</t>
+	
  </section>
 </section>
 		  
@@ -352,8 +353,8 @@ defined in RFC 5246 <xref target="RFC5246"/>, for cached_information(TBD) define
 	  </t>
 </section>
 
-<section title="New Registry for HashAlgorithmType"> 
-  <t>IANA is requested to establish a registry for HashAlgorithmType values and to populate 
+<section title="New Registry for HashAlgorithm"> 
+  <t>IANA is requested to establish a registry for HashAlgorithm values and to populate 
 the registry with an initial set of values listed in <xref target="cached-info"/>.
 </t> 
 
