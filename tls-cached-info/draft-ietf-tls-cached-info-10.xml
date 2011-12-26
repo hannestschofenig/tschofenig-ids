@@ -1,0 +1,374 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+  <!ENTITY RFC2119 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+  <!ENTITY RFC5246 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml'>
+  <!ENTITY RFC5226 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml'>
+  <!ENTITY I-D.ietf-tls-rfc4366-bis PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-rfc4366-bis.xml'>
+	]>
+
+	<?rfc toc="yes" ?>
+	<?rfc symrefs="yes" ?>
+	<?rfc sortrefs="yes"?>
+	<?rfc iprnotified="no" ?>
+	<?rfc strict="yes" ?>
+
+<rfc ipr="trust200902" category="std" docName="draft-ietf-tls-cached-info-10.txt">
+    <front>
+        <title abbrev="TLS Cached Information Extension"> Transport Layer Security (TLS) Cached Information Extension </title>
+
+        <author initials="S." surname="Santesson" fullname="Stefan Santesson">
+            <organization>3xA Security AB</organization>
+            <address>
+                <postal>
+                    <street>Scheelev. 17</street>
+					<city>Lund</city>
+                    <code>223 70</code>
+                    <country>Sweden</country>
+                </postal>
+                <email>sts@aaa-sec.com</email>
+            </address>
+        </author>
+
+        <author fullname="Hannes Tschofenig" initials="H." surname="Tschofenig">
+            <organization>Nokia Siemens Networks</organization>
+            <address>
+                <postal>
+                    <street>Linnoitustie 6</street>
+                    <city>Espoo</city>
+                    <code>02600</code>
+                    <country>Finland</country>
+                </postal>
+                <phone>+358 (50) 4871445</phone>
+                <email>Hannes.Tschofenig@gmx.net</email>
+                <uri>http://www.tschofenig.priv.at</uri>
+            </address>
+        </author>
+
+        <date year="2011"/>
+        <area>SECURITY</area>
+        <workgroup>TLS</workgroup>
+        <keyword>Internet-Draft</keyword>
+        <abstract>
+            <t>  This document defines a Transport Layer Security (TLS) extension for
+   cached information. This extension allows the TLS client to inform a
+   server of cached information from previous TLS handshakes, allowing
+   the server to omit sending cached static information to the client
+   during the TLS handshake protocol exchange.</t>
+        </abstract>
+
+    </front>
+    <middle>
+
+        <section title="Introduction">
+
+            <t>TLS handshakes often include fairly static information such as server
+   certificate and a list of trusted Certification Authorities (CAs).
+   Static information such as a server certificate can be of
+   considerable size. This is the case in particular if the server
+   certificate is bundled with a complete certificate path, including
+   all intermediary certificates up to the trust anchor public key.</t>
+
+   <t>Significant benefits can be achieved in low bandwidth and high
+   latency networks, in particular if the communication channel also has
+   a relatively high rate of transmission errors, if a known and
+   previously cached server certificate path can be omitted from the TLS
+   handshake.</t>
+
+   <t>This specification defines the Cached Information TLS extension,
+   which may be used by a client and a server to exclude transmission of
+   cached information from the TLS handshake.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Terminology">
+
+		<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",   "SHOULD", "SHOULD NOT", 
+		"RECOMMENDED", "MAY", and "OPTIONAL" in this   document are to be interpreted as described in <xref target="RFC2119"/>.
+		</t>
+		   
+		</section>
+
+        <!-- ******************************************************************************** -->
+
+		<section title="Cached Information Extension">
+<t>
+   A new extension type (cached_information(TBD)) is defined and used in
+   both the client hello and server hello messages. The extension type
+   is specified as follows.
+</t>
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      enum {
+           cached_information(TBD), (65535)
+      } ExtensionType;
+]]></artwork>
+          </figure></t>
+
+<t>
+   The extension_data field of this extension, when included in the
+   client hello, SHALL contain CachedInformation according to the
+   following structure:
+</t>
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      enum {
+           certificate_chain(1), trusted_cas(2), (255)
+      } CachedInformationType;
+
+
+      struct {
+           CachedInformationType type;
+           HashAlgorithm hash;
+           opaque hash_value<1..255>;
+      } CachedObject;
+
+      struct {
+           CachedObject cached_info<1..2^16-1>;
+      } CachedInformation;
+]]></artwork>
+          </figure></t>
+
+		  <t>
+   When CachedInformationType identifies certificate_chain, then
+   hash_value MUST include a hash calculated over the certificate_list
+   element of a server side Certificate message, excluding the three
+   length bytes of the certificate_list vector.</t>
+
+<t>   When CachedInformationType identifies trusted_cas, then hash_value
+   MUST include a hash calculated over the certificate_authorities
+   element of a server side CertificateRequest message, excluding the
+   two length bytes of the certificate_authorities vector.
+</t>
+<t>
+   The hash algorithm used to calculate hash values SHALL be the hash
+   algorithm that was used to generate the Finished message in the
+   handshake exchange from which the hashed information was cached. Hash
+   algorithm identifiers are defined in the RFC 5246 <xref target="RFC5246"/>
+   HashAlgorithm registry.
+</t>
+<t>
+   Other specifications MAY define more CachedInformationType types.
+</t>
+
+   </section> 
+
+        <!-- ******************************************************************************** -->
+
+		<section title="Extension Exchange">
+
+<section anchor="cache" title="Cached Information">
+
+<t>   Clients MAY include a "cached_information" extension in the
+   (extended) client hello, which MAY contain zero or more cached
+   objects (CachedObject).
+</t>
+<t>
+   Servers that receive an extended client hello containing a
+   "cached_information" extension MAY indicate that they support cached
+   information objects by including a cached_information extension in
+   their (extended) server hello.
+</t>
+<t>
+   A cached_information extension provided in the server hello has the
+   following semantics:
+<list style="symbols">
+<t>An empty cached_information extension indicates that the server
+       supports information caching but provides no information about
+       what information types it supports.
+</t>
+<t>A non-empty cached information extension indicates that the
+       server supports caching of each present CachedObject that matches
+       the specified hash value. The server MAY support other cached
+       objects that are not present in the extension.
+</t>
+</list> 
+</t>
+
+
+<t>Note: Clients may need the ability to cache different values
+   depending on other information in the Client Hello that modify what
+   values the server uses, in particular the Server Name Indication
+   <xref target="I-D.ietf-tls-rfc4366-bis"/> value.
+</t>
+</section>
+
+<section title="Reconnaissance">
+
+<t>   A client MAY include an empty cached_information extension (with
+   empty extension_data field) in its (extended) client hello to query
+   whether the server supports cached information.
+</t>
+<t>
+   Upon receiving an empty cached_information extension, a server MAY
+   indicate that it supports cached information in handshakes by
+   including a cached_information extension in its (extended) server
+   hello according to any of the available options in <xref target="cache"/>.
+</t>
+</section>
+</section>
+
+        <!-- ******************************************************************************** -->
+
+<section title="Cached Information Substitution">
+
+<t>Following a successful exchange of "cached_information" extensions,
+   the server MAY substitute cached information in the handshake
+   exchange with a matching CachedObject from the client hello
+   "cached_information" extension.
+</t>
+<t>A substitution syntax that defines how the CachedObject structure is
+   carried in the handshake message MUST be defined for each
+   CachedInformationType in a way that does not violate the syntax of
+   the handshake message. The substitution syntax for
+   certificate_chain(1) and trusted_cas(2) is provided below.</t>
+
+<t>The handshake protocol SHALL proceed using the cached information as
+   if it was provided in the handshake protocol. The Finished message
+   SHALL be calculated over the actual data exchanged in the handshake
+   protocol. That is, the Finished message will be calculated over the
+   hash values of cached information objects and not over the cached
+   information that were omitted from transmission.</t>
+
+<t>The server MUST NOT include more than one CachedObject as
+   substitution for the cached information.</t>
+
+
+<section title="Substitution Syntax for certificate_chain">
+
+<t>When an object of type certificate_chain is provided in the client
+   hello, the server MAY substitute the cached information with a
+   matching hash value received from the client by expanding the
+   Certificate handshake message as follows.</t>
+
+<t>Original handshake message syntax defined in RFC 5246 <xref target="RFC5246"/>:</t>
+
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      opaque ASN.1Cert<1..2^24-1>;
+
+      struct {
+          ASN.1Cert certificate_list<0..2^24-1>;
+      } Certificate;
+]]></artwork>
+          </figure></t>
+		  
+<t>Substitution syntax is defined by expanding the syntax of the opaque
+   ASN.1Cert structure:</t>
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      CachedObject ASN.1Cert<1..2^24-1>;
+]]></artwork>
+          </figure></t>
+
+</section> 
+
+<section title="Substitution Syntax for trusted_cas">
+
+<t>When a hash for an object of type trusted_cas is provided in the
+   client hello, the server MAY substitute the cached information with a
+   matching hash value received from the client by expanding the
+   CertificateRequest handshake message as follows.</t>
+
+<t>Original handshake message syntax defined in RFC 5246 <xref target="RFC5246"/>:</t>
+
+           <t><figure>
+            <artwork>
+              <![CDATA[
+      opaque DistinguishedName<1..2^16-1>;
+
+      struct {
+          ClientCertificateType certificate_types<1..2^8-1>;
+          SignatureAndHashAlgorithm
+            supported_signature_algorithms<2^16-1>;
+          DistinguishedName certificate_authorities<0..2^16-1>;
+      } CertificateRequest
+]]></artwork>
+          </figure></t>
+<t>The substitution syntax is defined by expanding the syntax of the
+   opaque DistinguishedName structure:</t>
+   
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      CachedObject DistinguishedName<1..2^16-1>;
+]]></artwork>
+          </figure></t>
+		  </section>
+		  </section>
+		  
+        <!-- ******************************************************************************** -->
+   
+        <section title="Security Considerations">
+            <t>The hash algorithm used in this specification is required to have
+   reasonable random properties in order to provide reasonably unique
+   identifiers. There is no clearly identified requirement that this
+   hash algorithm must have strong collision resistance. However since
+   the hash algorithm is used to represent data in the finished
+   calculation, the security properties of the finished calculation will
+   change if a weaker hash algorithm is used to represent cached
+   information compared with the hash algorithm used to calculate the
+   finished message.</t>
+
+<t>   Caching information in an encrypted handshake (such as a renegotiated
+   handshake) and sending a hash of that cached information in an
+   unencrypted handshake might introduce integrity or data disclosure
+   issues as it enables an attacker to identify if a known object (such
+   as a known server certificate) has been used in previous encrypted
+   handshakes. Information object types defined in this specification,
+   such as server certificates, are public objects and usually not
+   sensitive in this regard, but implementers should be aware if any
+   cached information are subject to such security concerns and in such
+   case SHOULD NOT send a hash over encrypted data in en unencrypted
+   handshake.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="IANA Considerations">
+<t>
+   1) Create an entry, cached_information(TBD), in the existing registry
+      for ExtensionType (defined in RFC 5246 <xref target="RFC5246"/>).
+</t>
+<t>
+   2) Establish a registry for TLS CachedInformationType values.  The
+      first entries in the registry are certificate_chain(1) and
+      trusted_cas(2). TLS CachedInformationType values in the inclusive
+      range 0-63 (decimal) are assigned via RFC 5226 <xref target="RFC5226"/> Standards
+      Action.  Values from the inclusive range 64-223 (decimal) are
+      assigned via RFC 5226 Specification Required.  Values from the
+      inclusive range 224-255 (decimal) are reserved for RFC 5226
+      Private Use.
+</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Acknowledgments">
+            <t>The author acknowledges input from many members of the TLS working
+   group.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+    </middle>
+    <back>
+
+
+
+        <references title="Normative References"> &RFC2119; &RFC5246; &I-D.ietf-tls-rfc4366-bis;   
+        </references>
+
+        <references title="Informative References"> &RFC5226; </references>
+
+    </back>
+</rfc>
