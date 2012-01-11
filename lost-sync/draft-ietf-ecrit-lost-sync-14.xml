@@ -1,0 +1,1118 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+  <!ENTITY rfc2119 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+  <!ENTITY rfc2617 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2617.xml'>
+  <!ENTITY rfc5222 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5222.xml'>
+  <!ENTITY rfc5246 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml'>
+  <!ENTITY RFC5582 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5582.xml'>
+  <!ENTITY RFC3023 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.3023.xml'>
+  <!ENTITY RFC4288 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4288.xml'>
+  <!ENTITY RFC2616 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2616.xml'>
+  <!ENTITY RFC2818 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2818.xml'>
+]>
+
+	<?rfc toc="yes" ?>
+	<?rfc symrefs="yes" ?>
+	<?rfc sortrefs="yes"?>
+	<?rfc iprnotified="no" ?>
+	<?rfc strict="yes" ?>
+
+<rfc ipr="trust200902" category="exp" docName="draft-ietf-ecrit-lost-sync-14.txt">
+    <front>
+        <title abbrev="LoST Sync">Synchronizing Location-to-Service Translation (LoST) Protocol
+            based Service Boundaries and Mapping Elements</title>
+
+        <author initials="H." surname="Schulzrinne" fullname="Henning Schulzrinne">
+            <organization>Columbia University</organization>
+            <address>
+                <postal>
+                    <street>Department of Computer Science</street>
+                    <street>450 Computer Science Building</street>
+                    <city>New York</city>
+                    <region>NY</region>
+                    <code>10027</code>
+                    <country>US</country>
+                </postal>
+                <phone>+1 212 939 7004</phone>
+                <email>hgs+ecrit@cs.columbia.edu</email>
+                <uri>http://www.cs.columbia.edu</uri>
+            </address>
+        </author>
+
+        <author fullname="Hannes Tschofenig" initials="H." surname="Tschofenig">
+            <organization>Nokia Siemens Networks</organization>
+            <address>
+                <postal>
+                    <street>Linnoitustie 6</street>
+                    <city>Espoo</city>
+                    <code>02600</code>
+                    <country>Finland</country>
+                </postal>
+                <phone>+358 (50) 4871445</phone>
+                <email>Hannes.Tschofenig@gmx.net</email>
+                <uri>http://www.tschofenig.priv.at</uri>
+            </address>
+        </author>
+
+        <date year="2012"/>
+        <area>RAI</area>
+        <workgroup>ECRIT</workgroup>
+        <keyword>Internet-Draft</keyword>
+        <keyword>Location</keyword>
+        <abstract>
+            <t>The Location-to-Service Translation (LoST) protocol is an XML-based protocol for
+                mapping service identifiers and geodetic or civic location information to service
+                URIs and service boundaries. In particular, it can be used to determine the
+                location-appropriate Public Safety Answering Point (PSAP) for emergency services. </t>
+            <t>The main data structure, the &lt;mapping&gt; element, used for encapsulating
+                information about service boundaries is defined in the LoST protocol specification
+                and circumscribes the region within which all locations map to the same service
+                Uniform Resource Identifier (URI) or set of URIs for a given service.</t>
+            <t>This document defines an XML protocol to exchange these mappings between two nodes.
+                This mechanism is designed for the exchange of authoritative &lt;mapping&gt;
+                elements between two entities. Exchanging cached &lt;mapping&gt; elements,
+                i.e. non-authoritative elements, is possible but not envisioned. In any case, this
+                document can also be used without the LoST protocol even though the format of the
+                &lt;mapping&gt; element is re-used from the LoST specification.</t>
+        </abstract>
+
+    </front>
+    <middle>
+
+        <section title="Introduction">
+
+            <t>The <xref target="RFC5222">LoST (Location-to-Service Translation) protocol</xref>
+                maps service identifiers and geodetic or civic location information to service URIs.
+                The main data structure, the &lt;mapping&gt; element, used for encapsulating
+                information about service boundaries is defined in the LoST protocol specification
+                and circumscribes the region within which all locations map to the same service
+                Uniform Resource Identifier (URI) or set of URIs for a given service.</t>
+
+            <t>This mechanism is designed for the exchange of authoritative &lt;mapping&gt;
+                elements between two entities (the LoST Sync source and the LoST Sync destination).</t>
+
+            <t> The LoST Sync mechanism can, for example, be used in the LoST architecture, as
+                specified in the <xref target="RFC5582"/>. There, LoST servers act in different
+                roles that cooperate to provide an ubiquitous, globally scalable and resilient
+                mapping service. In the LoST mapping architecture, LoST servers can peer, i.e., have
+                an on-going data exchange relationship. Peering relationships are set up manually,
+                based on local policies. A LoST server may peer with any number of other LoST servers.
+                Forest
+                guides peer with other forest guides; authoritative mapping servers peer with forest
+                guides and other authoritative servers, either in the same cluster or above or below
+                them in the tree. Authoritative mapping servers push coverage regions "up" the tree,
+                i.e., from child nodes to parent nodes. The child informs the parent of the
+                geospatial or civic region that it covers for a specific service.</t>
+
+            <t>Consider a hypothetical deployent of LoST in two countries, we call them Austria and
+                Finland. Austria, in our example, runs three authoritative LoST servers labeled as
+                'East', 'West' and 'Vienna' whereby the former two cover the entire country expect
+                for Vienna, which is covered by a separate LoST server. There may be other caching
+                LoST servers run by ISPs, universities, and VSPs but they are not relevant for this
+                illustration. Finland, on the other hand, decided to only deploy a single LoST
+                server that also acts as a Forest Guide. For this simplistic illustration we assume
+                that only one service is available, namely 'urn:service:sos' since otherwise the
+                number of stored mappings would have to be multiplied by the number of used
+                services.</t>
+
+            <t>
+                <xref target="example-deployment"/> shows the example deployment. <figure
+                    anchor="example-deployment" title="LoST Deployment Example">
+                    <artwork><![CDATA[
+                   +---LoST-Sync-->\\     //<--LoST-Sync----+
+                   |                 -----                  |
+                   |                                        |
+                   \/                                       \/
+                 -----                                     -----
+               //     \\                                 //     \\
+              /         \                               /         \
+             |  Forest   |                             |   Forest  |
+             |  Guide    |                             |   Guide   |
+             |  Austria  |                             |   Finland
+              \         /                               \         /
+    +--------->\\     //<--------+                       \\     //
+    |            -----           |                         -----
+    |             /\             |                           |
+  LoST            |             LoST                     //------\\
+  Sync           LoST           Sync                    |Co-Located|
+    |            Sync            |                      |   LoST   |
+    \/            |              \/                     | Server   |
+ //----\\         \/          //----\\                   \\------//
+|  LoST  |     //----\\      |  LoST  |
+| Server |    |  LoST  |     | Server |
+| (East) |    | Server |     |(Vienna)|
+ \\----//     | (West) |      \\----//
+               \\----//
+]]></artwork>
+                </figure>
+            </t>
+
+            <t>The configuration of these nodes would therefore be as follows: <list style="hanging">
+
+                    <t hangText="Forest Guide Austria:">This forest guide would contain mappings for
+                        the three authoritative LoST servers (East, West and Vienna) describing what
+                        area they are responsible for. Note that each mapping would contain a
+                        service URN and these mappings point to LoST servers rather than to PSAPs or
+                        ESRPs.</t>
+
+                    <t hangText="LoST Server 'East':">This LoST server would contain all the
+                        mappings to PSAPs covering one half of the country. <vspace blankLines="1"/>
+                        Additionally, the LoST server aggregates all the information it has and
+                        provides an abstracted view towards the Forest Guide indicating that it is
+                        responsible for a certain area (for a given service, and for a given
+                        location profile). Such a mapping would have the following structure:
+                            <figure anchor="fg-austria" title="Forest Guide Austria Mapping Example">
+                            <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<mapping 
+    xmlns="urn:ietf:params:xml:ns:lost1"
+    xmlns:gml="http://www.opengis.net/gml"
+    expires="2009-01-01T01:44:33Z" 
+    lastUpdated="2009-12-01T01:00:00Z"
+    source="east-austria.lost-example.com" 
+    sourceId="e8b05a41d8d1415b80f2cdbb96ccf109">
+    <displayName xml:lang="en">LoST Server 'East' </displayName>
+    <service>urn:service:sos</service>
+    <serviceBoundary profile="geodetic-2d">
+        <gml:Polygon srsName="urn:ogc:def::crs:EPSG::4326">
+            <gml:exterior>
+                <gml:LinearRing>
+                    <gml:pos> ... </gml:pos>                    
+                    ..... list of coordinates for 
+                    boundary of LoST server 'East'
+                    <gml:pos> ... </gml:pos>
+                </gml:LinearRing>
+            </gml:exterior>
+        </gml:Polygon>
+    </serviceBoundary>
+    <uri/>
+</mapping>
+                                ]]></artwork>
+                        </figure> As it can be seen in this example there the &lt;uri&gt;
+                        element is left empty and the 'source' attribute is used to indicate the
+                        identity of the LoST server, namely "east-austria.lost-example.com". <vspace
+                            blankLines="1"/> The above-shown mapping is what is the LoST server
+                        "east-austria.lost-example.com" provides to the Austrian Forest Guide. </t>
+
+                    <t hangText="LoST Server 'West':">This LoST server would contain all the
+                        mappings to PSAPs covering the other half of the country.</t>
+
+                    <t hangText="LoST Server 'Vienna':">This LoST server would contain all the
+                        mappings to PSAPs in the area of Vienna.</t>
+
+                    <t hangText="Forest Guide Finland:">In our example we assume that Finland would
+                        deploy a single ESRP for the entire country as their IP-based emergency
+                        services solution. There is only a single LoST server and it is co-located
+                        with the Forest Guide, as shown in <xref target="example-deployment"/>. The
+                        mapping data this FG would distribute via LoST sync is shown in <xref
+                            target="fg-finland"/>. <figure anchor="fg-finland"
+                            title="Forest Guide Finland Mapping Example">
+                            <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>                            
+<mapping xmlns="urn:ietf:params:xml:ns:lost1"
+    expires="2007-01-01T01:44:33Z" 
+    lastUpdated="2006-11-01T01:00:00Z"
+    source="finland.lost-example.com" 
+    sourceId="7e3f40b098c711dbb6060800200c9a66">
+    <displayName xml:lang="en"> Finland ESRP </displayName>
+    <service>urn:service:sos</service>
+    <serviceBoundary profile="civic">
+        <civicAddress 
+            xmlns="urn:ietf:params:xml:ns:pidf:geopriv10:civicAddr">
+            <country>FI</country>
+        </civicAddress>
+    </serviceBoundary>
+    <uri/>
+</mapping>
+]]></artwork>
+                        </figure> An example mapping stored at the co-located LoST server is shown
+                        in <xref target="lost-finland"/>. <figure anchor="lost-finland"
+                            title="Forest Guide Finland / Co-Located LoST Server Mapping Example">
+                            <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>                            
+<mapping xmlns="urn:ietf:params:xml:ns:lost1"
+    expires="2007-01-01T01:44:33Z" 
+    lastUpdated="2006-11-01T01:00:00Z"
+    source="finland.lost-example.com" 
+    sourceId="7e3f40b098c711dbb6060800200c9a66">
+    <displayName xml:lang="en"> Finland ESRP </displayName>
+    <service>urn:service:sos</service>
+    <serviceBoundary profile="civic">
+        <civicAddress 
+            xmlns="urn:ietf:params:xml:ns:pidf:geopriv10:civicAddr">
+            <country>FI</country>
+        </civicAddress>
+    </serviceBoundary>
+    <uri>sip:esrp@finland-example.com</uri>
+    <uri>xmpp:esrp@finland-example.com</uri>
+    <serviceNumber>112</serviceNumber>
+</mapping>
+]]></artwork>
+                        </figure>
+                    </t>
+                </list>
+            </t>
+
+
+            <t>The LoST sync mechanism described in this document could be run between the two
+                Forest Guides. Thereby, the three mappings stored in the Austria FG are sent to the
+                FG Finland and a single mapping in the FG Finland is sent to the FG Austria.
+                Additionally, the three Austrian LoST servers could utilize LoST sync to inform the
+                Austrian FG about their boundaries. These three authoritative LoST servers in
+                Austria would be responsible to maintain their own mapping information. Since the
+                amount of data being exchanged is small and the expected rate of change is low the
+                nodes are configured to always exchange all their mapping information whenever a
+                change happens. </t>
+
+            <t>This document defines two types of exchanges and those are best described by the
+                exchange between two nodes as shown in <xref target="overview1"/> and <xref
+                    target="overview2"/>. The protocol exchange always runs between a LoST Sync
+                source and a LoST Sync destination. Node A in the examples of <xref
+                    target="overview1"/> and <xref target="overview2"/> has mappings that Node B is
+                going to retrieve. Node A acts as the source for the data and Node B is the
+                destination.</t>
+
+            <t> The &lt;getMappingsRequest> request allows a LoST Sync source to request
+                mappings from a LoST Sync destination.<figure anchor="overview1"
+                    title="Querying for Mappings with a &lt;getMappingsRequest&gt; Message">
+                    <artwork><![CDATA[
+   +---------+                   +---------+
+   | Node B  |                   | Node A  |
+   | acting  |                   | acting  |
+   | as      |                   | as      |
+   | LoST    |                   | LoST    |
+   | Sync    |                   | Sync    |
+   | Dest.   |                   | Source  |
+   +---------+                   +---------+
+       |                              |
+       |                              |
+       |                              |
+       | <getMappingsRequest>         |
+       |----------------------------->|
+       |                              |
+       | <getMappingsResponse>        |
+       |<-----------------------------|
+       |                              |
+       |                              |
+       |                              |
+]]></artwork>
+                </figure>
+            </t>
+
+            <t>Note that in the exchange illustrated in <xref target="overview1"/> Node B issuing
+                the first request and plays the role of the HTTP/HTTPS client (with HTTP as selected
+                transport) and Node A plays the role of the HTTP/HTTPS server.</t>
+
+            <t> The &lt;pushMappingsRequest> exchange allows a LoST Sync source to push mappings
+                to LoST Sync destination. The assumption is being made that Node A and B have
+                previously been configured in a way that they push mappings in such a fashion and
+                that Node A maintains state about the mappings have to be pushed to Node B. No
+                subscribe mechanism is defined in this document that would allow Node B to tell Node
+                A about what mappings it is interested nor a mechanism for learning to which
+                entities mappings have to be pushed. <figure anchor="overview2"
+                    title="Pushing Mappings with a &lt;pushMappingsRequest&gt; Message">
+                    <artwork><![CDATA[
+    +---------+                   +---------+
+    | Node A  |                   | Node B  |
+    | acting  |                   | acting  |
+    | as      |                   | as      |
+    | LoST    |                   | LoST    |
+    | Sync    |                   | Sync    |
+    | Source  |                   | Dest.   |
+    +---------+                   +---------+
+        |                              |
+        |                              |
+        |                              |
+        | <pushMappingsRequest>        |
+        |----------------------------->|
+        |                              |
+        | <pushMappingsResponse>       |
+        |<-----------------------------|
+        |                              |
+        |                              |
+        |                              |
+]]></artwork>
+                </figure>
+            </t>
+            <t>Note that in the exchange illustrated in <xref target="overview2"/> Node A issuing
+                the first request and plays the role of the HTTP/HTTPS client (with HTTP as selected
+                transport) and Node B plays the role of the HTTP/HTTPS server.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section anchor="terminology" title="Terminology">
+            <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+                NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as
+                described in RFC 2119 <xref target="RFC2119"/>.</t>
+
+            <t>This document reuses terminology introduced by the <xref target="RFC5582">mapping
+                    architecture document</xref>.</t>
+
+            <t>Throughout this document we use the term LoST Sync source and LoST Sync destination
+                to denote the protocol end points of the exchange. The protocol is referred as LoST
+                Sync within the text.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section anchor="query"
+            title="Querying for Mappings with a &lt;getMappingsRequest&gt; / &lt;getMappingsResponse> Exchange ">
+
+            <section title="Behavior of the LoST Sync Destination">
+
+                <t>A LoST Sync destination has two ways to retrieve mapping elements from a LoST
+                    Sync source. </t>
+                <t>
+                    <list style="numbers">
+                        <t>A mechanisms that is suitable when no mappings are available on the LoST
+                            Sync destination is to submit an empty &lt;getMappingsRequest>
+                            message, as shown in <xref target="empty-request"/>. The intent by the
+                            LoST Sync destination thereby is to retrieve all mappings from the LoST
+                            Sync source. Note that the request does not propagate further to other
+                            nodes.</t>
+
+                        <t>In case a LoST Sync destination node has already obtained mappings in
+                            previous exchanges then it may want to check whether these mappings have
+                            been updated in the meanwhile. The policy when to poll for updated
+                            mapping information is outside the scope of this document. The
+                            &lt;getMappingsRequest> message with one or multiple
+                            &lt;exists&gt; child element(s) allows to reduce the number of
+                            returned mappings to those that have been updated and also to those that
+                            are missing. </t>
+                    </list>
+                </t>
+
+                <t>In response to the &lt;getMappingsRequest> message the LoST Sync destination
+                    waits for the &lt;getMappingsResponse> message. In case of a successful
+                    response the LoST Sync destination stores the received mappings and determines
+                    which mappings to replace.</t>
+            </section>
+
+            <section title="Behavior of the LoST Sync Source">
+
+                <t>When a LoST Sync source receives an empty &lt;getMappingsRequest> message
+                    then all locally available mappings MUST be returned.</t>
+
+                <t>When a LoST Sync source receives a &lt;getMappingsRequest> message with one
+                    or multiple &lt;exists&gt; child element(s) then it MUST consult with
+                    the local mapping database to determine whether any of the mappings of the
+                    client is stale and whether there are mappings locally that the client does not
+                    yet have. The former can be determined by finding mappings corresponding to the
+                    'source' and 'sourceID' attribut where a mapping with a more recent lastUpdated
+                    date exists. </t>
+
+                <t>Processing a &lt;getMappingsRequest> message MAY lead to a successful
+                    response in the form of a &lt;getMappingsResponse> or an &lt;errors>
+                    message. Only the &lt;badRequest>, &lt;forbidden>,
+                    &lt;internalError>, &lt;serverTimeout> errors, defined in <xref
+                        target="RFC5222"/>, are utilized by this specification. Neither the
+                    &lt;redirect> nor the &lt;warnings> messages are reused by this
+                message.</t>
+            </section>
+
+            <section title="Examples">
+
+                <t>The first example shows an empty &lt;getMappingsRequest> message that would
+                    retrieve all locally stored mappings at the LoST Sync source. <figure
+                        anchor="empty-request"
+                        title="Example of empty &lt;getMappingsRequest> message">
+                        <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<getMappingsRequest xmlns="urn:ietf:params:xml:ns:lostsync1"/> 
+]]></artwork>
+                    </figure>
+                </t>
+
+                <t>A further example request is shown in <xref target="getMappings"/> and the
+                    corresponding response is depicted in <xref target="getMappingsResponse"/>. In
+                    this example a request is made for a specific mapping (with
+                    source="authoritative.bar.example" and
+                    sourceId="7e3f40b098c711dbb6060800200c9a66") that is more recent than
+                    "2006-11-01T01:00:00Z" as well as any missing mapping. </t>
+
+                <t>
+                    <figure anchor="getMappings" title="Example &lt;getMappingsRequest> Message">
+                        <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<getMappingsRequest xmlns="urn:ietf:params:xml:ns:lostsync1">
+    <exists>
+        <mapping-fingerprint source="authoritative.bar.example"
+        sourceId="7e3f40b098c711dbb6060800200c9a66"
+        lastUpdated="2006-11-01T01:00:00Z">
+        </mapping-fingerprint>
+    </exists>
+</getMappingsRequest>
+
+]]></artwork>
+                    </figure>
+                </t>
+                <t>The response to the above request is shown in <xref target="getMappingsResponse"
+                    />. A more recent mapping was available with the identification of
+                    source="authoritative.bar.example" and
+                    sourceId="7e3f40b098c711dbb6060800200c9a66". Only one mapping that matched
+                    source="authoritative.foo.example" was found and returned. </t>
+                <t>
+                    <figure anchor="getMappingsResponse"
+                        title="Example &lt;getMappingsResponse> Message">
+                        <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<sync:getMappingsResponse 
+    xmlns:sync="urn:ietf:params:xml:ns:lostsync1"
+    xmlns="urn:ietf:params:xml:ns:lost1"
+    xmlns:gml="http://www.opengis.net/gml">
+    
+        <mapping source="authoritative.bar.example"
+            sourceId="7e3f40b098c711dbb6060800200c9a66"
+            lastUpdated="2008-11-26T01:00:00Z"
+            expires="2009-12-26T01:00:00Z">
+            <displayName xml:lang="en"> 
+                Leonia Police Department
+            </displayName>
+            <service>urn:service:sos.police</service>
+            <serviceBoundary
+profile="urn:ietf:params:lost:location-profile:basic-civic">
+                <civicAddress
+xmlns="urn:ietf:params:xml:ns:pidf:geopriv10:civicAddr">
+                    <country>US</country>
+                    <A1>NJ</A1>
+                    <A3>Leonia</A3>
+                    <PC>07605</PC>
+                </civicAddress>
+            </serviceBoundary>
+            <uri>sip:police@leonianj2.example.org</uri>
+            <serviceNumber>911</serviceNumber>
+        </mapping>
+        
+        <mapping expires="2009-01-01T01:44:33Z"
+            lastUpdated="2008-11-01T01:00:00Z"
+            source="authoritative.foo.example"
+            sourceId="7e3f40b098c711dbb606011111111111">
+            <displayName xml:lang="en"> 
+                New York City Police Department
+            </displayName>
+            <service>urn:service:sos.police</service>
+            <serviceBoundary profile="geodetic-2d">
+                <gml:Polygon srsName="urn:ogc:def::crs:EPSG::4326">
+                    <gml:exterior>
+                        <gml:LinearRing>
+                            <gml:pos>37.775 -122.4194</gml:pos>
+                            <gml:pos>37.555 -122.4194</gml:pos>
+                            <gml:pos>37.555 -122.4264</gml:pos>
+                            <gml:pos>37.775 -122.4264</gml:pos>
+                            <gml:pos>37.775 -122.4194</gml:pos>
+                        </gml:LinearRing>
+                    </gml:exterior>
+                </gml:Polygon>
+            </serviceBoundary>
+            <uri>sip:nypd@example.com</uri>
+            <uri>xmpp:nypd@example.com</uri>
+            <serviceNumber>911</serviceNumber>
+        </mapping>
+    
+</sync:getMappingsResponse>
+]]></artwork>
+                    </figure>
+                </t>
+            </section>
+        </section>
+
+
+        <!-- ******************************************************************************** -->
+
+        <section
+            title="Pushing Mappings via &lt;pushMappings> and
+&lt;pushMappingsResponse>">
+
+            <section title="Behavior of the LoST Sync Source">
+
+                <t>When a LoST Sync source obtains new information that is of interest to its peers,
+                    it may push the new mappings to its peers. Configuration settings at both peers
+                    decide whether this functionality is used and what mappings are pushed to which
+                    other peers. New mappings may arrive through various means, such as a manual
+                    addition to the local mapping database, or through the interaction with other
+                    entities. Deleting mappings may also trigger a protocol interaction.</t>
+
+                <t>The LoST Sync source SHOULD keep track to which LoST Sync destination it has
+                    pushed mapping elements. If it does not keep state information then it always
+                    has to push the complete data set. As discussed in Section 5.1 of <xref
+                        target="RFC5222"/>, mapping elements are identified by the 'source',
+                    'sourceID' and 'lastUpdated' attributes. A mapping is considered the same if
+                    these three attributes match. It is RECOMMENDED not to push the same information
+                    to the same peer more than once.</t>
+
+                <t>A &lt;pushMappings> request sent by a LoST Sync source MUST containing one or
+                    more &lt;mapping> elements. </t>
+                <t>
+                To delete a mapping, the content of the mapping is left empty, i.e. the &lt;mapping&gt; 
+                element only contains the 'source', 'sourceID', 'lastUpdated', and 'expires" attribute. <xref target="pushMappings"/> shows an example request where the mapping with the source="nj.us.example", sourceId="123", lastUpdated="2008-11-01T01:00:00Z", expires="2008-11-01T01:00:00Z" is requested to be deleted. Note that the 'expires' attribute is required per schema definition but will be ignored in processing the request on the receiving side. A sync source may want to delete the mapping from its internal mapping database, but has to remember which peers it has distributed this update to unless it has other ways to ensure that databases do not get out of sync.</t>
+            </section>
+            <section title="Behavior of the LoST Sync Destination">
+                <t>When a LoST Sync destination receives a &lt;pushMappingsRequest> message then
+                    a newly received mapping M' MUST replace an existing mapping M if all of the
+                    following conditions hold: <list style="numbers">
+                        <t>M'.source equals M.source</t>
+                        <t>M'.sourceID' equals M.sourceID</t>
+                        <t>M'.lastUpdated is greater than M.lastUpdated</t>
+                    </list>
+                </t>
+                <t>If the received mapping M' does not update any existing mapping M then it MUST be
+                    added to the local cache as an independent mapping.</t>
+                <t>If a &lt;pushMappingsRequest> message with an empty &lt;mapping&gt;
+                    element is received then a corresponding mapping has to be determined based on
+                    the 'source', 'sourceID' and 'lastUpdated' attributes. If a mapping has been
+                    found then it MUST be deleted. If no mapping can be identified then an
+                    &lt;errors> response MUST be returned that contains the &lt;notDeleted>
+                    child element. The &lt;notDeleted> element MAY carry a
+                    &lt;message&gt; element and MUST contain the &lt;mapping&gt;
+                    element(s) that caused the error.</t>
+                <t>The response to a &lt;pushMappingsRequest> request is a
+                    &lt;pushMappingsResponse> message. With this specification, a successful
+                    response message returns no additional elements, whereas an &lt;errors>
+                    response is returned in the response message, if the request failed. Only the
+                    &lt;badRequest>, &lt;forbidden>, &lt;internalError> or
+                    &lt;serverTimeout> errors defined in Section 13.1 of <xref target="RFC5222"
+                    />, are used. The &lt;redirect> and &lt;warnings> messages are not used
+                    for this query/response.</t>
+
+                <t>If the set of nodes that are synchronizing their data does not form a tree, it is
+                    possible that the same information arrives through several other nodes. This is
+                    unavoidable, but generally only imposes a modest overhead. (It would be possible
+                    to create a spanning tree in the same fashion as IP multicast, but the
+                    complexity does not seem warranted, given the relatively low volume of
+                data.)</t>
+            </section>
+
+            <section title="Example">
+                <t> An example is shown in <xref target="pushMappings"/>. Image a LoST node that
+                    obtained two new mappings identified as follows: <list style="symbols">
+                        <t> source="authoritative.example"
+                            sourceId="7e3f40b098c711dbb6060800200c9a66"
+                            lastUpdated="2008-11-26T01:00:00Z" </t>
+                        <t>source="authoritative.example"
+                            sourceId="7e3f40b098c711dbb606011111111111"
+                            lastUpdated="2008-11-01T01:00:00Z" </t>
+                    </list>
+                </t>
+                <t> These two mappings have to be added to the peer's mapping database. </t>
+                <t> Additionally, the following mapping has to be deleted: <list style="symbols">
+                        <t> source="nj.us.example" sourceId="123" lastUpdated="2008-11-01T01:00:00Z"
+                        </t>
+                    </list>
+                </t>
+
+                <t>
+                    <figure anchor="pushMappings"
+                        title="Example &lt;pushMappingsRequest> Message">
+                        <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<sync:pushMappings 
+    xmlns:sync="urn:ietf:params:xml:ns:lostsync1"
+    xmlns="urn:ietf:params:xml:ns:lost1"
+    xmlns:gml="http://www.opengis.net/gml">
+            
+        <mapping source="authoritative.example"
+            sourceId="7e3f40b098c711dbb6060800200c9a66"
+            lastUpdated="2008-11-26T01:00:00Z"
+            expires="2009-12-26T01:00:00Z">
+            <displayName xml:lang="en"> 
+                Leonia Police Department
+            </displayName>
+            <service>urn:service:sos.police</service>
+            <serviceBoundary
+     profile="urn:ietf:params:lost:location-profile:basic-civic">
+                <civicAddress
+     xmlns="urn:ietf:params:xml:ns:pidf:geopriv10:civicAddr">
+                    <country>US</country>
+                    <A1>NJ</A1>
+                    <A3>Leonia</A3>
+                    <PC>07605</PC>
+                </civicAddress>
+            </serviceBoundary>
+            <uri>sip:police@leonianj.example.org</uri>
+            <serviceNumber>911</serviceNumber>
+        </mapping>
+        
+        <mapping expires="2009-01-01T01:44:33Z"
+            lastUpdated="2008-11-01T01:00:00Z"
+            source="authoritative.example"
+            sourceId="7e3f40b098c711dbb606011111111111">
+            <displayName xml:lang="en"> 
+                New York City Police Department
+            </displayName>
+            <service>urn:service:sos.police</service>
+            <serviceBoundary profile="geodetic-2d">
+                <gml:Polygon srsName="urn:ogc:def::crs:EPSG::4326">
+                    <gml:exterior>
+                        <gml:LinearRing>
+                            <gml:pos>37.775 -122.4194</gml:pos>
+                            <gml:pos>37.555 -122.4194</gml:pos>
+                            <gml:pos>37.555 -122.4264</gml:pos>
+                            <gml:pos>37.775 -122.4264</gml:pos>
+                            <gml:pos>37.775 -122.4194</gml:pos>
+                        </gml:LinearRing>
+                    </gml:exterior>
+                </gml:Polygon>
+            </serviceBoundary>
+            <uri>sip:nypd@example.com</uri>
+            <uri>xmpp:nypd@example.com</uri>
+            <serviceNumber>911</serviceNumber>
+        </mapping>
+        
+        <mapping source="nj.us.example" 
+            sourceId="123"
+            lastUpdated="2008-11-01T01:00:00Z"
+            expires="2008-11-01T01:00:00Z"/>
+    
+</sync:pushMappings>
+]]></artwork>
+                    </figure>
+                </t>
+
+                <t>In response, the peer performs the necessary operation and updates its mapping
+                    database. In particular, it will check whether the other peer is authorized to
+                    perform the update and whether the elements and attributes contain values that
+                    it understands. In our example, a positive response is returned as shown in
+                        <xref target="pushMappingsResponse"/>.</t>
+
+                <t>
+                    <figure anchor="pushMappingsResponse"
+                        title="Example &lt;pushMappingsResponse>">
+                        <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<pushMappingsResponse xmlns="urn:ietf:params:xml:ns:lostsync1" />
+]]></artwork>
+                    </figure>
+                </t>
+
+                <t>In case that a mapping could not be deleted as requested the following error
+                    response might be returned instead. <figure anchor="error"
+                        title="Example &lt;errors> Message">
+                        <artwork><![CDATA[
+<?xml version="1.0" encoding="UTF-8"?>
+<errors xmlns="urn:ietf:params:xml:ns:lost1"
+    xmlns:sync="urn:ietf:params:xml:ns:lostsync1" 
+    source="nodeA.example.com">
+
+    <sync:notDeleted 
+        message="Could not delete the indicated mapping." 
+        xml:lang="en"> 
+        
+        <mapping source="nj.us.example" 
+            sourceId="123"
+            lastUpdated="2008-11-01T01:00:00Z"
+            expires="2008-11-01T01:00:00Z"/>        
+    </sync:notDeleted>
+</errors>
+]]></artwork>
+                    </figure>
+                </t>
+            </section>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Transport">
+            <t> LoST Sync needs an underlying protocol transport mechanism to carry requests and
+                responses. This document defines an XML protocol over HTTP and over HTTP-over-TLS.
+                Client and server developers are reminded that full support of RFC 2616 HTTP
+                facilities is expected. If clients or servers re-implement HTTP, rather than using
+                available servers or client code as a base, careful attention must be paid to full
+                interoperability. Other transport mechanisms are left to future documents. The
+                selection of the transport mechanism will in most cases be determined through manual
+                configuration although the usage of the U-NAPTR application defined in the LoST
+                specification is possible. In protocols that support content type indication, LoST
+                Sync uses the media type application/lostsync+xml.</t>
+
+            <t>When using HTTP <xref target="RFC2616"/> and HTTP-over-TLS <xref target="RFC2818"/>,
+                LoST Sync messages use the HTTP POST method. The HTTP request MUST use the
+                Cache-Control response directive "no-cache" to HTTP-level caching even by caches
+                that have been configured to return stale responses to client requests.</t>
+
+
+            <t>All LoST Sync responses, including those indicating a LoST warning or error, are
+                carried in 2xx responses, typically 200 (OK). Other 2xx responses, in particular 203
+                (Non-authoritative information) may be returned by HTTP caches that disregard the
+                caching instructions. 3xx, 4xx and 5xx HTTP response codes indicates that the HTTP
+                request itself failed or was redirected; these responses do not contain any LoST
+                Sync XML elements. </t>
+
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section anchor="schema" title="RelaxNG">
+            <t>
+            Note: In order to avoid copying pattern definitions from the LoST Relax NG schema <xref target="RFC5222"/>
+  to this document we include it as "lost.rng" (XML syntax) in the Relax NG schema below.
+   </t>
+   <t>
+                <figure>
+                    <artwork><![CDATA[
+<?xml version="1.0" encoding="utf-8"?>
+ 
+     <grammar ns="urn:ietf:params:xml:ns:lostsync1"
+     xmlns="http://relaxng.org/ns/structure/1.0"
+     xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0"
+     datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+         
+         <include href="lost.rng"/>
+         
+         <start combine="choice">
+             
+          <a:documentation> Location-to-Service Translation (LoST)
+            Synchronization Protocol</a:documentation>
+             
+             <choice>
+                 <ref name="pushMappings"/>
+                 <ref name="pushMappingsResponse"/>
+                 <ref name="getMappingsRequest"/>
+                 <ref name="getMappingsResponse"/>
+             </choice>
+         </start>
+         
+         
+         <define name="pushMappings">
+             <element name="pushMappings">
+                     <oneOrMore>
+                         <ref name="mapping"/>
+                     </oneOrMore>
+                 
+                 <ref name="extensionPoint"/>
+             </element>
+         </define>
+         
+         <define name="pushMappingsResponse">
+             <element name="pushMappingsResponse">
+                 <ref name="extensionPoint"/>
+             </element>
+         </define>
+         
+          <define name="getMappingsRequest">
+               <element name="getMappingsRequest">
+                 <choice>
+                      <ref name="exists"></ref>
+                      <ref name="extensionPoint"/>
+                 </choice>
+             </element>
+         </define>
+         
+          <define name="exists">
+               <element name="exists">
+                    <oneOrMore>
+                         <element name="mapping-fingerprint">
+                              <attribute name="source">
+                                   <data type="token"/>
+                              </attribute>
+                              <attribute name="sourceId">
+                                   <data type="token"/>
+                              </attribute>
+                              <attribute name="lastUpdated">
+                                   <data type="dateTime"/>
+                              </attribute>
+                              <ref name="extensionPoint"/>
+                         </element>
+                    </oneOrMore>
+               </element>
+          </define>
+                    
+         <define name="getMappingsResponse">
+             <element name="getMappingsResponse">
+                     <oneOrMore>
+                         <ref name="mapping"/>
+                     </oneOrMore>                 
+                 <ref name="extensionPoint"/>
+             </element>
+         </define>         
+         
+          <!-- error messages --> 
+          
+          <define name="notDeleted">
+               <element name="notDeleted">
+                    <ref name="basicException"/>
+                    <oneOrMore>
+                         <ref name="mapping"/>
+                    </oneOrMore>
+               </element>
+          </define>
+     </grammar>
+	]]></artwork>
+                </figure>
+            </t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Operational Considerations">
+
+            <t>When different LoST servers use the mechanism described in this document to
+                synchronize their mapping data then it is important to ensure that loops are
+                avoided. The example shown in <xref target="sync-problem"/> with three LoST servers
+                A, B and C (each of them acts as a sync source and a sync destination) illustrates
+                the challenge in more detail. A and B synchronize data between each other; the same
+                is true for A and C, and B and C, respectively. </t>
+
+            <t>
+                <figure anchor="sync-problem" title="Synchronization Configuration Example">
+                    <artwork><![CDATA[
+     A -------- B
+      \        /
+       \      /
+        \    /
+         \  /
+          C
+                ]]></artwork>
+                </figure>
+            </t>
+            <t>Now, imagine that server A adds a new mapping. This mapping is uniquely identified by
+                the combination of "source", "sourceid" and "last updated". Assume that A would push
+                this new mapping to B and C. When B obtained this new mapping it would find out that
+                it has to distribute it to its peer C. C would also want to distribute the mapping
+                to B (and vice versa). If the originally mapping with the "source", "sourceid" and
+                "last updated" is not modified by either B or C then these two servers would
+                recognize that they already possess the mapping and can ignore the update.</t>
+            <t>It is important that implementations MUST NOT modify mappings they receive. An entity
+                acting maliciously would, however, intentially modify mappings or inject bogus
+                mappings. To avoid the possibility of an untrustworthy member claiming a coverage
+                region that it is not authorized for, any node introducing a new service boundary
+                MUST sign the object by protecting the data with an XML digital signature <xref
+                    target="W3C.REC-xmldsig-core-20020212"/>. A recipient MUST verify that the
+                signing entity is indeed authorized to speak for that region. Determining who can
+                speak for a particular region is inherently difficult unless there is a small set of
+                authorizing entities that participants in the mapping architecture can trust.
+                Receiving systems should be particularly suspicious if an existing coverage region
+                is replaced with a new one with a new mapping address. With this mechanism it is
+                also possible to avoid the distribution of mappings that have been modified by
+                servers forwarding mappings as part of the synchronization procedure. </t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Security Considerations">
+            <t>This document defines a protocol for exchange of mapping information between two
+                entities. Hence, the operations described in this document involve mutually-trusting
+                LoST nodes. These nodes need to authenticate each other, using mechanisms such as
+                    <xref target="RFC2617">HTTP Digest</xref>, <xref target="RFC2617">HTTP
+                Basic</xref> over <xref target="RFC5246">TLS</xref> or TLS client and server
+                certificates. Manual configuration for the setup of the peering relationships is
+                required and hence the choice of the security mechanisms used between the two
+                entities is a deployment specific decision. In any case, it MUST be ensured that the
+                two end points are authenticated and that a secure communication channel (i.e., an
+                integrity protected exchange of data with the help of the TLS Record Layer) is setup
+                to avoid the possibility of injecting bogus mappings. If an adversary manages to
+                inject false mappings then this could lead to denial of service attacks. If the
+                mapping data contains a URL that does not exist then emergency services for the
+                indicated area are not reachable. If all mapping data contains URLs that point to a
+                single PSAP (rather than a large number) then this PSAP is likely to experience
+                overload conditions. If the mapping data contains a URL that points to a server
+                controlled by the adversary itself then it might impersonate PSAPs.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="IANA Considerations">
+
+            <section title="Content-type registration for 'application/lostsync+xml'">
+
+                <t>This specification requests the registration of a new MIME type according to the
+                    procedures of RFC 4288 <xref target="RFC4288"/> and guidelines in RFC 3023 <xref
+                        target="RFC3023"/>.</t>
+
+                <t>
+                    <list style="hanging">
+                        <t hangText="Type name:">application <vspace blankLines="1"/>
+                        </t>
+
+                        <t hangText="Subtype name:">lostsync+xml <vspace blankLines="1"/>
+                        </t>
+
+                        <t hangText="Required parameters:">none<vspace blankLines="1"/>
+                        </t>
+
+                        <t hangText="Optional parameters:">charset<vspace blankLines="1"/> Indicates
+                            the character encoding of enclosed XML.<vspace blankLines="1"/>
+                        </t>
+
+                        <t hangText="Encoding considerations:"> Uses XML, which can employ 8-bit
+                            characters, depending on the character encoding used. See RFC 3023 <xref
+                                target="RFC3023"/>, Section 7.1.<vspace blankLines="1"/></t>
+
+                        <t hangText="Security considerations:"> This content type is designed to
+                            carry LoST Syncronization protocol payloads described in RFCXXXX.
+                            [NOTE TO IANA/RFC-EDITOR:
+                            Please replace XXXX with the RFC number of this specification.]<vspace blankLines="1"/></t>
+
+                        <t hangText="Interoperability considerations:">None<vspace blankLines="1"
+                                /><vspace blankLines="1"/></t>
+
+                        <t hangText="Published specification:">RFCXXXX [NOTE TO IANA/RFC-EDITOR:
+                            Please replace XXXX with the RFC number of this specification.]<vspace
+                                blankLines="1"/>
+                        </t>
+
+                        <t hangText="Applications which use this media type:"> Emergency and
+                            Location-based Systems<vspace blankLines="1"/>
+                        </t>
+
+                        <t hangText="Additional information:">
+                            <list style="hanging">
+                                <t hangText="Magic number(s):">None<vspace blankLines="1"/>
+                                </t>
+
+                                <t hangText="File extension(s):">.lostsyncxml<vspace blankLines="1"/>
+                                </t>
+
+                                <t hangText="Macintosh file type code(s):">'TEXT'<vspace blankLines="1"
+                                    />
+                                </t>
+                            </list>
+                        </t>
+
+                        <t hangText="Person &amp; email address to contact for further information:">Hannes
+                            Tschofenig &lt;Hannes.Tschofenig@gmx.net&gt;<vspace blankLines="1"/>
+                        </t>
+
+                        <t hangText="Intended usage:">LIMITED USE<vspace blankLines="1"/>
+                        </t>
+                        
+                        <t hangText="Restrictions on usage:">None<vspace blankLines="1"/>
+                        </t>
+
+                        <t hangText="Author:">Hannes
+                            Tschofenig &lt;Hannes.Tschofenig@gmx.net&gt;<vspace blankLines="1"/>
+                        </t>
+                        <t hangText="Change controller:">
+                            <vspace blankLines="1"/> This specification is a work item of the IETF
+                            ECRIT working group, with mailing list address
+                                &lt;ecrit@ietf.org&gt;.<vspace blankLines="1"/>
+                        </t>
+                        <t hangText="Change controller:">
+                            <vspace blankLines="1"/>The IESG &lt;iesg@ietf.org&gt; </t>
+                    </list>
+                </t>
+            </section>
+
+            <section title="LoST Sync Relax NG Schema Registration">
+
+                <t>
+                    <list style="hanging">
+                        <t hangText="URI:">urn:ietf:params:xml:schema:lostsync1</t>
+                        <t hangText="Registrant Contact:">IETF ECRIT Working Group, Hannes
+                            Tschofenig (Hannes.Tschofenig@gmx.net).</t>
+                        <t hangText="Relax NG Schema:">The Relax NG schema to be registered is
+                            contained in <xref target="schema"/>. </t>
+                    </list>
+                </t>
+            </section>
+
+
+
+            <section title="LoST Synchronization Namespace Registration">
+                <t>
+                    <list style="hanging">
+                        <t hangText="URI:">urn:ietf:params:xml:ns:lostsync1</t>
+
+                        <t hangText="Registrant Contact:">IETF ECRIT Working Group, Hannes
+                            Tschofenig (Hannes.Tschofenig@gmx.net).</t>
+
+                        <t hangText="XML:">
+                            <figure>
+                                <artwork><![CDATA[
+BEGIN
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+  "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="content-type"
+        content="text/html;charset=iso-8859-1"/>
+  <title>LoST Synchronization Namespace</title>
+</head>
+<body>
+  <h1>Namespace for LoST server synchronization</h1>
+  <h2>urn:ietf:params:xml:ns:lost1:sync</h2>
+<p>See <a href="[URL of published RFC]">RFCXXXX
+    [NOTE TO IANA/RFC-EDITOR:
+     Please replace XXXX with the RFC number of this
+    specification.]</a>.</p>
+</body>
+</html>
+END
+]]></artwork>
+                            </figure>
+                        </t>
+                    </list>
+                </t>
+            </section>
+
+
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Acknowledgments">
+            <t>Robins George, Cullen Jennings, Karl Heinz Wolf, Richard Barnes, Mayutan
+                Arumaithurai, Alexander Mayrhofer, and Andrew Newton provided helpful input. Jari
+                Urpalainen assisted with the Relax NG schema. We would also like to thank our PROTO
+                shepherd Roger Marshall for his help with the document.</t>
+                
+            <t>We would like to particularly thank Andrew Newton for his timely and valuable review 
+               of the XML-related content.</t>
+               
+            <t>We would like to thank Robert Sparks for his AD review feedback, and Bjoern Hoehrmann for his media type review.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+    </middle>
+    <back>
+
+        <references title="Normative References"> &rfc2119; &rfc2617; &rfc5222;
+            &rfc5246; &RFC3023; &RFC4288; &RFC2616; &RFC2818; <reference
+                anchor="W3C.REC-xmldsig-core-20020212">
+                <front>
+                    <title>XML-Signature Syntax and Processing</title>
+
+                    <author initials="D." surname="Eastlake" fullname="Donald Eastlake">
+                        <organization/>
+                    </author>
+                    
+                    <author initials="J." surname="Reagle" fullname="Joseph Reagle">
+                        <organization/>
+                    </author>
+                    
+                    <author initials="D." surname="Solo" fullname="David Solo">
+                        <organization/>
+                    </author>
+                    
+                    <author initials="F." surname="Hirsch" fullname="Frederick Hirsch">
+                        <organization/>
+                    </author>
+
+                    <author initials="T." surname="Roessler" fullname="Thomas Roessler">
+                        <organization/>
+                    </author>
+
+                    <date month="June" day="10" year="2008"/>
+                </front>
+
+                <seriesInfo name="World Wide Web Consortium Second Edition"
+                    value="REC-xmldsig-core-20020212"/>
+                <format type="HTML" target="http://www.w3.org/TR/xmldsig-core/."/>
+            </reference>
+        </references>
+
+        <references title="Informative References"> &RFC5582; </references>
+
+    </back>
+</rfc>
