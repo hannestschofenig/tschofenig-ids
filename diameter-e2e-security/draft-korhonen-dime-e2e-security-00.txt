@@ -1,0 +1,728 @@
+
+
+
+DIME                                                         J. Korhonen
+Internet-Draft                                             H. Tschofenig
+Intended status: Standards Track                  Nokia Siemens Networks
+Expires: September 5, 2012                                 March 4, 2012
+
+
+Diameter End-to-End Security: Keyed Message Digests, Digital Signatures,
+                             and Encryption
+                draft-korhonen-dime-e2e-security-00.txt
+
+Abstract
+
+   TBD
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on September 5, 2012.
+
+Copyright Notice
+
+   Copyright (c) 2012 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 1]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  4
+   3.  AVP Encoding . . . . . . . . . . . . . . . . . . . . . . . . .  5
+     3.1.  Signed-Data AVP  . . . . . . . . . . . . . . . . . . . . .  5
+     3.2.  Encrypted-Data AVP . . . . . . . . . . . . . . . . . . . .  6
+   4.  Result-Code AVP Values . . . . . . . . . . . . . . . . . . . .  8
+     4.1.  Transient Failures . . . . . . . . . . . . . . . . . . . .  8
+     4.2.  Permanent Failures . . . . . . . . . . . . . . . . . . . .  8
+   5.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . .  9
+   6.  Security Considerations  . . . . . . . . . . . . . . . . . . . 10
+   7.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 11
+   8.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+     8.1.  Normative References . . . . . . . . . . . . . . . . . . . 12
+     8.2.  Informational References . . . . . . . . . . . . . . . . . 12
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 2]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+1.  Introduction
+
+   The Diameter base protocol [I-D.ietf-dime-rfc3588bis] leverages IPsec
+   and TLS for mutual authentication between neighboring Diameter nodes
+   and for channel security offering data origin authentication,
+   integrity and confidentiality protection.  The Diameter base
+   protocol, however, also defines Diameter agents, namely Relay Agents,
+   Proxy Agents, Redirect Agents, and Translation Agents.
+
+   Relay Agents are Diameter agents that accept requests and route
+   messages to other Diameter nodes based on information found in the
+   messages.  Since Relays do not perform any application level
+   processing, they provide relaying services for all Diameter
+   applications.
+
+   Similarly to Relays, Proxy Agents route Diameter messages using the
+   Diameter routing table.  However, they differ since they modify
+   messages to implement policy enforcement.
+
+   Redirect Agents do not relay messages, and only return an answer with
+   the information necessary for Diameter agents to communicate
+   directly, they do not modify messages.  Redirect Agents do not have
+   negative impacts on end-to-end security and are therefore not
+   considered in this document.
+
+   A Translation Agent is a device that provides translation between two
+   protocols.  To offer end-to-end security across different protocol
+   requires the ability to convey and process the AVPs defined in this
+   document by both end points.  Since such support is very likely not
+   available this document does not cover this functionality.
+
+   This Diameter extension specifies how AVP authentication, integrity
+   and confidentiality protection can be offered using either symmetric
+   or asymmetric cryptography.  As a solution mechanism Javascript
+   Object Signing and Encryption (JOSE) is utilized.  JOSE offers a
+   simple encoding with small set of features ideal for the purpose of
+   Diameter.
+
+   This document focuses on protecting Diameter AVP and leaves the key
+   distribution solution to a separate specification.  To offer the
+   functionality two AVPs are defined: Signed-Data and Encrypted-Data.
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 3]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 4]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+3.  AVP Encoding
+
+3.1.  Signed-Data AVP
+
+   The Signed-Data AVP (AVP Code TBD) is of type OctetString and
+   utilizes the JSON Web signature (JWS) mechanism defined in
+   [I-D.ietf-jose-json-web-signature].
+
+   JWS represents digitally signed or HMACed content using JSON data
+   structures.  The representation in [I-D.ietf-jose-json-web-signature]
+   consists of three parts: the JWS header, the JWS payload, and the JWS
+   signature.  This document only makes use of the JWS header and the
+   JWS signature - the JWS payload corresponds to the Diameter AVPs that
+   shall be protected using a keyed message digest or a digital
+   signature.
+
+   To package a set of AVPs for signing, the AVPs are first concatenated
+   in the order in which they occur in the Diameter message.  The entire
+   AVP MUST be input to the signing process, from the first byte of the
+   AVP code to the last byte of the AVP data, including all other
+   fields, length, reserved/flags, and optional vendor IDs, and padding.
+   The AVP MUST be input to the signing process in network byte order.
+
+   The signature is calculated over all AVPs following the Signed-Data
+   AVP.  For the design of the Signed-Data AVP as proposed by this
+   document the AVPs themselves are not carried within the Signed-Data
+   AVP (for example in the JWT payload).  Instead, the digest is
+   computed over these AVPs and placed into the JWS signature.
+
+   If a receiver detects errors with the processing of the Signed-Data
+   AVP it may return one of the errors defined in Section 4.
+
+   When AVPs are to be both encrypted and signed, the Encrypted-Data AVP
+   MUST be created first.  This means that signing is "outside"
+   encryption.
+
+   Here is an example: Imagine the following AVPs from the QoS-Resources
+   AVP in the QoS-Install Request (defined in RFC 5866 [RFC5866] message
+   shall be signed.  The resulting example message has the following
+   structure:
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 5]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+         <QoS-Install-Request> ::= < Diameter Header: 327, REQ, PXY >
+                                 < Session-Id >
+                                 { Auth-Application-Id }
+                                 { Origin-Host }
+                                 { Origin-Realm }
+                                 { Destination-Realm }
+                                 { Auth-Request-Type }
+                                 Signed-Data
+                                 QoS-Resources
+
+               Example Diameter Message with Signed-Data AVP
+
+   The Signed-Data AVP in this example may contain a JWS Header that
+   indicates the use of the HMAC SHA-256 algorithm with the key id
+   'abc123':
+
+      {"typ":"JWT",
+       "alg":"HS256",
+       "kid":"abc123"}
+
+                            Example JWS Header
+
+3.2.  Encrypted-Data AVP
+
+   The Encrypted-Data AVP (AVP Code TBD) is of type OctetString and
+   contains the JSON Web Encryption (JWE) data structure and consists of
+   three parts: the JWE Header, the JWE Encrypted Key, and the JWE
+   Ciphertext.  The three parts are represented as the concatenation of
+   the encoded strings in that order, with the three strings being
+   separated by period ('.') characters.  JWE does not add a content
+   integrity check if not provided by the underlying encryption
+   algorithm.
+
+   A single AVP or an entire list of AVPs MUST be input to the
+   encryption process, from the first byte of the AVP code to the last
+   byte of the AVP data, including all other fields, length, reserved/
+   flags, and optional vendor IDs, and padding.  The AVP MUST be input
+   to the encryption process in network byte order, and the encryptor is
+   free to order AVPs whatever way it chooses.  When AVPs are to be both
+   encrypted and authenticated, the Encrypted-Data AVP MUST be created
+   first.
+
+   Note that the usage of the Encrypted-Data AVP requires explicit
+   support by the Diameter application since a receiving Diameter node
+   must first decrypt the content of the Encrypted-Data AVP in order to
+   evaluate the AVPs carried in the message.  In case that a Diameter
+   node is unable to understand the Encrypted-Data AVP and ignores the
+   AVP then two possible outcomes are possible: First, if the encrypted
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 6]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+   AVPs are optional then their content is not considered by the
+   receiving Diameter server without any indication to the sender that
+   they have not been processes.  Worse, in the second case when the
+   encryptypted AVPs are mandatory to be processed then the receiving
+   Diameter node will return an error that may not inform the sender
+   about the failure to decrypt the Encrypted-Data AVP.  Consequently,
+   the usage of the Encrypted-Data AVP may require changes to the ABNF
+   definition of a Diameter application.
+
+   If a receiver detects that the contents of the CMS-Data AVP is
+   invalid, it SHOULD return the new Result-Code AVP value defined in
+   Section 4.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 7]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+4.  Result-Code AVP Values
+
+   This section defines new Diameter result code values for usage with
+   Diameter applications.
+
+4.1.  Transient Failures
+
+   Errors that fall within the transient failures category are used to
+   inform a peer that the request could not be satisfied at the time it
+   was received, but MAY be able to satisfy the request in the future.
+
+   DIAMETER_KEY_UNKNOWN (TBD)
+
+      This error code is returned when a Signed-Data or an Encrypted-
+      Data AVP is received that was generated using a key that cannot be
+      found in the key store.  This error may, for example, be caused if
+      one of the endpoints of an end-to-end security association lost a
+      previously agreed upon key, perhaps as a result of a reboot.  To
+      recover a new end-to-end key establishment procedure may need to
+      be invoked.
+
+4.2.  Permanent Failures
+
+   Errors that fall within the permanent failures category are used to
+   inform the peer that the request failed, and should not be attempted
+   again.
+
+   DIAMETER_DECRYPTION_ERROR (TBD)
+
+      This error code is returned when an Encrypted-Data AVP is received
+      and the decryption fails for an unknown reason.
+
+   DIAMETER_SIGNATURE_ERROR (TBD)
+
+      This error code is returned when a Signed-Data AVP is received and
+      the verification fails for an unknown reason.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 8]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+5.  IANA Considerations
+
+   IANA is requested to allocate AVP codes for the following AVPs:
+
+    +------------------------------------------------------------------+
+    |                                       AVP  Section               |
+    |AVP Name                               Code Defined   Data Type   |
+    +------------------------------------------------------------------+
+    |Signed-Data                            TBD  3.1       OctetString |
+    |Encrypted-Data                         TBD  3.2       OctetString |
+    +------------------------------------------------------------------+
+
+   This specification additionally defines a few Result-Code AVP values,
+   see Section 4.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012               [Page 9]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+6.  Security Considerations
+
+   TBD
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012              [Page 10]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+7.  Acknowledgements
+
+   We would like to thank the authors of [I-D.ietf-aaa-diameter-e2e-sec]
+   for their work on CMS end-to-end security for Diameter.  Their
+   document inspired us.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012              [Page 11]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+8.  References
+
+8.1.  Normative References
+
+   [I-D.ietf-dime-rfc3588bis]
+              Fajardo, V., Arkko, J., Loughney, J., and G. Zorn,
+              "Diameter Base Protocol", draft-ietf-dime-rfc3588bis-29
+              (work in progress), August 2011.
+
+   [I-D.ietf-jose-json-web-encryption]
+              Hildebrand, J., Rescorla, E., and M. Jones, "JSON Web
+              Encryption (JWE)", draft-ietf-jose-json-web-encryption-00
+              (work in progress), January 2012.
+
+   [I-D.ietf-jose-json-web-signature]
+              Sakimura, N., Jones, M., and J. Bradley, "JSON Web
+              Signature (JWS)", draft-ietf-jose-json-web-signature-00
+              (work in progress), January 2012.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+8.2.  Informational References
+
+   [I-D.ietf-aaa-diameter-e2e-sec]
+              Calhoun, P., "Diameter End-2-End Security Extension",
+              2001.
+
+   [RFC5866]  Sun, D., McCann, P., Tschofenig, H., Tsou, T., Doria, A.,
+              and G. Zorn, "Diameter Quality-of-Service Application",
+              RFC 5866, May 2010.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012              [Page 12]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
+
+Authors' Addresses
+
+   Jouni Korhonen
+   Nokia Siemens Networks
+   Linnoitustie 6
+   FI-02600 Espoo
+   FINLAND
+
+   Email: jouni.nospam@gmail.com
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 5, 2012              [Page 13]
+
