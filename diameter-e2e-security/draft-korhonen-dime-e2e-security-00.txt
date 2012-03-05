@@ -17,7 +17,7 @@ Abstract
    integrity and confidentiality protection of Diameter Attribute Value
    Pairs.  The solutions focuses on protecting Diameter Attribute Value
    Pairs and leaves the key distribution solution to a separate
-   specification.  The integrity protection can be introdiced in a
+   specification.  The integrity protection can be introduced in a
    backward compatible manner to existing application.  The
    confidentiality protection requires an explicit support from an
    application, thus is applicable only for newly defined application.
@@ -118,7 +118,7 @@ Table of Contents
    1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  4
    2.  AVP Encoding . . . . . . . . . . . . . . . . . . . . . . . . .  5
      2.1.  Signed-Data AVP  . . . . . . . . . . . . . . . . . . . . .  5
-     2.2.  Encrypted-Data AVP . . . . . . . . . . . . . . . . . . . .  7
+     2.2.  Encrypted-Data AVP . . . . . . . . . . . . . . . . . . . .  8
    3.  Result-Code AVP Values . . . . . . . . . . . . . . . . . . . .  9
      3.1.  Transient Failures . . . . . . . . . . . . . . . . . . . .  9
      3.2.  Permanent Failures . . . . . . . . . . . . . . . . . . . .  9
@@ -235,44 +235,44 @@ Internet-Draft            Diameter E2E Security               March 2012
 
    JWS represents digitally signed or HMACed content using JSON data
    structures.  The representation in [I-D.ietf-jose-json-web-signature]
-   consists of three parts: the JWS header, the JWS payload, and the JWS
-   signature.  This document makes use of the existing JWS header and
-   the JWS signature.  For the JWS payload we define a new JSON object
-   that contains an array of AVP code number and a keyed message digest
-   or a digital signature content of AVP pairs.  The JWS signature then
-   covers the all APVs to be signed or HMACed.  Both JWS payload and
-   signature MUST use the same argorithm indicated in the JWS header.
+   consists of three parts: the JWS Header, the JWS Payload, and the JWS
+   Signature.  The three parts are represented as the concatenation of
+   the encoded strings in that order, with the three strings being
+   separated by period ('.') characters.  This document makes use of the
+   existing JWS Header and the JWS Signature.  For the JWS Payload we
+   define a new JSON object that contains an array of AVP code number
+   and a hash of AVP pairs.  The JWS Signature then covers the all APVs
+   to be signed or HMACed.  Both JWS Payload and signature MUST use the
+   same hash algorithm of the cryptographic algorithm indicated in the
+   JWS Header.
 
    To package a set of AVPs for signing, each AVP octet representation
-   to be protected are first individully signed and encoded into the
-   JSON object below with its APC code number:
+   to be protected are first individually hashed and encoded into the
+   JSON object below with its AVP code number, as shown in Figure 1:
 
    { "avp":
      [
        {"code" : 123,
-        "hash": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+        "hash": "NzY0YjIwYTgyNjE1NjYzNzBkMjExZTUyZmQwNTA5Njc="
        },
        {"code" : 321,
-        "hash": "aaabbbccddee.."
+        "hash": "OWQ3NjMyNzViNGVmNjQzMGVmNTg4Y2JjMDRiNzU5OGY="
        }
      ]
    }
 
-    Figure 1: Example JSON object for JWS payload to carry an array of
-    AVP code and their digital signature or keyed message digest pairs
+                       Figure 1: Example JWS Payload
 
-   The entire AVP MUST be input to the signing process, from the first
+   The entire AVP MUST be input to the hash calculation, from the first
    byte of the AVP code to the last byte of the AVP data, including all
    other fields, length, reserved/flags, and optional vendor IDs, and
-   padding.  The AVP MUST be input to the signing process in network
+   padding.  The AVP MUST be input to the hash calculation in network
    byte order.  The "code" in the Figure 1 is an integer value
-   containing the AVP code number, and the "hash" is the Base64url
-   encoded hash/signature of the AVP.
+   containing the AVP code number, and the "hash" is the Base64 encoded
+   hash of the AVP.
 
-   The JWS signature is calculated over all individually signed AVPs
-   (JWS payload) and then the all three JWS parts are placed in the
-   Signed-Data AVP.  There can be multiple Signed-Data AVPs in a
-   Diameter message, althoug that usually does not bring any additional
+   The JWS Signature is calculated over the entire JWS Payload and then
+   the all three JWS parts are placed in the Signed-Data AVP.  There can
 
 
 
@@ -281,15 +281,15 @@ Korhonen & Tschofenig   Expires September 6, 2012               [Page 5]
 Internet-Draft            Diameter E2E Security               March 2012
 
 
-   benefit.  The AVP code in the JWS payload is to indicate which AVP
-   this signature possibly refers to.  If there are multiple instances
-   of the same AVP in the Diameter message, there is no other way that
-   make the verification against all of those.  It is possible the
-   message sender only signed one AVP of the same type and, therefore,
-   the receiver MUST verify the signature against all occurrences of the
-   APV of the same code number.  Such fexibility is added there to allow
-   reordering of the AVPs and addition of new AVPs by intermediating
-   agents.
+   be multiple Signed-Data AVPs in a Diameter message.  The AVP code in
+   the JWS Payload is to indicate which AVP this hash possibly refers
+   to.  If there are multiple instances of the same AVP in the Diameter
+   message, there is no other way that make the verification against all
+   of those.  It is possible that the message sender only hashed one AVP
+   of the same type and, therefore, the receiver MUST verify the hash
+   against all occurrences of the AVP of the same code number.  Such
+   flexibility is added there to allow reordering of the AVPs and
+   addition of new AVPs by intermediating agents.
 
    If a receiver detects errors with the processing of the Signed-Data
    AVP it MAY return one of the errors defined in Section 3.  If a
@@ -349,27 +349,55 @@ Internet-Draft            Diameter E2E Security               March 2012
     { "avp":
       [
         {"code" : 263,      // Session-Id
-         "hash": "aabbccdd..."
+         "hash": "OWQwZTA0OTViYThjMDMxMmI2Mjc0YzUyN2Q1MWEwNDg="
         },
         {"code" : 264,      // Origin-Host
-         "hash": "eeffgghh..."
+         "hash": "MzljYTg4ZmZhYTVhNmZmOTAyOWVkOTViYTUzNGUwMjg="
         },
         {"code" : 296,      // Origin-Realm
-         "hash": "iijjkkll..."
+         "hash": "MjAyNzMwYWNhNmUzYTE4MDJmNDRhNjMzZjI1MGY2ZmU="
         }
       ]
     }
 
    JWS Signature:
 
-    "abcdefgh..."
+    "wv3yJxyrhYJkCcDjK63elFkEvAV9dsSUNBf5Cu1ref8="
+
+   Combined example JWS (with line breaks for display
+   purposes only):
+
+   eyAgInR5cCI6IkpXVCIsDQogICAgImFsZyI6IkhTMjU2IiwNCiAgICAia2l
+   kIjoiYWJjMTIzIg0KfQ==
+   .
+   eyAiYXZwIjoNCiAgIFsNCiAgICAgeyJjb2RlIiA6IDI2MywgICAgICAvLyB
+   TZXNzaW9uLUlkDQogICAgICAiaGFzaCI6ICJPV1F3WlRBME9UVmlZVGhqTU
+   RNeE1tSTJNamMwWXpVeU4yUTFNV0V3TkRnPSINCiAgICAgfSwNCiAgICAge
+   yJjb2RlIiA6IDI2NCwgICAgICAvLyBPcmlnaW4tSG9zdA0KICAgICAgImhh
+   c2giOiAiTXpsallUZzRabVpoWVRWaE5tWm1PVEF5T1dWa09UVmlZVFV6Tkd
+   Vd01qZz0iDQogICAgIH0sDQogICAgIHsiY29kZSIgOiAyOTYsICAgICAgLy
+   8gT3JpZ2luLVJlYWxtDQogICAgICAiaGFzaCI6ICJNakF5TnpNd1lXTmhOb
+   VV6WVRFNE1ESm1ORFJoTmpNelpqSTFNR1kyWm1VPSINCiAgICAgfQ0KICAg
+   XQ0KIH0=
+   .
+   wv3yJxyrhYJkCcDjK63elFkEvAV9dsSUNBf5Cu1ref8=
 
                  Example JWS Header, Payload and Signature
+
+
+
+
+
+Korhonen & Tschofenig   Expires September 6, 2012               [Page 7]
+
+Internet-Draft            Diameter E2E Security               March 2012
+
 
 2.2.  Encrypted-Data AVP
 
    The Encrypted-Data AVP (AVP Code TBD) is of type OctetString and
-   contains the JSON Web Encryption (JWE) data structure and consists of
+   contains the JSON Web Encryption (JWE)
+   [I-D.ietf-jose-json-web-encryption] data structure and consists of
    three parts: the JWE Header, the JWE Encrypted Key, and the JWE
    Ciphertext.  The three parts are represented as the concatenation of
    the encoded strings in that order, with the three strings being
@@ -386,13 +414,6 @@ Internet-Draft            Diameter E2E Security               March 2012
    encrypted and authenticated, the Encrypted-Data AVP MUST be created
    first.
 
-
-
-Korhonen & Tschofenig   Expires September 6, 2012               [Page 7]
-
-Internet-Draft            Diameter E2E Security               March 2012
-
-
    Note that the usage of the Encrypted-Data AVP requires explicit
    support by the Diameter application since a receiving Diameter node
    must first decrypt the content of the Encrypted-Data AVP in order to
@@ -402,36 +423,15 @@ Internet-Draft            Diameter E2E Security               March 2012
    AVPs are optional then their content is not considered by the
    receiving Diameter server without any indication to the sender that
    they have not been processes.  Worse, in the second case when the
-   encryptypted AVPs are mandatory to be processed then the receiving
+   encrypted AVPs are mandatory to be processed then the receiving
    Diameter node will return an error that may not inform the sender
    about the failure to decrypt the Encrypted-Data AVP.  Consequently,
    the usage of the Encrypted-Data AVP may require changes to the ABNF
    definition of a Diameter application.
 
-   If a receiver detects that the contents of the CMS-Data AVP is
+   If a receiver detects that the contents of the Encrypted-Data AVP is
    invalid, it SHOULD return the new Result-Code AVP value defined in
    Section 3.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -563,9 +563,9 @@ Internet-Draft            Diameter E2E Security               March 2012
 
 5.  Security Considerations
 
-   TBD
-
-
+   The purpose of this document is to offer end-to-end security
+   mechanisms for calculating keyed message digest, for signing, and for
+   encryption of Diameter AVPs.
 
 
 
