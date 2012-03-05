@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
-<!DOCTYPE rfc SYSTEM "rfc2629.dtd" []>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+    <!ENTITY RFC2119 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+    <!ENTITY RFC5866 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5866.xml'>
+
+    <!ENTITY I-D.ietf-dime-rfc3588bis PUBLIC '' 'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dime-rfc3588bis.xml'> 
+    <!ENTITY I-D.ietf-jose-json-web-signature PUBLIC '' 'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-jose-json-web-signature.xml'> 
+    <!ENTITY I-D.ietf-jose-json-web-encryption PUBLIC '' 'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-jose-json-web-encryption.xml'> 
+]>
 <rfc category="std" ipr="trust200902" docName="draft-korhonen-dime-e2e-security-00.txt">
   <?rfc toc="yes" ?>
   <?rfc symrefs="yes" ?>
@@ -44,8 +53,16 @@
     <keyword>Diameter</keyword>
     <keyword>End-to-End Security</keyword>
     <abstract>
-      <t>TBD</t>
+     <t>This document defines an extension for end to end authentication, integrity and confidentiality protection of Diameter Attribute Value Pairs. The solutions focuses on protecting Diameter Attribute Value Pairs and leaves the key distribution solution to a separate specification. The integrity protection can be introdiced in a backward compatible manner to existing application. The confidentiality protection requires an explicit support from an application, thus is applicable only for newly defined application.</t>
     </abstract>
+
+    <!-- ******************************************************************************* -->
+
+    <note title="Terminology">
+      <t> The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+        NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in <xref target="RFC2119">RFC 2119</xref>.</t>
+    </note>
   </front>
   <middle>
 
@@ -91,14 +108,6 @@
      
          </section>
 
-    <!-- ******************************************************************************* -->
-
-    <section title="Terminology">
-      <t> The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
-        NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as
-        described in <xref target="RFC2119">RFC 2119</xref>.</t>
-    
-    </section>
 
     <!-- ******************************************************************************* -->
 
@@ -114,36 +123,36 @@
    <t>JWS represents digitally signed or HMACed content using JSON data
    structures.  The representation in <xref target="I-D.ietf-jose-json-web-signature"/> 
    consists of three parts: the JWS 
-   header, the JWS payload, and the JWS signature. This document only makes use 
-   of the JWS header and the JWS signature - the JWS payload corresponds to the Diameter 
-   AVPs that shall be protected using a keyed message digest or a digital signature.</t>
+   header, the JWS payload, and the JWS signature. This document makes use 
+   of the existing JWS header and the JWS signature. For the JWS payload we define a new JSON object that contains an array of AVP code number and a keyed message digest or a digital signature content of AVP pairs. The JWS signature then covers the all APVs to be signed or HMACed. Both JWS payload and signature MUST use the same argorithm indicated  in the JWS header.</t>
          
-   <t>To package a set of AVPs for signing, the AVPs are first
-   concatenated in the order in which they occur in the Diameter
-   message. The entire AVP MUST be input to the signing process, from
+   <t>To package a set of AVPs for signing, each AVP octet representation to be protected are first individully hashed and encoded into the JSON object below with its AVP code number, as shown in <xref target="jsonobj"/>:
+
+<figure title="Example JWS Payload" anchor="jsonobj">
+<artwork><![CDATA[
+{ "avp":
+  [
+    {"code" : 123,
+     "hash": "NzY0YjIwYTgyNjE1NjYzNzBkMjExZTUyZmQwNTA5Njc="
+    },
+    {"code" : 321,
+     "hash": "OWQ3NjMyNzViNGVmNjQzMGVmNTg4Y2JjMDRiNzU5OGY="
+    }
+  ]
+}
+]]></artwork>
+</figure>
+      
+   The entire AVP MUST be input to the hash calculation, from
    the first byte of the AVP code to the last byte of the AVP data,
    including all other fields, length, reserved/flags, and optional
-   vendor IDs, and padding.  The AVP MUST be input to the signing
-   process in network byte order.</t>
+   vendor IDs, and padding.  The AVP MUST be input to the hash calculation
+   in network byte order. The "code" in the <xref target="jsonobj"/> is an integer value containing the AVP code number, and the "hash" is the Base64url encoded hash of the AVP.</t> 
 
-   <t>The signature is calculated over all AVPs following the Signed-Data AVP.
-   For the design of the Signed-Data AVP as proposed by this document the 
-   AVPs themselves are not carried within the Signed-Data AVP (for example in the JWT payload). Instead, 
-   the digest is computed over these AVPs and placed into the JWS signature.</t>
+   <t>The JWS signature is calculated over the entire JWS payload and then the all three JWS parts are placed in the Signed-Data AVP. There can be multiple Signed-Data AVPs in a Diameter message. The AVP code in the JWS payload is to indicate which AVP this hash possibly refers to. If there are multiple instances of the same AVP in the Diameter message, there is no other way that make the verification against all of those. It is possible that the message sender only hashed one AVP of the same type and, therefore, the receiver MUST verify the hash against all occurrences of the AVP of the same code number. Such flexibility is added there to allow reordering of the AVPs and addition of new AVPs by intermediating agents.</t>
    
-<!--   Multiple Diameter entities MAY
-   add their signatures to an existing CMS-Signed-Data AVP using the
-   countersignature attribute, defined in section 11.4 of [3]. The
-   countersignature attribute requires that the signatures occur
-   sequentially, meaning that each node's signature covers the existing
-   signatures in the CMS object. A countersignature MUST cover all AVPs
-   in the message that have the 'P' bit enabled (i.e. the same AVPs as
-   the first signature). Receiving Diameter nodes MAY, but need not, be
-   able to support the use of the countersignature attribute.
--->
-
    <t>If a receiver detects errors with the processing of the Signed-Data AVP
-   it may return one of the errors defined in <xref target="error"/>.</t>
+   it MAY return one of the errors defined in <xref target="error"/>. If a receiver does not find an AVP the Signed-Data AVP has a signature for, it MAY also return one of the errors defined in <xref target="error"/>.</t>
 
    <t>When AVPs are to be both encrypted and signed, the Encrypted-Data
    AVP MUST be created first. This means that signing is
@@ -161,19 +170,42 @@
                               { Origin-Realm }
                               { Destination-Realm }
                               { Auth-Request-Type }
-                              Signed-Data
-                              QoS-Resources                              
+                              [ Signed-Data ]
+                            * [ QoS-Resources ]
+                              ...
 ]]></artwork>
          </figure>
       </t>
  
-    <t>The Signed-Data AVP in this example may contain a JWS Header that indicates the 
-    use of the HMAC SHA-256 algorithm with the key id 'abc123':
-                 <figure title="Example JWS Header">
+    <t>The Signed-Data AVP in this example may contain a JWS Header that indicates the use of the HMAC SHA-256 algorithm with the key id 'abc123'. The protected AVPs are Session-Id, Origin-Host and Origin-Realm. The calculated HMAC SHA-256 values are for example purposes only (i.e., are not real):
+<figure title="Example JWS Header, Payload and Signature">
                     <artwork><![CDATA[
-   {"typ":"JWT",
+JWS Header:
+
+ {  "typ":"JWT",
     "alg":"HS256",
-    "kid":"abc123"}
+    "kid":"abc123"
+ }
+
+JWS Payload:
+
+ { "avp":
+   [
+     {"code" : 263,      // Session-Id
+      "hash": "aabbccdd..."
+     },
+     {"code" : 264,      // Origin-Host
+      "hash": "eeffgghh..."
+     },
+     {"code" : 296,      // Origin-Realm
+      "hash": "iijjkkll..."
+     }
+   ]
+ }
+
+JWS Signature:
+
+ "abcdefgh..."
 ]]></artwork>
          </figure>
      </t>
@@ -282,13 +314,13 @@
       <t>IANA is requested to allocate AVP codes for the following AVPs:
                <figure>
                     <artwork><![CDATA[
-    +------------------------------------------------------------------+
-    |                                       AVP  Section               |
-    |AVP Name                               Code Defined   Data Type   |
-    +------------------------------------------------------------------+
-    |Signed-Data                            TBD  3.1       OctetString |
-    |Encrypted-Data                         TBD  3.2       OctetString |
-    +------------------------------------------------------------------+
++------------------------------------------------------------------+
+|                                       AVP  Section               |
+|AVP Name                               Code Defined   Data Type   |
++------------------------------------------------------------------+
+|Signed-Data                            TBD  3.1       OctetString |
+|Encrypted-Data                         TBD  3.2       OctetString |
++------------------------------------------------------------------+
 ]]></artwork>
          </figure>
       </t>
@@ -300,7 +332,7 @@
     <!-- ******************************************************************************* -->
 
     <section title="Security Considerations">
-      <t>TBD</t>
+      <t>The purpose of this document is to offer end-to-end security mechanisms for calculating keyed message digest, for signing, and for encryption of Diameter AVPs.</t>
     </section>
 
     <!-- ******************************************************************************* -->
@@ -316,22 +348,23 @@
 
   <back>
     <references title="Normative References">
-      <?rfc include="reference.RFC.2119" ?>
-      <?rfc include="reference.I-D.ietf-dime-rfc3588bis"?>
-      <?rfc include="reference.I-D.ietf-jose-json-web-signature"?>
-      <?rfc include="reference.I-D.ietf-jose-json-web-encryption"?> 
+      &RFC2119;
+      &I-D.ietf-dime-rfc3588bis;
+      &I-D.ietf-jose-json-web-signature;
+      &I-D.ietf-jose-json-web-encryption;
     </references>
-    <references title="Informational References">
-      
-         <reference anchor="I-D.ietf-aaa-diameter-e2e-sec">
-        <front>
-          <title>Diameter End-2-End Security Extension</title>
-          <author fullname="Pat Calhoun" initials="P." surname="Calhoun"> </author>
-          <date year="2001"/>
-        </front>
-<format type="TXT" target="http://tools.ietf.org/html/draft-ietf-aaa-diameter-e2e-sec-02"/>
-      </reference>
-      <?rfc include="reference.RFC.5866" ?>
+
+    <references title="Informational References">   
+     <reference anchor="I-D.ietf-aaa-diameter-e2e-sec">
+      <front>
+       <title>Diameter End-2-End Security Extension</title>
+       <author fullname="Pat Calhoun" initials="P." surname="Calhoun"> </author>
+       <date year="2001"/>
+      </front>
+      <format type="TXT" target="http://tools.ietf.org/html/draft-ietf-aaa-diameter-e2e-sec-02"/>
+     </reference>
+
+      &RFC5866;
     </references>
    </back>
 </rfc>
