@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc strict="no" ?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="4"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes" ?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+
+<rfc category="std" docName="draft-ietf-tls-oob-pubkey-02.txt" ipr="trust200902">
+
+  <front>
+    <!-- The abbreviated title is used in the page header - it is only necessary if the 
+         full title is longer than 39 characters -->
+
+    <title abbrev="TLS OOB Public Key Validation">TLS Out-of-Band Public Key Validation</title>
+
+    <!-- add 'role="editor"' below for the editors if appropriate -->
+
+    <author fullname="Paul Wouters" initials="P." surname="Wouters">
+      <organization>No Hats Corporation</organization>
+      <address>
+        <postal>
+          <street/>
+          <city/>
+          <region/>
+          <code/>
+          <country/>
+        </postal>
+        <email>paul@nohats.ca</email>
+      </address>
+    </author>
+
+    <author fullname="John Gilmore" initials="J." surname="Gilmore">
+      <organization />
+      <address>
+        <postal>
+          <street>PO Box 170608</street>
+          <city>San Francisco</city>
+          <region>California</region>
+          <code>94117</code>
+          <country>USA</country>
+        </postal>
+        <phone>+1 415 221 6524</phone>
+        <email>gnu@toad.com</email>
+        <uri>https://www.toad.com/</uri>
+      </address>
+    </author>
+
+    <author fullname="Samuel Weiler" initials="S." surname="Weiler">
+      <organization>SPARTA, Inc.</organization>
+      <address>
+        <postal>
+          <street>7110 Samuel Morse Drive</street>
+          <city>Columbia, Maryland</city>
+          <code>21046</code>
+          <country>US</country>
+        </postal>
+        <email>weiler@tislabs.com</email>
+      </address>
+    </author>
+
+ <author initials="T." surname="Kivinen" fullname="Tero Kivinen">
+            <organization>AuthenTec</organization>
+            <address>
+                <postal>
+                    <street>Eerikinkatu 28</street>
+                    <city>HELSINKI</city>
+                    <code>FI-00180</code>
+                    <country>FI</country>
+                </postal>
+                <email>kivinen@iki.fi</email>
+            </address>
+        </author>
+
+        <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+            <organization>Nokia Siemens Networks</organization>
+            <address>
+                <postal>
+                    <street>Linnoitustie 6</street>
+                    <city>Espoo</city>
+                    <code>02600</code>
+                    <country>Finland</country>
+                </postal>
+                <phone>+358 (50) 4871445</phone>
+                <email>Hannes.Tschofenig@gmx.net</email>
+                <uri>http://www.tschofenig.priv.at</uri>
+            </address>
+        </author>
+
+    <date year="2012" />
+
+
+    <!-- If the month and year are both specified and are the current ones, xml2rfc will fill 
+         in the current day for you. If only the current year is specified, xml2rfc will fill 
+         in the current day and month for you. If the year is not the current one, it is 
+         to specify at least a month (xml2rfc assumes day="1" if not specified for the 
+         purpose of calculating the expiry date).  With drafts it is normally sufficient to 
+         specify just the year. -->
+
+    <!-- Meta-data Declarations -->
+
+    <area>Security</area>
+
+    <workgroup>TLS</workgroup>
+
+    <!-- WG name at the upperleft corner of the doc,
+         IETF is fine for individual submissions.  
+         If this element is not present, the default is "Network Working Group",
+         which is used by the RFC Editor as a nod to the history of the IETF. -->
+
+    <keyword>TLS</keyword>
+    <keyword>DNSSEC</keyword>
+    <keyword>DANE</keyword>
+    <keyword>Raw Public Key</keyword>
+
+    <!-- Keywords will be incorporated into HTML output
+         files in a meta tag but they have no effect on text or nroff
+         output. If you submit your draft to the RFC Editor, the
+         keywords will be used for the search engine. -->
+
+    <abstract>
+      <t>
+         This document specifies a new TLS certificate type for exchanging
+         raw public keys in Transport Layer Security (TLS)
+         and Datagram Transport Layer Security (DTLS) for use with out-of-band
+         public key validation. Currently, TLS authentication can only occur via X.509-based Public
+Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resource for raw
+         public key exchange, implementations can use alternative public key validation
+         methods.
+      </t>
+      <t>
+         One such alternative public key valiation method is offered by the DNS-Based Authentication of Named Entities (DANE) together with DNS Security. Another alternative is to utilize pre-configured keys, as is the case with sensors and other
+         embedded devices. The usage of raw public keys, instead of X.509-based certificates, leads to a smaller 
+         code footprint. 
+      </t>
+
+      <t>The support for raw public keys is introduced into TLS via a new certificate type.</t>
+    </abstract>
+  </front>
+
+   <middle>
+    <section title="Introduction">
+      <section title="Motivation" anchor="motivation">
+       <t>Traditionally, TLS server public keys are obtained in PKIX containers
+          in-band using the TLS handshake and validated using trust anchors
+          based on a  <xref target='PKIX'/> certification authority (CA). This
+          method can add a complicated trust relationship that is difficult
+          to validate. Examples of such complexity can be seen in
+          <xref target='Defeating-SSL'/>.</t>
+
+       <t>Alternative methods are available that allow a TLS client to obtain
+          the TLS server public key:</t>
+
+       <t><list style="symbols">
+          <t>The TLS server public key is obtained from a DNSSEC secured resource records              
+             using DANE <xref target='DANE'/>.</t>
+
+          <t>The TLS server public key is obtained from a <xref target='PKIX'/>
+             certificate chain from an Lightweight Directory Access Protocol (LDAP) <xref target="LDAP"/> server.</t>
+
+          <t>The TLS server public key is provisioned by the operating system
+             and updated via software updates.</t>
+
+<!--          <t>A TLS client has connected to the TLS server before and has cached
+             the TLS server certificate chain or TLS server public key for re-use.</t> --> 
+          </list>
+       </t>
+
+       <t><xref target='RFC5246'/> does not provide a mechanism for a TLS client
+          to tell the TLS server it is already in possession of the authenticated
+          public key. Therefore, a TLS server must always send a list of trusted
+          CA keys and its EE certificate containing its public key, even when
+          the TLS client does not require or desire that data for authentication.</t>
+
+       <t><xref target='RFC6066'/> allows suppression of the certificate trust
+          anchor chain, but not suppression of the PKIX EE certificate container.
+          These certificate chains are large opaque blocks of data containing
+          much more than the public key of the TLS server. Since the TLS client
+          might only be able to validate the PKIX SubjectPublicKeyInfo via an
+          out-of-band method, such as <xref target="DANE"/>, it has to ignore any additional
+          information received that was sent by the server that it could not
+          validate. Furthermore, information that comes in via these certificate
+          chains could contain contradicting or additional information that the
+          TLS client cannot validate or trust, such as an expiry date that
+          conflicts with information obtained from DNS or LDAP. This document
+          specifies a method to suppress sending this additional information.</t>
+
+       <t>Some smart objects use the UDP-based Constrained Application Protocol (CoAP) <xref target='CoAP'/> for  
+          constrained nodes and networks for machine-to-machine applications.
+          These devices interact with a Web server to upload data such as
+          temperature sensor readings at a regular intervals. CoAP
+          <xref target="CoAP"/> can utilize
+          DTLS for its communication security. As part of the provisioning procedure,
+          the embeded device is configured with the address and the public key of a
+          dedicated CoAP server. Receiving PKIX information <xref target='PKIX'/>
+          from a webserver would be an unneccesarry burden on a sensor networking
+          deployment environment.
+       </t>
+      </section>
+
+
+      <section title="Applicability" anchor="applicability">
+      <t>The Transport Layer Security (TLS) Protocol Version 1.2 is specified
+         in <xref target="RFC5246"/> and provides
+         a framework for extensions to TLS as well as considerations for
+         designing such extensions. <xref target="RFC6066"/>
+         defines several new TLS extensions. This document specifies a new TLS Certificate Type 
+         for usage with raw public keys. <!-- to facilitate
+         suppressing unneeded <xref target='PKIX'/> information from being sent
+         during the TLS handshake when this information is not required 
+         to authenticate the TLS server.--> </t>
+      </section>
+
+      <section title="Terminology" anchor="terminology">
+      <t>Most security-related terms in this document are to be understood in the
+         sense defined in <xref target="SECTERMS"/>; such terms include, but are
+         not limited to, "attack", "authentication", "authorization",
+         "certification authority", "certification path", "certificate",
+         "credential", "identity", "self-signed certificate", "trust",
+         "trust anchor", "trust chain", "validate", and "verify".</t>
+
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+        document are to be interpreted as described in <xref target="RFC2119">RFC&nbsp;2119</xref>.</t>
+      </section>
+
+  </section>
+
+    <section title="Changes to the Handshake Message Contents">
+  <t>
+   This section describes the changes to the TLS handshake message
+   contents when raw public keys are to be used for authentication.
+   <xref target="flow"/> illustrates the exchange of messages as
+   described in the sub-sections below. The new "RawPublicKey" value
+   in the cert_type extension indicates the ability and desire to
+   exchange raw public keys, which are then exchanged as part of the
+   certificate payloads. Note that the certificate payloads only 
+   contain the SubjectPublicKeyInfo structure instead of the entire
+   certificate. 
+  </t>
+  <t>
+<figure anchor="flow" title="Example Message Flow">
+<artwork>
+<![CDATA[ 
+ client_hello, 
+ cert_type="RawPublicKey" ->
+
+                           <-  server_hello,
+                               cert_type="RawPublicKey",
+                               certificate, 
+                               server_key_exchange,
+                               certificate_request,
+                               server_hello_done
+
+ certificate, 
+ client_key_exchange,
+ certificate_verify,
+ change_cipher_spec,
+ finished                  ->
+
+                           <- change_cipher_spec,
+                              finished
+
+Application Data        <------->     Application Data
+]]>
+</artwork>
+</figure>
+</t>
+
+  <section title="Client Hello">
+
+   <t>
+   In order to indicate the support of out-of-band raw public keys,
+   clients MUST include an extension of type "cert_type" to the extended
+   client hello message.  The "cert_type" TLS extension, which is defined
+   in <xref target="RFC6091"/>, is assigned the
+   value of 9 from the TLS ExtensionType registry.  This value is used
+   as the extension number for the extensions in both the client hello
+   message and the server hello message.  The hello extension mechanism
+   is described in <xref target="RFC5246"/>.
+   </t>
+
+   <t>
+   The "cert_type" TLS extension carries a list of supported certificate types the
+   client can use, sorted by client preference.  This extension MUST be
+   omitted if the client only supports X.509 certificates.  The
+   "extension_data" field of this extension contains a
+   CertificateTypeExtension structure.  Note that the
+   CertificateTypeExtension structure is being used both by the client
+   and the server, even though the structure is only specified once in
+   this document.
+   </t>
+
+<t>The <xref target="RFC6091"/> defined CertificateTypeExtension is extended
+as follows:
+<figure>
+<artwork>
+<![CDATA[    
+enum { client, server } ClientOrServerExtension;
+
+enum { X.509(0), OpenPGP(1), 
+   RawPublicKey([TBD]), 
+   (255) } CertificateType;
+
+struct {
+   select(ClientOrServerExtension) 
+       case client:
+         CertificateType certificate_types<1..2^8-1>;
+       case server:
+         CertificateType certificate_type;
+   }
+} CertificateTypeExtension;
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>No new cipher suites are required to use raw public keys.  All
+   existing cipher suites that support a key exchange method compatible
+   with the defined extension can be used.</t>
+
+</section>
+
+<section title="Server Hello">
+
+<t>If the server receives a client hello that contains the "cert_type"
+   extension and chooses a cipher suite then two outcomes are possible.
+   The server MUST either select a certificate type from the certificate_types
+   field in the extended client hello or terminate the session with a
+   fatal alert of type "unsupported_certificate".</t>
+
+<t>The certificate type selected by the server is encoded in a
+   CertificateTypeExtension structure, which is included in the extended
+   server hello message using an extension of type "cert_type".  Servers
+   that only support X.509 certificates MAY omit including the
+   "cert_type" extension in the extended server hello.
+</t>
+
+<t>If the negotiated certificate type is RawPublicKey the TLS server MUST
+   place the SubjectPublicKeyInfo structure into the Certificate payload. <!-- send a CertificateTypeExtension structure with a PKIX <xref target='PKIX'/> certificate
+   containing only the SubjectPublicKeyInfo structure.--> The public key MUST match the
+   selected key exchange algorithm.</t>
+
+</section>
+
+<section title="Certificate Request">
+
+<t>
+   The semantics of this message remain the same as in the TLS
+   specification.  However, if this message is sent, and the negotiated
+   certificate type is RawPublicKey, the
+   "certificate_authorities" list MUST be empty.
+</t>
+
+</section>
+
+<section title="Other Handshake Messages">
+
+<t>All the other handshake messages are identical to the TLS
+   specification.</t>
+
+</section>
+
+
+ </section>
+
+
+    <section title="Security Considerations" anchor="security">
+
+    <t>The TLS cert_type extension defined here lets a TLS client attempt to supress
+       the sending of server certificate as well as the certification chain
+       for that certificate.</t>
+
+       <t>A client using this cert_type needs to be confident in the
+       authenticity of the public key it is using.  Since those
+       public keys were obtained out-of-band their verification must also happen out-of-band.</t>
+
+       <t>Depending on how the public keys were obtained, it may be
+       appropriate to use authentication mechanisms tied to the public key
+       transport.  For example, if public keys were obtained using DANE <xref target="DANE"/>
+       it is appropriate to use DNSSEC to authenticate the public keys.</t>
+    </section>
+
+    <section anchor="IANA" title="IANA Considerations">
+      <t>We request that IANA assign a TLS cert_type value for RawPublicKey.</t>
+
+    </section>
+
+      <section title="Contributors" anchor="contributors">
+              <t>The following individuals made important contributions to this document: Paul Hoffman.</t>
+      </section>
+
+      <section title="Acknowledgements" anchor="acknowledgements">
+      <t>This document is based on material from RFC 6066 for which the
+         author is Donald Eastlake 3rd. Contributions to that document
+         also include Joseph Salowey, Alexey Melnikov, Peter Saint-Andre,
+         and Adrian Farrel.</t>
+      <t>The feedback from the TLS working group meeting at IETF#81 has substantially shaped the document and we would like 
+	  to thank the meeting participants for their input.  The support for hashes of public keys has been removed after the discussions at the IETF#82 meeting and the feedback 
+from Eric Rescorla.  
+         </t>
+         
+         <t>We would like to thank Martin Rex, Bill Frantz, Zach Shelby, Carsten Bormann, Cullen Jennings, Rene Struik, Alper Yegin, and Jim Schaad. </t>
+      </section>
+
+  </middle>
+
+  <!--  *****BACK MATTER ***** -->
+
+  <back>
+    <!-- References split into informative and normative -->
+
+    <!-- There are 2 ways to insert reference entries from the citation libraries:
+     1. define an ENTITY at the top, and use "ampersand character"RFC2629; here (as shown)
+     2. simply use a PI "less than character"?rfc include="reference.RFC.2119.xml"?> here
+        (for I-Ds: include="reference.I-D.narten-iana-considerations-rfc2434bis.xml")
+
+     Both are cited textually in the same manner: by using xref elements.
+     If you use the PI option, xml2rfc will, by default, try to find included files in the same
+     directory as the including file. You can also define the XML_LIBRARY environment variable
+     with a value containing a set of directories to search.  These can be either in the local
+     filing system or remote ones accessed by http (http://domain/dir/... ).-->
+
+<references title="Normative References">
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml"?>
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml"?>
+
+   <reference anchor='PKIX'>
+      <front>
+      <title>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</title>
+      <author initials='D.' surname='Cooper' fullname='D. Cooper'>
+      <organization /></author>
+      <author initials='S.' surname='Santesson' fullname='S. Santesson'>
+      <organization /></author>
+      <author initials='S.' surname='Farrell' fullname='S. Farrell'>
+      <organization /></author>
+      <author initials='S.' surname='Boeyen' fullname='S. Boeyen'>
+      <organization /></author>
+      <author initials='R.' surname='Housley' fullname='R. Housley'>
+      <organization /></author>
+      <author initials='W.' surname='Polk' fullname='W. Polk'>
+      <organization /></author>
+      <date year='2008' month='May' />
+      <abstract>
+         <t>This memo profiles the X.509 v3 certificate and X.509 v2 certificate revocation list (CRL) for use in the Internet.  An overview of this approach and model is provided as an introduction.  The X.509 v3 certificate format is described in detail, with additional information regarding the format and semantics of Internet name forms.  Standard certificate extensions are described and two Internet-specific extensions are defined.  A set of required certificate extensions is specified.  The X.509 v2 CRL format is described in detail along with standard and Internet-specific extensions.  An algorithm for X.509 certification path validation is described.  An ASN.1 module and examples are provided in the appendices. [STANDARDS TRACK]</t></abstract></front>
+      <seriesInfo name='RFC' value='5280' />
+      <format type='TXT' octets='352580' target='ftp://ftp.isi.edu/in-notes/rfc5280.txt' />
+   </reference>
+
+   <reference anchor='SECTERMS'>
+      <front>
+      <title>Internet Security Glossary, Version 2</title>
+      <author initials='R.' surname='Shirey' fullname='R. Shirey'>
+      <organization /></author>
+      <date year='2007' month='August' />
+      <abstract>
+         <t>This Glossary provides definitions, abbreviations, and
+         explanations of terminology for information system security.
+         The 334 pages of entries offer recommendations to improve the
+         comprehensibility of written material that is generated in the
+         Internet Standards Process (RFC 2026).  The recommendations
+         follow the principles that such writing should (a) use the same
+         term or definition whenever the same concept is mentioned; (b)
+         use terms in their plainest, dictionary sense; (c) use terms that
+         are already well-established in open publications; and (d) avoid
+         terms that either favor a particular vendor or favor a particular
+         technology or mechanism over other, competing techniques
+         that already exist or could be developed.  This memo provides
+         information for the Internet community.</t>
+       </abstract>
+      </front>
+      <seriesInfo name='RFC' value='4949' />
+      <format type='TXT' octets='867626' target='ftp://ftp.isi.edu/in-notes/rfc4949.txt' />
+   </reference>
+
+</references>
+
+<references title="Informative References">
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6066.xml"?>
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6091.xml"?>  
+
+   <reference anchor='LDAP'>
+      <front>
+      <title>Lightweight Directory Access Protocol (LDAP): The Protocol</title>
+      <author initials='J.' surname='Sermersheim' fullname='J. Sermersheim'>
+      <organization /></author>
+      <date year='2006' month='June' />
+      <abstract>
+         <t>This document describes the protocol elements, along with
+         their semantics and encodings, of the Lightweight Directory
+         Access Protocol (LDAP).  LDAP provides access to distributed
+         directory services that act in accordance with X.500 data
+         and service models.  These protocol elements are based
+         on those described in the X.500 Directory Access Protocol
+         (DAP). [STANDARDS TRACK]</t>
+       </abstract>
+      </front>
+      <seriesInfo name='RFC' value='4511' />
+      <format type='TXT' octets='150116' target='ftp://ftp.isi.edu/in-notes/rfc4511.txt' />
+   </reference>
+   
+   <reference anchor='DANE'> 
+      <front> 
+      <title>Using Secure DNS to Associate Certificates with Domain Names For TLS</title> 
+      <author initials='P' surname='Hoffman' fullname='Paul Hoffman'> 
+      <organization /> 
+      </author> 
+      <author initials='J' surname='Schlyter' fullname='J. Schlyter'> 
+      <organization /> 
+      </author> 
+      <date month='September' day='27' year='2011' /> 
+      <abstract><t>TLS and DTLS use certificates for authenticating the server.  Users
+       want their applications to verify that the certificate provided by
+       the TLS server is in fact associated with the domain name they
+       expect.  DNSSEC provides a mechanism for a zone operator to sign DNS
+       information directly.  This way, bindings of keys to domains are
+       asserted not by external entities, but by the entities that operate
+       the DNS.  This document describes how to use secure DNS to associate
+       the TLS server's certificate with the intended domain name.</t></abstract> 
+      </front> 
+      <seriesInfo name='Internet-Draft' value='draft-ietf-dane-protocol-14' /> 
+      <format type='TXT' 
+            target='http://www.ietf.org/internet-drafts/draft-ietf-dane-protocol-14.txt' /> 
+   </reference> 
+
+   <reference anchor='CoAP'> 
+      <front> 
+      <title>Constrained Application Protocol</title>
+      <author initials='Z' surname='Shelby' fullname='Z. Shelby'> 
+      <organization>Sensinode</organization>
+      </author> 
+      <author initials='K' surname='Hartke' fullname='K. Hartke'> 
+      <organization /> 
+      </author> 
+      <author initials='C' surname='Bormann' fullname='C. Bormann'> 
+      <organization>Universitaet Bremen TZI</organization>
+      </author> 
+      <author initials='B' surname='Frank' fullname='B. Frank'> 
+      <organization>SkyFoundry</organization>
+      </author> 
+      <date month='July' day='8' year='2011' /> 
+      <abstract><t>
+      This document specifies the Constrained Application Protocol (CoAP),
+      a specialized web transfer protocol for use with constrained networks
+      and nodes for machine-to-machine applications such as smart energy
+      and building automation.  These constrained nodes often have 8-bit
+      microcontrollers with small amounts of ROM and RAM, while networks
+      such as 6LoWPAN often have high packet error rates and a typical
+      throughput of 10s of kbit/s.  CoAP provides a method/response
+      interaction model between application end-points, supports built-in
+      resource discovery, and includes key web concepts such as URIs and
+      content-types.  CoAP easily translates to HTTP for integration with
+      the web while meeting specialized requirements such as multicast
+      support, very low overhead and simplicity for constrained
+      environments.
+       </t></abstract> 
+      </front> 
+      <seriesInfo name='Internet-Draft' value='draft-ietf-core-coap-07' /> 
+      <format type='TXT' 
+            target='http://www.ietf.org/internet-drafts/draft-ietf-core-coap-07.txt' /> 
+   </reference> 
+
+    <reference anchor='Defeating-SSL' target='http://www.blackhat.com/presentations/bh-dc-09/Marlinspike/BlackHat-DC-09-Marlinspike-Defeating-SSL.pdf'>
+       <front>
+       <title>New Tricks for Defeating SSL in Practice</title>
+       <author initials='M.' surname='Marlinspike' fullname='Moxie Marlinspike'>
+       <organization /></author>
+       <date year='2009' month='February' />
+       </front>
+       <format type='PDF' target='http://www.blackhat.com/presentations/bh-dc-09/Marlinspike/BlackHat-DC-09-Marlinspike-Defeating-SSL.pdf' />
+    </reference>
+</references>
+
+  </back>
+</rfc>
