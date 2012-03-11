@@ -143,7 +143,7 @@ Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resour
   </front>
 
    <middle>
-    <section title="Introduction">
+    <section anchor="into" title="Introduction">
       <section title="Motivation" anchor="motivation">
        <t>Traditionally, TLS server public keys are obtained in PKIX containers
           in-band using the TLS handshake and validated using trust anchors
@@ -162,7 +162,7 @@ Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resour
           <t>The TLS server public key is obtained from a <xref target='PKIX'/>
              certificate chain from an Lightweight Directory Access Protocol (LDAP) <xref target="LDAP"/> server.</t>
 
-          <t>The TLS server public key is provisioned by the operating system
+          <t>The TLS client and server public key is provisioned into the operating system firmware image,
              and updated via software updates.</t>
 
 <!--          <t>A TLS client has connected to the TLS server before and has cached
@@ -170,6 +170,7 @@ Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resour
           </list>
        </t>
 
+	   <!-- 
        <t><xref target='RFC5246'/> does not provide a mechanism for a TLS client
           to tell the TLS server it is already in possession of the authenticated
           public key. Therefore, a TLS server must always send a list of trusted
@@ -188,44 +189,39 @@ Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resour
           TLS client cannot validate or trust, such as an expiry date that
           conflicts with information obtained from DNS or LDAP. This document
           specifies a method to suppress sending this additional information.</t>
-
-       <t>Some smart objects use the UDP-based Constrained Application Protocol (CoAP) <xref target='CoAP'/> for  
-          constrained nodes and networks for machine-to-machine applications.
-          These devices interact with a Web server to upload data such as
-          temperature sensor readings at a regular intervals. CoAP
-          <xref target="CoAP"/> can utilize
-          DTLS for its communication security. As part of the provisioning procedure,
-          the embeded device is configured with the address and the public key of a
-          dedicated CoAP server. Receiving PKIX information <xref target='PKIX'/>
-          from a webserver would be an unneccesarry burden on a sensor networking
-          deployment environment.
+       --> 
+	   
+       <t>Some smart objects use the UDP-based Constrained Application Protocol (CoAP) <xref target='CoAP'/> to
+	      interact with a Web server to upload sensor data at a regular intervals, such as
+          temperature readings. CoAP <xref target="CoAP"/> can utilize
+          DTLS for securing the client-to-server communication. As part of the manufacturing process,
+          the embeded device may be configured with the address and the public key of a
+          dedicated CoAP server, as well as a public key for the client itself. 
+		  The usage of X.509-based PKIX certificates <xref target='PKIX'/> may not suit all 
+		  smart object deployments and would therefore be an unneccesarry burden.
        </t>
-      </section>
-
-
-      <section title="Applicability" anchor="applicability">
-      <t>The Transport Layer Security (TLS) Protocol Version 1.2 is specified
-         in <xref target="RFC5246"/> and provides
-         a framework for extensions to TLS as well as considerations for
-         designing such extensions. <xref target="RFC6066"/>
-         defines several new TLS extensions. This document specifies a new TLS Certificate Type 
-         for usage with raw public keys. <!-- to facilitate
+	   
+	   <t>The Transport Layer Security (TLS) Protocol Version 1.2 <xref target="RFC5246"/> provides
+         a framework for extensions to TLS as well as guidelines for
+         designing such extensions. This document uses the TLS Certificate Type extension point to
+		 define a new certificate type for carrying raw public keys. <!-- to facilitate
          suppressing unneeded <xref target='PKIX'/> information from being sent
          during the TLS handshake when this information is not required 
          to authenticate the TLS server.--> </t>
       </section>
 
       <section title="Terminology" anchor="terminology">
-      <t>Most security-related terms in this document are to be understood in the
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+        document are to be interpreted as described in <xref target="RFC2119">RFC&nbsp;2119</xref>.</t>
+
+	  <!-- <t>Most security-related terms in this document are to be understood in the
          sense defined in <xref target="SECTERMS"/>; such terms include, but are
          not limited to, "attack", "authentication", "authorization",
          "certification authority", "certification path", "certificate",
          "credential", "identity", "self-signed certificate", "trust",
          "trust anchor", "trust chain", "validate", and "verify".</t>
-
-        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-        "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-        document are to be interpreted as described in <xref target="RFC2119">RFC&nbsp;2119</xref>.</t>
+     -->
       </section>
 
   </section>
@@ -371,6 +367,30 @@ struct {
 
     <section title="Security Considerations" anchor="security">
 
+	<t>The transmission of raw public keys, as described in this document, 
+	provides benefits by lowering the over-the-air transmission overhead since 
+	raw public keys are quite naturally smaller than an entire certificate. 
+	There are also advantages from a codesize point of view for parsing and
+    processing these keys. The crytographic procedures for assocating the 
+	public key with the possession of a private key also follows standard 
+	procedures.</t>
+
+    <t>The main security challenge is, however, how to associate the public 
+    key with a specific entity. This information will be needed to make 
+    authorization decisions. Without a secure binding man-in-the-middle 
+    attacks may be the consequence. This document assumes that such 
+	binding can be made out-of-band and we list a few examples in <xref target="into"/>. 
+	DANE <xref target="DANE"/> offers one such approach. If public keys were obtained using DANE 
+    it is appropriate to use DNSSEC to authenticate the public keys. Pre-configured
+	keys is another option. While pre-configured keys are not suitable for 
+	a generic Web-based e-commerce environment they are a reasonable approach
+	for many smart object deployments where there is a close relationship between 
+	the software running on the device and the server-side communication endpoint. 
+	Regardless of the chosen mechanism for out-of-band public key validation an 
+	assessment of the most suitable approach has to be made prior to the start of a 
+	deployment to jeopardize the security of the system.</t>
+	
+	<!--
     <t>The TLS cert_type extension defined here lets a TLS client attempt to supress
        the sending of server certificate as well as the certification chain
        for that certificate.</t>
@@ -383,15 +403,17 @@ struct {
        appropriate to use authentication mechanisms tied to the public key
        transport.  For example, if public keys were obtained using DANE <xref target="DANE"/>
        it is appropriate to use DNSSEC to authenticate the public keys.</t>
+	   
+	 --> 
     </section>
 
     <section anchor="IANA" title="IANA Considerations">
-      <t>We request that IANA assign a TLS cert_type value for RawPublicKey.</t>
-
+      <t>This document requests IANA to assign a TLS cert_type value for RawPublicKey.
+	  The cert_type registry is established with <xref target="RFC6091"/>.</t>
     </section>
 
       <section title="Contributors" anchor="contributors">
-              <t>The following individuals made important contributions to this document: Paul Hoffman.</t>
+     <t>The following individuals made important contributions to this document: Paul Hoffman.</t>
       </section>
 
       <section title="Acknowledgements" anchor="acknowledgements">
@@ -399,12 +421,14 @@ struct {
          author is Donald Eastlake 3rd. Contributions to that document
          also include Joseph Salowey, Alexey Melnikov, Peter Saint-Andre,
          and Adrian Farrel.</t>
-      <t>The feedback from the TLS working group meeting at IETF#81 has substantially shaped the document and we would like 
-	  to thank the meeting participants for their input.  The support for hashes of public keys has been removed after the discussions at the IETF#82 meeting and the feedback 
-from Eric Rescorla.  
-         </t>
-         
-         <t>We would like to thank Martin Rex, Bill Frantz, Zach Shelby, Carsten Bormann, Cullen Jennings, Rene Struik, Alper Yegin, and Jim Schaad. </t>
+      <t>The feedback from the TLS working group meeting at IETF#81 has 
+	     substantially shaped the document and we would like to thank the 
+	     meeting participants for their input.  The support for hashes of 
+	     public keys has been removed after the discussions at the IETF#82 
+	     meeting and the feedback from Eric Rescorla.</t>
+      <t>We would like to thank Martin Rex, Bill Frantz, Zach Shelby, 
+	     Carsten Bormann, Cullen Jennings, Rene Struik, Alper Yegin, 
+		 and Jim Schaad.</t>
       </section>
 
   </middle>
