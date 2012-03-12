@@ -1,0 +1,618 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc toc="yes" ?>
+<?rfc symrefs="yes" ?>
+<?rfc sortrefs="no"?>
+<?rfc iprnotified="no" ?>
+<?rfc strict="no" ?>
+<?rfc compact="no" ?>
+<?rfc subcompact="no" ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY RFC2119 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY RFC3588 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3588.xml">
+<!ENTITY RFC4072 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4072.xml">
+<!ENTITY I-D.lear-abfab-arch SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.lear-abfab-arch.xml">
+<!ENTITY I-D.ietf-dime-app-design-guide SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dime-app-design-guide.xml">
+]>
+<rfc category="info" docName="draft-jones-diameter-abfab-00.txt" ipr="trust200902">
+  <front>
+    <title abbrev="Diameter ABFAB Application">The Diameter 'Application Bridging for Federated Access Beyond Web (ABFAB)' Application</title>
+
+    <author fullname="Mark Jones" initials="M" surname="Jones">
+      <organization>Bridgewater Systems</organization>
+      <address>
+        <email>mark@azu.ca</email>
+      </address>
+    </author>
+
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+    <date year="2011"/>
+    <area>Internet</area>
+    <workgroup>ABFAB</workgroup>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Federated Authentication</keyword>
+    <keyword>AAA</keyword>
+    <keyword>Diameter</keyword>
+    <keyword>GSS-API</keyword>
+    <keyword>EAP</keyword>
+    <keyword>SASL</keyword>
+    <abstract>
+<t>The Application Bridging for Federated Access Beyond Web (ABFAB) 
+architecture provides cross-domain authentication, authorization and accounting
+functionality by utilizing well-established technologies, such as Diameter, 
+the Extensible Authentication Protocol (EAP), and the Generic Security Services 
+API (GSS-API).</t>
+<t>This document defines a Diameter application for usage with the ABFAB 
+architecture to convey authentication information, and authorization decisions 
+from the Diameter server (acting as the identity provider) to the Diameter 
+client (acting as a relying party) encoded in a Security Assertion Markup 
+Language (SAML) encoding.</t>
+ 
+    </abstract>
+  </front>
+
+  <middle>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="introduction" title="Introduction">
+
+<t>The Application Bridging for Federated Access Beyond Web (ABFAB) architecture <xref target="I-D.lear-abfab-arch"/> provides cross-domain authentication, authorization and accounting functionality by utilizing well-established technologies, such as Diameter, the Extensible Authentication Protocol (EAP), and the Generic Security Services API (GSS-API).</t>
+        
+        <t>
+      The steps taken generally in an ABFAB federated authentication/authorization
+      exchange are as follows:
+    </t>
+    <t>
+      <list style="numbers">
+        <t>Principal provides NAI to Application: Somehow the client is
+           configured with at least the realm portion of 
+           an NAI, which represents the IdP to be discovered.</t>
+        <t>
+          Authentication mechanism selection: this is the step necessary to
+          indicate that the GSS-EAP SASL/GS2 mechanism will be used for
+          authentication/authorization.
+        </t>
+        <t>
+          Client Application provides NAI to RP: At the conclusion of mechanism
+          selection the NAI must be provided to the RP for discovery.
+        </t>
+        <t>
+          Discovery of federated IdP: 
+          This is discussed in detail below.  Either the RP is configured with
+          authorized IdPs, or it makes use of a federation proxy.
+        </t>
+        <t>
+          Request from Relying Party to IdP: Once the RP knows who the IdP is,
+          it or its agent will forward RADIUS 
+          request that encapsulates a GSS/EAP access request to an IdP.  This
+          may or may not contain a SAML request as a series of attributes. At
+          this stage, the RP will likely  have no idea who the principal is.
+          The RP claims its identity to the IdP in AAA attributes, and
+          it makes whatever SAML Attribute Requests through a
+          AAA attribute. 
+        </t>
+        <t>
+          IdP informs the principal of which EAP method to use: The available
+          and appropriate methods are discussed below in this memo.
+        </t>
+        <t>
+          A bunch of EAP messages happen between the endpoints: Messages are
+          exchanged between the principal and the IdP until a 
+          result is determined.  The number and content of those messages will
+          depend on the EAP method.  If the IdP is unable to authenticate the
+          principal, the process concludes here.  As part of this process, the
+          principal will, under protection of EAP, assert the identity of the
+          RP to which it intends to authenticate.
+        </t>
+        <t>
+          Successful Authentication: At the very least the IdP (its
+          EAP server) and EAP peer / subject have authenticated one another.
+          As a result 
+          of this step, the subject and the IdP hold two cryptographic
+          keys- a Master Session Key (MSK), and an Extended MSK (EMSK).  If the
+          asserted identity of the RP by the principal matches the identity the
+          RP itself asserted, there is some confidence that the RP is now
+          authenticated to the IdP.
+          </t>
+          <t> 
+          Local IdP Policy Check: At this stage, the IdP checks local policy to
+          determine whether the RP and subject are authorized
+          for a given transaction/service, and if so, what if any,
+          attributes will be released to the RP.  Additional
+          policy checks will likely have been made earlier just through the
+          process of discovery.
+          </t>
+          <t>
+          Response from the IdP to the Relying Party: Once the IdP has made a
+          determination of whether and how to 
+          authenticate or authorize the principal to the RP, it
+          returns either a negative AAA result to the RP, or it
+          returns a positive result to the RP, along with an optional
+          set of AAA attributes associated with the principal that
+          could include one or more SAML assertions.  In addition, an
+          EAP MSK is returned to the subject.
+          </t>
+	  <t>RP Processes Results.  When the RP receives the result
+	  from the IdP, it should have enough information to either
+	  grant or refuse a resource access request.  It may have
+	  information that leads it to make additional attribute
+	  queries.  It may have information that associates the
+	  principal with specific authorization identies.  It will
+	  apply these results in an application-specific way.</t>
+          <t>
+          RP returns results to principal: Once the RP has a response it must inform
+          the client application of 
+          the result.  If all has gone well, all are authenticated, and the
+          application proceeds with appropriate authorization levels.
+          </t>
+        </list>
+      </t>
+
+    <t>The involved entities are shown in <xref target="abfab-arch"/>. 
+    
+        <figure title="Architecture for Federated Access of non-Web based Applications" anchor="abfab-arch">
+          <artwork><![CDATA[
+                                 +--------------+
+                                 |  AAA Server  |
+                                 |  (Identity   |
+                                 |  Provider)   |
+                                 +-^----------^-+
+                                   * EAP      | RADIUS/
+                                   *          | Diameter
+                                 --v----------v--
+                              ///                \\\
+                            //                      \\   ***
+                           |        Federation        |  back-
+                           |                          |  end
+                            \\                      //   ***
+                              \\\                ///
+                                 --^----------^--
+                                   * EAP      | RADIUS/
+                 Application       *          | Diameter
++-------------+  Data            +-v----------v--+
+|             |<---------------->|               |
+| Client      |  EAP/EAP Method  | Server Side   |
+| Application |<****************>| Application   |
+| @ End Host  |  GSS-API         |(Relying Party)|
+|             |<---------------->|               |
+|             |  Application     |               |
+|             |  Protocol        |               |
+|             |<================>|               |
++-------------+                  +---------------+
+               *** front-end ***
+
+Legend:
+
+ <****>: End-to-end exchange
+ <---->: Hop-by-hop exchange
+ <====>: Protocol through which GSS-API/GS2 exchanges are tunnelled
+]]></artwork>
+        </figure>
+      </t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Terminology">
+    
+          <t> The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+        NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in RFC 2119 <xref target="RFC2119"/>.
+        </t>
+        
+        <t>This document uses terminology defined <xref target="I-D.lear-abfab-arch"/>.</t>
+        
+    </section>
+    
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Application Identifiers">
+    
+          <t>This specification defines a new Diameter application and
+      the respective Application Identifier:
+      </t>
+<t>
+      <figure><artwork><![CDATA[ 
+   Diameter ABFAB   (ABFAB)  [[TBD by IANA]]
+]]>
+      </artwork></figure>
+</t>
+      <t>The Diameter ABFAB related accounting information generated by the Diameter client uses
+         the ABFAB Application Identifier in the case of coupled
+         accounting model. The Diameter Base Accounting Application Identifier
+         (value of 3) is used in case of the split accounting
+         model. Refer to <xref target="accounting_models"/> for more information
+         regarding the accounting models.
+      </t>
+
+    </section>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Protocol Description">
+
+  
+  
+      <t>
+      <figure title="Message Interaction Sequence" anchor="msg">
+        <artwork><![CDATA[
+    Relying Party    Client App       IdP
+
+       |              (1)             | Client App gets NAI (somehow)
+       |               |              |
+       |<-----(2)----->|              | Mechanism Selection
+       |               |              |
+       |<-----(3)-----<|              | NAI transmitted to RP
+       |               |              |
+       |<=====(4)====================>| Discovery
+       |               |              |
+       |>=====(5)====================>| Access request from RP to IdP
+       |               |              |
+       |               |< - - (6) - -<| EAP method to Principal
+       |               |              |
+       |               |< - - (7) - ->| EAP Exchange to authenticate
+       |               |              | Principal
+       |               |              |
+       |               |           (8 & 9) Local Policy Check
+       |               |              |
+       |<====(10)====================<| IdP Assertion to RP
+       |               |              |
+       |               |              | (11) RP Processes results.
+       |               |              |
+       |>----(12)----->|              | Results to client app.
+
+
+
+     ----- = Between Client App and RP
+     ===== = Between RP and IdP
+     - - - = Between Client App and IdP
+
+]]>
+
+        </artwork>
+      </figure>
+    </t>
+
+
+      <section title="Session Management">
+
+        <t>The Diameter server may maintain state or may be stateless. This
+           is indicated in the Auth-Session-State AVP (or its absence). The
+           Diameter client MUST support the Authorization Session
+           State Machine defined in <xref target="RFC3588"/>.
+        </t>
+        
+        <section title="Session-Termination-Request">
+          <t>The Session-Termination-Request (STR) message <xref target="RFC3588"/>
+             is sent by the Diameter client to inform the Diameter server that an authorized
+             session is being terminated.</t>
+        </section>
+        <section title="Session-Termination-Answer">
+          <t>The Session-Termination-Answer (STA) message <xref target="RFC3588"/> is sent by the
+            Diameter server to acknowledge the notification that the session has been
+          terminated.</t>
+        </section>
+        <section title="Abort-Session-Request">
+          <t>The Abort-Session-Request (ASR) message <xref target="RFC3588"/> is sent by the
+            Diameter server to the Diameter client to terminate the authorized session. When the Diameter client receives
+            the ASR message, it MUST take further actions to terminate the established application context. 
+          </t>
+        </section>
+        <section title="Abort-Session-Answer">
+          <t>The Abort-Session-Answer (ASA) message <xref target="RFC3588"/> is sent by the Home
+            Agent in response to an ASR message.</t>
+        </section>
+      </section>
+      <section title="Accounting for ABFAB services" anchor="accounting_models">
+        <t>The Diameter client collects accounting records needed for
+          service control and charging MUST support the accounting procedures and the Accounting Session State Machine as defined in
+            <xref target="RFC3588"/>.</t>
+        <t>The Diameter application design guideline <xref target="I-D.ietf-dime-app-design-guide"/>
+          defines two separate models for accounting:</t>
+        <t>
+          <list style="hanging">
+            <t hangText="Split accounting model:"><vspace blankLines="1"/> According to this model,
+              the accounting messages use the Diameter Base Accounting Application Identifier (value of 3).
+              Since accounting is treated as an independent application, accounting commands may be
+              routed separately from the rest of application messages and thus the accounting
+              messages generally end up in a central accounting server. Since the Diameter ABFAB
+              application does not define its own unique accounting commands, this is the preferred
+              choice, since it permits use of centralized accounting for several
+                applications.<vspace blankLines="1"/></t>
+            <t hangText="Coupled accounting model:"><vspace blankLines="1"/> In this model, the
+              accounting messages will use the ABFAB Application Identifiers. This
+              means that accounting messages will be routed like any other Diameter ABFAB application
+              messages. This requires the Diameter server in charge of the Diameter ABFAB application to
+              handle the accounting records (e.g., sends them to a proper accounting server).</t>
+          </list>
+        </t>
+        <t>As mentioned above, the preferred choice is to use the split accounting model and thus to
+          choose Diameter Base Accounting Application Identifier (value of 3) for accounting messages.</t>
+        <section title="Accounting-Request">
+          <t>The Accounting-Request command <xref target="RFC3588"/> is sent by the Diameter client to the
+            Diameter server to exchange accounting information.</t>
+        </section>
+        <section title="Accounting-Answer">
+          <t>The Accounting-Answer command <xref target="RFC3588"/> is sent by the Diameter server
+            to the Diameter client to acknowledge an Accounting-Request.</t>
+        </section>
+      </section>
+
+
+    </section>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Command Codes">
+
+        <t>The Diameter ABFAB application defined in this document
+          reuses the Diameter EAP application <xref target="RFC4072"/>
+          commands: Diameter-EAP-Request (DER) and Diameter-EAP-Answer
+          (DEA).
+          This specification extends the existing DER and DEA command ABNFs
+          to offer the necessary ABFAB functionality. Other than new additional AVPs
+          and the corresponding additions to the command ABNFs, the
+          Diameter EAP application command ABNFs remain unchanged. The
+          ABNF language is defined in <xref target="RFC3588"/>.
+        </t>
+        <t>
+          <figure anchor="cmd-eap" title="Command Codes">
+            <artwork><![CDATA[
+Command-Name          Abbrev. Code Reference 
+---------------------------------------------
+Diameter-EAP-Request  DER     268  RFC 4072  
+Diameter-EAP-Answer   DEA     268  RFC 4072  
+]]></artwork>
+          </figure>
+        </t>
+        <section title="Diameter-EAP-Request">
+          <t>The Diameter-EAP-Request (DER) message, indicated by the
+             Command-Code field set to 268 and the 'R' bit set in the Command Flags field, is sent by
+             the Diameter client to the Diameter server to initiate a Diameter ABFAB authentication and
+             authorization procedure. The Application-ID field of the Diameter Header MUST be set to the
+             Diameter ABFAB Application ID (value of TDB).</t>
+          <t>
+            <figure>
+              <artwork><![CDATA[
+<Diameter-EAP-Request> ::= < Diameter Header: 268, REQ, PXY >
+                           < Session-Id >
+                           { Auth-Application-Id }
+                           { Origin-Host }
+                           { Origin-Realm }
+                           { Destination-Realm }
+                           { Auth-Request-Type }
+                           [ Destination-Host ]
+                           [ NAS-Identifier ]
+                           [ NAS-IP-Address ]
+                           [ NAS-IPv6-Address ]
+                           [ NAS-Port-Type ]
+                           [ User-Name ]
+                           ...
+                           { EAP-Payload }
+                           ...
+                           [ SAML-AuthnRequest ]
+                           ...
+                         * [ AVP ]
+]]></artwork>
+            </figure>
+          </t>
+          <t>The SAML-AuthnRequest AVP is only included in the
+             first DER message send by the Diameter client. The user is both authenticated and
+             during the EAP method
+             authentication. Authorization happens immediately after the authentication procedure has been completed.
+             Thus, the Auth-Request-Type AVP MUST be set to
+             the value AUTHORIZE_AUTHENTICATE. 
+          </t>
+        </section>
+
+        <section title="Diameter-EAP-Answer">
+          <t>The Diameter-EAP-Answer (DEA) message, indicated by
+             the Command-Code field set to 268 and 'R' bit cleared in the Command Flags field, is
+             sent in response to the Diameter-EAP-Request message
+             (DER). The
+             Application-Id field in the Diameter message header MUST be set to the Diameter ABFAB
+              Application-Id (value of TBD). 
+                        </t>
+          <t>
+            <figure>
+              <artwork><![CDATA[
+<Diameter-EAP-Answer> ::= < Diameter Header: 268, PXY >
+                          < Session-Id >
+                          { Auth-Application-Id }
+                          { Auth-Request-Type }
+                          { Result-Code }
+                          { Origin-Host }
+                          { Origin-Realm }
+                          [ User-Name ]
+                          [ EAP-Payload ]
+                          [ EAP-Reissued-Payload ]
+                          [ EAP-Master-Session-Key ]
+                          [ EAP-Key-Name ]
+                          [ Multi-Round-Time ]
+                          ...
+                          [ SAML-AuthnResponse ]
+                          [ SAML-Assertion ]
+                          ...
+                        * [ AVP ]                                     
+]]></artwork>
+            </figure>
+          </t>
+          <t>SAML related attributes are only included in the final message exchange. 
+          Either the SAML-AuthnResponse AVP is included in the response or a SAML-Assertion but not both.
+          </t>
+        </section>
+
+    </section>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="AVPs">
+      <t>
+        <figure title="AVPs for the Diameter ABFAB Application">
+          <artwork><![CDATA[
+                                      +--------------------+
+                                      |   AVP Flag rules   |
+                                      +----+---+------+----+----+
+                     AVP              |    |   |SHOULD|MUST|MAY |
+ Attribute Name      Code  Value Type |MUST|MAY| NOT  | NOT|Encr|
++-------------------------------------+----+---+------+----+----+
+|SAML-Assertion      TBD   UTF8String |    | P |      | V  | Y  |
++-------------------------------------+----+---+------+----+----+
+|SAML-AuthnRequest   TBD   UTF8String |    | P |      | V  | Y  |
++-------------------------------------+----+---+------+----+----+
+|SAML-AuthnResponse  TBD   UTF8String |    | P |      | V  | Y  |
++-------------------------------------+----+---+------+----+----+
+]]></artwork>
+        </figure>
+      </t>
+      <t>[Editor's Note: SAML encryption requirements are FFS. The "MAY Encr" 
+      column in the above table refers to XML-Enc rather than the defunct Diameter
+      AVP encryption.]</t>
+      
+<t>The SAML-Assertion AVP contains the UTF8String encoded SAML assertion.</t>
+<t>The SAML-AuthnRequest AVP contains the UTF8String encoded SAML AuthnRequest message.</t>
+<t>The SAML-AuthnResponse AVP contains the UTF8String encoded SAML AuthnResponse message.</t>
+
+    </section>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+    
+    <section anchor="result" title="Result-Code AVP Values">
+      <t>This section defines new Result-Code <xref target="RFC3588"/> values that MUST be supported
+        by all Diameter implementations that conform to this specification.</t>
+
+
+      <t>[Editor's Note: ABFAB specific error values may need to be added here.]</t>
+      
+    </section>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="avps" title="AVP Occurrence Tables">
+
+      <t>The following tables present the AVPs defined in this document and their occurrences in
+        Diameter messages.</t>
+
+      <t>The table uses the following symbols:</t>
+      <t>
+        <list style="hanging">
+          <t hangText="0:"><vspace blankLines="1"/>The AVP MUST NOT be present in the
+              message.<vspace blankLines="1"/></t>
+          <t hangText="0+:"><vspace blankLines="1"/>Zero or more instances of the AVP MAY be present
+            in the message.<vspace blankLines="1"/></t>
+          <t hangText="0-1:"><vspace blankLines="1"/>Zero or one instance of the AVP MAY be present
+            in the message.<vspace blankLines="1"/></t>
+          <t hangText="1:"><vspace blankLines="1"/>One instance of the AVP MUST be present in the
+            message. </t>
+        </list>
+      </t>
+
+      <section title="DER, DEA AVP/Command-Code Table">
+        <t>
+          <figure>
+            <artwork><![CDATA[
+
+                                  +------------+
+                                  |Command-Code|       
+                                  |-----+------+
+   AVP Name                       | DER | DEA  |
+   -------------------------------|-----+------+
+   SAML-Assertion                 |  0  |  1   |
+   SAML-AuthnRequest              |  1  |  0   |
+   SAML-AuthnResponse             |  0  |  1   |
+                                  +-----+------+
+                  ]]></artwork>
+          </figure>
+        </t>
+        <t>[Editor's Note: Is it possible to return more than one SAML-Assertion?]</t>
+        
+      </section>
+
+      <section title="Coupled Accounting Model AVP Table">
+        <t> The table in this section is used to represent which AVPs defined in this document are
+          to be present in the Accounting messages, as defined in <xref target="RFC3588"/>.</t>
+        <t>
+          <figure>
+            <artwork><![CDATA[
+                                           +-------------+
+                                           | Command-Code|
+                                           |------+------+
+      Attribute Name                       |  ACR |  ACA |
+      -------------------------------------|------+------+
+      Accounting-Input-Octets              | 0-1  |  0-1 |
+      Accounting-Input-Packets             | 0-1  |  0-1 |
+      Accounting-Output-Octets             | 0-1  |  0-1 |
+      Accounting-Output-Packets            | 0-1  |  0-1 |
+      Acct-Multi-Session-Id                | 0-1  |  0-1 |
+      Acct-Session-Time                    | 0-1  |  0-1 |
+      -------------------------------------|------+------+
+          ]]></artwork>
+          </figure>
+        </t>
+        <t>[Editor's Note: Do we need any application specific accounting messages for ABFAB?]</t>
+      </section>
+    </section>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="IANA Considerations">
+    
+     <t>This section contains the namespaces that have either been created in this specification or
+        had their values assigned to existing namespaces managed by IANA.</t>
+    
+      <section title="AVP Codes">
+        <t> This specification requires IANA to register the following new AVPs from the AVP Code
+          namespace defined in <xref target="RFC3588"/>.<vspace blankLines="1"/>
+          <list style="symbols">
+            <t>SAML-Assertion</t>
+            <t>SAML-AuthnRequest</t>
+            <t>SAML-AuthnResponse</t>
+          </list><vspace blankLines="1"/>The AVPs are defined in <xref target="avps"/>.
+        </t>
+      </section>
+      
+      
+      <section title="Application Identifier">
+        <t> This specification requires IANA to allocate a new application ID from the Application Identifier namespace defined
+          in <xref target="RFC3588"/>.
+        </t>
+<t>
+      <figure><artwork><![CDATA[ 
+Application Identifier             | Value
+-----------------------------------+------
+Diameter ABFAB (ABFAB)             | TBD
+]]>
+      </artwork></figure>
+</t>
+      </section>
+
+    </section>
+    
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Security Considerations">
+    </section>
+
+    <section title="Acknowledgments">
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+  </middle>
+
+  <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+  <back>
+    <references title="Normative References">
+      &RFC2119; &RFC3588; &RFC4072;
+      &I-D.ietf-dime-app-design-guide;
+      &I-D.lear-abfab-arch;
+    </references>
+  </back>
+</rfc>
