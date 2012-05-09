@@ -1,0 +1,1120 @@
+
+
+
+Network Working Group                                       L. Dusseault
+Internet-Draft                                             M. Nottingham
+Intended status: Standards Track                              J. Reschke
+Expires: November 10, 2012
+                                                           H. Tschofenig
+                                                  Nokia Siemens Networks
+                                                             May 9, 2012
+
+
+                   HTTP Application Design Guidelines
+                draft-iab-http-design-guidelines-00.txt
+
+Abstract
+
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on November 10, 2012.
+
+Copyright Notice
+
+   Copyright (c) 2012 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 1]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  4
+   3.  Whether to use HTTP  . . . . . . . . . . . . . . . . . . . . .  5
+     3.1.  Uniform Interface  . . . . . . . . . . . . . . . . . . . .  5
+     3.2.  Complexity . . . . . . . . . . . . . . . . . . . . . . . .  5
+     3.3.  Compatibility with Proxies, Firewalls, and NATs  . . . . .  6
+   4.  HTTP Compliance  . . . . . . . . . . . . . . . . . . . . . . .  7
+   5.  Deployability  . . . . . . . . . . . . . . . . . . . . . . . . 10
+   6.  Manageability  . . . . . . . . . . . . . . . . . . . . . . . . 11
+     6.1.  Allow traffic classification . . . . . . . . . . . . . . . 11
+     6.2.  Discoverability and interoperability: URL
+           considerations . . . . . . . . . . . . . . . . . . . . . . 12
+       6.2.1.  Scheme . . . . . . . . . . . . . . . . . . . . . . . . 12
+       6.2.2.  Path part  . . . . . . . . . . . . . . . . . . . . . . 12
+       6.2.3.  Query part . . . . . . . . . . . . . . . . . . . . . . 12
+   7.  Design choices: Roles  . . . . . . . . . . . . . . . . . . . . 14
+   8.  Security Considerations  . . . . . . . . . . . . . . . . . . . 17
+   9.  Acknowledgments  . . . . . . . . . . . . . . . . . . . . . . . 18
+   10. References . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+     10.1. Normative References . . . . . . . . . . . . . . . . . . . 19
+     10.2. Informative References . . . . . . . . . . . . . . . . . . 19
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 2]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+1.  Introduction
+
+   HTTP is widely used as a substrate or as a foundation for other
+   protocols.  Although these two approaches are quite different, this
+   document defines and describes these approaches, and helps the
+   protocol designer protect and work with deployed systems as well as
+   make implementation and interoperability easier.
+
+   This document replaces BCP 56 [RFC3205].  This document does more to
+   distinguish between using HTTP as a foundation vs. a substrate, a
+   distinction that leads to different kinds of advice.  Since the
+   publication of BCP56, the Web community has had more experience in
+   extending and using HTTP in what are styled "Web 2.0" sites as well
+   as in ad-hoc standards and IETF standards.
+
+   Applications that use HTTP integrally as a foundation, such as WebDAV
+   and AtomPub, need to be designed with careful involvement from HTTP
+   experts.  These types of applications make use of many HTTP resource
+   handling features and not just its transport characteristics.  These
+   are called HTTP-founded applications.
+
+   Applications that use HTTP to transfer documents of special types,
+   without changing or particularly relying upon the HTTP resource
+   handling features, are called HTTP-layered applications.  These types
+   of protocols can be designed by application experts following the
+   guidelines in this document, without needing deep HTTP expertise
+   throughout the process.  Review by HTTP experts is still advisable.
+
+   Both HTTP-founded and HTTP-layered applications must start from a
+   point of being HTTP compliant.  They must be deployable and
+   identifiable once deployed.
+
+   Guidelines and requirements in this document are justified by
+   considerations of harm.  Harm can come in many forms:
+
+   o  poor security choices may harm some subset of users who aren't
+      protected
+
+   o  compatibility choices may harm users behind HTTP intermediaries of
+      certain types
+
+   o  poor extensibility choices may harm future protocol designers
+
+   o  poor description of error handling may harm implementors and
+      interoperability
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 3]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+   [Editor's note: Maybe explain terms URI, Method, Status code, Header
+   here.]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 4]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+3.  Whether to use HTTP
+
+   The advantages of using HTTP need some emphasis, because when
+   protocol designers aren't clear on what beneficial effects they seek
+   to maintain, the design might accidentally undermine those potential
+   benefits.
+
+3.1.  Uniform Interface
+
+   HTTP's uniform interface (see also Section 1 and 2 of
+   [I-D.ietf-httpbis-p1-messaging]) means that a client can request a
+   representation of a resource without knowing any more about it than
+   the URI.  Effectively, it hides the details of how a service is
+   implemented, providing the kind of loose-coupling and independent
+   extensibility that is so desirable in complex systems.  A small
+   number of methods and status codes allow routine interaction and
+   appropriate reaction to situations like needing authentication and
+   moved resources.  Features like ranged (partial) requests and caching
+   work with many different types of resource representations.
+
+   HTTP's set of methods and status codes are part of the uniform
+   interface.  Unless a new specification is extending HTTP's uniform
+   interface to provide new features to diverse and numerous resources
+   (e.g., HTTP PATCH), the designer should not add new methods or status
+   codes.
+
+   Since procedures and methods are such familiar tools, programmers
+   often design protocols using the Remote Procedure Call (RPC) and
+   Remote Method Invocation (RMI) styles.  HTTP seems like an ideal fit,
+   allowing the HTTP client to act as caller, and HTTP server to act as
+   the procedure handler.  This approach undermines or completely loses
+   the advantages of HTTP's uniform interface and cacheability.  Even
+   worse from the point of view of IETF standards, this approach seems
+   to lead to narrower implementability and interoperability.
+
+   When RPC or RMI styles are desired anyway, they can be done easily
+   without excessive layering.  Allowing the URI to vary and even to
+   indicate the object being addressed in a remote method aids
+   scalability.  POST and request parameters can be used successfully
+   with both programming styles.  An approach that is particularly
+   useful in protocol standards is to define a new MIME type or types
+   specifically for the application calls and/or responses and define
+   the contents of those carefully.
+
+3.2.  Complexity
+
+   HTTP started out as a simple protocol, but quickly became much more
+   complex due to the addition of several features unanticipated by its
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 5]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+   original design.  These features include persistent connections, byte
+   ranges, content negotiation, and cache support.  Some simple, early
+   features have become complex over time due to implementation drift
+   and developments in areas such as security and internationalization.
+   Features which are necessary in Web browsing may not be useful for
+   the layered application.  The need to support (or circumvent) these
+   features can add additional complexity to the design and
+   implementation of a protocol layered on top of HTTP.
+
+   Even if existing HTTP client and server code can be re-used, the
+   additional complexity of layering something over HTTP vs. using a
+   purpose-built protocol can increase the number of interoperability
+   problems.  Features which work in Web browsing, such as cookies or
+   range requests, might be inappropriate or poorly understood or
+   implemented in the context of a layered application.
+
+3.3.  Compatibility with Proxies, Firewalls, and NATs
+
+   One often-cited reason for the use of HTTP is its ability to pass
+   through proxies, firewalls, or network address translators (NATs).
+   One unfortunate consequence of firewalls and NATs is that they make
+   it harder to deploy new Internet applications, by requiring explicit
+   permission (or even a software upgrade of the firewall or NAT) to
+   accommodate each new protocol.  The existence of firewalls and NATs
+   creates a strong incentive for protocol designers to layer new
+   applications on top of existing protocols, including HTTP.
+
+   However, if a site's firewall prevents the use of unknown protocols,
+   this is presumably a conscious policy decision on the part of the
+   firewall administrator.  While it is arguable that such policies are
+   of limited value in enhancing security, this is beside the point -
+   well-known port numbers are quite useful for a variety of purposes,
+   and the overloading of port numbers erodes this utility.  Attempting
+   to circumvent a site's security policy is not an acceptable
+   justification for doing so.
+
+   It would be useful to establish guidelines for "firewall-friendly"
+   protocols, to make it easier for existing firewalls to be compatible
+   with new protocols.
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 6]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+4.  HTTP Compliance
+
+   This section is more about helping implementations get HTTP right
+   than about designing the new application.  A specification using HTTP
+   can get theoretical compliance with RFC 2616 [RFC2616] just by making
+   a normative reference.  However, implementations following such a
+   reference typically do not comply properly with RFC 2616.  Perhaps
+   implementors need a couple reminders?  Specifications should provide
+   a list of oft-violated requirements and remind implementors that they
+   really are requirements.  (Alternatively, a protocol specification
+   could overrule HTTP requirements, often by requiring the opposite:
+   instead of requiring servers to handle HEAD requests, the
+   specification could require clients not to send HEAD requests).
+
+   This extra work to ensure that implementors follow HTTP 2616 is not
+   just for pedantic perfection.  There are two main reasons, both of
+   which protect the application protocol and its implementors.
+
+   First, proper support for all features protects the full feature set
+   in case it is needed later.  If a few early clients don't support a
+   feature that isn't used by early server implementations, this seems
+   innocuous.  But later, the application servers cannot be updated to
+   make use of the full feature set even if it would be very useful.
+   There's no way to advertise or negotiate for these features because
+   they are REQUIRED in HTTP.  When required and un-advertised features
+   are poorly implemented, they become practically impossible to use
+   later.
+
+   Second, proper support for all features makes general-purpose client
+   libraries and general-purpose server libraries work better.  This in
+   turn makes the new application easier to implement with standard
+   libraries.  Designers of a new protocol might instead make the choice
+   that the new protocol cannot use existing HTTP client or server
+   libraries, in which case the choice should be explicitly stated and
+   version number or protocol name changes should be considered.
+
+   These features are typically very easy to support properly.  In some
+   cases it's just returning the right error -- e.g. servers can fail a
+   request containing unrecognized Content-* headers.
+
+   Requirements reminders for server implementors:
+
+   o  MUST handle the HEAD request properly, returning no body in the
+      response.
+
+   o  MUST be prepared to handle OPTIONS * requests.
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 7]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+   o  MUST use an error responding to unrecognized methods.
+
+   o  MUST examine conditional headers on requests, and if necessary,
+      fail the request (If-* and )
+
+   o  MUST honour Content-* headers on requests.  Any Content-* headers
+      that are not recognized or cannot be parsed, should cause an
+      error.
+
+   o  MUST handle the Range header or fail the request.
+
+   o  MUST look for the Expect header and be able to do 100 Continue
+      (without waiting for request body) or fail.
+
+   o  MUST either support persistent connections or include the "close"
+      connection option in every response.  If the server allows
+      persistent connections it MUST also implement pipelining, not
+      dropping pipelined requests and handling responses in order.
+
+   Requirements reminders for client implementors:
+
+   o  MUST include a Host header on requests
+
+   o  MUST support several ways response endings may be handled: chunked
+      transfer-encoding, connection closing, and Content-Length.
+
+   o  MUST either support persistent connections or include the "close"
+      connection option in every request.
+
+   o  If the client supports HTTP caching, it MUST examine the Vary,
+      Cache-Control and Expires headers.
+
+   o  MUST NOT automatically follow redirects for methods other than GET
+      and HEAD.
+
+   o  MUST handle a variety of success responses as successes (202, 203,
+      205)
+
+   o  MUST handle the 407 Proxy Authentication Required response and be
+      able to use the Proxy-Authenticate response-header to
+      authenticate.
+
+   Requirements on protocol design:
+
+   o  HTTP status codes MUST preserve the same meaning to interoperate
+      well with HTTP client libraries.  For example, the 401
+      Unauthorized code triggers a login request using HTTP
+      authentication.  A tricky one is 412 Precondition failed, which
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 8]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+      can only be used when the client put a precondition on the
+      request.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012               [Page 9]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+5.  Deployability
+
+   A few features must be supported correctly, or else intermediaries
+   may do the wrong thing.  Since intermediaries can cache responses and
+   retransmit requests, the application needs to support caching and
+   retransmission correctly.
+
+   Intermediaries are allowed to retransmit any request using a method
+   that is defined as idempotent methods; the most important such method
+   is GET.  Thus, an application can only tunnel over GET requests if no
+   harm results from intermediaries retransmitting GET requests.
+
+   An example of an idempotent application GET request is querying for a
+   certificate from a repository.  The POST method should be used to
+   tunnel non-idempotent requests.
+
+   Since GET responses can be cached, application responses to GET
+   requests need to be cacheable or have the correct cache prevention
+   headers.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 10]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+6.  Manageability
+
+6.1.  Allow traffic classification
+
+   Organizations often need to classify traffic from various HTTP
+   applications for security, traffic engineering, and measurement
+   purposes.  The most reasonable ways to classify HTTP traffic are:
+
+   o  by server host
+
+   o  by HTTP version
+
+   o  by method
+
+   o  by port
+
+   o  by content type
+
+   Classifying traffic by defining and looking for well-known hosts is
+   not usually appropriate to IETF standards.  Using a new version or
+   new protocol identifier would limit interoperability and
+   opportunities to use HTTP libraries and existing implementations.
+   New methods are costly to define and implement (because each new
+   method must be defined for a large matrix covering behavior with
+   existing headers and other HTTP features), but these are occasionally
+   appropriate in HTTP-founded applications when no existing method
+   really covers the desired method semantics.
+
+   Ruling those three options out for the most common most cases leaves
+   us with using port numbers and content types for traffic
+   classification.  Both of these use a registry which helps people
+   monitoring traffic to figure out what is going on.  BCP 56
+   recommended new ports because this can be done at the TCP layer in a
+   way that works for many protocols and not just HTTP.  Strictly
+   speaking, classification based on content type is considered deep-
+   packet inspection, but since HTTP is so common this is by no means
+   unheard of and is becoming more acceptable.
+
+   While one commonly appreciated advantage of building a new
+   application atop HTTP is the near-universal acceptability of port 80
+   and/or 443 traffic through firewalls, protocols should not be
+   designed with the subversion of site security policies in mind.
+   However, it should be noted classification by port number loses this
+   advantage.  Content-type usage seems like a maintainable compromise
+   between allowing firewall security policies and gaining the
+   advantages of using the HTTP port to traverse that firewall.
+
+   Classification via MIME types reasonable, the MIME type must be
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 11]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+   unique to the application, registered, and both requests and
+   responses that have bodies MUST use filterable MIME types.  It's a
+   little hard to imagine an application using HTTP as a transport that
+   doesn't have any message bodies, but that would definitely be a
+   special case to consider if it were proposed.
+
+6.2.  Discoverability and interoperability: URL considerations
+
+   Decide how URLs are known or discovered.  Do application requests go
+   straight to http://app.example.org?  Can there be a path part?
+
+   An extended example in this section is the Noogie application, where
+   users have personal Noogie URLs.  These URLs identify resources that
+   can receive Noogie application requests, which may trigger virtual
+   noogies given to the receiving user, and result in success or failure
+   responses to the requestor.
+
+6.2.1.  Scheme
+
+   Applications that use HTTP can of course use the HTTP URL scheme.
+   However, protocol designers should consider defining a new URL scheme
+   anyway.  In cases where the URL can be found along with other HTTP
+   URLs, this allows clients to select a URL that does what they want.
+
+   Example: the Noogie application URLs are intended to appear in
+   VCards, presence information documents and on Web sites.  In order to
+   allow clients to immediately detect such a URL and know what it's
+   for, the Noogie standard designers can register the "noogie" scheme
+   and explain how this scheme maps to the "http" scheme.
+
+6.2.2.  Path part
+
+   Does the URL path part have any structure?  If so, make sure that the
+   path part still allows application servers to be deployed in places
+   where development frameworks and site policies dictate prefixes to
+   this path part.
+
+   Example: Legal Noogie URLs must also be able to contain prefixes like
+   "servlets/noogie/" at sites that have policies about service
+   framework usage.  One resulting URL would be http://www.example.org/
+   servlets/noogie/John/Doe even though another site might prefer
+   http:// noogie.example.org/John/Doe.
+
+6.2.3.  Query part
+
+   Most applications that use HTTP do not extend or formalize the query
+   part of an HTTP URL.  In this case, the protocol specification might
+   forbid query parts or require that they be stripped from URLs.  Query
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 12]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+   strings have been used to exploit security holes in many HTTP
+   servers.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 13]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+7.  Design choices: Roles
+
+   This section provides advice on application design relative to HTTP
+   role constraints.  There are many design choices that meet the
+   requirements for compliance, intermediary support, manageability and
+   security, and yet still may be a good or bad fit for the application
+   through choice of roles.
+
+   A very simple example is to consider using HTTP for sensors to
+   provide sensor data to a data aggregator.  Should the sensor take the
+   role of the HTTP client and initiate a data message to the
+   aggregator?  Or should the aggregator take the role of the HTTP
+   client and decide when to request data from each sensor?  It is worth
+   examining both models, of course.
+
+   As a more complicated thought experiment, consider the following
+   model adapted from a real Internet-Draft for synchronizing data among
+   registries and agents.
+
+
+
+                              . . . . . . .
+              . . . .  . . .   registry    . . . . . . .
+            .                 . . . . . . .              .
+          .                        .                      .
+        .                          . provision             .
+   +-----------+                   .                 +-----------+
+   |           |  provision  +----------+  provision |           |
+   |  Agent 1  |------------>| Registry |<-----------|  Agent 2  |
+   |           |             +----------+            |           |
+   | +-------+ |                   /\                | +-------+ |
+   | | store | <-------------------  ----------------->| store | |
+   | +-------+ |   distribute           distribute   | +-------+ |
+   |           |                                     |           |
+   +-----------+                                     +-----------+
+          .                                                .
+           . . . . . . . . . . . . . . . . . . . . . . . .
+                          (provision / distribute)
+
+   In this model, agents provide their own information to a registry,
+   and accept global information from the registry for the cache.
+   However, this model doesn't define who is in charge or which agent
+   drives (requests) data exchange.
+
+   There are several options:
+
+   Provisioning:
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 14]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+   P1.  Each Registry could be in charge of some clear subset of the
+      overall data.  If it knows which agents to get some of that data
+      from, it could request that data on its own timetable from agents.
+
+   P2.  Perhaps agents know when their data changes and it is agents
+      that are really in charge of their subset of the data.  Agents
+      could initiate communication with some known "home" registry and
+      send their part of of the data whenever it changes.
+
+      P2a.  When one registry gets new data from agents, it could push
+         it to other registries.
+
+      P2b.  When a registry gets new data from agents, it does not push
+         it to other registries.  Instead, it marks the data as updated
+         and waits for requests from other registries, responding with
+         changed information.
+
+   Distribution:
+
+   D1.  Registries could push distribution to agents whenever there are
+      changes.
+
+   D2.  Agents could query registries whenever they use stored
+      information to see if it has changed, before using it (poll).
+
+   The decisions for who plays what role, and whether information is
+   disseminated in push or poll or another approach, should ideally be
+   decided based on the use case or application needs.
+
+   Who plays server roles?  At the same time, if some actors in the
+   system cannot host open ports to receive TCP connections, this should
+   also be decided.  If none of the actors can host open ports then HTTP
+   as such is not appropriate.
+
+   Thought experiment #1:
+
+      Let's say in this application, the registries can host open ports
+      but the agents cannot.  This forces the registries in the role of
+      HTTP servers.  If agents are writing the information to a specific
+      resource in the registry, PUT or PATCH could be appropriate.  OTOH
+      if agents submit the information and the registry may reformat it,
+      modify or place it in context with other information in one or
+      more resources, POST would be used.
+
+      Since the agents cannot accept incoming TCP connections, this
+      forces the choice of D2 above for disseminating new information to
+      agents.  In the role of a client, the agent would then GET a
+      resource, perhaps sending ETags in case the resource hasn't
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 15]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+      changed.
+
+   Thought experiment #2:
+
+      Let's say both registries and agents can accept incoming TCP
+      connections.  In this case there is more scope for design because
+      the choices that were forced in thought experiment #1 are no
+      longer forced.  The agents could be both HTTP servers and clients:
+      acting as a client to push its own new data to registries, and
+      acting as a server to receive changed global information.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 16]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+8.  Security Considerations
+
+   Protocol designers may consider whether redirects may safely be
+   followed in all cases or in limited cases.  The application could
+   require clients to support redirects, which gives servers more
+   deployment flexibility.  On the other hand, the application could
+   limit redirects (only within local site) or forbid the use entirely.
+
+   Recall that HTTP supports TLS proxies, and these are used in some
+   corporate sites.  What this means is that rather than have the client
+   connect directly to the target site, the client connects to the proxy
+   and the proxy initiates its own TLS connection to the target site.
+   The proxy thus gains full access to the content of the application
+   protocol.  If this is not an acceptable situation, the application
+   cannot use HTTP as-is.
+
+   HTTP authentication is not as secure as many other more modern IETF
+   authentication technologies.  An application that requires better-
+   than-standard authentication over HTTP may find that default client
+   and server libraries cannot be used.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 17]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+9.  Acknowledgments
+
+   Your name goes in here.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 18]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+10.  References
+
+10.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", March 1997.
+
+   [I-D.ietf-httpbis-p1-messaging]
+              Fielding, R., Lafon, Y., and J. Reschke, "HTTP/1.1, part
+              1: URIs, Connections, and Message Parsing",
+              draft-ietf-httpbis-p1-messaging-19 (work in progress),
+              March 2012.
+
+   [RFC2616]  Fielding, R., Gettys, J., Mogul, J., Frystyk, H.,
+              Masinter, L., Leach, P., and T. Berners-Lee, "Hypertext
+              Transfer Protocol -- HTTP/1.1", RFC 2616, June 1999.
+
+10.2.  Informative References
+
+   [RFC3205]  Moore, K., "On the use of HTTP as a Substrate", BCP 56,
+              RFC 3205, February 2002.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 19]
+
+Internet-Draft     HTTP Application Design Guidelines           May 2012
+
+
+Authors' Addresses
+
+   Lisa Dusseault
+   US
+
+   Phone:
+   Email: lisa.dusseault@gmail.com
+
+
+   Mark Nottingham
+   US
+
+   Phone:
+   Email: mnot@mnot.net
+
+
+   Julian Reschke
+   US
+
+   Phone:
+   Email: mnot@mnot.net
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dusseault, et al.       Expires November 10, 2012              [Page 20]
+
