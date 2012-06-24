@@ -1,0 +1,755 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<?xml-stylesheet type='text/xsl' href='http://xml.resource.org/authoring/rfc2629.xslt' ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+  <?rfc strict="yes" ?>
+
+  <?rfc toc="yes" ?>
+
+  <?rfc tocdepth="3" ?>
+
+  <?rfc symrefs="yes" ?>
+
+  <?rfc sortrefs="yes"?>
+
+  <?rfc compact="yes" ?>
+
+  <?rfc subcompact="no" ?>
+
+  <?rfc iprnotified="yes" ?>
+
+    <rfc category="std" docName="draft-ietf-oauth-assertions-03" ipr="trust200902">
+
+    <!-- category values: std, bcp, info, exp, and historic
+ipr values: full3667, noModification3667, noDerivatives3667
+you can add the attributes updates="NNNN" and obsoletes="NNNN"
+they will automatically be output with "(if approved)" -->
+
+  <front>
+    <title>OAuth 2.0 Assertion Profile</title>
+
+    <author fullname="Chuck Mortimore" initials="C." role="editor"
+            surname="Mortimore">
+      <organization abbrev="Salesforce">Salesforce.com</organization>
+
+      <address>
+        <email>cmortimore@salesforce.com</email>
+      </address>
+    </author>
+
+    <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+      <organization abbrev="Microsoft">Microsoft</organization>
+
+      <address>
+        <email>mbj@microsoft.com</email>
+      </address>
+    </author>
+
+    <author fullname="Brian Campbell" initials="B." surname="Campbell">
+      <organization abbrev="Ping">Ping Identity Corp.</organization>
+
+      <address>
+        <email>brian.d.campbell@gmail.com</email>
+      </address>
+    </author>
+
+    <author fullname="Yaron Y. Goland" initials="Y.Y." surname="Goland">
+      <organization abbrev="Microsoft">Microsoft</organization>
+
+      <address>
+        <email>yarong@microsoft.com</email>
+      </address>
+    </author>
+
+    <date day="2" month="May" year="2012" />
+
+
+	        <!-- Meta-data Declarations -->
+
+	        <area>Internet</area>
+
+	        <workgroup>&nbsp;</workgroup> 
+
+	        <!-- WG name at the upperleft corner of the doc,
+	IETF is fine for individual submissions.
+	If this element is not present, the default is "Network Working Group",
+	which is used by the RFC Editor as a nod to the history of the IETF. -->
+
+	        <keyword>OAuth</keyword>
+	        <keyword>SAML</keyword>
+	        <keyword>Assertion</keyword>
+
+
+
+    <abstract>
+      <t>This specification provides a general framework for the use of
+      assertions as client credentials and/or authorization grants with OAuth
+      2.0. It includes a generic mechanism for transporting assertions during
+      interactions with a token endpoint, as wells as rules for the content
+      and processing of those assertions. The intent is to provide an enhanced
+      security profile by using derived values such as signatures or HMACs, as
+      well as facilitate the use of OAuth 2.0 in client-server integration
+      scenarios where the end-user may not be present.</t>
+
+      <t>This specification only defines abstract message flow and assertion
+      content. Actual use requires implementation of a companion protocol
+      binding specification. Additional profile documents provide standard
+      representations in formats such as SAML and JWT.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="rnc" title="Requirements Notation and Conventions">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+      "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+      document are to be interpreted as described in <xref
+      target="RFC2119"></xref> .</t>
+
+      <t>Throughout this document, values are quoted to indicate that they are
+      to be taken literally. When using these values in protocol messages, the
+      quotes MUST NOT be used as part of the value.</t>
+    </section>
+
+    <section anchor="overview" title="Overview">
+      <t><xref target="I-D.ietf-oauth-v2">The OAuth 2.0 Authorization Protocol
+      </xref> provides a method for making authenticated HTTP requests to a
+      resource using an access token. Access tokens are issued to clients by
+      an authorization server with the (sometimes implicit) approval of the
+      resource owner. These access tokens are typically obtained by exchanging
+      an authorization grant representing authorization by the resource owner
+      or privileged administrator. Several authorization grant types are
+      defined to support a wide range of client types and user experiences.
+      OAuth also allows for the definition of new extension grant types to
+      support additional clients or to provide a bridge between OAuth and
+      other trust frameworks. Finally, OAuth allows the definition of
+      additional authentication mechanisms to be used by clients when
+      interacting with the authorization server.</t>
+
+      <t>In scenarios where security is at a premium one wants to avoid
+      sending secrets across the Internet, even on encrypted connections.
+      Instead one wants to send values derived from the secret that prove to
+      the receiver that the sender is in possession of the secret without
+      actually sending the secret. Typically the way derived values are
+      created is by generating an assertion that is then either HMAC&rsquo;ed
+      or digitally signed using an agreed upon secret. By validating the HMAC
+      or digital signature on the assertion, the receiver can prove to
+      themselves that the entity that generated the assertion was in
+      possession of the secret without actually communicating the secret
+      directly.</t>
+
+      <t>This specification provides a general framework for the use of
+      assertions as client credentials and/or authorization grants with OAuth
+      2.0. It includes a generic mechanism for transporting assertions during
+      interactions with a token endpoint, as wells as rules for the content
+      and processing of those assertions. The intent is to provide an enhanced
+      security profile by using derived values such as signatures or HMACs, as
+      well as facilitate the use of OAuth 2.0 in client-server integration
+      scenarios where the end-user may not be present.</t>
+
+      <t>This specification only defines abstract message flow and assertion
+      content. Actual use requires implementation of a companion protocol
+      binding specification. Additional profile documents provide standard
+      representations in formats such as SAML and JWT.</t>
+    </section>
+
+    <section title="Authentication vs. Authorization">
+      <t>This specification provides a model for using assertions for
+      authentication of an OAuth client during interactions with an
+      Authorization Server, as well as the use of assertions as authorization
+      grants. It is important to note that the use of assertions for client
+      authentication is orthogonal and separable from using assertions as an
+      authorization grant and can be used either in combination or in
+      isolation. In addition, in scenarios when assertion based authentication
+      and authorization are used in combination, the assertion format and
+      processing may be redundant; under such circumstances, the protocol may
+      be optimized to present a single assertion.</t>
+    </section>
+
+    <section title="Transporting Assertions" anchor="transporting">
+      <t>This section defines generic HTTP parameters for transporting
+      assertions during interactions with a token endpoint.</t>
+
+      <section title="Using Assertions for Client Authentication" anchor="clientauth">
+        <t>In scenarios where one wants to avoid sending secrets, one wants to
+        send values derived from the secret that prove to the receiver that
+        the sender is in possession of the secret without actually sending the
+        secret.</t>
+
+        <t>For example, a client can establish a secret using an out-of-band
+        mechanism with a resource server. As part of this out-of-band
+        communication the client and resource server agree that the client
+        will authenticate itself using an assertion with agreed upon
+        parameters that will be signed by the provisioned secret. Later on,
+        the client might send an access token request to the token endpoint
+        for the resource server that includes an authorization code, as well
+        as a <spanx style='verb'>client_assertion</spanx> that is signed with the previously agreed key
+        and parameters. The <spanx style='verb'>client_assertion</spanx> proves to the token endpoint the
+        identity of the client and the authorization code provides the link to
+        the end-user authorization.</t>
+
+        <t>The following section defines the use of assertions as client
+        credentials as an extension of Section 2.3 of <xref
+        target="I-D.ietf-oauth-v2">OAuth 2.0</xref>. When using
+        assertions as client credentials, the client includes the assertion
+        and related information using the following HTTP request parameters:</t>
+
+        <t><list style="hanging">
+            <t hangText="client_id">OPTIONAL. The client identifier as
+            described in Section 2.2 of <xref target="I-D.ietf-oauth-v2">OAuth
+            2.0</xref>. When present, the <spanx style='verb'>client_id</spanx> MUST identify the client to the authorization server.</t>
+
+            <t hangText="client_assertion_type">REQUIRED. The format of the
+            assertion as defined by the authorization server. The value MUST
+            be an absolute URI.</t>
+
+            <t hangText="client_assertion">REQUIRED. The assertion being used
+            to authenticate the client. Specific serialization of the
+            assertion is defined by profile documents. The serialization MUST
+            be encoded for transport within HTTP forms. It is RECOMMENDED that
+            base64url be used.</t>
+          </list></t>
+
+        <t>The following non-normative example demonstrates a client
+        authenticating using an assertion during an Authorization Code Access
+        Token Request as defined in Section 4.1.3 of
+	<xref target="I-D.ietf-oauth-v2">OAuth 2.0</xref>
+	(with line breaks for display purposes only):</t>
+
+        <figure>
+          <artwork><![CDATA[POST /token HTTP/1.1 
+Host: server.example.com 
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&
+code=i1WsRn1uB1&
+client_id=s6BhdRkqt3&
+client_assertion_type=urn%3Aietf%3Aparams%3Aoauth
+%3Aclient-assertion-type%3Asaml2-bearer&
+client_assertion=PHNhbW...[omitted for brevity]...ZT]]></artwork>
+        </figure>
+
+        <t>Token endpoints can differentiate between assertion based
+      credentials and other client credential types by looking for the
+      presence of the <spanx style='verb'>client_assertion</spanx> and
+      <spanx style='verb'>client_assertion_type</spanx> parameters,
+      which will only be present when using assertions for client
+      authentication.</t>
+
+
+
+
+       <section title="Error Responses">
+
+
+      <t>If an assertion is invalid for any reason or if more than one client authentication mechanism is used, the Authorization
+      Server MUST construct an error response as defined in <xref
+      target="I-D.ietf-oauth-v2">OAuth 2.0</xref>. The value of the <spanx style='verb'>error</spanx>
+      parameter MUST be the <spanx style='verb'>invalid_client</spanx> error code. The
+      authorization server MAY include additional information regarding the
+      reasons the client assertion was considered invalid using the <spanx style='verb'>error_description</spanx>
+      or <spanx style='verb'>error_uri</spanx> parameters.</t>
+
+      <t>For example:</t>
+
+      <figure>
+        <artwork><![CDATA[HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "error":"invalid_client"
+  "error_description":"Multiple Credentials Not Allowed"
+}]]></artwork>
+      </figure>
+
+    </section>
+
+      </section>
+
+      <section title="Using Assertions as Authorization Grants" anchor="authgrants">
+        <t>An assertion can be used to request an access token when a client
+        wishes to utilize an existing trust relationship. This may be done
+        through the semantics of (and a digital signature/HMAC calculated
+        over) the assertion, and expressed to the authorization server
+ 		through an extension authorization grant type.
+        The processes by which authorization is previously granted, and by
+        which the client obtains the assertion prior to exchanging it with the
+        authorization server, are out of scope.</t>
+
+        <t>The following defines the use of assertions as authorization grants
+        as an extension of <xref target="I-D.ietf-oauth-v2">OAuth 2.0</xref>,
+        Section 4.5. When using assertions as authorization grants, the client
+        includes the assertion and related information using the following HTTP request
+        parameters:</t>
+
+        <t><list style="hanging">
+
+            <t hangText="grant_type">REQUIRED. The format of the assertion as
+            defined by the authorization server. The value MUST be an absolute
+            URI.</t>
+
+            <t hangText="assertion">REQUIRED. The assertion being used as an
+            authorization grant. Specific serialization of the assertion is
+            defined by profile documents. The serialization MUST be encoded
+            for transport within HTTP forms. It is RECOMMENDED that base64url
+            be used.</t>
+
+            <t hangText="scope">OPTIONAL. The requested scope as
+            described in Section 3.3 of <xref target="I-D.ietf-oauth-v2">OAuth
+            2.0</xref>. When
+            exchanging assertions for access tokens, the authorization for the
+            token has been previously granted through some other mechanism. As
+            such, the requested scope SHOULD be equal or lesser than the scope
+            originally granted to the authorized accessor. If the scope
+            parameter and/or value is omitted, the scope SHOULD be treated as
+            equal to the scope originally granted to the authorized accessor.
+            The Authorization Server SHOULD limit the scope of the issued
+            access token to be equal or lesser than the scope originally
+            granted to the authorized accessor.</t>
+          </list></t>
+
+        <t>The following non-normative example demonstrates an assertion being
+        used as an authorization grant
+	(with line breaks for display purposes only):</t>
+
+        <figure>
+          <artwork><![CDATA[POST /token HTTP/1.1 
+Host: server.example.com 
+Content-Type: application/x-www-form-urlencoded
+
+client_id=s6BhdRkqt3&
+grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Asaml2-bearer&
+assertion=PHNhbWxwOl...[omitted for brevity]...ZT4]]></artwork>
+        </figure>
+
+        <t>An assertion used in this context is generally a short lived representation
+          of the authorization grant and authorization servers SHOULD NOT issue tokens
+          that exceed that lifetime by a significant period. In practice, that will
+          usually mean that refresh tokens are not issued in response to assertion
+          grant requests and access tokens will be issued with a reasonably limited lifetime.
+          Clients can refresh an expired access token by requesting a new one using the same
+          assertion, if it is still valid, or with a new assertion.
+        </t>
+
+        <section title="Error Responses">
+            <t>If an assertion is not valid or has expired, the Authorization Server
+          MUST construct an error response as defined in <xref
+          target="I-D.ietf-oauth-v2">OAuth 2.0</xref>. The value of the <spanx style='verb'>error</spanx>
+          parameter MUST be the <spanx style='verb'>invalid_grant</spanx> error code. The authorization
+          server MAY include additional information regarding the reasons the
+          assertion was considered invalid using the <spanx style='verb'>error_description</spanx> or
+          <spanx style='verb'>error_uri</spanx> parameters.</t>
+
+
+      <t>For example:</t>
+
+      <figure>
+        <artwork><![CDATA[HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "error":"invalid_grant",
+  "error_description":"Audience validation failed"
+}]]></artwork>
+      </figure>
+
+             </section>
+      </section>
+    </section>
+
+    <section title="Assertion Content and Processing" anchor="contentprocessing">
+      <t>This section provides a general content and processing model for the
+      use of assertions in <xref target="I-D.ietf-oauth-v2">OAuth
+      2.0</xref>.</t>
+
+      <section title="Assertion Metamodel">
+        <t>The following are entities and metadata involved in the issuance,
+        exchange and processing of assertions in OAuth 2.0. These are general
+        terms, abstract from any particular assertion format. Mappings of
+        these terms into specific representations are provided by profiles of
+        this specification.</t>
+
+        <t><list style="hanging">
+            <t hangText="Issuer">The unique identifier for the entity that
+            issued the assertion. Generally this is the entity that holds the
+            keying material used to generate the assertion. In some use cases
+            Issuers may be either OAuth Clients (when assertions are
+            self-asserted) or a Security Token Service (STS) (an entity capable of
+            issuing, renewing, transforming and validating of security
+            tokens).</t>
+
+            <t hangText="Principal">A unique identifier for the subject of the
+            assertion. When using assertions for client authentication, the
+            Principal SHOULD be the <spanx style='verb'>client_id</spanx> of the OAuth client. When using
+            assertions as an authorization grant, the Principal MUST identify
+            an authorized accessor for whom the access token is being
+            requested (typically the resource owner, or an authorized
+            delegate).</t>
+
+            <t hangText="Audience">A URI that identifies the party intended to 
+			      process the assertion.  The audience SHOULD be the URL of
+            the Token Endpoint as defined in Section 3.2 of <xref
+            target="I-D.ietf-oauth-v2">OAuth 2.0</xref>.</t>
+
+            <t hangText="Issued At ">The time at which the assertion was
+            issued. While the serialization may differ by assertion format,
+            this is always expressed in UTC with no time zone component.</t>
+
+            <t hangText="Expires At ">The time at which the assertion expires.
+            While the serialization may differ by assertion format, this is
+            always expressed in UTC with no time zone component.</t>
+
+            <t hangText="Assertion ID">A nonce or unique identifier for the
+            assertion. The Assertion ID may be used by implementations
+            requiring message de-duplication for one-time use assertions. Any
+            entity that assigns an identifier MUST ensure that there is
+            negligible probability that that entity or any other entity will
+            accidentally assign the same identifier to a different data
+            object.</t>
+          </list></t>
+      </section>
+
+      <section title="General Assertion Format and Processing Rules">
+        <t>The following are general format and processing rules for the use
+        of assertions in OAuth:</t>
+
+        <t><list style="symbols">
+            <t>The assertion MUST contain an Issuer. The Issuer MUST identify
+            the entity that issued the assertion as recognized by the
+            Authorization Server. If an assertion is self-asserted, the Issuer
+            SHOULD be the <spanx style='verb'>client_id</spanx>.</t>
+
+            <t>The assertion SHOULD contain a Principal. The Principal MUST
+            identify an authorized accessor for whom the access token is being
+            requested (typically the resource owner, or an authorized
+            delegate).  When the client is acting on behalf of itself, the
+            Principal SHOULD be the <spanx style='verb'>client_id</spanx>.</t>
+
+            <t>The assertion MUST contain an Audience that identifies the
+            Authorization Server as the intended audience. The Authorization
+            Server MUST verify that it is an intended audience for the
+            assertion. The Audience SHOULD be the URL of the Authorization
+            Server's Token Endpoint.</t>
+
+            <t>The assertion MUST contain an Expires At entity that limits the
+            time window during which the assertion can be used. The
+            authorization server MUST verify that the expiration time has not
+            passed, subject to allowable clock skew between systems. The
+            authorization server SHOULD reject assertions with an Expires At
+            attribute value that is unreasonably far in the future.</t>
+
+            <t>The assertion MAY contain an Issued At entity containing the
+            UTC time at which the assertion was issued.</t>
+
+            <t>The assertion MAY contain an Assertion ID. An Authorization
+            Server MAY dictate that Assertion ID is mandatory.</t>
+
+            <t>The Authorization Server MUST validate the assertion's signature
+            in order to verify the Issuer of the assertion. The algorithm used to validate the
+            assertion, and the mechanism for designating the secret used to
+            generate the assertion, are beyond the scope of this specification.</t>
+          </list></t>
+      </section>
+    </section>
+
+    <section title="Specific Assertion Format and Processing Rules">
+      <t>The following clarifies the format and processing rules defined in
+      <xref target="transporting" /> and <xref target="contentprocessing" />
+      for a number of common use cases:</t>
+
+      <section title="Client Authentication">
+        <t>When a client authenticates to a token service using an assertion,
+        it SHOULD do so according to <xref target="clientauth" />. The following format and
+        processing rules apply.<list style="symbols">
+
+            <t>The <spanx style='verb'>client_assertion_type</spanx> HTTP parameter MUST identify the
+            assertion format being used for authentication.</t>
+
+            <t>The <spanx style='verb'>client_assertion</spanx> HTTP parameter MUST contain the serialized
+            assertion in a format indicated by the <spanx style='verb'>client_assertion_type</spanx>
+            parameter.</t>
+
+            <t>The Principal SHOULD be the <spanx style='verb'>client_id</spanx>.</t>
+
+            <t>The Issuer of the assertion MUST identify the entity that issued
+               the assertion as recognized by the Authorization Server.  If the
+               assertion is self-asserted, the Issuer SHOULD be the <spanx style='verb'>client_id</spanx>.</t> 
+
+            <t>The Audience of the assertion MUST identify the Authorization
+            Server and SHOULD be the URL of the Token Endpoint.</t>
+
+            <t>The Authorization Server MUST validate the assertion's signature in order to verify the Issuer of the assertion.</t>
+          </list></t>
+
+        <t>The following non-normative example demonstrates the use of a
+        client authentication using an assertion during an Authorization Code
+        Access Token Request as defined in Section 4.1.3 of
+	<xref target="I-D.ietf-oauth-v2">OAuth 2.0</xref>
+	(with line breaks for display purposes only):</t>
+
+        <figure>
+          <artwork><![CDATA[POST /token HTTP/1.1 
+Host: server.example.com 
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&
+code=i1WsRn1uB1&
+client_id=s6BhdRkqt3&
+client_assertion_type=urn%3Aietf%3Aparams%3Aoauth
+%3Aclient-assertion-type%3Asaml2-bearer&
+client_assertion=PHNhb...[omitted for brevity]...ZT4]]></artwork>
+        </figure>
+      </section>
+
+      <section title="Client Acting on Behalf of Itself">
+        <t>When a client is accessing resources on behalf of itself, it SHOULD
+        do so in a manner analogous to the Client Credentials flow defined in
+        Section 4.4 of <xref target="I-D.ietf-oauth-v2">OAuth 2.0</xref>. This
+        is a special case that combines both the authentication and
+        authorization grant usage patterns. In this case, the interactions
+        with the authorization server SHOULD be treated as using an assertion
+        for Client Authentication according to <xref target="clientauth" />, with the addition
+        of a grant_type parameter. The following format and processing rules
+        apply.<list style="symbols">
+
+            <t>The grant_type HTTP request parameter MUST be
+            <spanx style='verb'>client_credentials</spanx>.</t>
+
+            <t>The <spanx style='verb'>client_assertion_type</spanx> HTTP parameter MUST identify the
+            assertion format.</t>
+
+            <t>The <spanx style='verb'>client_assertion</spanx> HTTP parameter MUST contain the serialized
+            assertion as in a format indicated by the <spanx style='verb'>client_assertion_type</spanx>
+            parameter.</t>
+
+            <t>The Issuer of the assertion MUST identify the entity that
+            issued the assertion as recognized by the Authorization Server. If
+            the assertion is self-asserted, the Issuer SHOULD be the
+            <spanx style='verb'>client_id</spanx>. If the assertion was issued by a Security Token
+            Service (STS), the Issuer SHOULD identify the STS as recognized by the
+            Authorization Server.</t>
+
+            <t>The Principal SHOULD be the <spanx style='verb'>client_id</spanx>.</t>
+
+            <t>The Audience of the assertion MUST identify the Authorization
+            Server and SHOULD be the URL of the Token Endpoint.</t>
+
+            <t>The Authorization Server MUST validate the assertion's signature in order to verify the Issuer of the assertion.</t>
+          </list></t>
+
+        <t>The following non-normative example demonstrates the use of a
+        sample assertion being used for a Client Credentials Access Token
+        Request as defined in Section 4.4.2 of
+	<xref target="I-D.ietf-oauth-v2">OAuth 2.0</xref>
+	(with line breaks for display purposes only):</t>
+
+        <figure>
+          <artwork><![CDATA[POST /token HTTP/1.1 
+Host: server.example.com 
+Content-Type: application/x-www-form-urlencoded
+
+client_id=s6BhdRkqt3&
+grant_type=client_credentials&
+client_assertion_type=urn%3Aietf%3Aparams%3Aoauth
+%3Aclient-assertion-type%3Asaml2-bearer&
+client_assertion=PHNhbW...[omitted for brevity]...ZT]]></artwork>
+        </figure>
+      </section>
+
+      <section title="Client Acting on Behalf of a User ">
+        <t>When a client is accessing resources on behalf of a user, it SHOULD
+        be treated as using an assertion as an Authorization Grant according
+        to <xref target="authgrants" />. The following format and processing rules apply.<list style="symbols">
+
+            <t>The grant_type HTTP request parameter MUST indicate the
+            assertion format.</t>
+
+            <t>The assertion HTTP parameter MUST contain the serialized
+            assertion as in a format indicated by the grant_type
+            parameter.</t>
+
+            <t>The Issuer of the assertion MUST identify the entity that
+            issued the assertion as recognized by the Authorization Server. If
+            the assertion is self-asserted, the Issuer SHOULD be the
+            <spanx style='verb'>client_id</spanx>. If the assertion was issued by a
+	    Security Token Service (STS), the Issuer SHOULD
+            identify the STS as recognized by the Authorization Server.</t>
+
+            <t>The Principal MUST identify an authorized accessor for whom the
+            access token is being requested (typically the resource owner, or
+            an authorized delegate).</t>
+
+            <t>The Audience of the assertion MUST identify the Authorization
+            Server and MAY be the URL of the Token Endpoint.</t>
+
+            <t>The Authorization Server MUST validate the assertion's signature in order to verify the Issuer of the assertion.</t>
+          </list></t>
+
+        <t>The following non-normative example demonstrates the use of a
+        client authenticating using an assertion during an Authorization Code
+        Access Token Request as defined in Section 4.1.3 of <xref
+        target="I-D.ietf-oauth-v2">OAuth 2.0</xref>
+	(with line breaks for display purposes only):</t>
+
+        <figure>
+          <artwork><![CDATA[POST /token HTTP/1.1 
+Host: server.example.com 
+Content-Type: application/x-www-form-urlencoded
+
+client_id=s6BhdRkqt3&
+grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Asaml2-bearer&
+assertion=PHNhbWxwOl...[omitted for brevity]...ZT]]></artwork>
+        </figure>
+      </section>
+
+      <section title="Client Acting on Behalf of an Anonymous User">
+        <t>When a client is accessing resources on behalf of an anonymous
+        user, the following format and processing rules apply.<list style="symbols">
+
+            <t>The grant_type HTTP request parameter MUST indicate the
+            assertion format.</t>
+
+            <t>The assertion HTTP parameter MUST contain the serialized
+            assertion as in a format indicated by the grant_type
+            parameter.</t>
+
+            <t>The Issuer of the assertion MUST identify the entity that
+            issued the assertion as recognized by the Authorization Server. If
+            the assertion is self-asserted, the Issuer SHOULD be the
+            <spanx style='verb'>client_id</spanx>. If the assertion was issued by a Security Token
+            Service (STS), the Issuer SHOULD identify the STS as recognized by the
+            Authorization Server.</t>
+
+            <t>The Principal SHOULD indicate to the Authorization Server that
+            the client is acting on-behalf of an anonymous user as defined by
+            the Authorization Server. It is implied that authorization is based
+            upon additional criteria, such as additional attributes or claims
+            provided in the assertion. For example, a client may present an
+            assertion from a trusted issuer asserting that the bearer is over
+            18 via an included claim. In this case, no additional information
+            about the user's identity is included yet all the data needed to
+            issue an access token is present.</t>
+
+            <t>The Audience of the assertion MUST identify the Authorization
+            Server and MAY be the URL of the Token Endpoint.</t>
+
+            <t>The Authorization Server MUST validate the assertion's signature in order to verify the Issuer of the assertion.</t>
+          </list></t>
+      </section>
+    </section>
+
+    <section anchor="Security" title="Security Considerations">
+
+      <t>Authorization Providers concerned with preventing replay attacks may choose to implement using replay detection using a combination of the Assertion ID and Issued At/Expires At attributes.  Previously processed assertions MAY be de-duped and rejected based on the Assertion ID.  The addition of the validity window relieves the authorization server from maintaining an infinite state table of processed assertion IDs.</t>
+
+      <t>Authorization Servers SHOULD consider the amount of information exposed in error responses, and the risk associated with exposing details of specific processing errors.   In addition, Authorization Servers SHOULD prevent timing attacks related to cryptographic processing of the assertion.</t>
+
+      <t>There are no additional security considerations beyond those described within
+      <xref target="I-D.ietf-oauth-v2">OAuth 2.0</xref>, Section 11.</t>
+
+    </section>
+
+
+	        <section title='IANA Considerations'>
+	          <section title='assertion Parameter Registration'>
+	            <t>
+	              The following is the parameter registration request, as
+	defined in The OAuth Parameters Registry of <xref
+	target="I-D.ietf-oauth-v2">The OAuth 2.0 Authorization
+	Protocol</xref>, for the
+	              <spanx style='verb'>assertion</spanx> parameter:
+
+	              <list style='symbols'>
+	                <t>Parameter name: assertion</t>
+	                <t>Parameter usage location: client authentication, token request
+	                </t>
+	                <t>Change controller: IETF</t>
+	                <t>Specification document(s): [[this document]]</t>
+	              </list>
+	            </t>
+	          </section>
+	
+	          <section title='client_assertion Parameter Registration'>
+	            <t>
+	              The following is the parameter registration request, as
+	defined in The OAuth Parameters Registry of <xref
+	target="I-D.ietf-oauth-v2">The OAuth 2.0 Authorization
+	Protocol</xref>, for the
+	              <spanx style='verb'>client_assertion</spanx> parameter:
+
+	              <list style='symbols'>
+	                <t>Parameter name: <spanx style='verb'>client_assertion</spanx></t>
+	                <t>Parameter usage location: client authentication, token request
+	                </t>
+	                <t>Change controller: IETF</t>
+	                <t>Specification document(s): [[this document]]</t>
+	              </list>
+	            </t>
+	          </section>
+	
+	          <section title='client_assertion_type Parameter Registration'>
+	            <t>
+	              The following is the parameter registration request, as
+	defined in The OAuth Parameters Registry of <xref
+	target="I-D.ietf-oauth-v2">The OAuth 2.0 Authorization
+	Protocol</xref>, for the
+	              <spanx style='verb'>client_assertion_type</spanx> parameter:
+
+	              <list style='symbols'>
+	                <t>Parameter name: <spanx style='verb'>client_assertion_type</spanx></t>
+	                <t>Parameter usage location: client authentication, token request
+	                </t>
+	                <t>Change controller: IETF</t>
+	                <t>Specification document(s): [[this document]]</t>
+	              </list>
+	            </t>
+	          </section>
+
+	        </section>
+
+  </middle>
+
+  <back>                                                                                        
+    <references title="Normative References">
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-oauth-v2-26.xml' ?>
+    </references>
+
+    <section title="Acknowledgements">
+      <t>The authors wish to thank the following people that have influenced
+      or contributed this specification: Paul Madsen, Eric Sachs, Jian Cai,
+      Tony Nadalin, the authors of OAuth WRAP, and those in the OAuth working group.</t>
+    </section>
+
+    <section title='Document History'>
+      <t>
+	[[ to be removed by RFC editor before publication as an RFC ]]
+      </t>
+       <t>
+        draft-ietf-oauth-assertions-03
+        <list style='symbols'>
+          <t>updated reference to draft-ietf-oauth-v2 from -25 to -26</t>
+        </list>
+      </t>
+      <t>
+	draft-ietf-oauth-assertions-02
+	<list style='symbols'>
+	  <t>Added text about limited lifetime ATs and RTs per http://www.ietf.org/mail-archive/web/oauth/current/msg08298.html.</t>
+	  <t>Changed the line breaks in some examples to avoid awkward rendering to text format. Also removed encoded '=' padding from a few examples because both known derivative specs, SAML and JWT, omit the padding char in serialization/encoding.</t>
+	  <t>Remove section 7 on error responses and move that (somewhat modified) content into subsections of section 4 broken up by authn/authz per http://www.ietf.org/mail-archive/web/oauth/current/msg08735.html.</t>
+	  <t>Rework the text about "MUST validate ... in order to establish a mapping between ..." per http://www.ietf.org/mail-archive/web/oauth/current/msg08872.html and http://www.ietf.org/mail-archive/web/oauth/current/msg08749.html.</t>
+	  <t>Change "The Principal MUST identify an authorized accessor.  If the
+	  assertion is self-issued, the Principal SHOULD be the client_id" in 6.1 per http://www.ietf.org/mail-archive/web/oauth/current/msg08873.html.</t>
+	  <t>Update reference in 4.1 to point to 2.3 (rather than 3.2) of oauth-v2 (rather than self) http://www.ietf.org/mail-archive/web/oauth/current/msg08874.html.</t>
+	  <t>Move the "Section 3 of" out of the xref to hopefully fix the link in 4.1 and remove the client_id bullet from 4.2 per http://www.ietf.org/mail-archive/web/oauth/current/msg08875.html.</t>
+	  <t>Add ref to Section 3.3 of oauth-v2 for scope definition and remove some then redundant text per http://www.ietf.org/mail-archive/web/oauth/current/msg08890.html.</t>
+	  <t>Change "The following format and processing rules SHOULD be applied" to "The following format and processing rules apply" in sections 6.x to remove conflicting normative qualification of other normative statements per http://www.ietf.org/mail-archive/web/oauth/current/msg08892.html.</t>
+	  <t>Add text the client_id must id the client to 4.1 and remove similar text from other places per http://www.ietf.org/mail-archive/web/oauth/current/msg08893.html.</t>
+	  <t>Remove the MUST from the text prior to the HTTP parameter definitions per http://www.ietf.org/mail-archive/web/oauth/current/msg08920.html.</t>
+	  <t>Updated examples to use grant_type and client_assertion_type values from the OAuth SAML Assertion Profiles spec.</t>
+	</list>
+      </t>
+
+    </section>
+  </back>
+</rfc>
