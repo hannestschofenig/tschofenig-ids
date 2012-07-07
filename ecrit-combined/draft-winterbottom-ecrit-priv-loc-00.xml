@@ -1,0 +1,434 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="rfc2629.xslt" ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+
+<?rfc strict="yes" ?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="4"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes" ?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+
+<rfc category="std" ipr="trust200902">
+  <front>
+    <title>Out of Jurisdiction Emergency Routing</title>
+
+    <author initials="J." surname="Winterbottom" fullname="James Winterbottom">
+      <organization>CommScope</organization>
+      <address>
+        <postal>
+          <street>Suit 1, Level 2</street>
+          <street>iC Enterprise 1, Innovation Campus</street>
+          <street>Squires Way</street>
+          <city>North Wollongong</city>
+          <region>NSW</region>
+          <code>2500</code>
+          <country>AU</country>
+        </postal>
+        <phone>+61 242 212938</phone>
+        <email>james.winterbottom@commscope.com</email>
+      </address>
+    </author>
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+	    <postal>
+	        <street>Linnoitustie 6</street>
+	        <city>Espoo</city>
+	        <code>02600</code>
+	        <country>Finland</country>
+	    </postal>
+	    <phone>+358 (50) 4871445</phone>
+	    <email>Hannes.Tschofenig@gmx.net</email>
+	    <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+ 
+    <date year="2012"/>
+    <area>RAI</area>
+    <workgroup>ECRIT</workgroup>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Emergency</keyword>
+    <keyword>Call</keyword>
+    <keyword>Routing</keyword>
+    <keyword>Location</keyword>
+    <keyword>HELD</keyword>
+
+    <abstract>
+      <t>Some countries and regions require location information be constrained to emergency service applications and do not permit location information
+         to traverse the end-point at all. This document describes the requirements of these countries and provides a solution based on an extension to the HELD
+         location protocol.
+      </t>
+
+    </abstract>
+  </front>
+  <middle>
+
+    <section anchor="intro" title="Introduction and Motivation">
+      <t>The Internet emergency calling architecture specified in <xref target="I-D.ietf-ecrit-phonebcp"/> describes two main models for emergency call processing.
+      The first is a device-centric model, where a device obtains location information using a location configuration protocol, such a HELD <xref target="RFC5985"/>,
+      and then proceeds to determine the address of the next hop closer to the local PSAP using LoST <xref target="RFC5222"/>.
+      <xref target="device"/> shows this model in a simplified form. 
+            <figure anchor="device" title="Device-Centric Emergency Services Model"><artwork><![CDATA[
+     +---Location Request---+
+     |         (1)             |
+ +---+----+             +---V---+ 
+ |        |<--Location--|  LIS  |         
+ | Caller |    (2)      +-------+             +--------+
+ |        |                                   | ESRP/  |
+ |        |----Find Service-------+           |  PSAP  |   
+ +------^-+     (3)               |           +--------+
+    |   |                +--------V----+          ^
+    |   +-----Service----| LoST Server |          |
+    |         (4)        +-------------+      +---+---+
+    +-------------Call Initiation------------>|  VSP  |                   
+                     (5)                      +-------+
+ 
+]]></artwork></figure>
+</t>
+
+      <t>With the ever increasing deployment of smart phones and tablet devices a variation of the device-centric model is the ability to use location available to the device for routing and then consult a LIS when location is needed for dispatch. Location can come in various forms to the device, e.g., from GPS, third party location databases, as well as IP-to-geolocation services.</t>
+
+      <t>The second approach is a softswitch-centric model, where a device
+      initiates and emergency call and the serving softswitch detects that the call is an emergency and initiates retrieving the caller's location from a Location
+      Information Server (LIS) using HELD <xref target="RFC5985"/> with identity extensions <xref target="RFC6155"/> and then determining the route to the 
+      local PSAP using LoST <xref target="RFC5222"/>. <xref target="sofswitch"/> shows the high-level protocol interactions.
+      </t>
+      <t>
+      <figure anchor="sofswitch" title="Softswitch-Centric Calling Model"><artwork><![CDATA[
+  
+                            +---Location Request---+
+                            |         (2)          |
+                        +---V---+                  |
+                        |  LIS  |                  |
+                        +----+--+             +----+----+
+                             |                |         |
+                             +----Location--->|  Soft   |
+ +--------+                          (3)      | Switch  |
+ | Caller |------Call Initiation------------> |         |   
+ +--------+          (1)                      +-+-^---+-+
+                 +-------------+                | |   |
+                 | LoST Server |<-Find Service--+ |   |        
+                 +------+------+     (4)          |   |  
+                        |                         |   |
+                        +----------Service--------+   |
+                                    (5)               |
+                          +-----------+               |
+                          | ESRP/PSAP |<------Call----+
+                          +-----------+       (6)            
+                                            
+]]></artwork></figure>
+</t>
+
+<t>In the softswitch-centric model when a VSP receives an emergency call it will encounter several difficulties. The first hurdle is for the VSP to determine the correct LIS to ask for location information. Having obtained the location, the VSP must then determine the correct PSAP using a LoST server and this requires wide-spread deployment of forest guides. 
+      
+ This leads to a failure 
+      in the softswitch-centric approach to deliver emergency calls correctly because the VSP is unable to determine the correct PSAP to route the call to. The softswitch-centric model should therefore seen only as a transition architecture towards the end-device model where end devices have not been upgraded. Software updates of end devices are, however, not a problem anymore since software updates have to be provided to end devices on a regular basis to patch security vulnerabilities. Any service provider that does not have an ability to update devices will not only put their own customers at risk but also other Internet users as well since those can become the victims of attacks as well. </t>
+
+      
+    </section>
+
+<!-- ***************************************************************************************************** --> 
+       
+      <section anchor="terminology" title="Terminology">
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119"/>.
+        </t>
+        <t>The terms LIS, ESRP, VSP and PSAP are used as defined in <xref target="RFC6443"/>.</t>
+        <t>The term "Access Network Provider" is used as defined in <xref target="RFC5687"/> and incompasses both the Internet Access Provider (IAP) and Internet Service Provider (ISP).</t>
+      </section>
+
+<!-- ***************************************************************************************************** --> 
+
+    <section anchor="problem" title="Problem Description">
+    
+    
+        <t>There is a significant faction in the emergency services and the regulatory community that do not want to rely on emergency calls solutions with end-device provided
+      location. This includes location information that is determined by the network but subsequently traverses the end-point prior to being delivered to the
+      emergency organization.</t>
+      
+      <t>There are two concerns: 
+      
+      <list style="hanging"> 
+      
+      <t hangText="Security:"> 
+      One concern is about the possibility of the software of the end device being able to tamper with location. This can lead to denial of service attacks against the emergency services infrastructure. <xref target="I-D.ietf-ecrit-trustworthy-location"/> describes these concerns in detail. </t>
+      <t hangText="Privacy:">There is the desire to allow location information to be provided to emergency organizations rather than any other party, including the end device or a VSP. 
+      
+In the softswitch model the VSP would have to ask the access provider for location information. However, the number of VSPs asking for location information could, at least in theory depending on the scope of emergency services regulation be very large and is likely to include VSPs that are located in a jurisdiction that is different from the one of the access network provider. Allowing VSPs to ask for location information of end devices at access network providers in a third party fashion without the ability to present the user's consent or the emergency service nature calls for privacy problems. <xref target="RFC6155"/> discusses some of these privacy challenges as part of the third party requests.</t>
+      </list> 
+      </t>  
+      <t>
+      These arguments may, however, also jacked into place to hide another reason, namely the desire to create an artifical relationship between the VSP and the access network provider. <xref target="RFC6444"/> provides a problem description and <xref target="I-D.ietf-ecrit-rough-loc"/> even offers a solution based on rough location. This solutions, however, requires the access network provider to compute these rough location shapes. Countries that have a large number of PSAPs and neither an ESRP nor a stage-1 PSAP architecture may encounter problems computing these shapes. <cref>Data about the complexity of computing these boundaries is missing. Suggestion: use Germany as an example to see how complex this task really is.</cref>
+      </t>
+
+      <t>
+      The Internet calling 
+      model does not constrain the call to a single jurisdictional boundary nor does it assume that the Voice Service provider
+      (VSP) role is provided by the access provider. This allows the VSP to be located anywhere on the Internet without requiring any association with Internet access providers. 
+      </t>
+
+      <t>
+      <figure anchor="jurisdictions" title="Internet Calling Models"><artwork><![CDATA[
++----------------+  +----------------+  +----------------+
+| Jurisdiction 1 |  | Jurisdiction 2 |  | Jurisdiction 3 |
+|                |  |                |  |                |
+|                |  |                |  |                |
+| +--------------+--+----------------+--+--------------+ |
+| |              EMERGENCY CALL CENTRES                | |
+| +--------------+--+----------------+--+--------------+ |
+|    ^     ^   ^ |  |                |  |                |
+|    |     |   | |  |                |  |                |
+| +-----+  |   | |  |   +-----+      |  |    +-----+     |
+| | VSP |  |   +--------| VSP |      |  |    | VSP |     |
+| +--^--+  |     |  |   +---^-+      |  |    +-----+     |
+|    |     |     |  |       |        |  |                |
+| +--------+-----+--+-------+--------+--+--------------+ |
+| |  |     |                |  INTERNET                | |
+| +--------+-----+--+-----+----------+--+--------------+ |
+|    |     |     |  |       |        |  |                |
+| +--------+-----+--+-------+--------+--+--------------+ |
+| |  |     |       ACCESS   | NETWORKS                 | |
+| +--------------+--+-------+--------+--+--------------+ |
+|    |     |     |  |       |        |  |                |
+|    |     |  +-------------+        |  |                |
+|    |     |  |  |  |                |  |                |
+| +------------+ |  |                |  |                |
+| | EMERGENCY  | |  |                |  |                |
+| |   CALLS    | |  |                |  |                |
+| +------------+ |  |                |  |                |
+| +--------+-----+--+-----+----------+--+--------------+ |
+| |  |     |             DEVICES                       | |
+| +--------------+--+-----+----------+--+--------------+ |
+|                |  |                |  |                |
++----------------+  +----------------+  +----------------+
+  e.g US State        e.g. Australia      e.g. European
+                                               Country 
+]]></artwork></figure>
+</t>
+    </section>
+
+<!-- ***************************************************************************************************** --> 
+
+
+    <section anchor="observations" title="Key Observations">    
+    
+          <t>When these security and privacy requirements are taken into consideration then the emergency calling architecture 
+      and associated procedures described in <xref target="I-D.ietf-ecrit-phonebcp"/> and <xref target="RFC6443"/> require some adaptation
+      in some configurations to ensure universal operation. The softswitch model fails to meet the privacy requirements and the end-device model has to wrangle with security challenges.      </t>
+
+      <t>Several observations have been posed thus far:
+      <list style='hanging'>
+          <t hangText="Problem#1:">Rough location information is required to route emergency calls.</t>
+          <t hangText="Problem#2:">The VSP needs the ability to determine the correct LIS to retrieve location information.</t>
+          <t hangText="Problem#3:">The VSP needs the ability to contact a LoST server to acquire routing information from.</t>
+          <t hangText="Problem#4:">The end host does not acquire or convey location to the emergency network.</t>
+          <t hangText="Problem#5:">Access network provider aim to provide location only to emergency service authorities.</t>
+          <t hangText="Problem#6:">Precise location information is required to dispatch first responders.</t>
+        </list>
+      </t>
+   </section> 
+   
+   <!-- ***************************************************************************************************** --> 
+
+   <section title="Available Building Blocks"> 
+      
+      <t>To fulfill A number of building blocks are already available. There is no need to start from a clean sheet. 
+      <list style="hanging"> 
+      
+      <t hangText="Location:"> 
+      Location standards have existed for mobile cellular
+         networks since the mid to late 1990s, and location standards for the Internet have existed since the mid to late 2000s. The exact determination techniques for
+         each access technology are different but the ability to direct communications across a communications network is inherenetly premised on being able to reach a specific
+         device and this requires some knowledge of where the device is physically located. The term Location Information Server (LIS) is used to identify the
+         element in an access network responsible for providing the location of a device in its administrative domain. LIS service discovery techniques are described in <xref target="RFC5986"/>
+          and <xref target="I-D.ietf-geopriv-res-gw-lis-discovery"/>.
+      </t>
+      <t hangText="Call Routing:"> 
+      The LoST protocol <xref target="RFC5222"/> specifies a means to map location and service information into a destination URI. Next generation emergency 
+         services architectures and procedures, such as those defined in <xref target="RFC6443"/>, NENA i3, and the EENA NG112 
+         document, use LoST for providing routing to local emergency service authorities. LoST servers are discovered using DNS U-NAPTR 
+         <xref target="RFC4848"/> to obtain a service URI. The discovered LoST server services the domain in which the device is resident, or is able to provide 
+         the identity of a LoST server that can service the request. A access network provider that operates in an area capable of receiving next generation emergency
+         calls is able to include a U-NAPTR record in their DNS servers that identifies the local serving LoST server able to resolve emergency routing requests. 
+      </t>
+      
+      <t hangText="LIS Discovery:"><xref target="I-D.ietf-geopriv-res-gw-lis-discovery"/> provides a means for discovering a LIS based on the IP address of a device and this could be used in conjunction 
+      with <xref target="RFC6155"/> to provide a solution to problem 2. The domain name discovered for the LIS could be reused to discover the correct LoST server to
+      contact thereby solving problem 3.
+      </t> 
+      </list> 
+      </t> 
+    </section> 
+      
+         <!-- ***************************************************************************************************** --> 
+    <section title="The Missing Link"> 
+    
+      <t>Problem 5 does not allow the LIS to provide location information except to emergency authorities, and while the HELD protocol <xref target="RFC5985"/> does allow a location URI to be returned to the requesting entitiy, the LoST protocol <xref target="RFC5222"/> requires a location value and does not support a location reference.
+      </t>
+      
+      <t>One possible solution to problem 5 is to extend LoST to support a location URI in the findService request method. In this case a VSP would detect that a device was making an emergency call, determine the correct LIS to contact using <xref target="I-D.ietf-geopriv-res-gw-lis-discovery"/>, contact the
+         LIS using HELD <xref target="RFC5985"/> using the IP address of the calling device as an identity extension <xref target="RFC6155"/> and the LIS would respond with
+         a location URI that requires client-side authentication for dereferencing  Using the LIS domain identifier the VSP would then determine the correct LoST server and
+         request emergency services using the location URI as the location reference. The LoST server must have permission to dereference the location URI, if any form of
+         recurision is encountered then the URI must be dereferenced multiple times increasing the likelihood of failure.          
+      </t>
+      <t>An alternative approach is to leave LoST unchanged, but extend the HELD protocol and requirements of the local LIS. In this solution, when the LIS receives the
+         third-party request, it performs the necessary LoST request using the location of the device. The LIS responds with a location URI and the destination URI of the
+         correct emergency service authority. The Location URI will only yield location information to the authorized emergency authority. This solution addresses problem 1
+         problem 3, problem 4, problem 5. Problem 2 is solved using a combination of <xref target="I-D.ietf-geopriv-res-gw-lis-discovery"/> and HELD with identity extensions.
+      </t>
+      <section anchor="modFlow" title="Call Flow">
+      <t>
+        <list style='numbers'>
+          <t>Device initiates an emergency call to home VSP
+          </t>
+          <t>Home VSP detects emergency call and uses IP address to determine the correct LIS to query using <xref target="I-D.ietf-geopriv-res-gw-lis-discovery"/>.
+          </t>
+          <t>Home VSP queries the LIS using HELD and the IP address of the calling device as an identity extension.
+          </t>
+          <t>The LIS determines the location and uses it request routing information for the local LoST server.
+          </t>
+          <t>The LIS return a location URI and the local Emergency Service Routing Proxy (ESRP) URI to the home VSP.
+          </t>
+          <t>The VSP follows the guidance from <xref target="I-D.ietf-ecrit-phonebcp"/> and routes the call to the ESRP.
+          </t>
+          <t>The ESRP authenticates itself with the LIS when it dereferences the location URI.
+          </t>
+          <t>The returns location information to the ESRP allowing it route the call to the correct PSAP.
+          </t>
+        </list>
+       </t>
+        
+            <figure anchor="modified" title="Modified Softswitch-Centric Emergency Call Flow"><artwork><![CDATA[
+  
+                            +------(2)Find LIS-----+
+                            |                      |
+                        +---V---+                  |
+                        |  DNS  |                  |
+                        +----+--+             +----+---------+
+                             |                |              |
+                             +----LIS URI---->|     Home     |
+ +--------+                                   |     VSP      |
+ | Caller |------(1)-Call Initiation--------> |              |   
+ +--------+                                   +-+--^-------+-+
+                                                |  |       |
++-------------+                                 |  |       |
+|             |<------(3)-locationReq(IP)-------+  |       |               
+|     LIS     |                                    |       |
+|             |--(5)-locationResp(locURI,EcrfURI)--+       |
++-+--^---+--^-+                                            |
+  |  |   |  |                +-------------+               |
+  |  |   |  +-----Service----+             |               |
+  |  |   |                   | LoST Server |               |
+  |  |   +-(4)-Find Service->|             |               |        
+  |  |                       +-------------+               |
+  |  |                                                     |
+  |  |                    +-----------+                    |
+  |  +--(7)-locReq(Auth)--+           |                    |
+  |                       | ESRP/PSAP |<--(6)-Call(locURI)-+
+  +---(8)-locResp(Loc)--->|           |
+                          +-----------+                   
+                                            
+]]></artwork></figure>
+      
+      </section>
+      <section title="Domain Breakdown">
+       <t>The key advantage of the call flow show in <xref target="modFlow"/> is that it separates the entities into
+          two clear groups, those that are inside the regulatory emergency jurisdiction and those that are in the Internet.
+          This is evident in <xref target="domains"/>.
+       </t>
+ <figure anchor="domains" title="Emergency Call Domains"><artwork><![CDATA[
+  
+                      +------(2)Find LIS-----+
+                      |                      |
+                  +---V---+                  |
+                  |  DNS  |                  |
+                  +----+--+             +----+---------------+
+                       |                |                    |
+                       +----LIS URI---->|        Home        |
+                                        |        VSP         |
+                                        |                    |   
+                                        +-^---+----^-------+-+
+          I N T E R N E T                 |   |    |       |
+ =========================================|===|====|=======|===
+        LOCAL  JURISDICTION               |   |    |       |
+ +--------+                               |   |    |       |
+ | Caller |------(1)-Call Initiation------+   |    |       |   
+ +--------+                                   |    |       | 
+                                              |    |       |
++-------------+                               |    |       |
+|             |<------(3)-locationReq(IP)-----+    |       |               
+|     LIS     |                                    |       |
+|             |--(5)-locationResp(locURI,EcrfURI)--+       |
++-+--^---+--^-+                                            |
+  |  |   |  |                +-------------+               |
+  |  |   |  +-----Service----+             |               |
+  |  |   |                   | LoST Server |               |
+  |  |   +-(4)-Find Service->|             |               |        
+  |  |                       +-------------+               |
+  |  |                                                     |
+  |  |                    +-----------+                    |
+  |  +--(7)-locReq(Auth)--+           |                    |
+  |                       | ESRP/PSAP |<--(6)-Call(locURI)-+
+  +---(8)-locResp(Loc)--->|           |
+                          +-----------+                   
+                                            
+]]></artwork></figure>     
+      </section>
+      
+    </section>
+
+   <!-- ***************************************************************************************************** --> 
+
+    <section anchor="privacy" title="Privacy Considerations">
+      <t>[[TBD.]]</t>
+    </section>
+
+
+
+   <!-- ***************************************************************************************************** --> 
+
+    <section anchor="security" title="Security Considerations">
+      <t>[[TBD.]]</t>
+    </section>
+
+   <!-- ***************************************************************************************************** --> 
+
+    <section anchor="iana" title="IANA Considerations">
+      <t>[[TBD.]]</t>
+    </section>
+
+   <!-- ***************************************************************************************************** --> 
+
+    <section title="Acknowledgements">
+      <t>We would like to thank Wilfried Lange for sharing his views with us.</t>
+    </section>
+  </middle>
+  <back>
+    <references title="Normative References">
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5222.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5985.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5986.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6155.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-geopriv-res-gw-lis-discovery"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-ecrit-phonebcp"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6443.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5687.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-geopriv-deref-protocol"?>
+    </references>
+    <references title="Informative References">
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.3629.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.4079.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5012.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5774.xml"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.4848.xml"?>
+      
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-ecrit-rough-loc"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-ecrit-trustworthy-location"?>
+      <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6444.xml"?>
+    </references>
+
+  </back>
+</rfc>
