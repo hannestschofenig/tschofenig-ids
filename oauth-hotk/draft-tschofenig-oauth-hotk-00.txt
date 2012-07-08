@@ -1,0 +1,784 @@
+
+
+
+Network Working Group                                      H. Tschofenig
+Internet-Draft                                    Nokia Siemens Networks
+Intended status: Standards Track                            July 8, 2012
+Expires: January 9, 2013
+
+
+  The OAuth 2.0 Authorization Framework: Holder-of-the-Key Token Usage
+                   draft-tschofenig-oauth-hotk-00.txt
+
+Abstract
+
+   TBD
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on January 9, 2013.
+
+Copyright Notice
+
+   Copyright (c) 2012 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 1]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  4
+   3.  Protocol Specification . . . . . . . . . . . . . . . . . . . .  5
+     3.1.  Binding a Public Key to an Access Token  . . . . . . . . .  5
+     3.2.  Accessing a Protected Resource . . . . . . . . . . . . . .  8
+   4.  Security Considerations  . . . . . . . . . . . . . . . . . . .  9
+   5.  Privacy Considerations . . . . . . . . . . . . . . . . . . . . 10
+   6.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 11
+     6.1.  OAuth Parameters Registration  . . . . . . . . . . . . . . 11
+     6.2.  The 'hotk' JSON Web Token Claims . . . . . . . . . . . . . 11
+     6.3.  The 'hotk' OAuth Access Token Type . . . . . . . . . . . . 11
+   7.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 12
+   8.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+     8.1.  Normative References . . . . . . . . . . . . . . . . . . . 13
+     8.2.  Informative References . . . . . . . . . . . . . . . . . . 13
+   Author's Address . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 2]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+1.  Introduction
+
+   At the time of writing the OAuth 2.0 [1] and accompanying protocols
+   offer one main security mechanism to access protected resources,
+   namely the bearer token.  In [6] a bearer token is defined as
+
+      A security token with the property that any party in possession of
+      the token (a "bearer") can use the token in any way that any other
+      party in possession of it can.  Using a bearer token does not
+      require a bearer to prove possession of cryptographic key material
+      (proof-of-possession).
+
+   The bearer token provides sufficient security properties for a number
+   of use cases OAuth had been designed for, if certain conditions are
+   met (which are documented in [6]).  Some usage scenarios, however,
+   require stronger security guarantees and ask for active participation
+   of the client software in form of cryptographic computations when
+   presenting an access token.
+
+   In addition to the bearer token a MAC token has been specified, see
+   [7].  The design of the MAC token was inspired by features in the
+   OAuth 1.0 [8].  Unfortunately, the MAC token has not received a lot
+   of deployment attention.
+
+   This specification defines a new security mechanism for usage with
+   OAuth that combines various existing specifications to offer enhanced
+   security properties for OAuth.  The incredients for this security
+   solution are:
+
+   1.  A mechanism for on-the-fly provisioning of ephemeral asymmetric
+       credentials using the JSON Web Key (JWK) format [2].
+
+   2.  The ability to access a protected resource using this ephemeral
+       asymmetric credentials for client authentication using a
+       transport layer extension that allows out-of-band key validation
+       [3].
+
+   3.  A data structure to bind the emphemeral asymmetric credential to
+       an access token.  The structure uses the JSON Web Token (JWT)
+       [4].
+
+   The rest of the document describes how these different components
+   work together.
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 3]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+2.  Terminology
+
+   The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
+   'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
+   specification are to be interpreted as described in [5].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 4]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+3.  Protocol Specification
+
+   To describe the architecture of the proposed security mechanism it is
+   best to start by looking at the main OAuth 2.0 protocol exchange
+   sequence.  Figure 1 shows the abstract OAuth 2.0 protocol exchanges
+   graphically.  The exchange in this document will focus on two
+   interactions, namely
+
+   1.  to allow the client to obtain the ephemeral asymmetric
+       credentails in step (D)
+
+   2.  to use the obtained asymmetric credentials for the interaction
+       with the resource server in step (E)
+
+
+        +--------+                               +---------------+
+        |        |--(A)- Authorization Request ->|   Resource    |
+        |        |                               |     Owner     |
+        |        |<-(B)-- Authorization Grant ---|               |
+        |        |                               +---------------+
+        |        |
+        |        |                               +---------------+
+        |        |--(C)-- Authorization Grant -->| Authorization |
+        | Client |                               |     Server    |
+        |        |<-(D)----- Access Token -------|               |
+        |        |                               +---------------+
+        |        |
+        |        |                               +---------------+
+        |        |--(E)----- Access Token ------>|    Resource   |
+        |        |                               |     Server    |
+        |        |<-(F)--- Protected Resource ---|               |
+        +--------+                               +---------------+
+
+                Figure 1: Abstract OAuth 2.0 Protocol Flow
+
+3.1.  Binding a Public Key to an Access Token
+
+   OAuth 2.0 offers different ways to obtain an access token, namely
+   using authorization grants and using a refresh token.  The core OAuth
+   specification defines four authorization grants, see Section 1.3 of
+   [1], and [9] adds an assertion-based authorization grant to that
+   list.
+
+   This document extends the communication with the token endpoint.  The
+   token endpoint, which is described in Section 3.2 of [1], is used
+   with every authorization grant except for the implicit grant type
+   since an access token is issued directly.  The request contains
+   information about the public key the client would like to bind to the
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 5]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+   access token in the JSON Web Key format.  This parameter also
+   provides an indication to the authorization servers about the support
+   by the client for this specification.  Since the client makes a
+   request to the token endpoint by adding a new of parameters using the
+   "application/x-www-form-urlencoded" format in the HTTP request
+   entity-body the public key information must be encoded into a new
+   parameter, called 'pk-info'.  A new token type, called 'hotk', is
+   also defined by this specification.
+
+   For example, the client makes the following HTTP request using TLS
+   (extra line breaks are for display purposes only):
+
+
+        POST /token HTTP/1.1
+        Host: server.example.com
+        Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+        Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+
+        grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA
+        &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
+        &pk-info=eZQQYbYS6WxS...lxlOB
+
+      whereby the content of the pk-info field represents the following
+      structure:
+
+     {"keys":
+        [
+          {"alg":"RSA",
+           "mod": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+      4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+      tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+      QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+      SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+      w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+           "exp":"AQAB",
+           "kid":"2011-04-29"}
+        ]
+      }
+
+                Example Request to the Authorization Server
+
+   If the access token request is valid and authorized, the
+   authorization server issues an access token and optionally a refresh
+   token.  If the request client authentication failed or is invalid,
+   the authorization server returns an error response as described in
+   Section 5.2 of [1].
+
+   The authorization server also places information about the public key
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 6]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+   used by the client into the access token to create the binding
+   between the two.
+
+   An example successful response:
+
+
+        HTTP/1.1 200 OK
+        Content-Type: application/json;charset=UTF-8
+        Cache-Control: no-store
+        Pragma: no-cache
+
+        {
+          "access_token":"2YotnFZFE....jr1zCsicMWpAA",
+          "token_type":"hotk",
+          "expires_in":3600,
+          "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA"
+        }
+
+       whereby the content of the 'access_token' field, for example,
+       contains an encoded JWT with the following raw structure:
+
+       {"typ":"JWT",
+        "alg":"HS256"}
+       .
+       {"iss":"authorization-server-id",
+        "exp":1300819380,
+        "hotk": {"keys":
+        [
+          {"alg":"RSA",
+           "mod": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+       4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+       tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+       QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+       SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+       w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+           "exp":"AQAB",
+           "kid":"2011-04-29"}
+        ]
+       }
+       }
+       .
+       bbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZC
+
+              Example Response from the Authorization Server
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 7]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+3.2.  Accessing a Protected Resource
+
+   The client accesses protected resources by presenting the access
+   token to the resource server.  It does so via a Transport Layer
+   Security (TLS) secured channel.  Since the client had previously
+   bound a public key to an access token it selects this key for usage
+   with TLS as described in [3].
+
+   The resource server validates the access token and ensure it has not
+   expired and that its scope covers the requested resource.
+   Additionally, the resource server verifies that the public key
+   presented during the TLS handshake corresponds to the public key that
+   is contained in the access token.
+
+   Note that this step confirms that the client is in possession of the
+   private key corresponding to the public key previously bound to the
+   access token.  Information about the client authentication may be
+   contained in the token in case the authorization server added this
+   information when it authenticated the client.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 8]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+4.  Security Considerations
+
+   TBD
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013                [Page 9]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+5.  Privacy Considerations
+
+   TBD
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013               [Page 10]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+6.  IANA Considerations
+
+   This document requires IANA to take the following actions.
+
+6.1.  OAuth Parameters Registration
+
+   This specification registers the 'pk-info' parameter in the OAuth
+   Parameters Registry established by [1].
+
+   Parameter name:  pk-info
+
+   Parameter usage location:  token request
+
+   Change controller:  IETF
+
+   Specification document(s):  [[ this document ]]
+
+   Related information:  None
+
+6.2.  The 'hotk' JSON Web Token Claims
+
+   [4] established the IANA JSON Web Token Claims registry for reserved
+   JWT Claim Names and this document adds the 'hotk' name to that
+   registry.
+
+6.3.  The 'hotk' OAuth Access Token Type
+
+   Section 11.1 of [1] defines the OAuth Access Token Type Registry and
+   this document adds another token type to this registry.
+
+   Type name:  hotk
+
+   Additional Token Endpoint Response Parameters:  (none)
+
+   HTTP Authentication Scheme(s):  Holder of the key confirmation using
+      TLS
+
+   Change controller:  IETF
+
+   Specification document(s):  [[ this document ]]
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013               [Page 11]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+7.  Acknowledgements
+
+   The author would like to thank the OAuth working group and
+   participants of the Internet Identity Workshop for their discussion
+   input that lead to this document.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013               [Page 12]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+8.  References
+
+8.1.  Normative References
+
+   [1]  Hammer-Lahav, E., Recordon, D., and D. Hardt, "The OAuth 2.0
+        Authorization Framework", draft-ietf-oauth-v2-28 (work in
+        progress), June 2012.
+
+   [2]  Jones, M., "JSON Web Key (JWK)", draft-ietf-jose-json-web-key-03
+        (work in progress), July 2012.
+
+   [3]  Wouters, P., Gilmore, J., Weiler, S., Kivinen, T., and H.
+        Tschofenig, "TLS Out-of-Band Public Key Validation",
+        draft-ietf-tls-oob-pubkey-03 (work in progress), April 2012.
+
+   [4]  Jones, M., Bradley, J., and N. Sakimura, "JSON Web Token (JWT)",
+        draft-ietf-oauth-json-web-token-01 (work in progress),
+        July 2012.
+
+   [5]  Bradner, S., "Key words for use in RFCs to Indicate Requirement
+        Levels", BCP 14, RFC 2119, March 1997.
+
+8.2.  Informative References
+
+   [6]  Jones, M., Hardt, D., and D. Recordon, "The OAuth 2.0
+        Authorization Framework: Bearer Token Usage",
+        draft-ietf-oauth-v2-bearer-21 (work in progress), June 2012.
+
+   [7]  Hammer-Lahav, E., "HTTP Authentication: MAC Access
+        Authentication", draft-ietf-oauth-v2-http-mac-01 (work in
+        progress), February 2012.
+
+   [8]  Hammer-Lahav, E., "The OAuth 1.0 Protocol", RFC 5849,
+        April 2010.
+
+   [9]  Campbell, B., Mortimore, C., Jones, M., and Y. Goland,
+        "Assertion Framework for OAuth 2.0",
+        draft-ietf-oauth-assertions-04 (work in progress), July 2012.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013               [Page 13]
+
+Internet-Draft         OAuth 2.0 HOTK Token Usage              July 2012
+
+
+Author's Address
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires January 9, 2013               [Page 14]
+
