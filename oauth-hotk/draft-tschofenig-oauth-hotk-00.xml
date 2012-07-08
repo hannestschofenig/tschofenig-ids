@@ -265,15 +265,104 @@
 <!-- ====================================================================== -->
 
 <section anchor="SecurityConsiderations" title="Security Considerations">
-  <t>TBD</t>
+  
+      <section anchor="threats" title="Security Threats">
+   
+   <t>The following list presents several common threats against protocols utilizing some form of tokens. This list of threats is based on NIST Special Publication 800-63 <xref target="NIST800-63"/>. We exclude a discussion of threats related to any form of registration and authentication.</t>
+   <t><list style="hanging">
+   <t hangText="Token manufacture/modification:"> An attacker may craft a fake token or modify the token content (such as the authentication or attribute statements), causing a resource server to grant inappropriate access to the attacker. For example, an attacker may modify the token to extend the validity period or the scope to have extended access to information.</t>
+   <t hangText="Token disclosure:">Tokens may contain authentication and attribute statements that include sensitive information.</t>
+<!--    <t hangText="Token repudiation:">A token may be repudiated if the proper mechanisms are not in place.</t> -->
+   <t hangText="Token redirect:">An attacker uses a token generated for consumption
+      by one resource server to gain access to a different resource
+      server that mistakenly believes the token to be for it.</t>   <t hangText="Token reuse:"> An attacker attempts to use a token that has already
+      been used with that resource server in the past.</t>
+</list> 
+</t>
+
 </section>
 
-<!-- ====================================================================== -->
+<section title="Threat Mitigation"> 
 
+   <t>A large range of threats can be mitigated by protecting the contents
+   of the access token by using a digital signature or a Message Authentication
+   Code (MAC). Consequently, the token integrity protection MUST be sufficient 
+   to prevent the token from being modified.</t>
+
+   <t>To deal with token redirect, it is important for the authorization
+   server to include the identity of the intended recipients (the
+   audience), typically a single resource server (or a list of resource
+   servers), in the token.  Restricting the use of the token to a
+   specific scope is also RECOMMENDED.</t>
+
+   <t>The authorization server MUST implement TLS.  Which version(s) ought
+   to be implemented will vary over time, and depend on the widespread
+   deployment and known security vulnerabilities at the time of
+   implementation.  At the time of this writing, TLS version 1.2
+   <xref target="RFC5246"/> is the most recent version. The
+   client MUST validate the TLS certificate chain when making requests
+   to protected resources, including checking the Certificate Revocation
+   List (CRL) <xref target="RFC5280"/>. In addition, this specificatio requires a TLS extension for usage with 
+   out-of-band validation <xref target="I-D.ietf-tls-oob-pubkey"/> to be used that allows clients to present raw public keys. 
+   </t>
+
+   <t>With the usage of the holder-of-the-key concept it is not possible for any party 
+   other than the legitimate client to use a token and to re-use it without knowing the 
+   corresponding asymmetric key pair. This mechanism prevents against token disclosure. 
+   In some deployments, including those utilizing load balancers, the
+   TLS connection to the resource server terminates prior to the actual
+   server that provides the resource.  This could leave the token
+   unprotected between the front end server where the TLS connection
+   terminates and the back end server that provides the resource.  Even in
+   such deployments, token leakage is not a problem.
+   </t>
+   
+   <t>Client implementations must be carefully implemented to avoid leaking the ephemeral 
+   asymmetric key pair.</t>
+
+   <t>Token replay is also not possible since an eavesdropper will also have to obtain 
+   the corresponding asymmetric key pair that corresponds to the access token. 
+   Nevertheless, it is good practice to limit the lifetime of the and therefore the lifetime 
+   of the ephemeral asymmetric key associated with it. 
+   </t>
+
+</section> 
+
+<section title="Summary of Recommendations"> 
+
+<t>The following three items represent the main recommendations:
+
+<list style="hanging"> 
+  
+  <t hangText="Safeguard the ephemeral asymmetric key:"> Client implementations MUST ensure that
+      the ephemeral keys are not leaked to third parties, as they will
+      be able to use the access together with the key to gain access to protected resources.
+  </t> 
+  
+  <t hangText="Switch keying material regularly:"> Clients can request to get a new 
+   key pair to be associated with the access token, for example, by presenting 
+   a new public key when requesting an access token with the help of a refresh 
+   token. The lifetime of these access token can, in general be longer than the 
+   lifetime of bearer tokens.</t> 
+   
+
+  <t hangText="Issue scoped bearer tokens:">Token servers SHOULD issue bearer tokens
+      that contain an audience restriction, scoping their use to the
+      intended relying party or set of relying parties.</t> 
+  </list> 
+  </t> 
+
+</section> 
+
+</section> 
+
+
+<!-- ====================================================================== -->
+<!-- 
 <section anchor="PrivacyConsiderations" title="Privacy Considerations">
   <t>TBD</t>
 </section>
-    
+--> 
 <!-- ====================================================================== -->
 
 <section anchor="iana" title="IANA Considerations">
@@ -343,6 +432,9 @@ this document adds another token type to this registry.</t>
 <?rfc include="reference.I-D.ietf-jose-json-web-key"?>
 <?rfc include="reference.I-D.ietf-tls-oob-pubkey"?>
 <?rfc include="reference.I-D.ietf-oauth-json-web-token"?>
+<?rfc include="reference.RFC.5246"?>
+<?rfc include="reference.RFC.5280"?>
+
     </references> 
 
     
@@ -351,6 +443,33 @@ this document adds another token type to this registry.</t>
 <?rfc include="reference.I-D.ietf-oauth-v2-bearer"?>
 <?rfc include="reference.RFC.5849"?>
 <?rfc include="reference.I-D.ietf-oauth-v2-http-mac"?>
+
+
+    <reference anchor="NIST800-63">
+        <front>
+          <title>NIST Special Publication 800-63-1, INFORMATION SECURITY</title>
+          <author fullname="William E. Burr" initials="W." surname="Burr">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Donna F. Dodson" initials="D." surname="Dodson">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Ray A. Perlner" initials="R." surname="Perlner">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="W. Timothy Polk" initials="T." surname="Polk">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Sarbari Gupta" initials="S." surname="Gupta">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Emad A. Nabbus" initials="E." surname="Nabbus">
+            <organization>NIST</organization>
+          </author>
+          <date month="December" year="2008"/>
+        </front>
+        <format target="http://csrc.nist.gov/publications/PubsDrafts.html#SP-800-63-Rev.%201" type="HTML"/>
+     </reference>
     </references>
   </back>
 </rfc>
