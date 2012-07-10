@@ -1,0 +1,1176 @@
+
+
+
+ECRIT                                                    J. Winterbottom
+Internet-Draft                                                 CommScope
+Intended status: Standards Track                           H. Tschofenig
+Expires: January 11, 2013                         Nokia Siemens Networks
+                                                           July 10, 2012
+
+
+                     ECRIT Direct Emergency Calling
+                 draft-winterbottom-ecrit-direct-02.txt
+
+Abstract
+
+   The specified IETF emergency services architecture puts a strong
+   emphasis on emergency call and emergency messaging via the Voice
+   Service Provider (VSP) / Application Service Provider (ASP).  There
+   are two reasons for this design decision: The call routing via the
+   VSP/ASP is more natural as it follows the standard communication
+   pattern and transition deployments assume non-updated end hosts.
+
+   As the deployment of the Location-to-Service Translation protocol
+   progresses there are possibilities for upgraded end devices to
+   directly communicate with the IP-based emergency services network
+   without the need to interact with a VSP/ASP, which simplifies the
+   task of regulators as the involved parties are within the same
+   jurisdiction.
+
+   This memo describes the procedures and operations of a generic
+   emergency calling client utilizing the available building blocks.
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on January 11, 2013.
+
+Copyright Notice
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 1]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+   Copyright (c) 2012 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+   2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  5
+   3.  The Jurisdictional Problem . . . . . . . . . . . . . . . . . .  6
+   4.  ESRP Route Determination . . . . . . . . . . . . . . . . . . .  7
+   5.  Emergency Client Registration  . . . . . . . . . . . . . . . .  8
+   6.  Emergency Client Call Initiation . . . . . . . . . . . . . . . 12
+   7.  SIP Feature Restrictions . . . . . . . . . . . . . . . . . . . 13
+   8.  Testing  . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+     8.1.  Test Registration  . . . . . . . . . . . . . . . . . . . . 14
+     8.2.  Format . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+   9.  PSAP Callback  . . . . . . . . . . . . . . . . . . . . . . . . 15
+   10. Security Considerations  . . . . . . . . . . . . . . . . . . . 16
+   11. IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 17
+   12. Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 18
+   13. References . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+     13.1. Normative References . . . . . . . . . . . . . . . . . . . 19
+     13.2. Informative References . . . . . . . . . . . . . . . . . . 20
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 21
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 2]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+1.  Introduction
+
+   The description of the IETF emergency services architecture, found in
+   [I-D.ietf-ecrit-phonebcp] and in [I-D.ietf-ecrit-framework], focuses
+   on devices where emergency calls are routed primarily through the
+   subscriber's home VSP and the direct signaling communication between
+   the end host and the Public Safety Answering Point (PSAP) that
+   contains the IP-based PSAP is only an exception.  This is a
+   convenient assumption if one considers the regular communication
+   patterns of the device and the potential proprietary protocol
+   implementations used between the end host and the VSP and the ability
+   to move the interoperability challenges away from the end device and
+   closer to VSPs.  There are, however, challenges for regulators to
+   enforce emergency services functionality when the VSP is located in a
+   different jurisdiction.  Inclusion of a VSP introduces unnecessary
+   elements into the emergency call path making the overall solution
+   more cumbersome.
+
+   With the help of the Location-to-Service Translation protocol a PSAP
+   URI is discovered that allows the end device to directly send SIP
+   communication requests towards the PSAP.
+
+   Note that the information returned by LoST may not necessarily be the
+   address of the PSAP itself but might rather be an entity that gets
+   the emergency call closer to the PSAP by returning the address of an
+   Emergency Services Routing Proxy (ESRP).
+
+   The intent of this client is that it will be able to use the
+   available ECRIT building blocks to allow any IP enabled device with
+   access to the Internet to make an emergency call without requiring
+   the signaling interaction with the VSP.  In fact, there is no
+   assumption or requirement for a VSP subscription to exist.  The
+   interacting entities are shown in Figure 1.
+
+
+                      ....   ....
+                    ,'    ','    ',
+                   ;               ;
+    +--------+    ;                 ;      +------+
+    | Device |--->:       ISP       :----->| ESRP |
+    +--------+    ;                 ;      +------+
+                   `,     ,',     ,'
+                     ,   ,   ,   ,
+                      ````    ````
+
+
+                      Figure 1: Network Configuration
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 3]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+   Furthermore, a means for call-back in the event of a dropped call is
+   also described.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 4]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 5]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+3.  The Jurisdictional Problem
+
+   The jurisdictional problem is illustrated with Figure 2 that
+   highlights that provided the data in the Location Information Server
+   (LIS) and the LoST server are correct, that the caller and the PSAP
+   are assured of being in the same regulatory jurisdiction.  This is
+   important, because it shows that it is the access component of the
+   network and not the service component against which reguatory
+   obligations can be imposed with any hope of enforcement.  Regulation
+   without the possibility of enforcement is challenging as there is
+   very little coordination between regulators world wide in this area,
+   consequently any emergency calling procedure should ensure that all
+   nodes against which the procedures apply fall within the same
+   regulatory boundary.
+
+
+                              +-----+
+                              | VSP |
+                              |  #  |
+                              +-----+
+
+        o-------------o----------------------o-------------o
+      /                                                      \
+     /   +---------+                          +--------+      \
+    /    |  Access  \                        /  ESINet  \      \
+   o     |  Network  \                      /            \      o
+   |     +            +                    +      O       +     |
+   |     /    O       |                   /      <P\      |     |
+   |    +    <C\      o   REGULATORY     +       /'\      +     |
+   |    |    /'\     /                   |      PSAP      /     o
+   o    +   Caller   +    JURISDICTION   +    +-------+  +     /
+    \    \ __________|                    \ /          \/     /
+     \                                                       /
+      o--------------o----------------------o---------------o
+
+
+     Figure 2: Jurisdictional Boundaries in Internet Emergency Calling
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 6]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+4.  ESRP Route Determination
+
+   The ESRP is discovered by the emergency client obtaing its location
+   from a LIS, for example, using HELD, and then using LoST to resolve
+   the location and 'urn:services.sos' Service URN to the ESRP URI.
+
+   When the emergency client is started the device needs to perform LIS
+   and LoST server discovery, as described in Section 7 of
+   [I-D.ietf-ecrit-phonebcp].
+
+   The emergency client MUST support location acquisition and the LCPs
+   described in Section 6.5 of [I-D.ietf-ecrit-phonebcp].  The
+   description in Section 6.5 and 6.6 of [I-D.ietf-ecrit-phonebcp]
+   regarding the interaction between the device and the LIS applies to
+   this document.
+
+   The emergency client MUST use LoST [RFC5222] to obtain an ESRP URI.
+   The exact timing of individual LoST lookups may vary based on a
+   number of factors, including the design of the user interface.  For
+   example, a hypothetical user interface may offer an emergency call
+   button that triggers a <listServicesByLocation> interaction to learn
+   about the available emergency services (potentially using the
+   serviceListBoundary extension defined in [RFC6197]).  The service
+   options may be presented to the emergency caller in a graphical
+   fashion and once a specific service is selected a LoST query would be
+   initiated (unless a cached mapping is available that makes this
+   request obsolete).  The LoST <findService> query to obtain the ESRP
+   URI for the selected service is in this example initiated at the time
+   the emergency call setup is performed.  It is recommended that ESRP
+   discovery occurs at call time.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 7]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+5.  Emergency Client Registration
+
+   Emergency registration is only necessary when an emergency call
+   procedure is initiated.  Immediately prior to making an emergency
+   call, the emergency client performs a SIP emergency registration with
+   the registrar in the ESRP, the ESRP-registrar.  The emergency
+   registration is a SIP registration with specific options and headers
+   which are required in order to guard the emergency network and ensure
+   callback should it be required.
+
+   Each emergency client MUST provide an instance-id, as defined in
+   [RFC5626], this allows the ESRP-registrar to generate a GRUU
+   [RFC5627] that can be used as a callback identifier.  A GRUU is
+   necessary as the callback identifier because the emergency client
+   does not provide a longer-term contact address to the ESRP-registrar
+   prior to registration, and the GRUU provides a handle by which the
+   PSAP can identify the calling emergency client.  To simplify the
+   emergency client and ESRP-registrar implementations, only public
+   GRUUs are provided by the ESRP-registrar.  The public GRUU is
+   guaranteed to be the same for a device regardless of re-registration
+   with a different call-id, which may occur if the device unexpectedly
+   reboots.  This is not true for temporary GRUUs, which makes temporary
+   GRUUs undesriable in the scope of this application space.
+
+   The PSAP is able to define and mandate the time over which callback
+   is possible.  This needs to be a reasonable period of time, nominally
+   10s of minutes, as the device may well be transient with regards to
+   network attachment.  The ESRP-registrar reflects the regulatory
+   callback period in the expiry value of emergency registration
+   responses.  Emergency clients claiming compliance to this
+   specification MUST honour the value in the registration response from
+   the ESRP-registrar, up to a maximum of 60 minutes.  An emergency
+   client SHOULD respect a registration expiry of longer than 60
+   minutes, but MAY terminate its registration with and ESRP-registrar
+   at 60 minutes if the expiry value provided by the ESRP-registrar was
+   longer.
+
+   In the event that a registration is lost by the emergency client
+   prior to reaching registration expiry then the emergency client MUST
+   re-register with the ESRP-registrar and SHOULD use the same call-id.
+   In this circumstance the ESRP-registrar SHOULD match the instance-id
+   and the call-id to recognize that it is a re-registration for a
+   dropped connection, and expiry time in the registration response
+   SHOULD be set to the time remaining when the original registration
+   occurred.
+
+   [RFC5626] requires a device to support at least 2 registrations to
+   different proxies.  The emergency client requirements in this memo
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 8]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+   relax this requirement down to one registration, but more than one is
+   allowed.  There are several reasons for relaxing the connection
+   redundancy requirement.  Firstly, ESRPs are expected to have inbuilt
+   redundancy, so if a connection is dropped due to a failed proxy in
+   the ESRP, then a new connection or registration will automatically be
+   directed to an active proxy in the ESRP cluster.  If the connection
+   dropped because of some other failure along the path from the
+   emergency client to the ESRP, then multiple SIP registrations are
+   unlikely to provide any measurable reliability improvements since
+   single points of failure in this path are inherently likely.
+   Secondly, re-registrations only occur immediately prior to call
+   placement, so any outbound failure will also likely result in the
+   call dropping.  If this occurs then the emergency client MUST re-
+   register with the ESRP-registrar, and since instance-id and public
+   GRUU will remain unchanged as a result of this, the emergency client
+   can either receive a callback from the PSAP, or it can initiate a new
+   call to the emergency network.
+
+   Location information is critical to emergency calling.  Providing
+   location information to the calling-entity with sufficient
+   granularity to allow ESRP route determination is crucial.  Since this
+   must occur prior to the emergency client registering with the ESRP-
+   registrar, the emergency client must have access to a certain amount
+   of location information (and the amount varies depending on the
+   specific emergency services deployment architecture).
+
+   The device SHOULD include all the location information it has when
+   registering with the ERSP-registrar.  Inclusion of location
+   information in SIP REGISTER messages is specified in [RFC6442].
+   There are three possible execution paths for the ESRP-registrar when
+   receiving a REGISTER message:
+
+   1.  If the REGISTER message does not include location information the
+       ESRP-registrar MUST use HELD identity [RFC6155] to obtain the
+       location of the device as both a location value and reference.
+       In order to contact the LIS the ESRP-registrar SHOULD determine
+       the LIS address using the mechanism described in
+       [I-D.ietf-geopriv-res-gw-lis-discovery].  The ESRP-registrar MAY
+       use other methods for LIS determination where available.
+
+   2.  If the REGISTER message contains a location URI then the ESRP-
+       registrar MUST dereference it so that it has a location available
+       to route the impending emergency call.  The ESRP-registrar MAY
+       validate the LIS address in the location URI with that of the LIS
+       serving the network from which the REGISTER message originated.
+
+   3.  The REGISTER message contains location information by value.  Any
+       actions performed by the ESRP-registrar to valid this information
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013             [Page 9]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+       are specific to the jurisdiction in which the ESRP operates and
+       are out of the scope of this document.
+
+   Where location conveyance is used confidentiality protection SHOULD
+   be provided using Transport Layer Security (TLS).
+
+   Figure 3 show the registration message exchange graphically.
+
+
+     +--------+               +-----+            +------+       +------+
+     | Device |               | LIS |            | LoST |       | ESRP |
+     +--------+               +-----+            +------+       +------+
+         |                       |                   |             |
+         +<----LIS Discovery---->+                   |             |
+         |                       |                   |             |
+         +----locationRequest--->+                   |             |
+         |                       |                   |             |
+         +<---locationResponse---|                   |             |
+         |                       |                   |             |
+         +------------------findService------------->+             |
+         |                       |                   |             |
+         +<--------------findServiceResponse---------+             |
+         |                       |                   |             |
+         +------------------------REGISTER------------------------>+
+         |                       |                   |             |
+         |                       +<------locationRequest-----------+
+         |                       |                   |             |
+         |                       +-------locationResponse--------->+
+         |                       |                   |             |
+         +<-------------------------200 OK ------------------------+
+         |                       |                   |             |
+
+
+                Figure 3: Example Registration Message Flow
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 10]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+      REGISTER sip:sos.example.com SIP/2.0
+      Via: SIP/2.0/TCP 192.0.2.2;branch=z9hG4bKnashds7
+      Max-Forwards: 70
+      From: anon <sip:anon@sos.example.com>;tag=7F94778B653B
+      To: anon <sip:anon@sos.example.com>
+      Call-ID: 16CB75F21C70
+      CSeq: 1 REGISTER
+      Geolocation: <https://lis.access.example.com:9192/suXweu838737d72>
+        ;inserted-by="anon@192.0.2.2"
+        ;routing-allowed=yes
+      Geolocation: <cid:target123@192.0.2.2>
+        ;inserted-by="anon@192.0.2.2"
+        ;routing-allowed=no
+      Require: gruu, geolocation
+      Supported: outbound, gruu
+         Contact: <sip:anon@192.0.2.2;transport=tcp>
+       ;+sip.instance="<urn:uuid:00000000-0000-1000-8000-AABBCCDDEEFF>"
+      Content-Type: multipart/mixed; boundary=boundary1
+      Content-Length: ...
+
+
+                     Figure 4: Sample REGISTER message
+
+   Since the emergency client does not have a domain, it MUST register
+   in the same domain as the ESRP.  This is illustrated in the example
+   REGISTER message show in Figure 4.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 11]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+6.  Emergency Client Call Initiation
+
+   Immediately subsequent to the registration a SIP INVITE request is
+   sent to the ESRP in the following form:
+
+   1.  The Request URI MUST be the service URN [RFC5031] in the "sos"
+       tree.
+
+   2.  The To header MUST be a service URN in the "sos" tree.
+
+   3.  The From header MUST be present and MUST be the public GRUU
+       returned from the registration with the ESRP-registrar.
+
+   4.  A Route header MUST be present with an ESRP URI, obtained from
+       LoST.
+
+   5.  A Contact header MUST be present and contain the public GRUU
+       [RFC5627], and be valid for several minutes following the
+       termination of the call, provided that the UAC remains registered
+       with the same registrar, to permit an immediate call-back to the
+       specific device which placed the emergency call.
+
+   6.  A SDP offer MUST be included in the INVITE.  If voice is
+       supported the offer MUST include the G.711 codec, see Section 14
+       of [I-D.ietf-ecrit-phonebcp].
+
+   7.  SIP Caller Preferences [RFC3841] SHOULD be used to signal how the
+       PSAP should handle the call.  For example, a language preference
+       expressed in an Accept-Language header may be used as a hint to
+       cause the PSAP to route the call to a call taker who speaks the
+       requested language.  SIP Caller Preferences may also be used to
+       indicate a need to invoke a relay service for communication with
+       people with disabilities in the call.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 12]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+7.  SIP Feature Restrictions
+
+   The functionality defined in Section 9.3 in [I-D.ietf-ecrit-phonebcp]
+   regarding disabling of certain features is relevant for this document
+   and an emergency client MUST NOT implement the the features listed in
+   ED-70, and ED-71.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 13]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+8.  Testing
+
+   The description in Section 15 of [I-D.ietf-ecrit-phonebcp] regarding
+   emergency call testing is used by this specification.  Since this
+   specification mandates a registration with the ESRP-registrar a
+   similar tagging URI to that described in
+   [I-D.patel-ecrit-sos-parameter] is used to indicate a test
+   registration.
+
+   Test registrations SHALL be of short durations, but MUST be long
+   enough to allow completion of a "test call" as described in
+   [I-D.ietf-ecrit-phonebcp].
+
+8.1.  Test Registration
+
+   When the emergency client sends a REGISTER request for emergency test
+   registration, the "sos.test" URI parameter MUST be appended to the
+   URI in the Contact header.  This indicates to the ESRP-registrar that
+   the request is for emergency test registration.
+
+
+      ...
+         Contact: <sip:anon@192.0.2.2;transport=tcp;sos.test>
+       ;+sip.instance="<urn:uuid:00000000-0000-1000-8000-AABBCCDDEEFF>"
+      Content-Type: multipart/mixed; boundary=boundary1
+      Content-Length: ...
+
+
+                 Figure 5: Test REGISTER Message Fragment
+
+   Only one Contact header field SHOULD be included in the emergency
+   REGISTER test request.  If more than one Contact header is included
+   then the presence of the "sos.test" URI in any of the Contact fields
+   SHALL result in the ESRP-registrar treating the registration as a
+   test registration.
+
+8.2.  Format
+
+   The following syntax specification uses the augmented Backus-Naur
+   Form (BNF) as described in [RFC5234].
+
+   The "sos.test" URI parameter is a "uri-parameter", as defined by
+   [RFC3261].
+
+   uri-parameter =/ sos-param-test
+
+   sos-param-test = "sos.test"
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 14]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+9.  PSAP Callback
+
+   PSAP callback occurs as described in [I-D.ietf-ecrit-psap-callback].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 15]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+10.  Security Considerations
+
+   TBD
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 16]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+11.  IANA Considerations
+
+   This specification defines one new SIP URI parameter, as per the
+   registry created by [RFC3969].
+
+   Parameter Name: sos.test
+
+   Predefined Values: none
+
+   Reference: [RFCXXXX]
+
+   [NOTE TO IANA: Please replace XXXX with the RFC number of this
+   specification.]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 17]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+12.  Acknowledgements
+
+   Thanks to Elaine Quah for being a sounding board.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 18]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+13.  References
+
+13.1.  Normative References
+
+   [I-D.ietf-ecrit-phonebcp]
+              Rosen, B. and J. Polk, "Best Current Practice for
+              Communications Services in support of Emergency Calling",
+              draft-ietf-ecrit-phonebcp-20 (work in progress),
+              September 2011.
+
+   [I-D.ietf-ecrit-psap-callback]
+              Schulzrinne, H., Tschofenig, H., Holmberg, C., and M.
+              Patel, "Public Safety Answering Point (PSAP) Callback",
+              draft-ietf-ecrit-psap-callback-04 (work in progress),
+              March 2012.
+
+   [I-D.ietf-geopriv-res-gw-lis-discovery]
+              Thomson, M. and R. Bellis, "Location Information Server
+              (LIS) Discovery using IP address and Reverse DNS",
+              draft-ietf-geopriv-res-gw-lis-discovery-03 (work in
+              progress), March 2012.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3261]  Rosenberg, J., Schulzrinne, H., Camarillo, G., Johnston,
+              A., Peterson, J., Sparks, R., Handley, M., and E.
+              Schooler, "SIP: Session Initiation Protocol", RFC 3261,
+              June 2002.
+
+   [RFC3841]  Rosenberg, J., Schulzrinne, H., and P. Kyzivat, "Caller
+              Preferences for the Session Initiation Protocol (SIP)",
+              RFC 3841, August 2004.
+
+   [RFC3969]  Camarillo, G., "The Internet Assigned Number Authority
+              (IANA) Uniform Resource Identifier (URI) Parameter
+              Registry for the Session Initiation Protocol (SIP)",
+              BCP 99, RFC 3969, December 2004.
+
+   [RFC5031]  Schulzrinne, H., "A Uniform Resource Name (URN) for
+              Emergency and Other Well-Known Services", RFC 5031,
+              January 2008.
+
+   [RFC5222]  Hardie, T., Newton, A., Schulzrinne, H., and H.
+              Tschofenig, "LoST: A Location-to-Service Translation
+              Protocol", RFC 5222, August 2008.
+
+   [RFC5234]  Crocker, D. and P. Overell, "Augmented BNF for Syntax
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 19]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+              Specifications: ABNF", STD 68, RFC 5234, January 2008.
+
+   [RFC5626]  Jennings, C., Mahy, R., and F. Audet, "Managing Client-
+              Initiated Connections in the Session Initiation Protocol
+              (SIP)", RFC 5626, October 2009.
+
+   [RFC5627]  Rosenberg, J., "Obtaining and Using Globally Routable User
+              Agent URIs (GRUUs) in the Session Initiation Protocol
+              (SIP)", RFC 5627, October 2009.
+
+   [RFC6155]  Winterbottom, J., Thomson, M., Tschofenig, H., and R.
+              Barnes, "Use of Device Identity in HTTP-Enabled Location
+              Delivery (HELD)", RFC 6155, March 2011.
+
+   [RFC6442]  Polk, J., Rosen, B., and J. Peterson, "Location Conveyance
+              for the Session Initiation Protocol", RFC 6442,
+              December 2011.
+
+13.2.  Informative References
+
+   [I-D.ietf-ecrit-framework]
+              Rosen, B., Schulzrinne, H., Polk, J., and A. Newton,
+              "Framework for Emergency Calling using Internet
+              Multimedia", draft-ietf-ecrit-framework-13 (work in
+              progress), September 2011.
+
+   [I-D.patel-ecrit-sos-parameter]
+              Patel, M., "SOS Uniform Resource Identifier (URI)
+              Parameter for Marking of Session Initiation Protocol (SIP)
+              Requests related to Emergency Services",
+              draft-patel-ecrit-sos-parameter-11 (work in progress),
+              November 2010.
+
+   [RFC6197]  Wolf, K., "Location-to-Service Translation (LoST) Service
+              List Boundary Extension", RFC 6197, April 2011.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 20]
+
+Internet-Draft                ECRIT Direct                     July 2012
+
+
+Authors' Addresses
+
+   James Winterbottom
+   CommScope
+   Suit 1, Level 2
+   iC Enterprise 1, Innovation Campus
+   Squires Way
+   North Wollongong, NSW  2500
+   AU
+
+   Phone: +61 242 212938
+   Email: james.winterbottom@commscope.com
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo,   02 600
+   Finland
+
+   Email: Hannes.Tschofenig@gmx.net
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Winterbottom & Tschofenig  Expires January 11, 2013            [Page 21]
+
