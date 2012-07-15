@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" []>
+<?xml-stylesheet type='text/xsl' href='http://xml.resource.org/authoring/rfc2629.xslt' ?>
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="no"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc strict="no"?>
+<?rfc compact="no"?>
+<?rfc subcompact="no"?>
+
+<rfc category="std" ipr="trust200902" docName="draft-tschofenig-oauth-hotk-01.txt">
+
+  <front>
+  <title abbrev="OAuth 2.0 HOTK Token Usage">The OAuth 2.0 Authorization Framework: Holder-of-the-Key Token Usage</title>   
+
+    <author fullname="John Bradley" initials="J." surname="Bradley">
+      <organization abbrev="Ping Identity">Ping Identity</organization>
+      <address>
+	<email>ve7jtb@ve7jtb.com</email>
+      </address>
+    </author>
+
+      <author fullname="Phil Hunt" initials="P." surname="Hunt">
+      <organization>Oracle Corporation</organization>
+
+      <address>
+        <email>phil.hunt@yahoo.com</email>
+      </address>
+    </author>
+    
+    
+    <author fullname="Tony Nadalin" initials="T." surname="Nadalin">
+      <organization>Microsoft</organization>
+      <address>
+        <email>tonynad@microsoft.com</email>
+      </address>
+    </author>
+
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+
+    <date year="2012"/>
+    <keyword>Internet-Draft</keyword>
+    <keyword>OAuth</keyword>
+    <keyword>Security</keyword>
+    <keyword>Public Key</keyword>
+    <keyword>Holder-of-the-Key</keyword>
+
+    <abstract>
+
+  <t>OAuth 2.0 deployments currently rely on bearer tokens for securing access to protected resources. Bearer tokens require Transport Layer Security to be used between an OAuth client and the resource server when presenting the access token in order to get access. The security model is based on proof-of-possession of the access token: access token storage and transfer has to be done with care to prevent leakage.</t> 
+  <t>There are, however, use cases that require a more active involvement of the OAuth client to offer increased security, particularly against token leakage. This document specifies an OAuth security framework using ephemeral asymmetric credentials that are bound to the access token. A client can create these key pairs dynamically and use them, after they are bound to an access token by the authorization server, in communication interactions with resource servers. 
+  </t>
+
+
+<t>This
+     document is discussed at
+     https://www.ietf.org/mailman/listinfo/oauth. This initial version of the specification shall serve as a discussion starter.</t>
+
+</abstract>
+
+  </front>
+  <middle>
+
+<!-- ====================================================================== -->
+
+<section anchor="introduction" title="Introduction">
+
+   <t>At the time of writing the OAuth 2.0 <xref target="I-D.ietf-oauth-v2"/> and accompanying protocols offer one main security mechanism to 
+   access protected resources, namely the bearer token. In <xref target="I-D.ietf-oauth-v2-bearer"/> a 
+   bearer token is defined as 
+   
+   <list style="empty"> 
+      <t>A security token with the property that any party in possession of
+      the token (a "bearer") can use the token in any way that any other
+      party in possession of it can.  Using a bearer token does not
+      require a bearer to prove possession of cryptographic key material
+      (proof-of-possession).</t>
+   </list> 
+   </t> 
+   
+   <t>The bearer token provides sufficient security properties for a number of use cases OAuth had been designed for, if certain conditions are met (which are documented in <xref target="I-D.ietf-oauth-v2-bearer"/>). Some usage scenarios, however, require stronger security guarantees and ask for active participation of the client software in form of cryptographic computations when presenting an access token. 
+   </t> 
+   
+   <t>In addition to the bearer token a MAC token has been specified, see <xref target="I-D.ietf-oauth-v2-http-mac"/>. 
+   The design of the MAC token was inspired by features in the OAuth 1.0 <xref target="RFC5849"/>.
+   Unfortunately, the MAC token has not received a lot of deployment attention.</t>
+   
+   <t>This specification defines a new security mechanism for usage with OAuth that combines various 
+   existing specifications to offer enhanced security properties for OAuth. The incredients for this 
+   security solution are:
+   
+   <list style="numbers"> 
+      <t>A mechanism for on-the-fly provisioning of ephemeral asymmetric credentials using the JSON Web Key (JWK) format <xref target="I-D.ietf-jose-json-web-key"/>.</t>
+      <t>The ability to access a protected resource using this ephemeral asymmetric credentials for client authentication using a transport layer extension that allows out-of-band key validation <xref target="I-D.ietf-tls-oob-pubkey"/>. </t>
+      <t>A data structure to bind the emphemeral asymmetric credential to an access token. The structure uses the JSON Web Token (JWT) <xref target="I-D.ietf-oauth-json-web-token"/>.</t> 
+   </list>  
+   </t> 
+   
+    <t>The rest of the document describes how these different components work together.</t> 
+   
+
+</section>
+
+<!-- ************************************************************************************** --> 
+
+<section title="Terminology">
+   <t>The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
+   'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
+   specification are to be interpreted as described in <xref target="RFC2119"/>.</t>
+</section> 
+
+<!-- ************************************************************************************** --> 
+
+<section title="Protocol Specification"> 
+
+  <t>To describe the architecture of the proposed security mechanism it is best to start by looking 
+  at the main OAuth 2.0 protocol exchange sequence. <xref target="oauth-flow"/> 
+	  shows the abstract OAuth 2.0 protocol exchanges graphically. The exchange in this document will 
+	  focus on two interactions, namely 
+	  
+	  <list style="numbers"> 
+	  
+	  <t>to allow the client to obtain the ephemeral asymmetric credentails in step (D)</t>
+	  <t>to use the obtained asymmetric credentials for the interaction with the resource server in step (E)</t> 	  
+	  </list> 
+	  </t>   
+  
+  	  <t>
+        <figure anchor="oauth-flow" title="Abstract OAuth 2.0 Protocol Flow">
+          <artwork><![CDATA[
+     +--------+                               +---------------+
+     |        |--(A)- Authorization Request ->|   Resource    |
+     |        |                               |     Owner     |
+     |        |<-(B)-- Authorization Grant ---|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(C)-- Authorization Grant -->| Authorization |
+     | Client |                               |     Server    |
+     |        |<-(D)----- Access Token -------|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(E)----- Access Token ------>|    Resource   |
+     |        |                               |     Server    |
+     |        |<-(F)--- Protected Resource ---|               |
+     +--------+                               +---------------+		  
+]]></artwork>
+        </figure>
+	  </t>
+	  
+	  <section title="Binding a Public Key to an Access Token"> 
+	  
+	  <t>OAuth 2.0 offers different ways to obtain an access token, namely 
+	  using authorization grants and using a refresh token. The core OAuth 
+	  specification defines four authorization grants, see Section 1.3 of <xref target="I-D.ietf-oauth-v2"/>, and 
+	  <xref target="I-D.ietf-oauth-assertions"/> adds an assertion-based authorization grant to that list.</t> 
+	  
+	  <t>This document extends the communication with the token endpoint. The token
+   endpoint, which is described in Section 3.2 of <xref target="I-D.ietf-oauth-v2"/>, is used with every authorization grant except for the implicit grant type since an access token is issued directly. The request contains information about the public key the client would like to bind to the access token in the JSON Web Key format. This parameter also provides an indication to the authorization servers about the support by the client for this specification. Since the client makes a request to the token endpoint by adding a new of parameters using the "application/x-www-form-urlencoded" format in the HTTP request entity-body the public key information must be encoded into a new parameter, called 'pk-info'. A new token type, called 'hotk', is also defined by this specification. </t>
+   
+   <t>For example, the client makes the following HTTP request using TLS
+   (extra line breaks are for display purposes only):
+   
+          <figure title="Example Request to the Authorization Server">
+            <artwork>
+              <![CDATA[
+     POST /token HTTP/1.1
+     Host: server.example.com
+     Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+     Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+
+     grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA
+     &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
+     &pk-info=eZQQYbYS6WxS...lxlOB
+
+   whereby the content of the pk-info field represents the following
+   structure:
+
+  {"keys":
+     [
+       {"alg":"RSA",
+        "mod": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+   4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+   tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+   QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+   SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+   w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+        "exp":"AQAB",
+        "kid":"2011-04-29"}
+     ]
+   }
+   ]]></artwork>
+   </figure>
+   </t>
+   
+   <t>If the access token request is valid and authorized, the
+   authorization server issues an access token and optionally a refresh
+   token.  If the request client authentication failed or is invalid, the authorization server returns
+   an error response as described in Section 5.2 of <xref target="I-D.ietf-oauth-v2"/>.</t>
+   
+   <t>The authorization server also places information 
+   about the public key used by the client into the access token to create the 
+   binding between the two.</t>
+
+   <t>An example successful response:
+
+          <figure title="Example Response from the Authorization Server">
+            <artwork>
+              <![CDATA[
+     HTTP/1.1 200 OK
+     Content-Type: application/json;charset=UTF-8
+     Cache-Control: no-store
+     Pragma: no-cache
+
+     {
+       "access_token":"2YotnFZFE....jr1zCsicMWpAA",
+       "token_type":"hotk",
+       "expires_in":3600,
+       "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA"
+     }   
+
+    whereby the content of the 'access_token' field, for example, 
+    contains an encoded JWT with the following raw structure:
+   
+    {"typ":"JWT",
+     "alg":"HS256"}
+    .
+    {"iss":"authorization-server-id",
+     "exp":1300819380, 
+     "hotk": {"keys":
+     [
+       {"alg":"RSA",
+        "mod": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+    4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+    tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+    QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+    SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+    w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+        "exp":"AQAB",
+        "kid":"2011-04-29"}
+     ]
+    }
+    }
+    .
+    bbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZC   
+    ]]></artwork>
+   </figure>
+   </t>
+   
+   	  </section> 
+	  
+	  <section title="Accessing a Protected Resource"> 
+<t>The client accesses protected resources by presenting the access
+   token to the resource server.  It does so via a Transport Layer Security 
+   (TLS) secured channel. Since the client had previously bound a public 
+   key to an access token it selects this key for usage with TLS as described
+   in <xref target="I-D.ietf-tls-oob-pubkey"/>.</t>
+   
+   <t>The resource server validates the
+   access token and ensure it has not expired and that its scope covers
+   the requested resource. Additionally, the resource server verifies that the 
+   public key presented during the TLS handshake corresponds to the public key 
+   that is contained in the access token.</t> 
+    
+   <t>Note that this step confirms that the client is in possession of the private key corresponding to the 
+   public key previously bound to the access token. Information about the client authentication may be 
+   contained in the token in case the authorization server added this information when it authenticated 
+   the client.</t>
+   </section> 
+ 
+ </section> 
+  
+
+<!-- ====================================================================== -->
+
+<section anchor="SecurityConsiderations" title="Security Considerations">
+  
+      <section anchor="threats" title="Security Threats">
+   
+   <t>The following list presents several common threats against protocols utilizing some form of tokens. This list of threats is based on NIST Special Publication 800-63 <xref target="NIST800-63"/>. We exclude a discussion of threats related to any form of registration and authentication.</t>
+   <t><list style="hanging">
+   <t hangText="Token manufacture/modification:"> An attacker may craft a fake token or modify the token content (such as the authentication or attribute statements), causing a resource server to grant inappropriate access to the attacker. For example, an attacker may modify the token to extend the validity period or the scope to have extended access to information.</t>
+   <t hangText="Token disclosure:">Tokens may contain authentication and attribute statements that include sensitive information.</t>
+<!--    <t hangText="Token repudiation:">A token may be repudiated if the proper mechanisms are not in place.</t> -->
+   <t hangText="Token redirect:">An attacker uses a token generated for consumption
+      by one resource server to gain access to a different resource
+      server that mistakenly believes the token to be for it.</t>   <t hangText="Token reuse:"> An attacker attempts to use a token that has already
+      been used with that resource server in the past.</t>
+</list> 
+</t>
+
+</section>
+
+<section title="Threat Mitigation"> 
+
+   <t>A large range of threats can be mitigated by protecting the contents
+   of the access token by using a digital signature or a Message Authentication
+   Code (MAC). Consequently, the token integrity protection MUST be sufficient 
+   to prevent the token from being modified.</t>
+
+   <t>To deal with token redirect, it is important for the authorization
+   server to include the identity of the intended recipients (the
+   audience), typically a single resource server (or a list of resource
+   servers), in the token.  Restricting the use of the token to a
+   specific scope is also RECOMMENDED.</t>
+
+   <t>The authorization server MUST implement TLS.  Which version(s) ought
+   to be implemented will vary over time, and depend on the widespread
+   deployment and known security vulnerabilities at the time of
+   implementation.  At the time of this writing, TLS version 1.2
+   <xref target="RFC5246"/> is the most recent version. The
+   client MUST validate the TLS certificate chain when making requests
+   to protected resources, including checking the Certificate Revocation
+   List (CRL) <xref target="RFC5280"/>. In addition, this specificatio requires a TLS extension for usage with 
+   out-of-band validation <xref target="I-D.ietf-tls-oob-pubkey"/> to be used that allows clients to present raw public keys. 
+   </t>
+
+   <t>With the usage of the holder-of-the-key concept it is not possible for any party 
+   other than the legitimate client to use a token and to re-use it without knowing the 
+   corresponding asymmetric key pair. This mechanism prevents against token disclosure. 
+   In some deployments, including those utilizing load balancers, the
+   TLS connection to the resource server terminates prior to the actual
+   server that provides the resource.  This could leave the token
+   unprotected between the front end server where the TLS connection
+   terminates and the back end server that provides the resource.  Even in
+   such deployments, token leakage is not a problem.
+   </t>
+   
+   <t>Client implementations must be carefully implemented to avoid leaking the ephemeral 
+   asymmetric key pair.</t>
+
+   <t>Token replay is also not possible since an eavesdropper will also have to obtain 
+   the corresponding asymmetric key pair that corresponds to the access token. 
+   Nevertheless, it is good practice to limit the lifetime of the and therefore the lifetime 
+   of the ephemeral asymmetric key associated with it. 
+   </t>
+
+</section> 
+
+<section title="Summary of Recommendations"> 
+
+<t>The following three items represent the main recommendations:
+
+<list style="hanging"> 
+  
+  <t hangText="Safeguard the private key:"> Client implementations MUST ensure that
+      the ephemeral private key is not leaked to third parties, since those will
+      be able to use the access together with the key pair to gain access to protected resources.
+  </t> 
+  
+  <t hangText="Switch keying material regularly:"> Clients can at any time create a new ephemeral key pair and request the public key to be associated with the access token. For example, a client presents 
+   a new public key when requesting an access token with the help of a refresh 
+   token. Nevertheless, the lifetime of these access token may be longer than the 
+   lifetime of bearer tokens.</t> 
+   
+  <t hangText="Issue scoped bearer tokens:">Token servers SHOULD issue bearer tokens
+      that contain an audience restriction, scoping their use to the
+      intended relying party or set of relying parties.</t> 
+  </list> 
+  </t> 
+
+</section> 
+
+</section> 
+
+
+<!-- ====================================================================== -->
+<!-- 
+<section anchor="PrivacyConsiderations" title="Privacy Considerations">
+  <t>TBD</t>
+</section>
+--> 
+<!-- ====================================================================== -->
+
+<section anchor="iana" title="IANA Considerations">
+
+<t>This document requires IANA to take the following actions.</t> 
+
+<section title="OAuth Parameters Registration"> 
+
+<t>This specification registers the 'pk-info' parameter in the OAuth Parameters Registry established by <xref target="I-D.ietf-oauth-v2"/>.</t>
+
+<t><list style="hanging"> 
+<t hangText="Parameter name:"> pk-info</t>
+<t hangText="Parameter usage location:"> token request</t>
+<t hangText="Change controller:"> IETF</t>
+<t hangText="Specification document(s):">  [[ this document ]]</t>
+<t hangText="Related information:">  None</t>
+</list> 
+</t> 
+
+</section> 
+
+<section title="The 'hotk' JSON Web Token Claims"> 
+<t><xref target="I-D.ietf-oauth-json-web-token"/> established the IANA JSON Web Token Claims
+   registry for reserved JWT Claim Names and this document adds the 'hotk' name to that registry.
+</t> 
+</section> 
+
+<section title="The 'hotk' OAuth Access Token Type"> 
+
+<t>Section 11.1 of <xref target="I-D.ietf-oauth-v2"/> defines the OAuth Access Token Type Registry and 
+this document adds another token type to this registry.</t> 
+
+<t><list style="hanging"> 
+
+<t hangText="Type name:"> hotk</t>
+
+<t hangText="Additional Token Endpoint Response Parameters:"> (none)</t>
+
+<t hangText="HTTP Authentication Scheme(s):"> Holder of the key confirmation using TLS </t>
+
+<t hangText="Change controller:"> IETF</t>
+
+<t hangText="Specification document(s):"> [[ this document ]]</t>
+</list> 
+</t>
+
+</section>
+
+</section> 
+
+<!-- ====================================================================== -->
+    
+<section title="Acknowledgements">
+  <t>The author would like to thank the OAuth working group and participants of the 
+  Internet Identity Workshop for their discussion input that lead to this document.
+  </t>
+</section>
+
+  </middle>
+
+<!-- ====================================================================== -->
+  <back>
+
+    <references title="Normative References"> 
+<?rfc include="reference.RFC.2119"?>
+<?rfc include="reference.I-D.ietf-oauth-v2"?>
+<?rfc include="reference.I-D.ietf-jose-json-web-key"?>
+<?rfc include="reference.I-D.ietf-tls-oob-pubkey"?>
+<?rfc include="reference.I-D.ietf-oauth-json-web-token"?>
+<?rfc include="reference.RFC.5246"?>
+<?rfc include="reference.RFC.5280"?>
+
+    </references> 
+
+    
+    <references title="Informative References"> 
+<?rfc include="reference.I-D.ietf-oauth-assertions"?>
+<?rfc include="reference.I-D.ietf-oauth-v2-bearer"?>
+<?rfc include="reference.RFC.5849"?>
+<?rfc include="reference.I-D.ietf-oauth-v2-http-mac"?>
+
+
+    <reference anchor="NIST800-63">
+        <front>
+          <title>NIST Special Publication 800-63-1, INFORMATION SECURITY</title>
+          <author fullname="William E. Burr" initials="W." surname="Burr">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Donna F. Dodson" initials="D." surname="Dodson">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Ray A. Perlner" initials="R." surname="Perlner">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="W. Timothy Polk" initials="T." surname="Polk">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Sarbari Gupta" initials="S." surname="Gupta">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Emad A. Nabbus" initials="E." surname="Nabbus">
+            <organization>NIST</organization>
+          </author>
+          <date month="December" year="2008"/>
+        </front>
+        <format target="http://csrc.nist.gov/publications/PubsDrafts.html#SP-800-63-Rev.%201" type="HTML"/>
+     </reference>
+    </references>
+  </back>
+</rfc>
