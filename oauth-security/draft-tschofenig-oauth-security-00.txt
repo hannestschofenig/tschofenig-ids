@@ -4,11 +4,11 @@
 OAuth                                                      H. Tschofenig
 Internet-Draft                                    Nokia Siemens Networks
 Intended status: Informational                                   P. Hunt
-Expires: March 9, 2013                                Oracle Corporation
-                                                       September 5, 2012
+Expires: March 10, 2013                               Oracle Corporation
+                                                       September 6, 2012
 
 
-                            OAuth Security:
+             OAuth 2.0 Security: Going Beyond Bearer Tokens
                  draft-tschofenig-oauth-security-00.txt
 
 Abstract
@@ -16,7 +16,7 @@ Abstract
    The OAuth working group has finished work on the OAuth 2.0 core
    protocol as well as the Bearer Token specification.  The Bearer Token
    is a TLS-based solution for ensuring that neither the interaction
-   with the Authorization Server (when requesting atoken) nor the
+   with the Authorization Server (when requesting a token) nor the
    interaction with the Resource Server (for accessing a protected
    resource) leads to token leakage.  There has, however, always been
    the desire to develop a security solution that is "better" than
@@ -26,8 +26,7 @@ Abstract
    requirements to process the work on solutions.
 
    This document aims to discuss threats, security requirements and
-   desired design properties of an OAuth security mechanism that offers
-   more advanced security properties.
+   desired design properties of an enhanced OAuth security mechanism.
 
 Status of this Memo
 
@@ -44,20 +43,19 @@ Status of this Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on March 9, 2013.
+   This Internet-Draft will expire on March 10, 2013.
 
 Copyright Notice
 
    Copyright (c) 2012 IETF Trust and the persons identified as the
-
-
-
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 1]
-
-Internet-Draft               OAuth Security               September 2012
-
-
    document authors.  All rights reserved.
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 1]
+
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
+
 
    This document is subject to BCP 78 and the IETF Trust's Legal
    Provisions Relating to IETF Documents
@@ -75,20 +73,20 @@ Table of Contents
    1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
    2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  4
    3.  Security and Privacy Threats . . . . . . . . . . . . . . . . .  5
-   4.  Threat Mitigation  . . . . . . . . . . . . . . . . . . . . . .  6
-     4.1.  Confidentiality Protection . . . . . . . . . . . . . . . .  6
-     4.2.  Sender Constraint  . . . . . . . . . . . . . . . . . . . .  7
-     4.3.  Key Confirmation . . . . . . . . . . . . . . . . . . . . .  7
-     4.4.  Summary  . . . . . . . . . . . . . . . . . . . . . . . . .  8
-   5.  Requirements . . . . . . . . . . . . . . . . . . . . . . . . . 10
-   6.  Security Considerations  . . . . . . . . . . . . . . . . . . . 14
-   7.  Next Steps . . . . . . . . . . . . . . . . . . . . . . . . . . 15
-   8.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 16
-   9.  Acknowledgments  . . . . . . . . . . . . . . . . . . . . . . . 17
-   10. References . . . . . . . . . . . . . . . . . . . . . . . . . . 18
-     10.1. Normative References . . . . . . . . . . . . . . . . . . . 18
-     10.2. Informative References . . . . . . . . . . . . . . . . . . 18
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 20
+   4.  Threat Mitigation  . . . . . . . . . . . . . . . . . . . . . .  7
+     4.1.  Confidentiality Protection . . . . . . . . . . . . . . . .  7
+     4.2.  Sender Constraint  . . . . . . . . . . . . . . . . . . . .  8
+     4.3.  Key Confirmation . . . . . . . . . . . . . . . . . . . . .  8
+     4.4.  Summary  . . . . . . . . . . . . . . . . . . . . . . . . .  9
+   5.  Requirements . . . . . . . . . . . . . . . . . . . . . . . . . 11
+   6.  Security Considerations  . . . . . . . . . . . . . . . . . . . 16
+   7.  Next Steps . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+   8.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 18
+   9.  Acknowledgments  . . . . . . . . . . . . . . . . . . . . . . . 19
+   10. References . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+     10.1. Normative References . . . . . . . . . . . . . . . . . . . 20
+     10.2. Informative References . . . . . . . . . . . . . . . . . . 20
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 22
 
 
 
@@ -108,21 +106,27 @@ Table of Contents
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 2]
+
+
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 2]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 1.  Introduction
 
-   The initial version of the Open Web Authentication Protocol (OAuth
-   1.0, [RFC5849]) included an mechanism for putting a digital signature
-   (when using asymmetric keys) or a keyed message digest (when using
-   symmetric keys) to a resource request when presenting the OAuth
-   token.  OAuth 2.0 [I-D.ietf-oauth-v2] generalized the structure and
-   has currently the Bearer Token security specification
-   [I-D.ietf-oauth-v2-bearer] close to publication as an RFC.  We later
-   explain the properties of the Bearer Token security mechanism.
+   OAuth 1.0 [RFC5849] included a mechanism for putting a digital
+   signature (when using asymmetric keys) and a keyed message digest
+   (when using symmetric keys) to a resource request when presenting the
+   OAuth access token.  OAuth 2.0 [I-D.ietf-oauth-v2] generalized the
+   protocol and the Bearer Token security specification
+   [I-D.ietf-oauth-v2-bearer] is close to publication as an RFC.
+
+   Figure 1 shows the OAuth 2.0 exchange at an abstract level and
+   illustrates the main entities.  For most parts of this document the
+   focus is on the interaction between the Client and the Authorization
+   Server and between the Client and the Resource Server.
+
 
 
         +--------+                               +---------------+
@@ -145,17 +149,13 @@ Internet-Draft               OAuth Security               September 2012
 
                   Figure 1: OAuth: Abstract Protocol Flow
 
-   Figure 1 shows the OAuth exchange at an abstract level and introduces
-   the main entities.  For most parts of this document the focus is on
-   the interaction between the Client and the Authorization Server and
-   between the Client and the Resource Server.
-
    From a security point of view the following aspects of the OAuth 2.0
    specification are worth mentioning:
 
-   o  The format and content of the access token is not standardized (at
-      this point in time) although work is in progress to standardize a
-      JSON based structure and corresponding JSON security mechanisms).
+   o  Standardization of a JSON-based format and the content of the
+      access token are still work in progress
+      [I-D.ietf-oauth-json-web-token].  The same is true for the JSON-
+      based security mechanisms.
 
    o  The interaction to obtain an access token in step #1 mandates to
       implement and to use TLS with server-side authentication to
@@ -164,9 +164,9 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 3]
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 3]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 2.  Terminology
@@ -180,7 +180,9 @@ Internet-Draft               OAuth Security               September 2012
    interchangable.  For privacy related matters we utilize the
    terminology defined in [I-D.iab-privacy-considerations].
 
-   This document uses OAuth 2.0 terminology [I-D.ietf-oauth-v2].
+   This document uses OAuth 2.0 terminology [I-D.ietf-oauth-v2].  In
+   particular, the terms Client, Resource Server, Authorization Server,
+   and Access Token are used.
 
 
 
@@ -218,11 +220,9 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-
-
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 4]
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 4]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 3.  Security and Privacy Threats
@@ -231,41 +231,56 @@ Internet-Draft               OAuth Security               September 2012
    utilizing some form of tokens.  This list of threats is based on NIST
    Special Publication 800-63 [NIST800-63].  We exclude a discussion of
    threats related to any form of identity proofing and authentication
-   of the resource owner to the authorizataion server since they are not
-   part of the OAuth protocol itself.
+   of the Resource Owner to the Authorization Server since these
+   procedures are not part of the OAuth 2.0 protocol specificaiton
+   itself.
 
-   Token manufacture/modification:  An attacker may generate a bogus
-      token or modify the token content (such as the authentication or
-      attribute statements) of an existing token, causing Resource
-      Server to grant inappropriate access to the Client.  For example,
-      an attacker may modify the token to extend the validity period;
-      Client may modify the assertion to have access to information that
-      they should not be able to view.
+   Token manufacture/modification:
+
+      An attacker may generate a bogus tokens or modify the token
+      content (such as authentication or attribute statements) of an
+      existing token, causing Resource Server to grant inappropriate
+      access to the Client.  For example, an attacker may modify the
+      token to extend the validity period.  A Client may modify the
+      token to have access to information that they should not be able
+      to view.
 
    Token disclosure:  Tokens may contain personal data, such as real
       name, age or birthday, payment information, etc.
 
-   Token redirect:  An attacker uses the token generated for consumption
-      by Resource Server to obtain access to a second Resource Server.
+   Token redirect:
 
-   Token reuse:  An attacker attempts to use a token that has already
-      been used once with Resource Server.  The attacker may be an
-      eavesdropper who observes the communication exchange or, worse,
-      one of the communication end points.  Client may, for example,
-      leak access tokens since it cannot keep secrets confidential.
-      Client may also re-use access token for Resource Server with some
-      other protected resource.  Finally, Resource Server may use a
-      token it had obtained from Client and use it with another
-      protected resouce that Client interacts with.  Resource Server,
-      offering relatively unimportant toy application services, may
-      attempt to use an access token obtained from Client to access a
-      high-value service, such as a payment service, on behalf of Client
-      using the exact same access token.
+      An attacker uses the token generated for consumption by the
+      Resource Server to obtain access to another Resource Server.
+
+   Token reuse:
+
+      An attacker attempts to use a token that has already been used
+      once with a Resource Server.  The attacker may be an eavesdropper
+      who observes the communication exchange or, worse, one of the
+      communication end points.  A Client may, for example, leak access
+      tokens because it cannot keep secrets confidential.  A Client may
+      also re-use access tokens for some other Resource Servers.
+      Finally, a Resource Server may use a token it had obtained from a
+      Client and use it with another Resource Server that the Client
+      interacts with.  A Resource Server, offering relatively
+      unimportant application services, may attempt to use an access
+      token obtained from a Client to access a high-value service, such
+      as a payment service, on behalf of the Client using the same
+      access token.
 
    We excluded one threat from the list, namely 'token repudiation'.
-   Token repudiation refers to a property whereby Resource Server is
-   given an assurance that Authorization Server cannot deny to have
-   created a token for Client.  We believe that such a property is
+   Token repudiation refers to a property whereby a Resource Server is
+   given an assurance that the Authorization Server cannot deny to have
+   created a token for the Client.  We believe that such a property is
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 5]
+
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
+
+
    interesting but most deployments prefer to deal with the violation of
    this security property through business actions rather than by using
    cryptography.
@@ -276,9 +291,50 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 5]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 6]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 4.  Threat Mitigation
@@ -288,67 +344,72 @@ Internet-Draft               OAuth Security               September 2012
    consideration.
 
    A large range of threats can be mitigated by protecting the content
-   of the token, using a digitial signature or a keyed message digest.
+   of the token, using a digital signature or a keyed message digest.
    Alternatively, the content of the token could be passed by reference
    rather than by value (requiring a separate message exchange to
    resolve the reference to the token content).  To simplify the
    subsequent description we assume that the token itself is digitally
-   signed by Authorization Server and therefore cannot be modified.
+   signed by the Authorization Server and therefore cannot be modified.
 
-   To deal with token redirect it is important for Authorization Server
-   to include the identity of the intended recipient, namely Resource
-   Server.  No service must be allowed to accept access tokens that are
-   not meant for their consumption.
+   To deal with token redirect it is important for the Authorization
+   Server to include the identifier of the intended recipient - the
+   Resource Server.  A Resource Server must not be allowed to accept
+   access tokens that are not meant for its consumption.
 
    To provide protection against token disclosure two approaches are
    possible, namely (a) not to include sensitive information inside the
    token or (b) to ensure confidentiality protection.  The latter
-   feature requires at least the communication interaction between the
-   Client and Authorization Server as well as the interaction between
-   Client and Resource Server to experience confidentiality protection.
-   As an example, Transport Layer Security with a ciphersuite that
-   offers confidentiality protection has to be applied.  Encrypting the
-   token content itself is another alternative.  In our scenario
-   Authorization Server would, for example, encrypt the token content
-   with a symmetric key she shares with Resource Server.
+   approach requires at least the communication interaction between the
+   Client and the Authorization Server as well as the interaction
+   between the Client and the Resource Server to experience
+   confidentiality protection.  As an example, Transport Layer Security
+   with a ciphersuite that offers confidentiality protection has to be
+   applied.  Encrypting the token content itself is another alternative.
+   In our scenario the Authorization Server would, for example, encrypt
+   the token content with a symmetric key shared with the Resource
+   Server.
 
-   To deal with the last threat, namely token reuse, more choices are
-   available.
+   To deal with token reuse more choices are available.
 
 4.1.  Confidentiality Protection
 
    In this approach confidentiality protection of the exchange is
-   provided on the communication interfaces between Client and Resource
-   Server, and Client and Authorization Server.  No eavesdropper on the
-   wire is able to observe the token exchange.  Consequently, a replay
-   is not possible.  Authorization Server wants to ensure that it only
-   hands out tokens to entities it has authenticated first and who are
-   authorized.  For this purpose, authentication of Client to
-   Authorization Server will be a requirement.  This is, however, true
-   for the description in Section 4.2 and Section 4.3 as well.
-   Furthermore, Client has to make sure it does not distribute the token
-   to entities other than Resource Server.  For that purpose Client will
-   have to authenticate Resource Server before transmitting the token.
+   provided on the communication interfaces between the Client and the
+   Resource Server, and between the Client and the Authorization Server.
+   No eavesdropper on the wire is able to observe the token exchange.
+   Consequently, a replay by a third party is not possible.  An
+   Authorization Server wants to ensure that it only hands out tokens to
+   Clients it has authenticated first and who are authorized.  For this
+   purpose, authentication of the Client to the Authorization Server
+   will be a requirement to ensure adequate protection against a range
+   of attacks.  This is, however, true for the description in
+   Section 4.2 and Section 4.3 as well.  Furthermore, the Client has to
+   make sure it does not distribute the access token to entities other
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 6]
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 7]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
+
+   than the intended the Resource Server.  For that purpose the Client
+   will have to authenticate the Resource Server before transmitting the
+   access token.
 
 4.2.  Sender Constraint
 
-   Instead of providing confidentiality protection Carl could also put
-   the identity of Client into the protected token with the following
-   semantic: 'This token is only valid when presented by Client.'  When
-   the token is then presented to Resource Server how does he know that
-   it was provided by Client?  He has to authenticate Client!  There are
-   many choices for authenticating Client to Resource Server, such as,
-   Client-side certificates in TLS [RFC5246], or pre-shared secrets
-   within TLS [RFC4279].  The choice of the preferred authentication
-   mechanism and credential type may depend on a number of factors,
-   including
+   Instead of providing confidentiality protection the Authorization
+   Server could also put the identifier of the Client into the protected
+   token with the following semantic: 'This token is only valid when
+   presented by a Client with the following identifer.'  When the access
+   token is then presented to the Resource Server how does it know that
+   it was provided by the Client?  It has to authenticate the Client!
+   There are many choices for authenticating the Client to the Resource
+   Server, for example by using client certificates in TLS [RFC5246], or
+   pre-shared secrets within TLS [RFC4279].  The choice of the preferred
+   authentication mechanism and credential type may depend on a number
+   of factors, including
 
    o  security properties
 
@@ -366,61 +427,64 @@ Internet-Draft               OAuth Security               September 2012
       credentials
 
    This long list hints to the challenge of selecting at least one
-   mandatory-to-implement mechanism.
+   mandatory-to-implement Client authentication mechanism.
 
 4.3.  Key Confirmation
 
    A variation of the mechanism of sender authentication described in
    Section 4.2 is to replace authentication with the proof-of-possession
-   of a specific key, i.e. key confirmation.  In this model the Resource
-   Server would not authenticate the Client but would rather verify
-   whether the Client knows a secret.  Examples of this approach can be
-   found with OAuth 1.0 MAC token [RFC5849], Kerberos [RFC4120] when
-   utilizing the AP_REQ/AP_REP exchange (see
-   [I-D.hardjono-oauth-kerberos] for a comparision between Kerberos and
-   OAuth), OAuth 2.0 MAC token [I-D.ietf-oauth-v2-http-mac], and the
+   of a specific (session) key, i.e. key confirmation.  In this model
+   the Resource Server would not authenticate the Client itself but
+   would rather verify whether the Client knows the session key
+   associated with a specific access token.  Examples of this approach
+   can be found with the OAuth 1.0 MAC token [RFC5849], Kerberos
+   [RFC4120] when utilizing the AP_REQ/AP_REP exchange (see also
+   [I-D.hardjono-oauth-kerberos] for a comparison between Kerberos and
+   OAuth), the OAuth 2.0 MAC token [I-D.ietf-oauth-v2-http-mac], and the
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 8]
+
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
+
+
    Holder-of-the-Key approach [I-D.tschofenig-oauth-hotk].
 
-   To illustrate key confirmation the first examples borrows from
-   Kerberos and symmetric key cryptography.  Assume that Authorization
-   Server shares a long-term secret with Resource Server, called
-   K(Authorization Server-Resource Server).  This secret would be
-
-
-
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 7]
-
-Internet-Draft               OAuth Security               September 2012
-
-
-   established between them in an initial registration phase outside the
-   scope of the actual protocol run.  When Client requests a token
-   Authorization Server creates a fresh and unique key Ks and places it
-   into the token encrypted with K(Authorization Server-Resource
-   Server).  Additionally, Authorization Server attaches Ks when it
-   sends the token to Client over a confidentialy protected channel.
-   When Client sends a request to Resource Server it has to use Ks to
-   sign the request (in whatever form or whatever layer).  Resource
-   Server, when receiving the message, retrieves the token, verifies it
-   and uses K(Authorization Server-Resource Server) to decrypt Ks and to
-   verify the signature.
+   To illustrate key confirmation the first examples borrow from
+   Kerberos and use symmetric key cryptography.  Assume that the
+   Authorization Server shares a long-term secret with the Resource
+   Server, called K(Authorization Server-Resource Server).  This secret
+   would be established between them in an initial registration phase.
+   When the Client requests an access token the Authorization Server
+   creates a fresh and unique session key Ks and places it into the
+   token encrypted with the long term key K(Authorization Server-
+   Resource Server).  Additionally, the Authorization Server attaches Ks
+   to the response message to the Client (in addition to the access
+   token itself) over a confidentiality protected channel.  When the
+   Client sends a request to the Resource Server it has to use Ks to
+   compute a keyed message digest for the request (in whatever form or
+   whatever layer).  The Resource Server, when receiving the message,
+   retrieves the access token, verifies it and extracts K(Authorization
+   Server-Resource Server) to obtain Ks.  This key Ks is then used to
+   verify the keyed message digest of the request message.
 
    Note that in this example one could imagine that the mechanism to
    protect the token itself is based on a symmetric key based mechanism
    to avoid any form of public key infrastructure but this aspect is not
-   further eleborated in the scenario.
+   further elaborated in the scenario.
 
    A similar mechanism can also be designed using asymmetric
-   cryptography.  When Client requests a token Authorization Server
-   creates an ephemeral public / privacy key pair PK/SK and places the
-   public key PK into the protected token.  When Authorization Server
-   returns the token to Client it also provides the PK/SK key pair over
-   a confidentialy protected channel.  When Client sends a request to
-   Resource Server it has to use the privacy key SK to sign the request.
-   Again, the details are secondary.  Resource Server, when receiving
-   the message, retrieves the token, verifies it and extracts the public
-   key PK.  It uses this ephemeral public key to verify the attached
-   signature.
+   cryptography.  When the Client requests an access token the
+   Authorization Server creates an ephemeral public / privacy key pair
+   (PK/SK) and places the public key PK into the protected token.  When
+   the Authorization Server returns the access token to the Client it
+   also provides the PK/SK key pair over a confidentiality protected
+   channel.  When the Client sends a request to the Resource Server it
+   has to use the privacy key SK to sign the request.  The Resource
+   Server, when receiving the message, retrieves the access token,
+   verifies it and extracts the public key PK.  It uses this ephemeral
+   public key to verify the attached signature.
 
 4.4.  Summary
 
@@ -430,40 +494,48 @@ Internet-Draft               OAuth Security               September 2012
 
    The three approaches are:
 
-   Confidentiality Protection:  The weak point with this approach, which
-      is briefly described in Section 4.1, is that the Client has to be
-      careful to whom it discloses the access token.  What can be done
-      with the token entirely depends on what rights the token entitles
-      the presenter and what constaints it contains.  A token could
-      encode the identity of the Client but there are scenarios where
-      the Client is not authenticated to the Resource Server or where
-      the identifier of the Client rather prepresents an application
-      class rather than a single application instance.  As such, it is
+
+
+
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                 [Page 9]
+
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
+
+
+   Confidentiality Protection:
+
+      The weak point with this approach, which is briefly described in
+      Section 4.1, is that the Client has to be careful to whom it
+      discloses the access token.  What can be done with the token
+      entirely depends on what rights the token entitles the presenter
+      and what constraints it contains.  A token could encode the
+      identifier of the Client but there are scenarios where the Client
+      is not authenticated to the Resource Server or where the
+      identifier of the Client rather represents an application class
+      rather than a single application instance.  As such, it is
       possible that certain deployments choose a rather liberal approach
       to security and that everyone who is in possession of the access
-
-
-
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 8]
-
-Internet-Draft               OAuth Security               September 2012
-
-
       token is granted access to the data.
 
-   Sender Constraint:  The weak point with this approach, which is
-      briefly described in Section 4.2, is to setup the authentication
-      infrastructure such that Clients can be authenticated towards
-      Resource Servers.  Additionally, Authorization Server must encode
-      the identifier of the Client in the token for later verification
-      by the Resource Server.  Depending on the chosen layer for
-      providing Client-side authentication there may be additional
-      challenges due Web server load balancing, lack of API access to
-      identity information, etc.
+   Sender Constraint:
 
-   Key Confirmation:  The weak point with this approach, see
-      Section 4.3, is the increased complexity: a complete key
-      distribution protocol has to be defined.
+      The weak point with this approach, which is briefly described in
+      Section 4.2, is to setup the authentication infrastructure such
+      that Clients can be authenticated towards Resource Servers.
+      Additionally, Authorization Server must encode the identifier of
+      the Client in the token for later verification by the Resource
+      Server.  Depending on the chosen layer for providing Client-side
+      authentication there may be additional challenges due Web server
+      load balancing, lack of API access to identity information, etc.
+
+   Key Confirmation:
+
+      The weak point with this approach, see Section 4.3, is the
+      increased complexity: a complete key distribution protocol has to
+      be defined.
 
    In all cases above it has to be ensured that the Client is able to
    keep the credentials secret.
@@ -484,25 +556,9 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Tschofenig & Hunt         Expires March 9, 2013                 [Page 9]
+Tschofenig & Hunt        Expires March 10, 2013                [Page 10]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 5.  Requirements
@@ -510,9 +566,10 @@ Internet-Draft               OAuth Security               September 2012
    In an attempt to address the threats described in Section 3 the
    Bearer Token, which corresponds to the description in Section 4.1,
    was standardized and the work on a JSON-based token format has been
-   started.  The required capability to protected the content of a JSON
-   token using integrity and confidentiality mechanisms is currently
-   work in progress in the IETF JOSE working group.
+   started [I-D.ietf-oauth-json-web-token].  The required capability to
+   protected the content of a JSON token using integrity and
+   confidentiality mechanisms is currently work in progress in the IETF
+   JOSE working group.
 
    Consequently, the purpose of this work is to provide security that
    goes beyond the Bearer Token offered security protection.
@@ -526,161 +583,185 @@ Internet-Draft               OAuth Security               September 2012
 
    These requirements include
 
-   1.   Cryptographic algorithm independent: The key management protocol
-        MUST be cryptographic algorithm independent.
+   Cryptographic Algorithm Independent:
 
-   2.   Strong, fresh session keys: Session keys MUST be strong and
-        fresh.  Each session deserves an independent session key.  A
-        fresh cryptographic key is one that is generated specifically
-        for the intended use.  In context of OAuth this means that
-        keying material is created in such a way that can only be used
-        between a specific tuple of Client instance, protected resource,
-        and scope.
+      The key management protocol MUST be cryptographic algorithm
+      independent.
 
-   3.   Limit key scope: Following the principle of least privilege,
-        parties MUST NOT have access to keying material that is not
-        needed to perform their role.  Any protocol that is used to
-        establish session keys MUST specify the scope for session keys,
-        clearly identifying the parties to whom the session key is
-        available.
+   Strong, fresh session keys:
 
-   4.   Replay detection mechanism: The key management protocol
-        exchanges MUST be replay protected.  Replay protection allows a
-        protocol message recipient to discard any message that was
-        recorded during a previous legitimate dialogue and presented as
-        though it belonged to the current dialogue.
+      Session keys MUST be strong and fresh.  Each session deserves an
+      independent session key.  A fresh cryptographic key is one that is
+      generated specifically for the intended use.  In context of OAuth
+      this means that keying material is created in such a way that can
+      only be used by the combination of a Client instance, protected
+      resource, and authorization scope.
 
-   5.   Authenticate all parties: Each party in the key management
-        protocol MUST be authenticated to the other parties with whom
-        they communicate.  Authentication mechanisms MUST maintain the
+   Limit Key Scope:
 
+      Following the principle of least privilege, parties MUST NOT have
+      access to keying material that is not needed to perform their
+      role.  Any protocol that is used to establish session keys MUST
+      specify the scope for session keys, clearly identifying the
+      parties to whom the session key is available.
+
+   Replay Detection Mechanism:
+
+      The key management protocol exchanges MUST be replay protected.
+      Replay protection allows a protocol message recipient to discard
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 10]
+
+Tschofenig & Hunt        Expires March 10, 2013                [Page 11]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
-        confidentiality of any secret values used in the authentication
-        process.  Secrets MUST NOT be sent to another party without
-        confidentiality protection.
+      any message that was recorded during a previous legitimate
+      dialogue and presented as though it belonged to the current
+      dialogue.
 
-   6.   Authorization: Client and Resource Server authorization MUST be
-        performed.  These entities MUST demonstrate possession of the
-        appropriate keying material, without disclosing it.
-        Authorization is REQUIRED whenever a Client interacts with an
-        Authorization Server.  The authorization checking prevents an
-        elevation of privilege attack, and it ensures that an
-        unauthorized authorized is detected.
+   Authenticate All Parties:
 
-   7.   Keying material confidentiality and integrity: While preserving
-        algorithm independence, confidentiality and integrity of all
-        keying material MUST be maintained.
+      Each party in the key management protocol MUST be authenticated to
+      the other parties with whom they communicate.  Authentication
+      mechanisms MUST maintain the confidentiality of any secret values
+      used in the authentication process.  Secrets MUST NOT be sent to
+      another party without confidentiality protection.
 
-   8.   Confirm ciphersuite selection: The selection of the "best"
-        ciphersuite SHOULD be securely confirmed.  The mechanism SHOULD
-        detect attempted roll-back attacks.
+   Authorization:
 
-   9.   Uniquely named keys: key management proposals require a robust
-        key naming scheme, particularly where key caching is supported.
-        The key name provides a way to refer to a key in a protocol so
-        that it is clear to all parties which key is being referenced.
-        Objects that cannot be named cannot be managed.  All keys MUST
-        be uniquely named, and the key name MUST NOT directly or
-        indirectly disclose the keying material.  If the key name is not
-        based on the keying material, then one can be sure that it
-        cannot be used to assist in a search for the key value.
+      Client and Resource Server authorization MUST be performed.  These
+      entities MUST demonstrate possession of the appropriate keying
+      material, without disclosing it.  Authorization is REQUIRED
+      whenever a Client interacts with an Authorization Server.  The
+      authorization checking prevents an elevation of privilege attack,
+      and it ensures that an unauthorized authorized is detected.
 
-   10.  Prevent the Domino effect: Compromise of a single Client MUST
-        NOT compromise keying material held by any other Client within
-        the system, including session keys and long-term keys.
-        Likewise, compromise of a single Resource Server MUST NOT
-        compromise keying material held by any other Resource Server
-        within the system.  In the context of a key hierarchy, this
-        means that the compromise of one node in the key hierarchy must
-        not disclose the information necessary to compromise other
-        branches in the key hierarchy.  Obviously, the compromise of the
-        root of the key hierarchy will compromise all of the keys;
-        however, a compromise in one branch MUST NOT result in the
-        compromise of other branches.  There are many implications of
-        this requirement; however, two implications deserve
-        highlighting.  First, the scope of the keying material must be
-        defined and understood by all parties that communicate with a
-        party that holds that keying material.  Second, a party that
-        holds keying material in a key hierarchy must not share that
-        keying material with parties that are associated with other
+   Keying Material Confidentiality and Integrity:
+
+      While preserving algorithm independence, confidentiality and
+      integrity of all keying material MUST be maintained.
+
+   Confirm Cryptographic Algorithm Selection:
+
+      The selection of the "best" cryptographic algorithms SHOULD be
+      securely confirmed.  The mechanism SHOULD detect attempted roll-
+      back attacks.
+
+   Uniquely Named Keys:
+
+      key management proposals require a robust key naming scheme,
+      particularly where key caching is supported.  The key name
+      provides a way to refer to a key in a protocol so that it is clear
+      to all parties which key is being referenced.  Objects that cannot
+      be named cannot be managed.  All keys MUST be uniquely named, and
+      the key name MUST NOT directly or indirectly disclose the keying
+      material.  If the key name is not based on the keying material,
+      then one can be sure that it cannot be used to assist in a search
+      for the key value.
+
+   Prevent the Domino Effect:
+
+      Compromise of a single Client MUST NOT compromise keying material
+      held by any other Client within the system, including session keys
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 11]
+Tschofenig & Hunt        Expires March 10, 2013                [Page 12]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
-        branches in the key hierarchy.
+      and long-term keys.  Likewise, compromise of a single Resource
+      Server MUST NOT compromise keying material held by any other
+      Resource Server within the system.  In the context of a key
+      hierarchy, this means that the compromise of one node in the key
+      hierarchy must not disclose the information necessary to
+      compromise other branches in the key hierarchy.  Obviously, the
+      compromise of the root of the key hierarchy will compromise all of
+      the keys; however, a compromise in one branch MUST NOT result in
+      the compromise of other branches.  There are many implications of
+      this requirement; however, two implications deserve highlighting.
+      First, the scope of the keying material must be defined and
+      understood by all parties that communicate with a party that holds
+      that keying material.  Second, a party that holds keying material
+      in a key hierarchy must not share that keying material with
+      parties that are associated with other branches in the key
+      hierarchy.
 
-   11.  Bind key to its context: Keying material MUST be bound to the
-        appropriate context.  The context includes the following.
+   Bind Key to its Context:
 
-        *  The manner in which the keying material is expected to be
-           used.
+      Keying material MUST be bound to the appropriate context.  The
+      context includes the following.
 
-        *  The other parties that are expected to have access to the
-           keying material.
+      *  The manner in which the keying material is expected to be used.
 
-        *  The expected lifetime of the keying material.  Lifetime of a
-           child key SHOULD NOT be greater than the lifetime of its
-           parent in the key hierarchy.
+      *  The other parties that are expected to have access to the
+         keying material.
 
-        Any party with legitimate access to keying material can
-        determine its context.  In addition, the protocol MUST ensure
-        that all parties with legitimate access to keying material have
-        the same context for the keying material.  This requires that
-        the parties are properly identified and authenticated, so that
-        all of the parties that have access to the keying material can
-        be determined.  The context will include the Client and the
-        Resource Server identities in more than one form.
+      *  The expected lifetime of the keying material.  Lifetime of a
+         child key SHOULD NOT be greater than the lifetime of its parent
+         in the key hierarchy.
 
-   12.  Authorization restriction: If Client authorization is
-        restricted, then the Client SHOULD be made aware of the
-        restriction.
+      Any party with legitimate access to keying material can determine
+      its context.  In addition, the protocol MUST ensure that all
+      parties with legitimate access to keying material have the same
+      context for the keying material.  This requires that the parties
+      are properly identified and authenticated, so that all of the
+      parties that have access to the keying material can be determined.
+      The context will include the Client and the Resource Server
+      identities in more than one form.
 
-   13.  Client Identity Confidentiality: A Client has identity
-        confidentiality when any party other than the Resource Server
-        and the Authorization Server cannot sufficiently identify the
-        Client within the anonymity set.  In comparison to anonymity and
-        pseudonymity, identity confidentiality is concerned with
-        eavesdroppers and intermediaries.  A key management protocol
-        SHOULD provide this property.
+   Authorization Restriction:
 
-   14.  Resource Owner Identity Confidentiality: Resource servers SHOULD
-        be prevented from knowing the real or pseudonymous identity of
-        the resource owner, since the Authorization Server is the only
-        entity involved in verifying the resource owner's identity.
-
-   15.  Collusion: Resource servers that collude can be prevented from
-        using information related to the resource owner to track the
-        individual.  That is, two different Resource Servers can be
-        prevented from determining that the same resource owner has
-        authenticated to both of them.  This requires that each
-        Authorization Server obtains different keying material as well
-        as different access tokens with content that does not allow
+      If Client authorization is restricted, then the Client SHOULD be
+      made aware of the restriction.
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 12]
+
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                [Page 13]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
-        identification of the resource owner.
+   Client Identity Confidentiality:
 
-   16.  AS-to-RS Relationship Anonymity: The Authorization Server can be
-        prevented from knowing which Resource Servers an individual
-        interacted with.  This requires avoiding direct communication
-        between the Authorization Server and the Resource Server at the
-        time when access to a protected resource by the Client is made.
-        Is this a desireable property?
+      A Client has identity confidentiality when any party other than
+      the Resource Server and the Authorization Server cannot
+      sufficiently identify the Client within the anonymity set.  In
+      comparison to anonymity and pseudonymity, identity confidentiality
+      is concerned with eavesdroppers and intermediaries.  A key
+      management protocol SHOULD provide this property.
+
+   Resource Owner Identity Confidentiality:
+
+      Resource servers SHOULD be prevented from knowing the real or
+      pseudonymous identity of the Resource Owner, since the
+      Authorization Server is the only entity involved in verifying the
+      Resource Owner's identity.
+
+   Collusion:
+
+      Resource Servers that collude can be prevented from using
+      information related to the Resource Owner to track the individual.
+      That is, two different Resource Servers can be prevented from
+      determining that the same Resource Owner has authenticated to both
+      of them.  This requires that each Authorization Server obtains
+      different keying material as well as different access tokens with
+      content that does not allow identification of the Resource Owner.
+
+   AS-to-RS Relationship Anonymity:
+
+      The Authorization Server can be prevented from knowing which
+      Resource Servers an individual interacted with.  This requires
+      avoiding direct communication between the Authorization Server and
+      the Resource Server at the time when access to a protected
+      resource by the Client is made.  Is this a desirable property?
 
    As an additional requirement a solution MUST enable support for
    channel bindings.  The concept of channel binding, as defined in
@@ -696,6 +777,14 @@ Internet-Draft               OAuth Security               September 2012
    Finally, there are threats that relate to the experience of the
    software developer as well as operational policies.  For example, a
    frequently raised concern is the absent of verifying that the
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                [Page 14]
+
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
+
+
    server's presented identity matches its reference identity so it can
    authenticate the communication endpoint and authorize it.  Verifying
    the server identity in TLS is discussed at length in [RFC6125].
@@ -724,9 +813,32 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 13]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                [Page 15]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 6.  Security Considerations
@@ -780,9 +892,9 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 14]
+Tschofenig & Hunt        Expires March 10, 2013                [Page 16]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 7.  Next Steps
@@ -796,7 +908,7 @@ Internet-Draft               OAuth Security               September 2012
        benefits on top of those provided by the bearer token solution.
 
    2.  The requirements listed in Section 5 aim to provide a starting
-       point for a discussion on a security slution that provides
+       point for a discussion on a security solution that provides
        additional security and privacy benefits for OAuth 2.0.
 
    3.  It is likely that implementers will find security solutions hard
@@ -819,26 +931,26 @@ Internet-Draft               OAuth Security               September 2012
    extended OAuth security mechanism.  Regarding the latter aspect
    consider the following questions:
 
-   Threats:  Section 3 lists a few security threats.  Are these the
-      threats you care about?  Which threats missing?
+   Threats:
 
-   Requirements:  The working group has expressed interest to work on an
-      extended OAuth security mechanism.  Assuming that the group wants
-      to develop a key distribution protocol (as described in
-      Section 4.3) are the requirements listed in Section 5 complete?
-      Who is interested to develop early prototypes of support the
-      standards development?
+      Section 3 lists a few security threats.  Are these the threats you
+      care about?  Which threats missing?
 
+   Requirements:
 
-
-
-
-
+      The working group has expressed interest to work on an extended
+      OAuth security mechanism.  Assuming that the group wants to
+      develop a key distribution protocol (as described in Section 4.3)
+      are the requirements listed in Section 5 complete?  Who is
+      interested to develop early prototypes of support the standards
+      development?
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 15]
+
+
+Tschofenig & Hunt        Expires March 10, 2013                [Page 17]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 8.  IANA Considerations
@@ -892,9 +1004,9 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 16]
+Tschofenig & Hunt        Expires March 10, 2013                [Page 18]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 9.  Acknowledgments
@@ -921,8 +1033,7 @@ Internet-Draft               OAuth Security               September 2012
    o  Klaas Wierenga
 
    This document reuses content from [RFC4962] and the author would like
-   thank Russ Housely and Bernard AResource Servera for their work on
-   that document.
+   thank Russ Housely and Bernard Aboba for their work on that document.
 
    Finally, I would like to thank Blaine Cook.  This document was
    derived from an earlier draft that Blaine and I wrote.
@@ -948,9 +1059,10 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 17]
+
+Tschofenig & Hunt        Expires March 10, 2013                [Page 19]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 10.  References
@@ -1004,20 +1116,15 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 18]
+Tschofenig & Hunt        Expires March 10, 2013                [Page 20]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
    [I-D.hardjono-oauth-kerberos]
               Hardjono, T., "OAuth 2.0 support for the Kerberos V5
               Authentication Protocol", draft-hardjono-oauth-kerberos-01
               (work in progress), December 2010.
-
-   [I-D.rescorla-stateless-tokens]
-              Rescorla, E., "How to Implement Secure (Mostly) Stateless
-              Tokens", draft-rescorla-stateless-tokens-01 (work in
-              progress), March 2007.
 
    [RFC5849]  Hammer-Lahav, E., "The OAuth 1.0 Protocol", RFC 5849,
               April 2010.
@@ -1060,9 +1167,14 @@ Internet-Draft               OAuth Security               September 2012
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 19]
+
+
+
+
+
+Tschofenig & Hunt        Expires March 10, 2013                [Page 21]
 
-Internet-Draft               OAuth Security               September 2012
+Internet-Draft        Enhancing OAuth 2.0 Security        September 2012
 
 
 Authors' Addresses
@@ -1116,5 +1228,5 @@ Authors' Addresses
 
 
 
-Tschofenig & Hunt         Expires March 9, 2013                [Page 20]
+Tschofenig & Hunt        Expires March 10, 2013                [Page 22]
 
