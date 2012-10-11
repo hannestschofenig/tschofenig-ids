@@ -147,15 +147,15 @@ The Internet has been used for interactive real-time communication for decades, 
 
 <t>Many additional complications arise. Here are some examples:
 <list style="numbers">
-<t>First, real-time interactive media sessions require low latencies, whereas streaming media can use large play-out buffers.</t>
-<t>Second, RTCP feedback about an RTP session arrives much less frequently than, for example, TCP ACKs for a given TCP connection. This means that the RTP/RTCP control loop has a longer reaction time.</t>
-<t>Third, media codecs can usually only adjust their output rates in a much more coarse-grained fashion than, for example, TCP, and user experience suffers if encoding rates are switched too frequently. Codecs typically have a minimum sending rate as well.</t>
-<t>Fourth, some bits of an encoded media stream are more important than others. For example, losing or dropping an I-frame of a video stream is more problematic than dropping a P-frame.</t>
-<t>Fifth, ramping up the transmission rate can be problematic. Simply increasing the output rate of the codec without knowledge whether the network path can sustain transmission at the increased rate runs the danger of incurring a significant amount of packet loss that can cause playback artifacts.</t>
-<t>Sixth, a congestion control scheme for interactive media needs to handle bundles of interrelated flows (audio, video, data), in a way that accommodates the preferences of the application in the event of congestion.</t>
-<t>Seventh, the desire to provide a congestion control mechanism that can be efficiently implemented inside an application (e.g., a web server and a browser) imposes additional restrictions.</t>
-<t>Eighth, there are explicit congestion signals (such as ECN), and there are indirect indications of congestion (such as packet delay and loss). However, congestion is not the only source of these indirect signals. Care must be taken to account for each of these signals.</t>
-<t>Ninth, network elements and end device operating systems often create buffers to better support TCP-based applications. These buffers introduce additional communication delay, which harms the small delay budget available for real-time applications.</t>
+<t>Real-time interactive media sessions require low latencies, whereas streaming media can use large play-out buffers.</t>
+<t>RTCP feedback about an RTP session typically arrives much less frequently than, for example, TCP ACKs for a given TCP connection. The RTP/RTCP control loop can lead to a longer reaction time.</t>
+<t>Media codecs can usually only adjust their output rates in a much more coarse-grained fashion than, for example, TCP, and user experience suffers if encoding rates are switched too frequently. Codecs typically have a minimum sending rate as well.</t>
+<t>Some bits of an encoded media stream are more important than others. For example, losing or dropping an I-frame of a video stream is more problematic than dropping a P-frame.</t>
+<t>Ramping up the transmission rate can be problematic. Simply increasing the output rate of the codec without knowledge whether the network path can sustain transmission at the increased rate runs the danger of incurring a significant amount of packet loss that can cause playback artifacts.</t>
+<t>A congestion control scheme for interactive media needs to handle bundles of interrelated flows (audio, video, data), in a way that accommodates the preferences of the application in the event of congestion.</t>
+<t>The desire to provide a congestion control mechanism that can be efficiently implemented inside an application (e.g., a web server and a browser) imposes additional restrictions.</t>
+<t>There are explicit congestion signals (such as ECN), and there are indirect indications of congestion (such as packet delay and loss). However, congestion is not the only source of these indirect signals. Care must be taken to account for each of these signals, particularly if various applications react on the same signals.</t>
+<t>Network elements and end device operating systems often create buffers to better support TCP-based applications. These buffers introduce additional communication delay, which harms the small delay budget available for real-time applications.</t>
 </list> 
 </t>
 
@@ -178,48 +178,47 @@ The Internet has been used for interactive real-time communication for decades, 
 	
 	<section title="Changes to Network Infrastructure"> 
 
-<t>Like for all other traffic on the network, better data plane infrastructure improves the perceived quality of the best-effort service the Internet provides for RTCWeb flows. The IETF has already developed several technologies that would be of immediate usefulness, were they deployed. The workshop participants expressed the hope that due to the volume and importance of RTCWeb traffic, some of these technologies might finally see widespread use.</t>
+	<t>Like for all other traffic on the network, better data plane infrastructure improves the perceived quality of the best-effort service the Internet provides for RTCWeb flows. The IETF has already developed several technologies that would be of immediate usefulness, if they were deployed. The workshop participants expressed the hope that due to the volume and importance of RTCWeb traffic, some of these technologies might finally see widespread use.</t>
+	
+	<t>The first and by far most important improvement is traffic segregation, i.e., the ability to use different queues for different traffic types. Specifically jitter/delay sensitive and throughput maximizing protocols need to be in different queues. It is not possible for a single queue/AQM to be optimal for both.</t>
 
-<t>The first such infrastructure improvement is the deployment of Explicit Congestion Notification on routers along the end-to-end path. ECN signals the onset of congestion and allows applications to respond early, avoiding losses and keep queue sizes short and therefore end-to-end delay low. ECN is widely implemented on end system stacks and on routers, but it is frequently not enabled.</t>
+<t>Explicit Congestion Notification (ECN) allows routers along the end-to-end path to signal the onset of congestion and allows applications to respond early, avoiding losses and keep queue sizes short and therefore end-to-end delay low. ECN is not widely implemented on end system stacks and on routers, but it is implemented it is frequently not enabled.</t>
 
-<t>A second infrastructure improvement would be mechanism to allow traffic classification. Differentiated services are one possibility in this space  if applications start to mark outgoing traffic appropriately and routers would queue traffic correspondingly, browsers could more directly control the relative importance of their various flows, and avoid self-competition. Compared to ECN, however, DiffServ is somewhat more difficult to deploy meaningfully end-to-end, especially given that DSCPs have no defined end-to-end meaning and packets can be re-marked.</t>
+<t>Different mechanisms have been developed to facilitate traffic segregation. Differentiated services are one possibility in this space if applications start to mark outgoing traffic appropriately and routers would segregate traffic accordingly, browsers could more directly control the relative importance of their various flows, and avoid self-competition. Compared to ECN, however, DiffServ is far more difficult to deploy meaningfully end-to-end, especially given that DSCPs have no defined end-to-end meaning and packets can be re-marked. Quality-of-service (QoS) signaling together with resource reservation facilities would enable a fine-grained and flexible way to indicate resource needs to network elements but it is also by far the most heavyweight proposal.</t>
 
-<t>Finally, quality-of-service (QoS) signaling together with resource reservation facilities would enable a fine-grained and dependable framework for media and other data transmissions. It is also by far the most heavyweight proposal in this space.</t>
-
-<t>Realistically, the best approach is to try and drive ECN deployment, maybe in combination with very few generally useful DSCP markings, such as "less-than-best-effort".</t>
-
-<t>However, any change to network infrastructure will take time to see deployment. It is therefore imperative that an RTCWeb congestion control mechanism work at least adequately in the absence of any of these schemes.</t>
+<t>However, any change to network infrastructure will take time particularly if the interest of the involved stakeholders is not aligned (as it is the case for network operators and over-the-top application providers). It is therefore imperative that an RTCWeb congestion control provides some improvement work at least adequately in the absence of any ofthese schemes.</t>
 
 	</section> 
 	
 	
 	<section title="Avoiding Self-Inflicted Queuing"> 
 	
-	<t>This approach tries to ensure that the network does not get congested and the focus of the work is on congestion control for real-time media that browsers (or similar software) send. This was the primary focus of the workshop.</t>
+	<t>This approach tries to ensure that the network does not get congested. This is of course difficult to accomplish for a single end host by itself. As such, the focus of this solution track on congestion control for real-time media is about data that is transmitted by a single browsers, single application, or at best by a single end host.</t>
 	
-	<t>The primary area of investigation revolved around how to make RTCWeb-style flows avoid congestion in the network. The following activities were suggested during the workshop.</t>
+	<t>The following activities were suggested during the workshop.</t>
 	<t>
 	<list style="symbols">
-	  <t>Feedback signals come in various forms:
+	  <t>Need algorithm that reacts to all signals. Feedback signals come in various forms:
      	<list style="symbols">
         <t>RTCP reports, delay, loss, correlation between signal and jitter, etc.</t>
-        <t>Use explicit congestion signal, if available (obvious). Example: ECN</t>
-        <t>Need algorithm that reacts to all signals including delay, loss, ECN, etc.</t>  
+        <t>Use explicit congestion signal, if available, such as ECN.</t>
         </list>
       </t>
-	  <t>Delay-based and Loss-based Algorithms
+	  <t>Achieve low latency with algorithm design:
         <list style="symbols">
-        <t>Achieve low latency with algorithm design: Delay based algorithms are needed in this mode (unless you have things like ECN). There is a wide range of normal delay variation in a non congested network and investigation is needed to get an idea about the range to design delay based algorithms.</t>
-        <t>Need not to fail when competing with TCP in case of losses</t>
+        <t>Delay based algorithms are needed in this mode. There is a wide range of normal delay variation in a non-congested networks and investigation is needed to get an idea about the range to design delay based algorithms.</t>
+        <t>Need not to fail when competing with TCP in case of losses.</t>
 	    </list>
       </t>
-	  <t>When examining algorithms for use in rate control, care must be  taken to examine real-world loss and delay figures to be sure that  the desired audio/video rates are attainable using the proposed algorithms for the desired service.</t>  
-      <t>Media is inherently variable. A congestion controller needs to be aware of these limitations and it may be possible to link congestion with current encoding. However, investigation is need to decide on the information (if any) needs to be exchanged between codec and congestion control algorithm. Codecs have limited room for adaptation
+	  <t>Congestion control algorithms should be evaluated under realistic loss and delay conditions to be sure that the desired audio/video rates are attainable using the proposed algorithms for the desired service.</t>  
+      <t>A congestion controller needs to be aware that media is inherently variable and it may be possible to associate the current congestion situation with the currently chosen encoding. However, investigation is need to decide what information (if any) needs to be exchanged between the codec and the congestion control algorithm. Codecs have room for adaptation but it is often limited. 
+	  <!-- 
      	<list style="symbols">
 	    <t>Focus on traffic characteristics of media (voice, video, data)</t>
         <t>Different to TCP bulk transfer applications</t>
         <t>Codecs may be bursty</t>
         </list>
+		--> 
       </t>
      <t>Startup behavior?</t>
 	</list> 
@@ -240,6 +239,8 @@ The Internet has been used for interactive real-time communication for decades, 
     <section anchor="Acknowledgments" title="Acknowledgments">
       <t>We would like to thank the participants and the paper authors of the position
         papers for their input.</t>
+		
+      <t>Additionally, we would like to thank the following persons for their review comments: Michael Welzl, John Leslie, Mirja Kuehlewind, Matt Mathis</t>
     </section>
     <!-- Possibly a 'Contributors' section ... -->
     <section anchor="IANA" title="IANA Considerations">
