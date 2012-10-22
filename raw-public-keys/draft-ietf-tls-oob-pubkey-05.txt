@@ -118,20 +118,20 @@ Table of Contents
    1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  4
    2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  4
    3.  New TLS Extension  . . . . . . . . . . . . . . . . . . . . . .  4
-   4.  TLS Handshake Extension  . . . . . . . . . . . . . . . . . . .  6
-     4.1.  Client Hello . . . . . . . . . . . . . . . . . . . . . . .  6
-     4.2.  Server Hello . . . . . . . . . . . . . . . . . . . . . . .  6
-     4.3.  Certificate Request  . . . . . . . . . . . . . . . . . . .  7
-     4.4.  Other Handshake Messages . . . . . . . . . . . . . . . . .  7
-     4.5.  Client authentication  . . . . . . . . . . . . . . . . . .  7
-   5.  Examples . . . . . . . . . . . . . . . . . . . . . . . . . . .  7
-   6.  Security Considerations  . . . . . . . . . . . . . . . . . . . 10
-   7.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 11
-   8.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 11
-   9.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 12
-     9.1.  Normative References . . . . . . . . . . . . . . . . . . . 12
-     9.2.  Informative References . . . . . . . . . . . . . . . . . . 12
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 12
+   4.  TLS Handshake Extension  . . . . . . . . . . . . . . . . . . .  7
+     4.1.  Client Hello . . . . . . . . . . . . . . . . . . . . . . .  7
+     4.2.  Server Hello . . . . . . . . . . . . . . . . . . . . . . .  7
+     4.3.  Certificate Request  . . . . . . . . . . . . . . . . . . .  8
+     4.4.  Other Handshake Messages . . . . . . . . . . . . . . . . .  8
+     4.5.  Client authentication  . . . . . . . . . . . . . . . . . .  8
+   5.  Examples . . . . . . . . . . . . . . . . . . . . . . . . . . .  8
+   6.  Security Considerations  . . . . . . . . . . . . . . . . . . . 11
+   7.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 12
+   8.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 12
+   9.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+     9.1.  Normative References . . . . . . . . . . . . . . . . . . . 13
+     9.2.  Informative References . . . . . . . . . . . . . . . . . . 13
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 14
 
 
 
@@ -181,7 +181,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    the TLS server public key:
 
    o  The TLS server public key is obtained from a DNSSEC secured
-      resource records using DANE [I-D.ietf-dane-protocol].
+      resource records using DANE [RFC6698].
 
    o  The TLS server public key is obtained from a [PKIX] certificate
       chain from an Lightweight Directory Access Protocol (LDAP) [LDAP]
@@ -225,14 +225,60 @@ Wouters, et al.          Expires April 25, 2013                 [Page 4]
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
-   contents when raw public key certificates are to be used.  Figure 1
+   contents when raw public key certificates are to be used.  Figure 3
    illustrates the exchange of messages as described in the sub-sections
    below.  The client and the server exchange the newly defined
    certificate_type extension to indicate their ability and desire to
    exchange raw public keys.  These raw public keys, in the form of a
    SubjectPublicKeyInfo structure, are then carried inside the
-   certificate payload.
+   certificate payload.  The SubjectPublicKeyInfo structure is defined
+   in Section 4.1 of RFC 5280.  Note that the SubjectPublicKeyInfo block
+   does not only contain the raw keys, such as the public exponent and
+   the modulus of an RSA public key, but also an algorithm identifier.
+   The structure, as shown in Figure 1, is encoded in an ASN.1 format
+   and therefore contains length information as well.
 
+
+
+      SubjectPublicKeyInfo  ::=  SEQUENCE  {
+           algorithm            AlgorithmIdentifier,
+           subjectPublicKey     BIT STRING  }
+
+
+              Figure 1: SubjectPublicKeyInfo ASN.1 Structure.
+
+   The algorithm identifiers are Object Identifiers (OIDs).  RFC 3279
+   [RFC3279], for example, defines the following OIDs shown in Figure 2.
+
+
+
+Key Type               | Document                   | OID
+-----------------------+----------------------------+-------------------
+RSA                    | Section 2.3.1 of RFC 3279  | 1.2.840.113549.1.1
+.......................|............................|...................
+Digital Signature      |                            |
+Algorithm (DSS)        | Section 2.3.2 of RFC 3279  | 1.2.840.10040.4.1
+.......................|............................|...................
+Elliptic Curve         |                            |
+Digital Signature      |                            |
+Algorithm (ECDSA)      | Section 2.3.5 of RFC 3279  | 1.2.840.10045.2.1
+-----------------------+----------------------------+-------------------
+
+
+                 Figure 2: Example Algorithm Identifiers.
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.          Expires April 25, 2013                 [Page 5]
+
+Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
     client_hello,
@@ -256,7 +302,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    Application Data        <------->     Application Data
 
 
-               Figure 1: Basic Raw Public Key TLS Exchange.
+               Figure 3: Basic Raw Public Key TLS Exchange.
 
    The "certificate_type" TLS extension carries a list of supported
    certificate types the client can send and receive, sorted by client
@@ -276,16 +322,29 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
 
-Wouters, et al.          Expires April 25, 2013                 [Page 5]
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.          Expires April 25, 2013                 [Page 6]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
    enum { client, server } ClientOrServerExtension;
 
-   enum {X.509 Receive (0), X.509 Send (1),
-      RawPublicKey Receive (2), RawPublicKey Send (3),
-      (255) } CertificateType;
+   enum { X.509-Accept (0),
+          X.509-Offer (1),
+          RawPublicKey-Accept (2),
+          RawPublicKey-Offer (3),
+          (255)
+         } CertificateType;
 
    struct {
       select(ClientOrServerExtension)
@@ -297,7 +356,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    } CertTypeExtension;
 
 
-                  Figure 2: CertTypeExtension Structure.
+                  Figure 4: CertTypeExtension Structure.
 
    No new cipher suites are required to use raw public keys.  All
    existing cipher suites that support a key exchange method compatible
@@ -326,17 +385,17 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    "unsupported_certificate".
 
    The certificate type selected by the server is encoded in a
-   CertTypeExtension structure, which is included in the extended server
-   hello message using an extension of type "certificate_type".  Servers
-   that only support X.509 certificates MAY omit including the
 
 
 
-Wouters, et al.          Expires April 25, 2013                 [Page 6]
+Wouters, et al.          Expires April 25, 2013                 [Page 7]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
+   CertTypeExtension structure, which is included in the extended server
+   hello message using an extension of type "certificate_type".  Servers
+   that only support X.509 certificates MAY omit including the
    "certificate_type" extension in the extended server hello.
 
    If the client supports the receiption of raw public keys and the
@@ -364,7 +423,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 5.  Examples
 
-   Figure 3, Figure 4, and Figure 5 illustrate example message
+   Figure 5, Figure 6, and Figure 7 illustrate example message
    exchanges.
 
    The first example shows an exchange where the TLS client indicates
@@ -385,19 +444,16 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
 
-
-
-
-Wouters, et al.          Expires April 25, 2013                 [Page 7]
+Wouters, et al.          Expires April 25, 2013                 [Page 8]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
 client_hello,
-certificate_type=(RawPublicKey Receive) -> // [1]
+certificate_type=(RawPublicKey-Accept) -> // [1]
 
                          <-  server_hello,
-                             certificate_type=(RawPublicKey Send), // [2]
+                             certificate_type=(RawPublicKey-Offer), // [2]
                              certificate, // [3]
                              server_key_exchange,
                              server_hello_done
@@ -412,7 +468,7 @@ finished                  ->
 Application Data        <------->     Application Data
 
 
-     Figure 3: Example with Raw Public Key provided by the TLS Server
+     Figure 5: Example with Raw Public Key provided by the TLS Server
 
    In our second example both the TLS client and the TLS server use raw
    public keys.  This is a use case envisioned for smart object
@@ -444,17 +500,17 @@ Application Data        <------->     Application Data
 
 
 
-Wouters, et al.          Expires April 25, 2013                 [Page 8]
+Wouters, et al.          Expires April 25, 2013                 [Page 9]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
    client_hello,
-   certificate_type=(RawPublicKey Send, RawPublicKey Receive) -> // [1]
+   certificate_type=(RawPublicKey-Offer, RawPublicKey-Accept) -> // [1]
 
                             <-  server_hello,
-                                certificate_type=(RawPublicKey Send,
-                                            RawPublicKey Receive) // [2]
+                                certificate_type=(RawPublicKey-Offer,
+                                            RawPublicKey-Accept) // [2]
                                 certificate, // [3]
                                 certificate_request, // [4]
                                 server_key_exchange,
@@ -471,7 +527,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    Application Data        <------->     Application Data
 
 
-   Figure 4: Example with Raw Public Key provided by the TLS Server and
+   Figure 6: Example with Raw Public Key provided by the TLS Server and
                                 the Client
 
    In our last example we illustrate a combination of raw public key and
@@ -500,17 +556,17 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
 
-Wouters, et al.          Expires April 25, 2013                 [Page 9]
+Wouters, et al.          Expires April 25, 2013                [Page 10]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
    client_hello,
-   certificate_type=(X.509 Receive, RawPublicKey Send) -> // [1]
+   certificate_type=(X.509 Receive, RawPublicKey-Offer) -> // [1]
 
                             <-  server_hello,
                                 certificate_type=(X.509 Send,
-                                     RawPublicKey Receive), // [2]
+                                     RawPublicKey-Accept), // [2]
                                 certificate, // [3]
                                 certificate_request, // [4]
                                 server_key_exchange,
@@ -526,7 +582,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    Application Data        <------->     Application Data
 
 
-                   Figure 5: Hybrid Certificate Example
+                   Figure 7: Hybrid Certificate Example
 
 
 6.  Security Considerations
@@ -544,25 +600,25 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    authorization decisions.  Without a secure binding, man-in-the-middle
    attacks may be the consequence.  This document assumes that such
    binding can be made out-of-band and we list a few examples in
-   Section 1.  DANE [I-D.ietf-dane-protocol] offers one such approach.
-   If public keys are obtained using DANE, these public keys are
-   authenticated via DNSSEC.  Pre-configured keys is another out of band
-   method for authenticating raw public keys.  While pre-configured keys
-   are not suitable for a generic Web-based e-commerce environment such
-   keys are a reasonable approach for many smart object deployments
-   where there is a close relationship between the software running on
-   the device and the server-side communication endpoint.  Regardless of
-   the chosen mechanism for out-of-band public key validation an
+   Section 1.  DANE [RFC6698] offers one such approach.  If public keys
+   are obtained using DANE, these public keys are authenticated via
+   DNSSEC.  Pre-configured keys is another out of band method for
+   authenticating raw public keys.  While pre-configured keys are not
+   suitable for a generic Web-based e-commerce environment such keys are
+   a reasonable approach for many smart object deployments where there
+   is a close relationship between the software running on the device
+   and the server-side communication endpoint.  Regardless of the chosen
+   mechanism for out-of-band public key validation an assessment of the
 
 
 
-Wouters, et al.          Expires April 25, 2013                [Page 10]
+Wouters, et al.          Expires April 25, 2013                [Page 11]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
-   assessment of the most suitable approach has to be made prior to the
-   start of a deployment to ensure the security of the system.
+   most suitable approach has to be made prior to the start of a
+   deployment to ensure the security of the system.
 
 
 7.  IANA Considerations
@@ -579,7 +635,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    established in this document, to be maintained by IANA.  The registry
    is segmented in the following way:
 
-   1.  The values 0 - 3 are defined in Figure 2.
+   1.  The values 0 - 3 are defined in Figure 4.
 
    2.  Values from 3 through 223 decimal inclusive are assigned via IETF
        Consensus [RFC5226].
@@ -600,8 +656,8 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    We would like to thank the following persons for their review
    comments: Martin Rex, Bill Frantz, Zach Shelby, Carsten Bormann,
    Cullen Jennings, Rene Struik, Alper Yegin, Jim Schaad, Paul Hoffman,
-   Robert Cragie, Nikos Mavrogiannopoulos, Phil Hunt, John Bradley, and
-   James Manger.
+   Robert Cragie, Nikos Mavrogiannopoulos, Phil Hunt, John Bradley,
+   Klaus Hartke, Stefan Jucker, and James Manger.
 
 
 9.  References
@@ -612,7 +668,7 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
 
 
 
-Wouters, et al.          Expires April 25, 2013                [Page 11]
+Wouters, et al.          Expires April 25, 2013                [Page 12]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
@@ -643,12 +699,6 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
               "Constrained Application Protocol (CoAP)",
               draft-ietf-core-coap-12 (work in progress), October 2012.
 
-   [I-D.ietf-dane-protocol]
-              Hoffman, P. and J. Schlyter, "The DNS-Based Authentication
-              of Named Entities (DANE) Transport Layer Security (TLS)
-              Protocol: TLSA", draft-ietf-dane-protocol-23 (work in
-              progress), June 2012.
-
    [I-D.ietf-tls-cached-info]
               Santesson, S. and H. Tschofenig, "Transport Layer Security
               (TLS) Cached Information Extension",
@@ -658,17 +708,23 @@ Internet-Draft        TLS OOB Public Key Validation         October 2012
    [LDAP]     Sermersheim, J., "Lightweight Directory Access Protocol
               (LDAP): The Protocol", RFC 4511, June 2006.
 
+   [RFC3279]  Bassham, L., Polk, W., and R. Housley, "Algorithms and
+              Identifiers for the Internet X.509 Public Key
+              Infrastructure Certificate and Certificate Revocation List
+              (CRL) Profile", RFC 3279, April 2002.
+
    [RFC5226]  Narten, T. and H. Alvestrand, "Guidelines for Writing an
               IANA Considerations Section in RFCs", BCP 26, RFC 5226,
               May 2008.
 
+   [RFC6698]  Hoffman, P. and J. Schlyter, "The DNS-Based Authentication
+              of Named Entities (DANE) Transport Layer Security (TLS)
+              Protocol: TLSA", RFC 6698, August 2012.
 
 
 
 
-
-
-Wouters, et al.          Expires April 25, 2013                [Page 12]
+Wouters, et al.          Expires April 25, 2013                [Page 13]
 
 Internet-Draft        TLS OOB Public Key Validation         October 2012
 
@@ -724,5 +780,5 @@ Authors' Addresses
 
 
 
-Wouters, et al.          Expires April 25, 2013                [Page 13]
+Wouters, et al.          Expires April 25, 2013                [Page 14]
 

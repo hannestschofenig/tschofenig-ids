@@ -157,7 +157,7 @@ Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resour
 
        <t><list style="symbols">
           <t>The TLS server public key is obtained from a DNSSEC secured resource records              
-             using DANE <xref target="I-D.ietf-dane-protocol"/>.</t>
+             using DANE <xref target="RFC6698"/>.</t>
 
           <t>The TLS server public key is obtained from a <xref target='PKIX'/>
              certificate chain from an Lightweight Directory Access Protocol (LDAP) <xref target="LDAP"/> server.</t>
@@ -199,7 +199,40 @@ Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resour
    described in the sub-sections below. The client and the server exchange 
    the newly defined certificate_type extension to indicate their ability and desire to
    exchange raw public keys. These raw public keys, in the form of a SubjectPublicKeyInfo structure, are then carried inside the
-   certificate payload.  </t>
+   certificate payload. The SubjectPublicKeyInfo structure is defined in Section 4.1 of RFC 5280. Note that the SubjectPublicKeyInfo block does not only contain the raw keys, such as the public exponent and the modulus of an RSA public key, but also an algorithm identifier. The structure, as shown in <xref target="SubjectPublicKeyInfo"/>, is encoded in an ASN.1 format and therefore contains length information as well.</t>
+   <t>
+<figure anchor="SubjectPublicKeyInfo" title="SubjectPublicKeyInfo ASN.1 Structure.">
+<artwork>
+<![CDATA[    
+   SubjectPublicKeyInfo  ::=  SEQUENCE  {
+        algorithm            AlgorithmIdentifier,
+        subjectPublicKey     BIT STRING  }
+]]>
+</artwork>
+</figure>
+</t>
+
+  <t>The algorithm identifiers are Object Identifiers (OIDs). RFC 3279 <xref target="RFC3279"/>, for example, defines the following OIDs shown in <xref target="alg-ids"/>.</t>
+  <t>
+<figure anchor="alg-ids" title="Example Algorithm Identifiers.">
+<artwork>
+<![CDATA[    
+Key Type               | Document                   | OID
+-----------------------+----------------------------+-------------------
+RSA                    | Section 2.3.1 of RFC 3279  | 1.2.840.113549.1.1
+.......................|............................|...................
+Digital Signature      |                            |
+Algorithm (DSS)        | Section 2.3.2 of RFC 3279  | 1.2.840.10040.4.1
+.......................|............................|...................
+Elliptic Curve         |                            |
+Digital Signature      |                            |
+Algorithm (ECDSA)      | Section 2.3.5 of RFC 3279  | 1.2.840.10045.2.1
+-----------------------+----------------------------+-------------------
+]]>
+</artwork>
+</figure>
+</t>
+
   <t>
 <figure anchor="flow" title="Basic Raw Public Key TLS Exchange.">
 <artwork>
@@ -246,9 +279,12 @@ Application Data        <------->     Application Data
 <![CDATA[    
 enum { client, server } ClientOrServerExtension;
 
-enum {X.509 Receive (0), X.509 Send (1), 
-   RawPublicKey Receive (2), RawPublicKey Send (3), 
-   (255) } CertificateType;
+enum { X.509-Accept (0), 
+       X.509-Offer (1), 
+       RawPublicKey-Accept (2),
+       RawPublicKey-Offer (3), 
+       (255) 
+      } CertificateType;
 
 struct {
    select(ClientOrServerExtension) 
@@ -366,10 +402,10 @@ struct {
 <artwork>
 <![CDATA[ 
 client_hello,
-certificate_type=(RawPublicKey Receive) -> // [1]
+certificate_type=(RawPublicKey-Accept) -> // [1]
 
                          <-  server_hello,
-                             certificate_type=(RawPublicKey Send), // [2]
+                             certificate_type=(RawPublicKey-Offer), // [2]
                              certificate, // [3]
                              server_key_exchange,
                              server_hello_done
@@ -394,11 +430,11 @@ returns it in the Certificate payload [5] to the server.</t>
 <artwork>
 <![CDATA[ 
 client_hello,
-certificate_type=(RawPublicKey Send, RawPublicKey Receive) -> // [1]
+certificate_type=(RawPublicKey-Offer, RawPublicKey-Accept) -> // [1]
 
                          <-  server_hello,
-                             certificate_type=(RawPublicKey Send, 
-                                         RawPublicKey Receive) // [2]
+                             certificate_type=(RawPublicKey-Offer, 
+                                         RawPublicKey-Accept) // [2]
                              certificate, // [3]
                              certificate_request, // [4]
                              server_key_exchange,
@@ -426,11 +462,11 @@ for client authentication but the server provides an X.509 certificate. This exc
 <artwork>
 <![CDATA[ 
 client_hello,
-certificate_type=(X.509 Receive, RawPublicKey Send) -> // [1]
+certificate_type=(X.509 Receive, RawPublicKey-Offer) -> // [1]
 
                          <-  server_hello,
                              certificate_type=(X.509 Send, 
-                                  RawPublicKey Receive), // [2]
+                                  RawPublicKey-Accept), // [2]
                              certificate, // [3]
                              certificate_request, // [4]
                              server_key_exchange,
@@ -469,7 +505,7 @@ Application Data        <------->     Application Data
     authorization decisions. Without a secure binding, man-in-the-middle 
     attacks may be the consequence. This document assumes that such 
 	binding can be made out-of-band and we list a few examples in <xref target="into"/>. 
-	DANE <xref target="I-D.ietf-dane-protocol"/> offers one such approach. 
+	DANE <xref target="RFC6698"/> offers one such approach. 
 	If public keys are obtained using DANE, these public keys are authenticated via DNSSEC.
 	Pre-configured keys is another out of band method for authenticating raw public keys.
 	 While pre-configured keys are not suitable for 
@@ -513,7 +549,7 @@ Application Data        <------->     Application Data
 	     public keys has been moved to <xref target="I-D.ietf-tls-cached-info"/> after the discussions at the IETF#82 
 	     meeting and the feedback from Eric Rescorla.</t>
       <t>We would like to thank the following persons for their review comments: Martin Rex, Bill Frantz, Zach Shelby, 
-	     Carsten Bormann, Cullen Jennings, Rene Struik, Alper Yegin, Jim Schaad, Paul Hoffman, Robert Cragie, Nikos Mavrogiannopoulos, Phil Hunt, John Bradley, and James Manger.</t>
+	     Carsten Bormann, Cullen Jennings, Rene Struik, Alper Yegin, Jim Schaad, Paul Hoffman, Robert Cragie, Nikos Mavrogiannopoulos, Phil Hunt, John Bradley, Klaus Hartke, Stefan Jucker, and James Manger.</t>
       </section>
 
   </middle>
@@ -564,7 +600,8 @@ Application Data        <------->     Application Data
 
 <references title="Informative References">
 <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml"?>  
-<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dane-protocol.xml"?>  
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.3279.xml"?> 
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6698.xml"?>  
 <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-core-coap.xml"?>  
 <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-cached-info.xml"?>  
 
