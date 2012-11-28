@@ -1,0 +1,1051 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!DOCTYPE rfc SYSTEM 'rfc2629.dtd'>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+<rfc category='std' ipr='trust200902' docName='draft-ietf-oauth-v2-http-mac-01'>
+  <?rfc strict='yes' ?>
+  <?rfc toc='yes' ?>
+  <?rfc tocdepth='3' ?>
+  <?rfc symrefs='yes' ?>
+  <?rfc sortrefs='yes' ?>
+  <?rfc compact='yes' ?>
+  <?rfc subcompact='yes' ?>
+
+  <front>
+    <title abbrev='MAC Authentication'>HTTP Authentication: MAC Access Authentication</title>
+
+    <author fullname='Eran Hammer-Lahav' surname='Hammer-Lahav' initials='E' role='editor'>
+      <organization></organization>
+      <address>
+        <email>eran@hueniverse.com</email>
+        <uri>http://hueniverse.com</uri>
+      </address>
+    </author>
+
+    <date year='2012'/>
+
+    <abstract>
+      <t>
+        This document specifies the HTTP MAC access authentication scheme, an HTTP
+        authentication method using a message authentication code (MAC) algorithm to provide
+        cryptographic verification of portions of HTTP requests. The document also defines an OAuth
+        2.0 binding for use as an access-token type.
+      </t>
+    </abstract>
+  </front>
+
+  <middle>
+
+    <section title='Introduction'>
+      <t>
+        This specification defines the HTTP MAC access authentication scheme, providing a method
+        for making authenticated HTTP requests with partial cryptographic verification of the
+        request, covering the HTTP method, request URI, and host.
+      </t>
+      <t>
+        Similar to the HTTP Basic access authentication scheme <xref target='RFC2617' />, the MAC
+        scheme utilizes a set of client credentials which include an identifier and key. However,
+        in contrast with the Basic scheme, the key is never included in authenticated requests but
+        is used to calculate the request MAC value which is included instead.
+      </t>
+      <t>
+        The MAC scheme requires the establishment of a shared symmetric key between the client and
+        the server. This specification offers one such method for issuing a set of MAC credentials
+        to the client using OAuth 2.0 in the form of a MAC-type access token.
+      </t>
+      <t>
+        The primary design goal of this mechanism is to simplify and improve HTTP authentication
+        for services that are unwilling or unable to employ TLS for every request. In particular,
+        this mechanism leverage an initial TLS setup phase to establish a shared secret between the
+        client and the server. The shared secret is then used over an insecure channel to provide
+        protection against a passive network attacker.
+      </t>
+      <t>
+        In particular, when a server uses this mechanism, a passive network attacker will be
+        unable to "steal" the user's session token, as is possible today with cookies and other
+        bearer tokens. In addition, this mechanism helps secure the session token against leakage
+        when sent over a secure channel to the wrong server. For example, when the client uses some
+        form of dynamic configuration to determine where to send an authenticated request, or when
+        the client fails to properly validate the server's identity as part of its TLS handshake.
+      </t>
+      <t>
+        Unlike the HTTP Digest authentication scheme, this mechanism does not require interacting
+        with the server to prevent replay attacks. Instead, the client provides both a nonce and a
+        timestamp, which the server can use to prevent replay attacks using a bounded amount of
+        storage. Also unlike Digest, this mechanism is not intended to protect the user's
+        password itself because the client and server both have access to the key material in the
+        clear. Instead, servers should issue a short-lived derivative credential for this
+        mechanism during the initial TLS setup phase.
+      </t>
+
+      <section title='Example'>
+        <t>
+          The client attempts to access a protected resource without authentication, making the
+          following HTTP request to the resource server:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  GET /resource/1?b=1&a=2 HTTP/1.1
+  Host: example.com
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The resource server returns the following authentication challenge:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: MAC
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The client has previously obtained a set of MAC credentials for accessing resources on
+          the <spanx style='verb'>http://example.com/</spanx> server. The MAC credentials
+          issued to the client include the following attributes:
+        </t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='MAC key identifier:'>h480djs93hd8</t>
+            <t hangText='MAC key:'>489dks293j39</t>
+            <t hangText='MAC algorithm:'>hmac-sha-1</t>
+          </list>
+        </t>
+        <t>
+          The client constructs the authentication header by calculating a timestamp (e.g. the
+          number of seconds since January 1, 1970 00:00:00 GMT) and generating a random string
+          used as a nonce:
+        </t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='Timestamp:'>1336363200</t>
+            <t hangText='Nonce:'>dj83hs9s</t>
+          </list>
+        </t>
+        <t>
+          The client constructs the normalized request string (the new line separator character is
+          represented by <spanx style='verb'>\n</spanx> for display purposes only; the trailing
+          new line separator signify that no extension value is included with the request,
+          explained below):
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  1336363200\n
+  dj83hs9s\n
+  GET\n
+  /resource/1?b=1&a=2\n
+  example.com\n
+  80\n
+  \n
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The request MAC is calculated using the specified MAC algorithm
+          <spanx style='verb'>hmac-sha-1</spanx> and the MAC key over the normalized request
+          string. The result is base64-encoded to produce the request MAC:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  bhCQXTVyfj5cmA9uKkPFx1zeOXM=
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The client includes the MAC key identifier, nonce, and request MAC with the request
+          using the <spanx style='verb'>Authorization</spanx> request header field:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  GET /resource/1?b=1&a=2 HTTP/1.1
+  Host: example.com
+  Authorization: MAC id="h480djs93hd8",
+                     ts="1336363200",
+                     nonce="dj83hs9s",
+                     mac="bhCQXTVyfj5cmA9uKkPFx1zeOXM="
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The server validates the request by calculating the request MAC again based on the
+          request received and verifies the validity and scope of the MAC credentials. If valid,
+          the server responds with the requested resource representation.
+        </t>
+      </section>
+
+      <section title='Notational Conventions'>
+        <t>
+          The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT', 'SHOULD',
+          'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this specification are to be
+          interpreted as described in <xref target='RFC2119' />.
+        </t>
+        <t>
+          This specification uses the Augmented Backus-Naur Form (ABNF) notation of
+          <xref target='I-D.ietf-httpbis-p1-messaging' />. Additionally, the following rules
+          are included from [RFC2617]: auth-param.
+        </t>
+      </section>
+
+    </section>
+
+    <section title='Issuing MAC Credentials' anchor='issue'>
+      <t>
+        This specification provides one method for issuing MAC credentials using OAuth 2.0 as
+        described in <xref target='oauth2' />. This specification does not mandate servers to
+        support any particular method for issuing MAC credentials, and other methods MAY be defined
+        and used. Whenever MAC credentials are issued, the credentials MUST include the following
+        attributes:
+      </t>
+      <t>
+        <list style='hanging' hangIndent='6'>
+          <t hangText='MAC key identifier'>
+            <vspace />
+            A string identifying the MAC key used to calculate the request MAC. The string is
+            usually opaque to the client. The server typically assigns a specific scope and
+            lifetime to each set of MAC credentials. The identifier MAY denote a unique value
+            used to retrieve the authorization information (e.g. from a database), or self-contain
+            the authorization information in a verifiable manner (i.e. a string consisting of some
+            data and a signature).
+          </t>
+          <t hangText='MAC key'>
+            <vspace />
+            A shared symmetric secret used as the MAC algorithm key. The server MUST NOT reissue
+            a previously issued MAC key and MAC key identifier combination.
+          </t>
+          <t hangText='MAC algorithm'>
+            <vspace />
+            A MAC algorithm used to calculate the request MAC. Value MUST be one
+            of <spanx style='verb'>hmac-sha-1</spanx>, <spanx style='verb'>hmac-sha-256</spanx>, or
+            a registered extension algorithm name as described in <xref target='registry' />.
+            Algorithm names are case-sensitive. If the MAC algorithm is not understood by the client,
+            the client MUST NOT use the MAC credentials and continue as if no MAC credentials were
+            issued.
+          </t>
+        </list>
+      </t>
+      <figure>
+        <preamble>
+          The MAC key identifier, MAC key, MAC algorithm strings MUST NOT include characters other
+          than:
+        </preamble>
+        <artwork>
+          <![CDATA[
+  %x20-21 / %x23-5B / %x5D-7E
+  ; Any printable ASCII character except for <"> and <\>
+]]>
+        </artwork>
+      </figure>
+    </section>
+
+    <section title='Making Requests' anchor='requests'>
+      <t>
+        To make authenticated requests, the client must be in the possession of a valid set of MAC
+        credentials accepted by the server. The client constructs the request by calculating a set
+        of attributes, and adding them to the HTTP request using the
+        <spanx style='verb'>Authorization</spanx> request header field as described in
+        <xref target='authz_header' />.
+      </t>
+
+      <section title='The "Authorization" Request Header' anchor='authz_header'>
+        <t>
+          The <spanx style='verb'>Authorization</spanx> request header field uses the framework
+          defined by <xref target='RFC2617' /> as follows:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  credentials    = "MAC" 1*SP #params
+  
+  params         = id / ts / nonce / ext / mac
+
+  id             = "id" "=" string-value
+  ts             = "ts" "=" ( <"> timestamp <"> ) / timestamp
+  nonce          = "nonce" "=" string-value
+  ext            = "ext" "=" string-value
+  mac            = "mac" "=" string-value
+  
+  timestamp      = 1*DIGIT
+  string-value   = ( <"> plain-string <"> ) / plain-string
+  plain-string   = 1*( %x20-21 / %x23-5B / %x5D-7E )
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The header attributes are set as follows:
+        </t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='id'>
+              <vspace />
+              REQUIRED. The MAC key identifier.
+            </t>
+            <t hangText='ts'>
+              <vspace />
+              REQUIRED. The request timestamp. The value MUST be a positive integer set by the
+              client when making each request to the number of seconds elapsed from a fixed point
+              in time (e.g. January 1, 1970 00:00:00 GMT). The value MUST NOT include leading zeros
+              (e.g. <spanx style='verb'>000273154346</spanx>).
+            </t>
+            <t hangText='nonce'>
+              <vspace />
+              REQUIRED. A unique string generated by the client. The value MUST be unique across
+              all requests with the same timestamp and MAC key identifier combination.
+            </t>
+            <t hangText='ext'>
+              <vspace />
+              OPTIONAL. A string used to include additional information which is covered by the
+              request MAC. The content and format of the string is beyond the scope of this
+              specification.
+            </t>
+            <t hangText='mac'>
+              <vspace />
+              REQUIRED. The HTTP request MAC as described in <xref target='mac' />.
+            </t>
+          </list>
+        </t>
+        <t>
+          Attributes MUST NOT appear more than once. Attribute values are limited to a subset of
+          ASCII, which does not require escaping, as defined by the plain-string ABNF.
+        </t>
+      </section>
+
+      <section title='Request MAC' anchor='mac'>
+        <t>
+          The client uses the MAC algorithm and the MAC key to calculate the request MAC. This
+          specification defines two algorithms: <spanx style='verb'>hmac-sha-1</spanx> and
+          <spanx style='verb'>hmac-sha-256</spanx>, and provides an extension registry for
+          additional algorithms.
+        </t>
+
+        <section title='Normalized Request String' anchor='base_string'>
+          <t>
+            The normalized request string is a consistent, reproducible concatenation of several of
+            the HTTP request elements into a single string. By normalizing the request into a
+            reproducible string, the client and server can both calculate the request MAC over the
+            exact same value.
+          </t>
+          <t>
+            The string is constructed by concatenating together, in order, the following HTTP
+            request elements, each followed by a new line character (%x0A):
+          </t>
+          <t>
+            <list style='numbers'>
+              <t>
+                The timestamp value calculated for the request.
+              </t>
+              <t>
+                The nonce value generated for the request.
+              </t>
+              <t>
+                The HTTP request method in upper case. For example:
+                <spanx style='verb'>HEAD</spanx>, <spanx style='verb'>GET</spanx>,
+                <spanx style='verb'>POST</spanx>, etc.
+              </t>
+              <t>
+                The HTTP request-URI as defined by <xref target='RFC2616' /> section 5.1.2.
+              </t>
+              <t>
+                The hostname included in the HTTP request using the
+                <spanx style='verb'>Host</spanx> request header field in lower case.
+              </t>
+              <t>
+                The port as included in the HTTP request using the
+                <spanx style='verb'>Host</spanx> request header field. If the header field does not
+                include a port, the default value for the scheme MUST be used (e.g. 80 for HTTP and
+                443 for HTTPS).
+              </t>
+              <t>
+                The value of the <spanx style='verb'>ext</spanx>
+                <spanx style='verb'>Authorization</spanx> request header field attribute if one was
+                included in the request, otherwise, an empty string.
+              </t>
+            </list>
+          </t>
+          <t>
+            Each element is followed by a new line character (%x0A) including the last element and
+            even when an element value is an empty string.
+          </t>
+          <figure>
+            <preamble>
+              For example, the HTTP request:
+            </preamble>
+            <artwork>
+              <![CDATA[
+  POST /request?b5=%3D%253D&a3=a&c%40=&a2=r%20b&c2&a3=2+q HTTP/1.1
+  Host: example.com
+
+  Hello World!
+]]>
+            </artwork>
+            <postamble>
+              using timestamp <spanx style='verb'>264095:7d8f3e4a</spanx>, nonce
+              <spanx style='verb'>7d8f3e4a</spanx>, and extension string
+              <spanx style='verb'>a,b,c</spanx> is normalized into the following string (the new
+              line separator character is represented by <spanx style='verb'>\n</spanx> for display
+              purposes only):
+            </postamble>
+          </figure>
+          <figure>
+            <artwork>
+              <![CDATA[
+  264095\n
+  7d8f3e4a\n
+  POST\n
+  /request?b5=%3D%253D&a3=a&c%40=&a2=r%20b&c2&a3=2+q\n
+  example.com\n
+  80\n
+  a,b,c\n
+]]>
+            </artwork>
+          </figure>
+        </section>
+
+        <section title='hmac-sha-1'>
+          <t>
+            <spanx style='verb'>hmac-sha-1</spanx> uses the HMAC-SHA1 algorithm as defined in
+            <xref target='RFC2104' />:
+          </t>
+          <figure>
+            <artwork>
+              <![CDATA[
+  mac = HMAC-SHA1 (key, text)
+]]>
+            </artwork>
+          </figure>
+          <t>
+            Where:
+          </t>
+          <t>
+            <list style='hanging' hangIndent='6'>
+              <t hangText='text'>
+                <vspace />
+                is set to the value of the normalized request string as described in
+                <xref target='base_string' />,
+              </t>
+              <t hangText='key'>
+                <vspace />
+                is set to the MAC key provided by the server, and
+              </t>
+              <t hangText='mac'>
+                <vspace />
+                is used to set the value of the <spanx style='verb'>mac</spanx> attribute,
+                after the result octet string is base64-encoded per <xref target='RFC2045' />
+                section 6.8.
+              </t>
+            </list>
+          </t>
+        </section>
+
+        <section title='hmac-sha-256'>
+          <t>
+            <spanx style='verb'>hmac-sha-256</spanx> uses the HMAC algorithm as defined in
+            <xref target='RFC2104' /> together with the SHA-256 hash function defined in
+            <xref target='NIST FIPS-180-3' />:
+          </t>
+          <figure>
+            <artwork>
+              <![CDATA[
+  mac = HMAC-SHA256 (key, text)
+]]>
+            </artwork>
+          </figure>
+          <t>
+            Where:
+          </t>
+          <t>
+            <list style='hanging' hangIndent='6'>
+              <t hangText='text'>
+                <vspace />
+                is set to the value of the normalize request string as described in
+                <xref target='base_string' />,
+              </t>
+              <t hangText='key'>
+                <vspace />
+                is set to the MAC key provided by the server, and
+              </t>
+              <t hangText='mac'>
+                <vspace />
+                is used to set the value of the <spanx style='verb'>mac</spanx> attribute,
+                after the result octet string is base64-encoded per <xref target='RFC2045' />
+                section 6.8.
+              </t>
+            </list>
+          </t>
+        </section>
+
+      </section>
+
+    </section>
+
+    <section title='Verifying Requests'>
+      <t>
+        A server receiving an authenticated request validates it by performing the following
+        REQUIRED steps:
+      </t>
+      <t>
+        <list style='numbers'>
+          <t>
+            Recalculate the request MAC as described in <xref target='mac' /> and compare the
+            request MAC to the value received from the client via the
+            <spanx style='verb'>mac</spanx> attribute.
+          </t>
+          <t>
+            Ensure that the combination of timestamp, nonce, and MAC key identifier received from
+            the client has not been received before in a previous request. The server MAY reject
+            requests with stale timestamps as described in <xref target='ts' />.
+          </t>
+          <t>
+            Verify the scope and validity of the MAC credentials.
+          </t>
+        </list>
+      </t>
+      <t>
+        If the request fails verification, the server SHOULD respond using the 401 (Unauthorized)
+        HTTP status code and include the <spanx style='verb'>WWW-Authenticate</spanx> response
+        header field as described in <xref target='authn-header' />.
+      </t>
+
+      <section title='Timestamp Verification' anchor='ts'>
+        <t>
+          The timestamp, nonce, and MAC key identifier combination provide a unique identifier
+          which enables the server to prevent replay attacks. Without replay protection, an
+          attacker can use a compromised (but otherwise valid and authenticated) request more
+          than once, gaining long term access to a protected resource.
+        </t>
+        <t>
+          Including a timestamp with the nonce removes the need to retain an infinite number of
+          nonce values for future checks, by enabling the server to restrict the time period after
+          which a request with an old timestamp is rejected. If such a restriction is enforced, the
+          server MUST:
+        </t>
+        <t>
+          <list style='symbols'>
+            <t>
+              At the time the first request is received from the client for each MAC key
+              identifier, calculate the difference (in seconds) between the request timestamp and
+              the server's clock. The difference - the request time delta - MUST be kept as long as
+              the MAC key credentials are valid.
+            </t>
+            <t>
+              For each subsequent client request, apply the request time delta to request timestamp
+              to calculate the adjusted request time - the time when the request MAC has been
+              generated by the client, adjusted to the server's clock.
+            </t>
+            <t>
+              Verify that the adjusted request time is within the allowed time period defined by
+              the server. The server SHOULD allow for a sufficiently large window to accommodate
+              network delays (between the time the request has been generated by the client to the
+              time it is received by the server and processed).
+            </t>
+          </list>
+        </t>
+      </section>
+
+      <section title='The "WWW-Authenticate" Response Header Field' anchor='authn-header'>
+        <t>
+          If the protected resource request does not include authentication credentials, contains
+          an invalid MAC key identifier, or is malformed, the server SHOULD include the HTTP
+          <spanx style='verb'>WWW-Authenticate</spanx> response header field.
+        </t>
+        <figure>
+          <preamble>
+            For example:
+          </preamble>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: MAC
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The <spanx style='verb'>WWW-Authenticate</spanx> request header field uses the framework
+          defined by <xref target='RFC2617' /> as follows:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  challenge   = "MAC" [ 1*SP #param ]
+  param       = error / auth-param
+  error       = "error" "=" ( token / quoted-string)
+]]>
+          </artwork>
+        </figure>
+        <t>
+          Each attribute MUST NOT appear more than once.
+        </t>
+        <t>
+          If the protected resource request included a MAC
+          <spanx style='verb'>Authorization</spanx> request header field and failed authentication,
+          the server MAY include the <spanx style='verb'>error</spanx> attribute to provide the
+          client with a human-readable explanation why the access request was declined to assist
+          the client developer in identifying the problem.
+        </t>
+        <figure>
+          <preamble>
+            For example:
+          </preamble>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: MAC error="The MAC credentials expired"
+]]>
+          </artwork>
+        </figure>
+      </section>
+
+    </section>
+
+    <section title='Use with OAuth 2.0' anchor='oauth2'>
+      <t>
+        OAuth 2.0 (<xref target='I-D.ietf-oauth-v2' />) defines an extensible token-based
+        authentication framework. The MAC authentication scheme can be used to make OAuth-based
+        requests by issuing MAC-type access tokens.
+      </t>
+      <t>
+        This specification does not define methods for the client to specifically request a
+        MAC-type token from the authorization server. Additionally, it does not include any
+        discovery facilities for identifying which HMAC algorithms are supported by a resource
+        server, or how the client may go about obtaining MAC access tokens for any given protected
+        resource.
+      </t>
+
+      <section title='Issuing MAC-Type Access Tokens'>
+        <t>
+          Authorization servers issuing MAC-type access tokens MUST include the following
+          parameters whenever a response includes the <spanx style='verb'>access_token</spanx>
+          parameter:
+        </t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='access_token'>
+              <vspace />
+              REQUIRED. The MAC key identifier.
+            </t>
+            <t hangText='mac_key'>
+              <vspace />
+              REQUIRED. The MAC key.
+            </t>
+            <t hangText='mac_algorithm'>
+              <vspace />
+              REQUIRED. The MAC algorithm used to calculate the request MAC. Value MUST be one
+              of <spanx style='verb'>hmac-sha-1</spanx>, <spanx style='verb'>hmac-sha-256</spanx>, or
+              a registered extension algorithm name as described in <xref target='registry' />.
+            </t>
+          </list>
+        </t>
+        <figure>
+          <preamble>
+            For example:
+          </preamble>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 200 OK
+  Content-Type: application/json
+  Cache-Control: no-store
+
+  {
+    "access_token":"SlAV32hkKG",
+    "token_type":"mac",
+    "expires_in":3600,
+    "refresh_token":"8xLOxBtZp8",
+    "mac_key":"adijq39jdlaska9asud",
+    "mac_algorithm":"hmac-sha-256"
+  }
+]]>
+          </artwork>
+        </figure>
+      </section>
+
+    </section>
+
+    <section title='Security Considerations' anchor='Security'>
+      <t>
+        As stated in <xref target='RFC2617' />, the greatest sources of risks are usually found not
+        in the core protocol itself but in policies and procedures surrounding its use.
+        Implementers are strongly encouraged to assess how this protocol addresses their security
+        requirements.
+      </t>
+
+      <section title='MAC Keys Transmission'>
+        <t>
+          This specification describes two mechanism for obtaining or transmitting MAC keys, both
+          require the use of a transport-layer security mechanism when sending MAC keys to the
+          client. Additional methods used to obtain MAC credentials must ensure that these
+          transmissions are protected using transport-layer mechanisms such as TLS or SSL.
+        </t>
+      </section>
+
+      <section title='Confidentiality of Requests'>
+        <t>
+          While this protocol provides a mechanism for verifying the integrity of requests, it
+          provides no guarantee of request confidentiality. Unless further precautions are taken,
+          eavesdroppers will have full access to request content. Servers should carefully consider
+          the kinds of data likely to be sent as part of such requests, and should employ
+          transport-layer security mechanisms to protect sensitive resources.
+        </t>
+      </section>
+
+      <section title='Spoofing by Counterfeit Servers'>
+        <t>
+          This protocol makes no attempt to verify the authenticity of the server. A hostile party
+          could take advantage of this by intercepting the client's requests and returning
+          misleading or otherwise incorrect responses. Service providers should consider such
+          attacks when developing services using this protocol, and should require transport-layer
+          security for any requests where the authenticity of the resource server or of request
+          responses is an issue.
+        </t>
+      </section>
+
+      <section title='Plaintext Storage of Credentials'>
+        <t>
+          The MAC key functions the same way passwords do in traditional authentication systems. In
+          order to compute the request MAC, the server must have access to the MAC key in plaintext
+          form. This is in contrast, for example, to modern operating systems, which store only a
+          one-way hash of user credentials.
+        </t>
+        <t>
+          If an attacker were to gain access to these MAC keys - or worse, to the server's database
+          of all such MAC keys - he or she would be able to perform any action on behalf of any
+          resource owner. Accordingly, it is critical that servers protect these MAC keys from
+          unauthorized access.
+        </t>
+      </section>
+
+      <section title='Entropy of MAC Keys'>
+        <t>
+          Unless a transport-layer security protocol is used, eavesdroppers will have full access
+          to authenticated requests and request MAC values, and will thus be able to mount offline
+          brute-force attacks to recover the MAC key used. Servers should be careful to assign MAC
+          keys which are long enough, and random enough, to resist such attacks for at least the
+          length of time that the MAC credentials are valid.
+        </t>
+        <t>
+          For example, if the MAC credentials are valid for two weeks, servers should ensure that
+          it is not possible to mount a brute force attack that recovers the MAC key in less than
+          two weeks. Of course, servers are urged to err on the side of caution, and use the
+          longest MAC key reasonable.
+        </t>
+        <t>
+          It is equally important that the pseudo-random number generator (PRNG) used to generate
+          these MAC keys be of sufficiently high quality. Many PRNG implementations generate number
+          sequences that may appear to be random, but which nevertheless exhibit patterns or other
+          weaknesses which make cryptanalysis or brute force attacks easier. Implementers should be
+          careful to use cryptographically secure PRNGs to avoid these problems.
+        </t>
+      </section>
+
+      <section title='Denial of Service / Resource Exhaustion Attacks'>
+        <t>
+          This specification includes a number of features which may make resource exhaustion
+          attacks against servers possible. For example, this protocol requires servers to track
+          used nonces. If an attacker is able to use many nonces quickly, the resources required to
+          track them may exhaust available capacity. And again, this protocol can require servers
+          to perform potentially expensive computations in order to verify the request MAC on
+          incoming requests. An attacker may exploit this to perform a denial of service attack by
+          sending a large number of invalid requests to the server.
+        </t>
+        <t>
+          Resource Exhaustion attacks are by no means specific to this specification. However,
+          implementers should be careful to consider the additional avenues of attack that this
+          protocol exposes, and design their implementations accordingly. For example, entropy
+          starvation typically results in either a complete denial of service while the system
+          waits for new entropy or else in weak (easily guessable) MAC keys. When implementing this
+          protocol, servers should consider which of these presents a more serious risk for their
+          application and design accordingly.
+        </t>
+      </section>
+
+      <section title='Timing Attacks'>
+        <t>
+          This specification makes use of HMACs, for which a signature verification involves
+          comparing the received MAC string to the expected one. If the string comparison operator
+          operates in observably different times depending on inputs, e.g. because it compares the
+          strings character by character and returns a negative result as soon as two characters
+          fail to match, then it may be possible to use this timing information to determine the
+          expected MAC, character by character.
+        </t>
+        <t>
+          Service implementers are encouraged to use fixed-time string comparators for MAC
+          verification.
+        </t>
+      </section>
+
+      <section title='CSRF Attacks'>
+        <t>
+          A Cross-Site Request Forgery attack occurs when a site, evil.com, initiates within the
+          victim's browser the loading of a URL from or the posting of a form to a web site where a
+          side-effect will occur, e.g. transfer of money, change of status message, etc. To prevent
+          this kind of attack, web sites may use various techniques to determine that the
+          originator of the request is indeed the site itself, rather than a third party. The
+          classic approach is to include, in the set of URL parameters or form content, a nonce
+          generated by the server and tied to the user's session, which indicates that only the
+          server could have triggered the action.
+        </t>
+        <t>
+          Recently, the Origin HTTP header has been proposed and deployed in some browsers. This
+          header indicates the scheme, host, and port of the originator of a request. Some web
+          applications may use this Origin header as a defense against CSRF.
+        </t>
+        <t>
+          To keep this specification simple, HTTP headers are not part of the string to be MAC'ed.
+          As a result, MAC authentication cannot defend against header spoofing, and a web site
+          that uses the Host header to defend against CSRF attacks cannot use MAC authentication to
+          defend against active network attackers. Sites that want the full protection of MAC
+          Authentication should use traditional, cookie-tied CSRF defenses.
+        </t>
+      </section>
+
+      <section title='Coverage Limitations'>
+        <t>
+          The normalized request string has been designed to support the authentication methods
+          defined in this specification. Those designing additional methods, should evaluated the
+          compatibility of the normalized request string with their security requirements.
+          Since the normalized request string does not cover the entire HTTP request, servers
+          should employ additional mechanisms to protect such elements.
+        </t>
+        <t>
+          The request MAC does not cover entity-header fields which can often affect how the
+          request body is interpreted by the server (i.e. Content-Type). If the server behavior is
+          influenced by the presence or value of such header fields, an attacker can manipulate the
+          request header without being detected.
+        </t>
+      </section>
+
+    </section>
+
+    <section title='IANA Considerations' anchor='IANA'>
+
+      <section title='The HTTP MAC Authentication Scheme Algorithm Registry' anchor='registry'>
+        <t>
+          This specification establishes the HTTP MAC authentication scheme algorithm registry.
+        </t>
+        <t>
+          Additional MAC algorithms are registered on the advice of one or more Designated Experts
+          (appointed by the IESG or their delegate), with a Specification Required (using
+          terminology from <xref target='RFC5226' />). However, to allow for the allocation of
+          values prior to publication, the Designated Expert(s) may approve registration once they
+          are satisfied that such a specification will be published.
+        </t>
+        <t>
+          Registration requests should be sent to the [TBD]@ietf.org mailing list for review and
+          comment, with an appropriate subject (e.g., "Request for MAC Algorithm: example").
+          [[ Note to RFC-EDITOR: The name of the mailing list should be determined in consultation
+          with the IESG and IANA. Suggested name: http-mac-ext-review. ]]
+        </t>
+        <t>
+          Within at most 14 days of the request, the Designated Expert(s) will either approve or
+          deny the registration request, communicating this decision to the review list and IANA.
+          Denials should include an explanation and, if applicable, suggestions as to how to make
+          the request successful.
+        </t>
+        <t>
+          Decisions (or lack thereof) made by the Designated Expert can be first appealed to
+          Application Area Directors (contactable using app-ads@tools.ietf.org email address or
+          directly by looking up their email addresses on http://www.iesg.org/ website) and, if the
+          appellant is not satisfied with the response, to the full IESG (using the iesg@iesg.org
+          mailing list).
+        </t>
+        <t>
+          IANA should only accept registry updates from the Designated Expert(s), and should direct
+          all requests for registration to the review mailing list.
+        </t>
+
+        <section title='Registration Template'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Algorithm name:'>
+                <vspace />
+                The name requested (e.g., "example").
+              </t>
+              <t hangText='Change controller:'>
+                <vspace />
+                For standards-track RFCs, state "IETF". For others, give the name of the
+                responsible party. Other details (e.g., postal address, e-mail address, home page
+                URI) may also be included.
+              </t>
+              <t hangText='Specification document(s):'>
+                <vspace />
+                Reference to document that specifies the algorithm, preferably including a URI that
+                can be used to retrieve a copy of the document. An indication of the relevant
+                sections may also be included, but is not required.
+              </t>
+            </list>
+          </t>
+        </section>
+        <section title='Initial Registry Contents'>
+          <t>
+            The HTTP MAC authentication scheme algorithm registry's initial contents are:
+          </t>
+          <t>
+            <list style='symbols'>
+              <t>
+                Algorithm name: hmac-sha-1
+              </t>
+              <t>
+                Change controller: IETF
+              </t>
+              <t>
+                Specification document(s): [[ this document ]]
+              </t>
+            </list>
+          </t>
+          <t>
+            <list style='symbols'>
+              <t>
+                Algorithm name: hmac-sha-256
+              </t>
+              <t>
+                Change controller: IETF
+              </t>
+              <t>
+                Specification document(s): [[ this document ]]
+              </t>
+            </list>
+          </t>
+        </section>
+
+      </section>
+
+      <section title='OAuth Access Token Type Registration'>
+        <t>
+          This specification registers the following access token type in the OAuth Access Token
+          Type Registry.
+        </t>
+
+        <section title='The "mac" OAuth Access Token Type'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Type name:'>
+                <vspace />
+                mac
+              </t>
+              <t hangText='Additional Token Endpoint Response Parameters:'>
+                <vspace />
+                secret, algorithm
+              </t>
+              <t hangText='HTTP Authentication Scheme(s):'>
+                <vspace />
+                MAC
+              </t>
+              <t hangText='Change controller:'>
+                <vspace />
+                IETF
+              </t>
+              <t hangText='Specification document(s):'>
+                <vspace />
+                [[ this document ]]
+              </t>
+            </list>
+          </t>
+        </section>
+
+      </section>
+
+      <section title='OAuth Parameters Registration'>
+        <t>
+          This specification registers the following parameters in the OAuth Parameters Registry
+          established by <xref target='I-D.ietf-oauth-v2' />.
+        </t>
+
+        <section title='The "mac_key" OAuth Parameter'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Parameter name:'>
+                mac_key
+              </t>
+              <t hangText='Parameter usage location:'>
+                authorization response, token response
+              </t>
+              <t hangText='Change controller:'>
+                IETF
+              </t>
+              <t hangText='Specification document(s):'>
+                [[ this document ]]
+              </t>
+              <t hangText='Related information:'>
+                None
+              </t>
+            </list>
+          </t>
+        </section>
+
+        <section title='The "mac_algorithm" OAuth Parameter'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Parameter name:'>
+                mac_algorithm
+              </t>
+              <t hangText='Parameter usage location:'>
+                authorization response, token response
+              </t>
+              <t hangText='Change controller:'>
+                IETF
+              </t>
+              <t hangText='Specification document(s):'>
+                [[ this document ]]
+              </t>
+              <t hangText='Related information:'>
+                None
+              </t>
+            </list>
+          </t>
+        </section>
+
+      </section>
+
+    </section>
+
+    <section title='Acknowledgments'>
+      <t>
+        The author would like to thank Ben Adida, Adam Barth, Phil Hunt, Rasmus Lerdorf,
+        James Manger, William Mills, Scott Renfro, Justin Richer, Toby White, Peter Wolanin,
+        and Skylar Woodward for their contributions, suggestions, and feedback.
+      </t>
+    </section>
+
+  </middle>
+
+  <back>
+
+    <references title='Normative References'>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2045.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2104.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2616.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2617.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.3986.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6265.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-httpbis-p1-messaging-13.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-oauth-v2-15.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml4/reference.W3C.REC-html401-19991224.xml' ?>
+
+      <reference anchor='NIST FIPS-180-3'>
+        <front>
+          <title>Secure Hash Standard (SHS). FIPS PUB 180-3, October 2008</title>
+          <author>
+            <organization>National Institute of Standards and Technology</organization>
+          </author>
+        </front>
+        <format type='pdf' target='http://www.nist.gov/itl/upload/fips180-3_final.pdf' />
+      </reference>
+
+    </references>
+
+    <references title='Informative References'>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5849.xml' ?>
+
+    </references>
+  </back>
+
+</rfc>
