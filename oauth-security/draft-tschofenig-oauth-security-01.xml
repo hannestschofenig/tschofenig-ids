@@ -12,7 +12,6 @@
 <!ENTITY RFC4949 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4949.xml">
 <!ENTITY RFC6749 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6749.xml">
 <!ENTITY RFC6750 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6750.xml">
-
 <!ENTITY I-D.ietf-oauth-json-web-token SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-json-web-token.xml">
 <!ENTITY RFC4279 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4279.xml">
 <!ENTITY RFC5246 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml">
@@ -24,7 +23,6 @@
 <!ENTITY I-D.ietf-oauth-v2-http-mac SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-v2-http-mac.xml">
 <!ENTITY I-D.hardjono-oauth-kerberos SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.hardjono-oauth-kerberos.xml">
 <!ENTITY I-D.iab-privacy-considerations SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.iab-privacy-considerations.xml">
-<!ENTITY I-D.rescorla-stateless-tokens SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.rescorla-stateless-tokens.xml">
 ]>
 <rfc category="info" docName="draft-tschofenig-oauth-security-01.txt" ipr="trust200902">
   <front>
@@ -359,168 +357,82 @@
    <t>Finally, there are threats that relate to the experience of the software developer as well as operational policies. For example, a frequently raised concern is the absent of verifying that the server's presented identity matches its reference identity so it can authenticate the communication endpoint and authorize it. Verifying the server identity in TLS is discussed at length in <xref target="RFC6125"/>. There are also various guesses about what application developers are able to implement correctly and easily and to what degree they can rely on third party libraries.[QUESTION: How do we reflect these requirements in the design?]</t>
 
 </section> 
-<section title="Use Cases">
-	<section title="Access to 'Unprotected' Resource">
-		<t>Description:
-		<list style="empty"> 
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+   <section title="Use Cases">
+	  <t>This section lists use cases that provide additional requirements and 
+	  constrain the solution space.</t>
+      <section title="Access to an 'Unprotected' Resource">
+          <t>This use case is for a web client that needs to access
+          a resource where no integrity and confidentiality
+          protection is provided for the exchange of data using TLS following
+          the OAuth-based request. In accessing the resource, the
+          request, which includes the access token, must be protected
+          against replay, and modification.</t>
+		  <t>While it is possible to utilize bearer tokens in this scenario, as described in  <xref target="RFC6750"/>, with TLS 
+		  protection when the request to the protected resource is made there may be the desire to avoid using TLS between the 
+		  client and the resource server at all. In such a case the bearer token approach is not possible since it relies on TLS 
+		  for ensuring integrity and confidentiality protection of the access token exchange since otherwise replay attacks
+		  are possible: First, an eavesdropper may steal an access token and
+		  represent it at a different resource server. Second, an eavesdropper may 
+		  steal an access token and replay it against the same resource server at a 
+		  later point in time. In both cases, if the attack is successful, the 
+		  adversary gets access to the resource owners data or may perform an 
+		  operation selected by the adversary (e.g., sending a message). Note that 
+		  the adversary may obtain the access token (if the recommendations in <xref target="RFC6749"/> and <xref target="RFC6750"/> are not followed) using a number of ways, including 
+		  eavesdropping the communication on the wireless link.
+        </t>
+        <t>Consequently, the important assumption in this use case is that a resource server does not have TLS support and the security solution should work in such a scenario.
+         Furthermore, it may not be necessary to provide authentication of the resource server towards the client.</t>
+      </section>
+	  
+      <section title="Offering Application Layer End-to-End Security">
+
+       <t>In Web deployments resource servers are often placed
+          behind load balancers. Note that the load balancers are deployed by the same organization that operates the resource servers. 
+		  These load balancers may terminate
+          Transport Layer Security (TLS) and the resulting HTTP
+          traffic may be transmitted in clear from the load
+          balancer to the resource server. With application layer security 
+		  independent of the underlying TLS security it is possible to allow
+		  application servers to perform cryptographic verification on an end-to-end basis.</t>
+		  
+		  
+	  <t>The key aspect in this use case is therefore to offer end-to-end
+          security in the presence of load balancers
+          via application layer security.</t>
+        
+      </section>
+      
+	  <section title="Preventing Access Token Re-Use by the Resource Server">
+              
+                <t>Imagine a scenario where a resource server that receives a valid access token re-uses it with other 
+				resource server. The reason for re-use may be malicious or may well be legimiate. In a legimiate use case 
+				consider a case where the resource server needs to consult third party resource servers to complete the 
+				requested operation. In both cases it may be assumed that the scope of the access token is sufficiently
+				large that it allows such a re-use. For example, imagine a case where a company operates email services 
+				as well as picture sharing services and that company had decided to issue access tokens with a scope 
+				that allows access to both services.</t>
+				
+				<t>With this use case the desire is to prevent such access token re-use. This also implies that 
+				the legimiate use cases require additional enhancements for request chaining.</t>
+				
+        </section>
+        
+		<section title="TLS Channel Binding Support">
+              
+			  <t>In this use case we consider the scenario where an OAuth 2.0 request to a protected resource is secured using 
+			  TLS but the client and the resource server demand that the underlying TLS exchange is bound to additional application 
+			  layer security to prevent cases where the TLS connection is terminated at a load balancer or a TLS proxy is used that 
+			  splits the TLS connection into two separate connections.</t>
+			  
+			  <t>In this use case additional information is conveyed to the resource server to ensure that no entity entity has 
+			  tampered with the TLS connection.</t>
+		</section>
 		
-		<t>This use case is for a web client that needs to access an 
-			resource where no integrity and confidentiality protection is provided for the exchange of data following the 
-			OAuth-based request. In accessing the resource, 
-			the request that includes the access token must be protected against replays, and modification.</t>
-		</list>
-		</t>
-		<t>Pre-conditions:
-			<list style="symbols">
-				<t>The client has already obtained an access token from the authorization server, as defined in OAuth 2.0.
-				</t>
-				<t>The resource server is able to receive and accept access tokens issued by the authorization server.</t>
-				<t>The resource server does not have TLS support.</t>
-				<!-- <t>The token MAY included delegation to scoped content of a resource owner.</t> --> 
-			</list>
-		</t>
-		<t>Post-conditions:
-			<list style="empty"> 
-		<t>The resource service provider will have successfully 
-				validated the access token obtained from the client and the client gets access to the 
-				requested resource and an HTTP response is returned 
-				to the client.</t>
-		</list> 
-		</t>
-		<t>Requirements:
-			<list style="symbols">
-				<t>The resource server is not authenticated by the client.</t>
-				<t>The access token is bound to a particular client instance via freshly issued and unique keying material.</t>
-				<t>The resource server must successfully validate the token and bind it with the authorized client through the keying material that is tied to a specific resource request.</t>
-				<t></t>
-			</list>
-		</t>
 	</section>
-
-	<section title="Handling with Client Instances">
-		<t>Description:
-		<list style="empty">
-		<t>OAuth 2.0 supports so-called 'Public Clients', i.e., clients distributed in 
-		large numbers whereby all instances share the
-		same client credential. The client credential is used by the client to authenticate towards the authorization server. 
-		This exposes resource service providers to 
-		additional risks from client cloning, and fake
-		client applications that share received access tokens. In these 
-		scenarios, the focus is less about strong client authentication but 
-		more about linking the client that original requested and obtained an access token from an authorization 
-		server with the client that sent a request to a protected resource.</t>
-		</list> 
-		</t>
-		<t>Pre-conditions:
-			<list style="symbols">
-				<t>A client has been sufficiently authenticated by the authorization server when 
-				requesting an access token. For the purpose of this use case,
-				a weakly authenticated public client is 
-				sufficient.</t>
-				<t>The authorization server provides a unique and fresh key 
-				(symmetric or asymmetric) during 
-				the access token request exchange.</t>
-				<t>This key is bounded to the access token (in terms of scope, lifetime, and protected resource).</t>
-			</list>
-		</t>
-		<t>Post-conditions:
-		<list style="empty"> 		
-		<t>The resource service provider is able to establish that the client 
-		that was issued the access token, is the same one that has presented the
-		access token as part of the resource request.</t>
-		</list> 
-		</t>
-		<t>Requirements:
-			<list style="symbols">
-				<t>The resource server be able to associate an issued access 
-				token with a particular client instance.</t>
-				<t>The resource server is able to differentiate clients based on 
-				the issued information.</t>
-				<t>Omitting client to authorization server authentication may be 
-				acceptable. [Editor's Note: This needs discussion.]</t>
-			</list>
-		</t>
-	</section>
-	
-		<section title="Offering Application Layer End-to-End Security">
-		<t>Description:
-		<list style="empty">
-		<t>In Web deployments larger resource servers are placed behind load balancers. These load balancers may terminate Transport Layer Security (TLS) and the resulting HTTP traffic may be transmitted in clear from the load balancer to the resource server. To allow end-to-end security in the presence of these load balancers additional protection at the application layer may be desired.</t>
-		</list> 
-		</t>
-		<t>Pre-conditions:
-			<list style="symbols">
-				<t>A client has been sufficiently authenticated by the authorization server when 
-				requesting an access token.</t>
-				<t>The authorization server provides a unique and fresh session key 
-				(symmetric or asymmetric) during 
-				the access token request exchange.</t>
-				<t>The request for access to a protected resource is provided at the application layer (potentially in addition TLS security at lower layers).</t>
-			</list>
-		</t>
-		<t>Post-conditions:
-		<list style="empty"> 		
-		<t>The resource service provider is able to establish that the client 
-		that was issued the access token, is the same one that has presented the
-		access token as part of the resource request.</t>
-		<t>Despite placement of load balancers the resource is able to perform a cryptographic verification of the received 
-		access request.</t>
-		</list> 
-		</t>
-		<t>Requirements:
-			<list style="symbols">
-				<t>The resource server be able to grant access based on the received and correctly verified access token.</t>
-			</list>
-		</t>
-	</section>
-
-	<!-- 
-		<section title="Resource Server Chaining/Wrapped Token Request">
-		<t>Description:</t>
-		<t>A resource server having received a valid token from a client needs 
-		access another background resource server acting as a 'chained' client 
-		on the resource owner's behalf. The resource server builds the chained 
-		token by wrapping the received token with its own client token binding 
-		the original security context with the new client server context.</t>
-		<t>Pre-conditions:
-		<list style="symbols">
-			<t>The resource server (chained client) HAS received and validated
-			a token from the external client.</t>
-			<t>The resource server has been issued a client token for the 
-			chained background resource server. The client token SHOULD include a 
-			key for the purpose of authenticating the client.</t>
-			<t>The chained resource server MUST be able to accept wrapped or 
-			multi-context tokens.</t>
-		</list>
-		</t>
-		<t>Post-conditions:</t>
-		<t>The chained resource server SHALL validate the received 
-			combined context token and be able to authenticate both the
-			chaining client application and the original external client
-			token information.</t>
-		<t>The chained resource server SHALL validate the chaining 
-			client application's right to act with the external client
-			token.</t>
-		<t>Requirements:
-			<list>
-				<t>The chaining resource client and chained resource server
-				MUST be able to authenticate each other.</t>
-				<t>The chained resource server MUST be able to validate the
-				chaining resource clients right to use the external token.</t>
-				<t>The chaining resource client credential MAY be long-lived.</t>
-				<t>The chaining resource client SHOULD be able to self-generate 
-				the wrapped or combined token presented to the chained resource
-				server in a single-leg fashion.</t>
-				<t>The combined authorization SHOULD NOT out-last the lifetime
-				or validity of the original external token.</t>
-			</list>
-		</t>
-	</section>
-	
-	--> 
-	
-</section>
-
+		
     <!-- ////////////////////////////////////////////////////////////////////////////////// -->
 
     <section anchor="sec-cons" title="Security Considerations">
@@ -619,7 +531,6 @@
 &RFC5246;
 &RFC4120;
 &I-D.hardjono-oauth-kerberos;
-<!-- &I-D.rescorla-stateless-tokens; --> 
 &RFC5849;
 &RFC5056;
 &RFC6750;
