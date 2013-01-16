@@ -1,0 +1,1568 @@
+
+
+
+Network Working Group                                      H. Tschofenig
+Internet-Draft                                                 L. Eggert
+Intended status: Informational                                 Z. Sarker
+Expires: July 20, 2013                                  January 16, 2013
+
+
+Report from the IAB/IRTF Workshop on Congestion Control for Interactive
+                        Real-Time Communication
+               draft-tschofenig-cc-workshop-report-01.txt
+
+Abstract
+
+   This document provides a summary of the IAB/IRTF Workshop on
+   'Congestion Control for Interactive Real-Time Communication', which
+   took place in Vancouver, Canada, on July 28, 2012.  The main goal of
+   the workshop was to foster a discussion on congestion control
+   mechanisms for interactive real-time communication.  This report
+   summarizes the discussions and lists the conclusions and
+   recommendations to the Internet Engineering Task Force (IETF)
+   community.  The views and positions in this report are those of the
+   workshop participants and do not necessarily reflect the views and
+   positions of the authors, the Internet Architecture Board (IAB) or
+   the Internet Research Task Force (IRTF).
+
+Status of this Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on July 20, 2013.
+
+Copyright Notice
+
+   Copyright (c) 2013 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 1]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  3
+   2.  History and Current Status . . . . . . . . . . . . . . . . . .  5
+   3.  Workshop Structure . . . . . . . . . . . . . . . . . . . . . .  6
+     3.1.  History and Challenges . . . . . . . . . . . . . . . . . .  6
+     3.2.  Simulations and Measurements . . . . . . . . . . . . . . .  9
+   4.  Recommendations  . . . . . . . . . . . . . . . . . . . . . . . 11
+     4.1.  Changes to Network Infrastructure  . . . . . . . . . . . . 11
+     4.2.  Avoiding Self-Inflicted Queuing  . . . . . . . . . . . . . 12
+   5.  Acknowledgments  . . . . . . . . . . . . . . . . . . . . . . . 15
+   6.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 16
+   7.  Security Considerations  . . . . . . . . . . . . . . . . . . . 17
+   8.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+     8.1.  Normative References . . . . . . . . . . . . . . . . . . . 18
+     8.2.  Informative References . . . . . . . . . . . . . . . . . . 18
+   Appendix A.  Program Committee . . . . . . . . . . . . . . . . . . 20
+   Appendix B.  Workshop Material . . . . . . . . . . . . . . . . . . 21
+   Appendix C.  Accepted Position Papers  . . . . . . . . . . . . . . 22
+   Appendix D.  Workshop Participants . . . . . . . . . . . . . . . . 25
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 28
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 2]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+1.  Introduction
+
+   Any application that sends significant amounts of data over the
+   Internet is expected to implement reasonable congestion control
+   behavior.  Although the specific mechanisms depend on the application
+   or protocol, the motivations for congestion control are well
+   understood and documented in RFC 2914 [1] and RFC 5405 [2].  The
+   goals are:
+
+   1.  Preventing congestion collapse.
+
+   2.  Allowing multiple flows to share the network fairly.
+
+   The Internet has been used for interactive real-time communication
+   for decades, most of which is being transmitted using RTP over UDP,
+   often over provisioned capacity and/or using only rudimentary
+   congestion control mechanisms.
+
+   The development and upcoming widespread deployment of web-based real-
+   time media communication - where RTP is used to and from web browsers
+   to transmit audio, video and data - will likely result in substantial
+   new Internet traffic.  Due to the projected volume of this traffic,
+   as well as the fact that it is more likely to use unprovisioned
+   capacity, it is essential that it is transmitted with robust and
+   effective congestion control mechanisms.
+
+   Designing congestion control mechanisms that perform well under a
+   wide variety of traffic mixes and over network paths with widely
+   varying characteristics is not easy.  Prevention of congestion
+   collapse can be achieved through "circuit breaker" mechanisms, but
+   for media flows that are supposed to coexist with a user's other
+   ongoing communication sessions, a congestion control mechanism that
+   shares capacity fairly in the presence of a mix of TCP, UDP and other
+   protocol flows is needed.
+
+   Many additional complications arise.  Here are some examples:
+
+   1.  Real-time interactive media sessions require low latencies,
+       whereas streaming media can use large play-out buffers.
+
+   2.  RTCP feedback about an RTP session typically arrives much less
+       frequently than, for example, TCP ACKs for a given TCP
+       connection.  The RTP/RTCP control loop can lead to a longer
+       reaction time.
+
+   3.  Media codecs can usually only adjust their output rates in a much
+       more coarse-grained fashion than, for example, TCP, and user
+       experience suffers if encoding rates are switched too frequently.
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 3]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+       Codecs typically have a minimum sending rate as well.
+
+   4.  Some bits of an encoded media stream are more important than
+       others.  For example, losing or dropping an I-frame of a video
+       stream is more problematic than dropping a P-frame.
+
+   5.  Ramping up the transmission rate can be problematic.  Simply
+       increasing the output rate of the codec without knowledge whether
+       the network path can sustain transmission at the increased rate
+       runs the danger of incurring a significant amount of packet loss
+       that can cause playback artifacts.
+
+   6.  A congestion control scheme for interactive media needs to handle
+       bundles of interrelated flows (audio, video, data), in a way that
+       accommodates the preferences of the application in the event of
+       congestion.
+
+   7.  The desire to provide a congestion control mechanism that can be
+       efficiently implemented inside an application (e.g., a web server
+       and a browser) imposes additional restrictions.
+
+   8.  There are explicit congestion signals (such as ECN), and there
+       are indirect indications of congestion (such as packet delay and
+       loss).  However, congestion is not the only source of these
+       indirect signals.  Care must be taken to account for each of
+       these signals, particularly if various applications react on the
+       same signals.
+
+   9.  Network elements and end device operating systems often create
+       buffers to better support TCP-based applications.  These buffers
+       introduce additional communication delay, which harms the small
+       delay budget available for real-time applications.
+
+   Note that this document is a report on the proceedings of the
+   workshop.  The views and positions documented in this report are
+   those of the workshop participants and do not necessarily reflect the
+   views of the authors.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 4]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+2.  History and Current Status
+
+   The currently deployed RTP-based RTC systems use congestion control
+   schemes that are ad hoc at best.  As the Internet moves towards an
+   RTCWeb standard for interoperable audio/video conferencing, it needs
+   a standardized and most importantly effective mechanism for
+   congestion control.
+
+   The most immediate need is for a control mechanism that balances a
+   real-time flow fairly among other competing traffic.  For instance,
+   under congested conditions, it would be inappropriate to use far more
+   bandwidth than flows from other applications are using, particularly
+   lasting gross over-utilization of the network.  Simple "circuit
+   breaker" -style control mechanisms can prevent congestion collapse by
+   disabling a circuit that far exceeds a fair share and making the
+   circuit remain disabled for some time.  But does not in any way
+   enable concurrent flows to share available network capacity sensibly.
+
+   Therefore, in addition to circuit breakers, more complete methods for
+   media congestion control are needed.  The focus of the workshop was
+   on discussing ideas for these more complete congestion control
+   methods.  Note that the primary focus of the workshop is RTCWeb-style
+   audio/video flows.  The assumed underlying flows (in most attendees
+   minds) were digital audio/video data encapsulated in RTP over UDP
+   over IP.  Most of the concepts presented at the workshop could be
+   used with different media types over different transports, but this
+   was the generally assumed baseline for discussions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 5]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+3.  Workshop Structure
+
+   The IETF has a long history in the work on congestion control
+   mechanisms but with the ongoing standardization work on real-time
+   interactive communication on the Web new challenges emerged and
+   existing work got revisited.  The participants contributed 32 papers
+   as input to the one-day workshop.  To get the discussion focused the
+   workshop was structured into diverse sessions starting with a keynote
+   speech of Mark Handley describing the history of the work on
+   congestion control for real-time media followed with his views of the
+   problems.
+
+   A summary of the discussions and the identified issues are captured
+   in the subsections below.
+
+3.1.  History and Challenges
+
+   The primary goal of congestion control is to avoid congestion
+   collapse - to make the network work.  The second important goal is to
+   guarantee some sort of fairness so that all users get some service.
+   RFC 2914 [1] discusses these two aspects in detail and references
+   earlier work, such as [3] regarding historic incidents, such as
+   congestion collapse due to unnecessarily-retransmitted, undelivered,
+   and fragmented packets.
+
+   Mark argues that since 1988, the Internet has remained functional
+   despite exponential growth, routers that are sometimes buggy or
+   misconfigured, rapidly changing applications and usage patterns, and
+   flash crowds.  This is largely because most applications use TCP, and
+   TCP implements end-to-end congestion control.
+
+   TCP's congestion control adapts the window to fit the capacity
+   available in the network and accomplishes approximate fairness
+   between two competing flows over a period of time.  Mark indicates
+   that the provided level of fairness is not necessarily what we want:
+   The 1/round-trip-time relationship in TCP is not wonderful since it
+   means that network operators can packet loss by adding big buffers
+   (which leads to buffer bloat problems).  The 1/sqrt(packet drop rate)
+   relationship is also not necessarily desireable since TCP did not
+   work particularly well for high-speed flows (which had been subject
+   for a lot of additional TCP research work).
+
+   TCP controls the congestion window in bytes.  For bulk transfer,
+   usually this results in controlling the number of 1500 byte packets
+   per second sent.  Real-time media is, however, different since it has
+   it's own time constraints.  For audio we want to send, for example,
+   one packet per 20ms and for video 30 frames per second.  We therefore
+   want to avoid additional delay.
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 6]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   As an example, videos have a natural frame rate around 25 to 30
+   frames per second.  To relieve congestion one has to reduce the
+   number of packets per seconds transmission rate that than
+   transmitting smaller packets since at higher bitrates on WiFi the
+   time it takes to send a packet is almost negligible compared to the
+   time that is spent with MAC layer operations.  Reducing the packet
+   size makes little difference to the available capacity.  For a serial
+   line it does not matter how long the packets are.
+
+   Mark believes that the primary goals of congestion control (from a
+   network point of view) therefore are:
+
+   1.  Avoid congestion collapse
+
+   2.  Avoid starvation
+
+       *  Of TCP flows
+
+       *  Of real-time flows
+
+       *  TCP causing starvation of real-time flows when they share the
+          same FIFO queue
+
+   The applications have different requirements:
+
+   1.  Robust behavior.  One wants to have good quality when network is
+       working well and it still works when network is working poorly.
+
+   2.  Predictable behavior because it matters from a userability
+       behavior.  Variable quality is bad for users.
+
+   3.  Low latency.  With large buffers along the end-to-end path the
+       latency will increase when interactive real-time flows compete
+       with TCP flows since TCP will fill up the buffers and the
+       increased buffering leads to additional delays for the delivery
+       of the interactive real-time media.
+
+   Attempts for providing congestion control for interactive real-time
+   media were already done much earlier in the IETF, for example, with
+   the work on TCP-Friendly Rate Control (TFRC) [4].  It illustrates the
+   challenges quite well.  TFRC tries to accomplish the same throughput
+   as TCP, but with smoother transmission rate.  It measures the loss
+   and the round-trip trip but follows a similar model as TCP to
+   determine the sending rate.
+
+   In a link with low statistical multiplexing TCP can bad to bad
+   oscillations.  The sending rate hits the maximum rate of a bottleneck
+   link, a lot of loss occurs, and then the sending rate peaks again.
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 7]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   For very small buffers the result is acceptable but bigger buffers
+   lead to oscillations.  The result is bad for both network and
+   applications.  To deal with large buffers on these links a short-term
+   rate adaptation based on RTT is utilized in TRFC but this requires
+   good short-term RTT measurements.
+
+   TRFC works pretty well but unfortunately only in theory.  TFRC
+   assumes network is in charge of codec and that codec can produce data
+   at demanded rate.  Video is inheritent variable based on the content
+   and it is hard to produce data at exactly a demanded rate without
+   excessive buffering or ugly quality changes.
+
+   What if we put the codec in charge instead of the network?  The
+   network tells the codec the mean rate but it does not worry about
+   what happens in short time scales and the codec matches the mean rate
+   does not worry whether it is over or under the rate for a relatively
+   short time scale.  This again leads to the low statistical
+   multiplexing problem and this leads to oscillations.
+
+   The congestion control mechanism we know of work well if they can
+   respond fast to changes and if they do not bump into the low
+   statistical multiplexing problem.
+
+   We only know how to do congestion control well if the application is
+   under the control of the congestion control algorithm but we do not
+   know how to do the video streaming / video encoding part well if the
+   codec is in charge.  Trying to match the two together is where the
+   problems are.  We would like to have the codec and the network to be
+   in charge.  They cannot be both in charge at the same time.
+
+   To avoid the low statistical multiplexing problem techniques for
+   inferring linkspeed are needed and the work from Van Jacobson's
+   pathchar (and successors) serve as valuable input.  The idea is to
+   send short packet trains, to measure timing accurately, and to infer
+   the linkspeed from the relative delay.  If you know the linkspeed,
+   you can avoid exceeding it.  Congestion control can give you an
+   approximate rate, but you must not exceed linkspeed.  This is a
+   hybrid between codec being in charge (most of the time), and network
+   being in charge.  These work well for some links and not others where
+   the wireless link speed can change in less than a single RTT because
+   of fading, bitrate adaption, etc.
+
+   Regarding RTP and RTCP Mark is not sure whether they are good for
+   congestion control.  RTCP gives feedback, but it cannot send it often
+   enough to avoid bumping into linkspeed.  Circuit breakers on the
+   other hand do not help to give good performance on an uncongested
+   path.  With circuit breakers the sender measures the loss rate and
+   RTT, and runs with a loose "cap".
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 8]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   As a conclusion, Mark Handely claims that we know how to do good
+   congestion control, but only if congestion control is in charge, and
+   that's not acceptable for real-time applications.  We only know how
+   to do good congestion control if we change packet/sec rate and not
+   packet size.
+
+3.2.  Simulations and Measurements
+
+   This second part of the workshop was focused on the presentation and
+   the discussion of data gathered from simulations and real-world
+   measurements.
+
+   Keith Winstein started the discussion with his presentation of
+   measurements performed in cellular operator networks in the US [5].
+   The measurements indicate that the analysed cellular networks showed
+   varying RTT with transient latency spikes to hundreds of ms, link
+   speed that varies by a factor of 10 in a short time scale, and
+   buffers that do not drop packets until they contain 5 - 10 seconds of
+   data at bottleneck link speed.
+
+   Zaheduzzaman Sarker [6] presented results from real-time voice
+   communication in an LTE simulator utilizing ECN-based packet marking
+   and adaptation using implicit methods like packet loss and delay.
+   ECN marking provides ways for the network to explicitly signal
+   congestion but the audience raised concerns regarding the deployment
+   status of ECN.
+
+   Mo Zahaty [7] discussed TFRC [4] and TFRC with weighted fairness
+   (MulTFRC) [8], which tunes TFRC to consider multiple flows, and
+   showed the impact of RTT and loss rates on the type of video quality
+   that can be achieved under those conditions.  TFRC requires frequent
+   feedback, which RTCP does not provide even when considering RFC 4585
+   [9].  Mo argued that application-specified weighted fairness is
+   important but while MulTFRC provides better performance than TFRC it
+   is not clear whether the added complexity over NxTFRC is indeed worth
+   the effort.
+
+   Markku Kojo presented the analysis of how audio is affected by
+   concurrent TCP flows.  In the experiments shown in Figure 2 of [10] a
+   real-time interactive audio stream had to compete against one
+   concurrent TCP flow, as well as against six TCP fllows.  With one
+   concurrent TCP flow voice is impacted on startup and six TCP flows
+   destroy quality of call.  Two types of losses were analysed, namely
+   losses that result from a packet being dropped in the network (e.g.,
+   due to congestion or link errors) and losses that result from the
+   delayed arrival of the packet (due to buffering) when the audio
+   packet misses the deadline for the codec to decode and play the
+   transmitted content.  Consequently, even a moderate number of TCP
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                 [Page 9]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   flows typically used by browsers to retrieve content on Web pages in
+   parallel causes irreparable harm for audio transfers.  The size of
+   the initial window also impacts interactive real-time communication
+   since a larger TCP initial window size (e.g., IW(10) with ten
+   segments instead of IW(3)) leads to a bigger burst of packets because
+   of the initial window transmission.
+
+   Cullen Jennings [11] presented measurement results showing
+   interactions between RTP and TCP flows for several widely deployed
+   video communication products, i.e., Apple Facetime, Google Hangout,
+   Cisco Movi, and Microsoft Skype.  While all tested products
+   implemented some form of congestion control protocol none of the
+   applications did additive increase and multiplicative decrease.  In
+   general, it was observable that video adapts slower to changes of the
+   available bandwidth to improve the user's experience.
+
+   Stefan Holmer [12] investigated the difference between loss-based,
+   receiver-side delay-based and sender-side delay-based congestion
+   control.  The suitability of loss-based congestion control schemes
+   for interactive real-time communication systems heavily depends on
+   buffer sizes and the deployment of active queue management
+   mechanisms.  If most routers are using tail-drop queueing, then loss-
+   based congestion control cannot fulfill the requirements of
+   interactive real-time applications since those flows will effectively
+   increase the bitrate until a loss event is identified, which only
+   happens when the bottleneck queue is full.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 10]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+4.  Recommendations
+
+   The participants suggested to explore two complementary solution
+   tracks, as described in the two sub-sections below.
+
+4.1.  Changes to Network Infrastructure
+
+   Like for all other traffic on the network, better data plane
+   infrastructure improves the perceived quality of the best-effort
+   service the Internet provides for RTCWeb flows.  The IETF has already
+   deeloped several technologies that would be of immediate usefulness,
+   if they were deployed.  The workshop participants expressed the hope
+   that due to the volume and importance of RTCWeb traffic, some of
+   these technologies might finally see widespread use.
+
+   The first and by far most important improvement is traffic
+   segregation, i.e., the ability to use different queues for different
+   traffic types.  Specifically jitter/delay sensitive and throughput
+   maximizing protocols need to be in different queues.  It is not
+   possible for a single queue/AQM to be optimal for both.
+
+   Explicit Congestion Notification (ECN) allows routers along the end-
+   to-end path to signal the onset of congestion and allows applications
+   to respond early, avoiding losses and keep queue sizes short and
+   therefore end-to-end delay low.  ECN is implemented on some end
+   system stacks and routers, but frequently not enabled.
+
+   Different mechanisms have been developed to facilitate traffic
+   segregation.  Differentiated services are one possibility in this
+   space if applications start to mark outgoing traffic appropriately
+   and routers would segregate traffic accordingly, browsers could more
+   directly control the relative importance of their various flows, and
+   avoid self-competition.  Compared to ECN, however, DiffServ is far
+   more difficult to deploy meaningfully end-to-end, especially given
+   that DSCPs have no defined end-to-end meaning and packets can be re-
+   marked.  Quality-of-service (QoS) signaling together with resource
+   reservation facilities would enable a fine-grained and flexible way
+   to indicate resource needs to network elements but it is also by far
+   the most heavyweight proposal, and unlikely to be viable in the
+   global Internet.
+
+   However, any change to network infrastructure will take time
+   particularly if the interest of the involved stakeholders is not
+   aligned (as it is the case for network operators and over-the-top
+   application providers).  It is therefore imperative that RTCWeb
+   congestion control provides adequate improvement in the absence of
+   any of the aforementioned schemes.
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 11]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+4.2.  Avoiding Self-Inflicted Queuing
+
+   This approach tries to ensure that the network does not get congested
+   by focusing on the traffic sent by a single host independent of any
+   changes to networks, as mentioned in the earlier chapter.  A single
+   congestion manager within the end host or the browser could already
+   help to coordinate various congestion control activities and to
+   ensure a more coordinated approach between different applications,
+   and different flows.
+
+   The following activities were suggested during the workshop.
+
+   Reacting to all Congestion Signals:
+
+      To initiate the congestion control process it is important to
+      detect congestion in the communication path.  Congestion in the
+      comminication can be detected using either an explicit mechanism
+      or an implicit mechanism.  The explicit mechanism involves direct
+      congestion signaling usually from the congested network node, such
+      as ECN.  The ECN bits are set in the IP header by the network node
+      before it starts to drop the packets and gives end hosts to react
+      to the congestion.  In case of implicite mechanism, a particular
+      characteristics or event in the network traffic can be inferred as
+      a congestion signal.  For example, packet loss events or observed
+      delay increase or jitter in the communication path can be taken as
+      an implicit congestion signals.  These measurements can also be
+      made available in a variety of different protocols, such as RTCP
+      reports or transport protocols.  Communication endpoints can
+      trigger congestion control on the event of these phenomena.  It is
+      also possible to correlate these events to detect congestion in
+      the communication path.  The implicit and explicit signals can
+      come in any sequence and at any time during the ongoing media
+      session.  It is recommended to react to all the possible implicit
+      congestion signals, ideally from all applications at the end host,
+      to avoid self- inflicted queues.
+
+   Delay- and Loss-based Algorithms:
+
+      The main goal of designing a congestion control algorithm for
+      real-time conversational media is to achieve low latency.  An
+      explicit signaling based congestion control algorithm perhaps is
+      the best fit for this purpose as the network nodes are directly
+      involved in the process.  However, in case of absence of ECN
+      support in the end-to-end communication path delay based
+      algorithms are needed where the increased delay in the
+      communication path is taken into account as implicit congestion
+      signal.  While it is difficult to design algorithms based on delay
+      since many wireless networks show a wide delay variation even in a
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 12]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+      non-congested network.  The workshop participants recommended that
+      more research should be done to better understand non-congestion
+      related delay variation in the network.  General consensus among
+      the workshop participants was that when latency-based techniques
+      were competing against loss-based techniques, the loss-based
+      techniques got all the bandwidth.
+
+   Algorithm Evaluation:
+
+      The Internet consists of heterogeneous networks, which also
+      includes misconfigured, and unmanaged network nodes.  Bandwidth
+      and latency varies a lot.  Not only this, different services
+      deployed using RTP/UDP have different requirements in terms of
+      media quality.  A congestion control algorithm needs to perform
+      well not only in simulators but also in today's Internet.  To
+      achieve this it is recommended to test the algorithms with real-
+      world loss and delay figures to be sure that the desired audio/
+      video rates are attainable using the proposed algorithms for the
+      desired services.
+
+   Media Characteristics in Focus:
+
+      Interactive real-time voice and video data is inherently variable.
+      Usually the content of the media and service requirements dictate
+      the media coding.  The codec may be bursty and not all frames are
+      equally important (e.g., I-frames are more important than
+      P-frames).  Thus, codecs have limited room for adaptation.
+      Congestion control for audio and video codecs is therefore
+      different to congestion control applied for bulk transfers.  The
+      latter are allows buffering of media irrespective to their content
+      and more fine-grained control for a congestion control algorithm.
+      In the workshop these limitations were brought up and the workshop
+      participants recommended that a congestion controller needs to be
+      aware of these constraints.  However, further investigation is
+      needed to decide what information needs to be exchanged between a
+      codec and the congestion manager.
+
+   Startup Behaviour:
+
+      The startup media quality is very important for real-time
+      interactive application and for user-perceived application
+      performance.  The startup behavior of these is also different to
+      other traffic.  By nature the real-time interactive communication
+      applications want to provide a smooth user experience and maintain
+      best media quality to ease the interaction.  While it may be
+      desirable from a user experience point of view to immediately
+      start streaming video with high-definition quality and audio of a
+      wideband codec this will have impacts on the bandwidth of the
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 13]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+      already ongoing flows.  As such, it would be ideal to start slow
+      enough to avoid excessive congestion to other flows but fast
+      enough to offer a good user experience.  The sweetspot, however,
+      yet has to be found.
+
+   In addition, there were some discussions on how to make RTCWeb-style
+   flows fair to other RTCWeb-style flows, other TCP based flows, LEDBAT
+   flows, and other flows.  This is a much more difficult problem than
+   simply making RTCWeb flows avoid congestion.  Changing the way TCP is
+   used in browsers or other HTTP-based applications would already help,
+   for example, by avoid opening too many concurrent TCP connections,
+   and improved interworking with video streaming and file sharing
+   software.  The work on HTTP 2.0 with SPDY is already the step in the
+   right direction since SPDY makes makes use of a more aggressive form
+   of multiplexing instead of opening a larger number of TCP
+   connections.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 14]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+5.  Acknowledgments
+
+   We would like to thank the participants and the paper authors of the
+   position papers for their input.
+
+   Additionally, we would like to thank the following persons for their
+   review comments: Michael Welzl, John Leslie, Mirja Kuehlewind, Matt
+   Mathis, Mary Barnes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 15]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+6.  IANA Considerations
+
+   This memo includes no request to IANA.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 16]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+7.  Security Considerations
+
+   While two position papers focused on security congestion control
+   security itself was not on the agenda of the workshop.  As such,
+   nothing beyond the material contained in those position papers can be
+   reported.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 17]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+8.  References
+
+8.1.  Normative References
+
+   [1]   Floyd, S., "Congestion Control Principles", BCP 41, RFC 2914,
+         September 2000.
+
+   [2]   Eggert, L. and G. Fairhurst, "Unicast UDP Usage Guidelines for
+         Application Designers", BCP 145, RFC 5405, November 2008.
+
+8.2.  Informative References
+
+   [3]   Floyd, S. and K. Fall, "Promoting the Use of End-to-End
+         Congestion Control in the Internet", IEEE/ACM Transactions on
+         Networking URL: http://www.aciri.org/floyd/end2end-paper.html,
+         Aug 1999.
+
+   [4]   Floyd, S., Handley, M., Padhye, J., and J. Widmer, "TCP
+         Friendly Rate Control (TFRC): Protocol Specification",
+         RFC 5348, September 2008.
+
+   [5]   Floyd, S., Fall, K., and K. Fall, "Congestion Control for
+         Interactive Real-Time Flows on Today's Internet", IAB / IRTF
+         Workshop on Congestion Control for Interactive Real-Time
+         Communication URL:
+         http://www.iab.org/activities/workshops/cc-workshop/papers/,
+         July 2012.
+
+   [6]   Floyd, S. and K. Fall, "Improving the Interactive Real-Time
+         Video Communication with Network Provided Congestion
+         Notification", IAB / IRTF Workshop on Congestion Control for
+         Interactive Real-Time Communication URL:
+         http://www.iab.org/activities/workshops/cc-workshop/papers/,
+         July 2012.
+
+   [7]   Floyd, S., "Fairness Considerations for Congestion Control",
+         IAB / IRTF Workshop on Congestion Control for Interactive Real-
+         Time Communication URL:
+         http://www.iab.org/activities/workshops/cc-workshop/papers/,
+         July 2012.
+
+   [8]   Welzl, M., Damjanovic, D., and S. Gjessing, "MulTFRC: TFRC with
+         weighted fairness", draft-irtf-iccrg-multfrc-01 (work in
+         progress), July 2010.
+
+   [9]   Ott, J., Wenger, S., Sato, N., Burmeister, C., and J. Rey,
+         "Extended RTP Profile for Real-time Transport Control Protocol
+         (RTCP)-Based Feedback (RTP/AVPF)", RFC 4585, July 2006.
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 18]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   [10]  Floyd, S., Fall, K., Fall, K., Fall, K., Fall, K., and K. Fall,
+         "Impact of TCP on Interactive Real-Time Communication", IAB /
+         IRTF Workshop on Congestion Control for Interactive Real-Time
+         Communication URL:
+         http://www.iab.org/activities/workshops/cc-workshop/papers/,
+         July 2012.
+
+   [11]  Floyd, S., Fall, K., and K. Fall, "Vendors Considered
+         Harmfull", IAB / IRTF Workshop on Congestion Control for
+         Interactive Real-Time Communication URL:
+         http://www.iab.org/activities/workshops/cc-workshop/papers/,
+         July 2012.
+
+   [12]  Floyd, S., "On Fairness, Delay and Signaling of Different
+         Approaches to Real-time Congestion Control", IAB / IRTF
+         Workshop on Congestion Control for Interactive Real-Time
+         Communication URL:
+         http://www.iab.org/activities/workshops/cc-workshop/papers/,
+         July 2012.
+
+   [13]  Perkins, C. and V. Singh, "RTP Congestion Control: Circuit
+         Breakers for Unicast Sessions",
+         draft-ietf-avtcore-rtp-circuit-breakers-01 (work in progress),
+         October 2012.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 19]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+Appendix A.  Program Committee
+
+   This workshop was organized by Harald Alvestrand, Bernard Aboba, Mary
+   Barnes, Gonzalo Camarillo, Spencer Dawkins, Lars Eggert, Matthew
+   Ford, Randell Jesup, Cullen Jennings, Jon Peterson, Robert Sparks,
+   and Hannes Tschofenig.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 20]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+Appendix B.  Workshop Material
+
+   o  Main Workshop Page:
+      http://www.iab.org/activities/workshops/cc-workshop/
+
+   o  Position Papers:
+      http://www.iab.org/activities/workshops/cc-workshop/papers/
+
+   o  Slides:
+      http://www.iab.org/activities/workshops/cc-workshop/slides/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 21]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+Appendix C.  Accepted Position Papers
+
+   1.   "One control to rule them all" by Michael Welzl
+
+   2.   "Congestion Avoidance Through Deterministic" by Pier Luca
+        Montessoro, Riccardo Bernardini, Franco Blanchini, Daniele
+        Casagrande, Mirko Loghi, and Stefan Wieser
+
+   3.   "Congestion Control in Real Time Media - Context" by Harald
+        Alvestrand
+
+   4.   "Improving the Interactive Real-Time Video Communication with
+        Network Provided Congestion Notification" by ANM Zaheduzzaman
+        Sarker, Ingemar Johansson
+
+   5.   "Multiparty Requirements in Congestion Control for Real-Time
+        Interactive Media" by Magnus Westerlund
+
+   6.   "On Fairness, Delay and Signaling of Different Approaches to
+        Real-time Congestion Control" by Stefan Holmer
+
+   7.   "RTP Congestion Control and RTCWeb Application Feedback" by Ted
+        Hardie
+
+   8.   "Issues with Using Packet Delays and Inter-arrival Times for
+        Inference of Internet Congestion" by Wesley M. Eddy
+
+   9.   "Impact of TCP on Interactive Real-Time Communication" by Ilpo
+        Jarvinen, Binoy Chemmagate, Laila Daniel, Aaron Yi Ding, Markku
+        Kojo, and Markus Isomaki
+
+   10.  "Security Concerns For RTCWeb Congestion Control" by Dan York
+
+   11.  "Vendors Considered Harmfull" by Cullen Jennings, Suhas
+        Nandakumar, and Hein Phan
+
+   12.  "Network-Assisted Dynamic Adaptation" by Xiaoqing Zhu and Rong
+        Pan
+
+   13.  "Congestion Control for Interactive Real-Time Applications" by
+        Sanjeev Mehrotra, and Jin Li
+
+   14.  "There is No Magic Transport Wand" by John Leslie
+
+   15.  "Towards Adaptive Congestion Management for Interactive Real-
+        Time Communications" by Dirk Kutscher, and Miriam Kuehlewind
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 22]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   16.  "Enlarge the pre-congestion spectrum usage?" by Xavier Marjou,
+        and Emile Stephan
+
+   17.  "Congestion control for users who don't have first-class
+        internet access" by Maire Reavy
+
+   18.  "Realtime Congestion Challenges" by Randell Jesup
+
+   19.  "Congestion Control for Interactive Media: Control Loops & APIs"
+        by Varun Singh, Joerg Ott, and Colin Perkins
+
+   20.  "Some Notes on Threat Modelling Congestion Management" by Eric
+        Rescorla
+
+   21.  "Timely Detection of Lost Packets" by Ali C. Begen
+
+   22.  "Congestion Control Considerations for Data Channels" by Michael
+        Tuexen
+
+   23.  "Position paper on CC for Interactive RT" by Matt Mathis
+
+   24.  "Overall Considerations for Congestion Control" by M. Zanaty, B.
+        VerSteeg, B. Christensen, D. Benham, A. Romanow
+
+   25.  "Fairness Considerations for Congestion Control" by Mo Zanaty
+
+   26.  "Media is not Data: The Meaning of Fairness for Competing
+        Multimedia Flows" by Timothy B. Terriberry
+
+   27.  "Thoughts on Real-Time Congestion Control" by Murari Sridharan
+
+   28.  "Congestion Control for Interactive Real-Time Flows on Today's
+        Internet" by Keith Winstein, Anirudh Sivaraman, and Hari
+        Balakrishnan
+
+   29.  "Congestion Control Principles for CoAP" by Carsten Bormann,
+        Klaus Hartke
+
+   30.  "Erasure Coding and Congestion Control for Interactive Real-Time
+        Communication" by Pierre-Ugo Tournoux, Tuan Tran Thai, Emmanuel
+        Lochin, Jerome Lacan, Vincent Roca
+
+   31.  "Video Conferencing Specific Considerations for RTP Congestion
+        Control" by Stephen Botzko and Mary Barnes
+
+   32.  "The Internet is Broken, and How to Fix It" by Jim Gettys
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 23]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   33.  "Deployment Considerations for Congestion Control in Real-Time
+        Interactive Media Systems" by Jari Arkko
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 24]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+Appendix D.  Workshop Participants
+
+   We would like to thank the following workshop participants for
+   attending the workshop:
+
+   o  Mat Ford
+
+   o  Bernard Aboba
+
+   o  Alissa Cooper
+
+   o  Mary Barnes
+
+   o  Lars Eggert
+
+   o  Harald Alvestrand
+
+   o  Gonzalo Camarillo
+
+   o  Robert Sparks
+
+   o  Cullen Jennings
+
+   o  Dirk Kutscher
+
+   o  Carsten Bormann
+
+   o  Michael Welzl
+
+   o  Magnus Westerlund
+
+   o  Colin Perkins
+
+   o  Murari Sridharan
+
+   o  Klaus Hartke
+
+   o  Pier Luca Montessoro
+
+   o  Xavier Marjou
+
+   o  Vincent Roca
+
+   o  Wes Eddy
+
+   o  Ali C. Begen
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 25]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   o  Mo Zanaty
+
+   o  Jin Li
+
+   o  Dave Thaler
+
+   o  Bob Briscoe
+
+   o  Barry Leiba
+
+   o  Jari Arkko
+
+   o  Stewart Bryant
+
+   o  Martin Stiemerling
+
+   o  Russ Housley
+
+   o  Marc Blanchet
+
+   o  Zaheduzzaman Sarker
+
+   o  Xiaoqing Zhu
+
+   o  Randell Jesup
+
+   o  Eric Rescorla
+
+   o  Suhas Nandakumar
+
+   o  Hannes Tschofenig
+
+   o  Bill VerSteeg
+
+   o  Sean Turner
+
+   o  Keith Winstein
+
+   o  Jon Peterson
+
+   o  Maire Reavy
+
+   o  Michael Tuexen
+
+   o  Stefan Holmer
+
+   o  Joerg Ott
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 26]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+   o  Timothy Terriberry
+
+   o  Benoit Claise
+
+   o  Ted Hardie
+
+   o  Stephen Botzko
+
+   o  Matt Mathis
+
+   o  David Benham
+
+   o  Jim Gettys
+
+   o  Spencer Dawkins
+
+   o  Sanjeev Mehrotra
+
+   o  Adrian Farrel
+
+   o  Greg White
+
+   o  Markku Kojo
+
+   We also had remote participants, namely
+
+   o  Emmanuel Lochin
+
+   o  Mark Handley
+
+   o  Anirudh Sivaraman
+
+   o  John Leslie
+
+   o  Varun Singh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 27]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
+Authors' Addresses
+
+   Hannes Tschofenig
+   Linnoitustie 6
+   Espoo,   02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+   Lars Eggert
+   Sonnenallee 1
+   Kirchheim,   85551
+   Germany
+
+   Phone: +49 151 12055791
+   Email: lars@netapp.com
+   URI:   http://eggert.org/
+
+
+   Zaheduzzaman Sarker
+   Lulea,   SE-971 28
+   Sweden
+
+   Phone: +46 10 717 37 43
+   Email: zaheduzzaman.sarker@ericsson.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires July 20, 2013                [Page 28]
+
