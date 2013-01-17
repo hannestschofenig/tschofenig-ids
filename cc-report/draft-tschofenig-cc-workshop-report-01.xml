@@ -11,15 +11,14 @@ vim:et:ts=2:sw=2:spell:spelllang=en:tw=80
 
 <!ENTITY I-D.ietf-avtcore-rtp-circuit-breakers SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-avtcore-rtp-circuit-breakers.xml">
 <!ENTITY I-D.irtf-iccrg-multfrc SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.irtf-iccrg-multfrc.xml">
-
+<!ENTITY I-D.schulzrinne-lmap-requirements SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.schulzrinne-lmap-requirements.xml">
+<!ENTITY I-D.nichols-tsvwg-codel SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.nichols-tsvwg-codel.xml">
 <!ENTITY RFC5405 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5405.xml">
 <!ENTITY RFC2914 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2914.xml">
 <!ENTITY RFC4585 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4585.xml">
 <!ENTITY RFC5348 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5348.xml">
-
-
-
-
+<!ENTITY RFC6817 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6817.xml">
+<!ENTITY RFC2309 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2309.xml">
 	]>
 <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
 <!-- used by XSLT processors -->
@@ -287,6 +286,34 @@ RED itself is supported by the devices.
 
    -->
 
+   <section title="Constraints">
+   
+   <t>This part of the workshop tried to identify constraints that impact the solution space. The discussions in this session started with a presentation by Jim Gettys about problems related to Bufferbloat <xref target="Jim"/><xref target="GN2012"/>. Bufferbloat is "a phenomenon in a packet-switched computer network whereby excess buffering of packets inside the network causes high latency and jitter, as well as reducing the overall network throughput." <xref target="Bufferbloat"/>. While a certain amount of buffering is helpful to improve the efficiency not dropping packets in the event of congestion leads to increasing delays for interactive real-time communication.</t>
+
+<t>Packets may get buffered at various places along the end-to-end path including in the operating system/device drivers, customer premise equipment (such as cable modem and DSL routers), base stations, and routers. While the understanding of too large buffers has improved over the last few years the participants were still concerned that many equipment manufactures and network operators do not yet acknowledge the existence of the problem. This lack of understanding is existing network performance measurements that are focused on throughput and do not take latency into account. Only recently the Federal Communications Commission (FCC) has added latency tests to their test suites [REF missing].</t>
+
+<t>Active queue management (AQM) aims to prevent queues from growing too large. This is accomplished by monitoring queue length and by informing the sender to slow their transmission rate by dropping or marking packets. Random Early Detection (RED) <xref target="RFC2309"/> is one such AQM algorithm but it has not been widely deployed in routers largely because of challenges to configure it correctly <xref target="Feng"/>. Accoring to <xref target="JDNK12"/> , RED does not work with the default settings as it is "too gentle to handle fast changes due to TCP slow start when the aggregate traffic is limited". There may also be a lack of incentives to deploy AQM algorithms. Participants speculated about the time it takes to update network equipment with different noted the different expected update cycles of these devices. Measurement tools that allow an end user to determine the performance of their network is seen as a promising approach. The  how bad your network sucks and complain to your ISP. This will create market force. While the intent of the IETF IP Performance Metrics (ippm) working group <xref target="ippm"/> was to develop such metrics to qualify networks it may have started to early. A recent effort that has gotten a lot of attention of attention is <xref target="I-D.schulzrinne-lmap-requirements"/>.</t>
+
+<t>In face of bufferbloat the question was raised whether the development of a congestion control algorithm for interactive real-time applications provides any benefits. What can be done that will help now or whether network updates are needed to fix excessive queuing first? It was noted that current interactive voice usage over the Internet works most of the time satisfactory. To explain this situation various suggestions were provided, such as the usage of LEDBAT <xref target="RFC6817"/> for the download of software updates, the small percentage of voice traffic of the overall Internet traffic, and human protocols to avoid having other family members interfere during the time of conference call.</t>
+ 
+<t>Matt Mathis argued that the traffic of throughput-maximizing and delay-minimizing applications need to be in separate queues, i.e. that segregated queuing is applied. Others agreed with him.  Quality of Service signaling is a way to deploy segregated queuing but there are several simpler alternatives, such as Stochastic Fair Queuing and the Controlled Delay (CoDel) <xref target="I-D.nichols-tsvwg-codel"/>.</t>
+
+<t>Cullen Jennings raised a concern that not providing a solid congestion control mechanism for interactive video, as it was done with interactive voice, could have substantial impact due to the potential uptake in deployment triggered by the work on RTCWeb. He phrased it as "I'm worried about the approach that says 'Let us do the minimal' and that is what we did with voice -- nothing. If we do the same with video, we're going to be in trouble. In the class of space where voice is currently working, that's where I'm worried about video failing."</t>
+ 
+<t>Bill Ver Steeg suggested to consider three different deployment environments, namely
+<list style="numbers">
+<t>Flows competing with flows from the host ("self-inflicted queuing delay")</t>
+<t>Flows competing with flows in the same sub-network (e.g. home network)</t>
+<t>Flows competing with flows from other networks (e.g., traffic from different households that utilize the same DSL provider)</t>
+</list> 
+</t>
+
+<t>The narrowest problem domain that makes sense is to avoid self-inflicted queuing delay. This requires an information exchange inside a browser (or even beyond, as Michael Welzl suggested in <xref target="Michael"/>) to control and synchronize the exchange of audio, video, and data. John Leslie <xref target="John"/> also noted: "We're acting as if we believe congestion will magically be solved by a new transport algorithm. It won't." Instead, an interaction between the network layer, transport layer, and the application layer is needed whereby the application layer is the only practical place to balance what piece(s) to constrain to lower bandwidths. All flows relating to a user session should have a common congestion controller. For many applications, audio is much more critical than video. In those cases the video may back off, but the audio transmission remains unchanged.</t>
+
+
+
+   </section> 
+   
 	</section> 
 	
 	<section title="Recommendations">
@@ -445,12 +472,15 @@ RED itself is supported by the devices.
 	&I-D.ietf-avtcore-rtp-circuit-breakers;
 	&I-D.irtf-iccrg-multfrc;
 	&RFC4585;
+	&I-D.nichols-tsvwg-codel; 
+	&I-D.schulzrinne-lmap-requirements;
+	&RFC6817;
+	&RFC2309; 
 	&RFC5348;
 	
 	          <reference anchor="FF99">
 		        <front>
-		          <title>Promoting the Use of End-to-End
-                Congestion Control in the Internet</title>
+		          <title>Promoting the Use of End-to-End Congestion Control in the Internet</title>
                     <author fullname="Sally Floyd" initials="S." surname="Floyd">
 					</author>
 					<author fullname="Kevin Fall" initials="K." surname="Fall">
@@ -459,65 +489,98 @@ RED itself is supported by the devices.
 		          <date month="Aug" year="1999"/>
 		        </front>
 				   <seriesInfo
-			          name="IEEE/ACM Transactions on Networking"
+			          name="IEEE/ACM Transactions on Networking,"
 			          value="URL: http://www.aciri.org/floyd/end2end-paper.html"/>
 			        <format target="http://www.aciri.org/floyd/end2end-paper.html" type="HTML"/>
 		      </reference>
-
-			 <reference anchor="Keith">
+			  
+			  <reference anchor="Mo">
 		        <front>
-		          <title>Congestion Control for Interactive Real-Time Flows on Today's Internet</title>
-                    <author fullname="Keith Winstein" initials="S." surname="Floyd">
-					</author>
-					<author fullname="Anirudh Sivaraman" initials="K." surname="Fall">
-					</author>
-					<author fullname="Hari Balakrishnan" initials="K." surname="Fall">
+		          <title>Fairness Considerations for Congestion Control</title>
+                    <author fullname="Mo Zanaty" initials="M." surname="Zanaty">
 					</author>
 					
 		          <date day="28" month="July" year="2012"/>
 		        </front>
 				   <seriesInfo
-			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication"
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
 			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
 			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
 		      </reference>
- 
-               <reference anchor="Zahed">
+			  
+			  <reference anchor="Zahed">
 		        <front>
 		          <title>Improving the Interactive Real-Time Video Communication with Network Provided Congestion Notification</title>
-                    <author fullname="ANM Zaheduzzaman Sarker" initials="S." surname="Floyd">
+                    <author fullname="Zaheduzzaman Sarker" initials="Z." surname="Sarker">
 					</author>
-					<author fullname="Ingemar Johansson" initials="K." surname="Fall">
+					<author fullname="Ingemar Johansson" initials="I." surname="Johansson">
 					</author>
-
-					<date day="28" month="July" year="2012"/>
+					
+		          <date day="28" month="July" year="2012"/>
 		        </front>
-					 <seriesInfo
-			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication"
+				   <seriesInfo
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
 			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
 			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
 		      </reference>
- 
+			  
+			 <reference anchor="Keith">
+		        <front>
+		          <title>Congestion Control for Interactive Real-Time Flows on Today's Internet</title>
+                    <author fullname="Keith Winstein" initials="K." surname="Winstein">
+					</author>
+					<author fullname="Anirudh Sivaraman" initials="A." surname="Sivaraman">
+					</author>
+					<author fullname="Hari Balakrishnan" initials="H." surname="Balakrishnan">
+					</author>
+					
+		          <date day="28" month="July" year="2012"/>
+		        </front>
+				   <seriesInfo
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
+			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
+			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
+		      </reference>
+
+
+              <reference anchor="JDNK12">
+		        <front>
+		          <title>Harsh RED: Improving RED for Limited Aggregate Traffic</title>
+                    <author fullname="Ilpo Jarvinen" initials="I." surname="Jarvinen">
+					</author>
+					<author fullname="Aaron Yi Ding" initials="A." surname="Ding">
+					</author>
+					<author fullname="A. Nyrhinen" initials="A." surname="Nyrhinen">
+					</author>	
+                    <author fullname="Markku Kojo" initials="M." surname="Kojo">
+					</author>	
+					
+					<date month="March" year="2012"/>
+		        </front>
+					 <seriesInfo
+			          name="In Proceedings of the 26th IEEE International Conference on Advanced Information Networking and Applications (AINA 2012)"
+			          value=""/>
+		      </reference>
  
               <reference anchor="Markku">
 		        <front>
 		          <title>Impact of TCP on Interactive Real-Time Communication</title>
-                    <author fullname="Ilpo Jarvinen" initials="S." surname="Floyd">
+                    <author fullname="Ilpo Jarvinen" initials="I." surname="Jarvinen">
 					</author>
-					<author fullname="Binoy Chemmagate" initials="K." surname="Fall">
+					<author fullname="Binoy Chemmagate" initials="B." surname="Chemmagate">
 					</author>
-                    <author fullname="Laila Daniel" initials="K." surname="Fall">
+                    <author fullname="Laila Daniel" initials="L." surname="Daniel">
 					</author>
-                    <author fullname="Aaron Yi Ding" initials="K." surname="Fall">
+                    <author fullname="Aaron Yi Ding" initials="A." surname="Ding">
 					</author>
-                    <author fullname="Markku Kojo" initials="K." surname="Fall">
+                    <author fullname="Markku Kojo" initials="M." surname="Kojo">
 					</author>					
-                    <author fullname="Markus Isomaki" initials="K." surname="Fall">
+                    <author fullname="Markus Isomaki" initials="M." surname="Isomaki">
 					</author>		
 					<date day="28" month="July" year="2012"/>
 		        </front>
 					 <seriesInfo
-			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication"
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
 			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
 			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
 		      </reference>
@@ -525,42 +588,142 @@ RED itself is supported by the devices.
               <reference anchor="Cullen">
 		        <front>
 		          <title>Vendors Considered Harmfull</title>
-                    <author fullname="Cullen Jennings" initials="S." surname="Floyd">
+                    <author fullname="Cullen Jennings" initials="C." surname="Jennings">
 					</author>
-					<author fullname="Suhas Nandakumar" initials="K." surname="Fall">
+					<author fullname="Suhas Nandakumar" initials="S." surname="Nandakumar">
 					</author>
-                    <author fullname="Hein Phan" initials="K." surname="Fall">
+                    <author fullname="Hein Phan" initials="H." surname="Phan">
 					</author>
 					<date day="28" month="July" year="2012"/>
 		        </front>
 					 <seriesInfo
-			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication"
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
 			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
 			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
 		      </reference>
 			  
-			   <reference anchor="Mo">
+			   <reference anchor="Michael">
 		        <front>
-		          <title>Fairness Considerations for Congestion Control</title>
-                    <author fullname="Mo Zanaty" initials="S." surname="Floyd">
+		          <title>One control to rule them all</title>
+                    <author fullname="Michael Welzl" initials="M." surname="Welzl">
 					</author>
 					<date day="28" month="July" year="2012"/>
 		        </front>
 					 <seriesInfo
-			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication"
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
 			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
 			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
+		      </reference>
+		  
+			   <reference anchor="John">
+		        <front>
+		          <title>There is No Magic Transport Wand</title>
+                    <author fullname="John Leslie" initials="J." surname="Leslie">
+					</author>
+					<date day="28" month="July" year="2012"/>
+		        </front>
+					 <seriesInfo
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
+			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
+			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
+		      </reference>
+			  
+			  <reference anchor="Matt">
+		        <front>
+		          <title>Position paper on CC for Interactive RT</title>
+                    <author fullname="Matt Mathis" initials="M." surname="Mathis">
+					</author>
+					<date day="28" month="July" year="2012"/>
+		        </front>
+					 <seriesInfo
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
+			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
+			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
+		      </reference>
+			  
+			  <reference anchor="Jim">
+		        <front>
+		          <title>Bufferbloat: Dark Buffers in the Internet</title>
+                    <author fullname="Jim Gettys" initials="J." surname="Gettys">
+					</author>
+                    <author fullname="Jim Gettys" initials="J." surname="Gettys">
+					</author>
+					
+					<date month="May/June" year="2011"/>
+		        </front>
+					 <seriesInfo
+			          name="IEEE Internet Computing, 15, pp. 95 - 96"
+			          value=""/>
+		      </reference>
+			  
+			  <reference anchor="Feng">
+		        <front>
+		          <title>The BLUE Active Queue Management Algorithm</title>
+                    <author fullname="Wu-Chang Feng" initials="W." surname="Feng">
+					</author>
+                    <author fullname="Kang G. Shin" initials="K." surname="Shin">
+					</author>
+                    <author fullname="Dilip D. Kandlur" initials="D." surname="Kandlur">
+					</author>
+                    <author fullname="Debanjan Saha" initials="D." surname="Saha">
+					</author>
+					
+					<date month="August" year="2002"/>
+		        </front>
+					 <seriesInfo
+			          name="In IEEE/ACM Transactions on Networking, 10(4), pp. 513 - 528"
+			          value=""/>
+		      </reference>
+			  
+			  
+			  
+			  <reference anchor="ippm">
+		        <front>
+		          <title>IETF IP Performance Metrics (ippm) Working Group</title>
+                    <author fullname="IETF" initials="" surname="IETF">
+					</author>
+					<date month="Jan." year="2012"/>
+		        </front>
+				
+				<format target="http://datatracker.ietf.org/wg/ippm/charter/" type="HTML"/>
+		      </reference>
+			  
+			   <reference anchor="GN2012">
+		        <front>
+		          <title>Bufferbloat: Dark Buffers in the Internet</title>
+                    <author fullname="Jim Gettys" initials="J." surname="Gettys">
+					</author>
+                    <author fullname="Kathleen Nichols" initials="K." surname="Nichols">
+					</author>
+					
+					<date month="Jan." year="2012"/>
+		        </front>
+					 <seriesInfo
+			          name="Communications of the ACM, Vol. 55 No. 1, Pages 57 - 65, "
+			          value="URL: http://cacm.acm.org/magazines/2012/1/144810-bufferbloat/"/>
+				<format target="http://cacm.acm.org/magazines/2012/1/144810-bufferbloat/" type="HTML"/>
+		      </reference>
+			  
+		      <reference anchor="Bufferbloat">
+		        <front>
+		          <title>Bufferbloat</title>
+                    <author fullname="Wikipedia" initials="" surname="Wikipedia">
+					</author>
+					<date month="Jan." year="2012"/>
+		        </front>
+				
+				<format target="http://en.wikipedia.org/wiki/Bufferbloat" type="HTML"/>
 		      </reference>
 			  
               <reference anchor="Stefan">
 		        <front>
 		          <title>On Fairness, Delay and Signaling of Different Approaches to Real-time Congestion Control</title>
-                    <author fullname="Stefan Holmer" initials="S." surname="Floyd">
+                    <author fullname="Stefan Holmer" initials="S." surname="Holmer">
 					</author>
 					<date day="28" month="July" year="2012"/>
 		        </front>
 					 <seriesInfo
-			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication"
+			          name="IAB / IRTF Workshop on Congestion Control for Interactive Real-Time Communication,"
 			          value="URL: http://www.iab.org/activities/workshops/cc-workshop/papers/"/>
 			        <format target="http://www.iab.org/activities/workshops/cc-workshop/papers/" type="HTML"/>
 		      </reference>
