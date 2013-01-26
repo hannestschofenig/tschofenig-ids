@@ -4,7 +4,7 @@
 Network Working Group                                      H. Tschofenig
 Internet-Draft                                                 L. Eggert
 Intended status: Informational                                 Z. Sarker
-Expires: July 26, 2013                                  January 22, 2013
+Expires: July 30, 2013                                  January 26, 2013
 
 
 Report from the IAB/IRTF Workshop on Congestion Control for Interactive
@@ -41,7 +41,7 @@ Status of this Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on July 26, 2013.
+   This Internet-Draft will expire on July 30, 2013.
 
 Copyright Notice
 
@@ -52,7 +52,7 @@ Copyright Notice
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                 [Page 1]
+Tschofenig, et al.        Expires July 30, 2013                 [Page 1]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -108,7 +108,7 @@ Table of Contents
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                 [Page 2]
+Tschofenig, et al.        Expires July 30, 2013                 [Page 2]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -154,8 +154,8 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    2.  In an Real-time Transport Protocol (RTP) session feedback
        exchanged via the RTP Control Protocol (RTCP) typically arrives
        much less frequently than, for example, TCP ACKs for a given TCP
-       connection.  The RTP/RTCP control loop can lead to a longer
-       reaction time.
+       connection.  Theoretically, the RTP/RTCP control loop can lead to
+       a longer reaction time.
 
    3.  Media codecs can usually only adjust their output rates in a much
        more coarse-grained fashion than, for example, TCP, and user
@@ -164,7 +164,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                 [Page 3]
+Tschofenig, et al.        Expires July 30, 2013                 [Page 3]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -220,7 +220,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                 [Page 4]
+Tschofenig, et al.        Expires July 30, 2013                 [Page 4]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -271,24 +271,23 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    usually this results in controlling the number of 1500 byte packets
    per second sent.  Real-time media is, however, different since it has
    it's own time constraints.  For audio we want to send one packet per
-   20ms and for video 30 frames per second.  We therefore want to avoid
-   additional delay.
+   20ms and for video the ideal value would be 25 to 30 frames per
+   second.  We therefore want to avoid additional sending delay.
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                 [Page 5]
+Tschofenig, et al.        Expires July 30, 2013                 [Page 5]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
-   As an example, videos have a natural frame rate around 25 to 30
-   frames per second.  To relieve congestion one has to reduce the
-   number of packets-per-second transmission rate rather that
+   As an example, in case of video, to relieve congestion one has to
+   reduce the number of packets-per-second transmission rate rather than
    transmitting smaller packets since at higher bitrates on WiFi the
    time it takes to send a packet is almost negligible compared to the
    time that is spent with MAC layer operations.  Reducing the packet
    size makes little difference to the available capacity.  For a serial
-   line it does not matter how long the packets are.
+   line it does not matter how big the packets are.
 
    From a network point of view the goals of congestion control
    therefore are:
@@ -297,10 +296,8 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
    2.  Avoid starvation of TCP flows
 
-   3.  Avoid starvation of real-time flows
-
-   4.  Avoid that TCP causes a starvation of real-time flows when they
-       share the same FIFO queue
+   3.  Avoid starvation of real-time flows.  Specifically, in the case
+       where TCP and real-time flows share the same FIFO queue.
 
    From an application point of view the goals of congestion control are
    different, namely:
@@ -329,17 +326,17 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    In a link with low statistical multiplexing TCP can lead to bad
    oscillations.  The sending rate hits the maximum rate of a bottleneck
    link, a lot of loss occurs, and then the sending rate peaks again.
+   For very small buffers the result is acceptable but bigger buffers
+   lead to oscillations.  The result is bad for networks and for
+   applications.  To deal with large buffers on these links a short-term
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                 [Page 6]
+Tschofenig, et al.        Expires July 30, 2013                 [Page 6]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
-   For very small buffers the result is acceptable but bigger buffers
-   lead to oscillations.  The result is bad for networks and for
-   applications.  To deal with large buffers on these links a short-term
    rate adaptation based on round-trip time (RTT) information is
    utilized in TRFC but this requires good short-term RTT measurements.
 
@@ -360,24 +357,19 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    respond fast to changes and if they do not bump into the low
    statistical multiplexing problem.
 
-   We only know how to do congestion control well if the application is
-   under the control of the congestion control algorithm but we do not
-   know how to do the video streaming / video encoding part well if the
-   codec is in charge.  Trying to match the two together is where the
-   problems are.  We would like to have the codec and the network to be
-   in charge.  They cannot be both in charge at the same time.
-
    To avoid the low statistical multiplexing problem techniques for
    inferring linkspeed are needed and the work from Van Jacobson's
    pathchar [9] (and successors) serve as valuable input.  The idea is
    to send short packet trains, to measure timing accurately, and to
-   infer the linkspeed from the relative delay.  If you know the
-   linkspeed, you can avoid exceeding it.  Congestion control can give
-   you an approximate rate, but you must not exceed linkspeed.  This is
-   a hybrid between codec being in charge (most of the time), and
-   network being in charge.  These work well for some links and not
-   others where the wireless link speed can change in less than a single
-   RTT because of fading, bitrate adaption, etc.
+   infer the linkspeed from the relative delay.  If we know the
+   linkspeed, we can avoid exceeding it.  Congestion control can give us
+   an approximate rate, but we must not exceed linkspeed.  This is a
+   hybrid between codec being in charge (most of the time), and network
+   being in charge.  These work well for some links and not others where
+   the wireless link speed can change in less than a single RTT because
+   of fading, bitrate adaption, etc.  We would like to have the codec
+   and the network to be in charge.  However, they cannot be both in
+   charge at the same time.
 
    Mark indicated that he is not entirely sure whether RTCP is suitable
    for congestion control.  "RTCP gives feedback, but it cannot send it
@@ -386,18 +378,20 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    on an uncongested path.  With circuit breakers the sender measures
    the loss rate and RTT, and runs with a loose "cap".
 
-
-
-Tschofenig, et al.        Expires July 26, 2013                 [Page 7]
-
-Internet-Draft     Congestion Control Workshop Report       January 2013
-
-
    As a conclusion, Mark Handley claims that we know how to do good
    congestion control, but only if congestion control is in charge, and
    that's not acceptable for real-time applications.  We only know how
    to do good congestion control if we change packet/sec rate and not
    packet size.
+
+
+
+
+
+Tschofenig, et al.        Expires July 30, 2013                 [Page 7]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
 
 2.2.  Simulations and Measurements
 
@@ -413,14 +407,16 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    buffers that do not drop packets until they contain 5 - 10 seconds of
    data at bottleneck link speed.
 
-   Zaheduzzaman Sarker [11] presented results from real-time voice
+   Zaheduzzaman Sarker [11] presented results from real-time video
    communication in an LTE simulator utilizing ECN-based packet marking
    and adaptation using implicit methods like packet loss and delay.
    ECN marking provides ways for the network to explicitly signal
-   congestion but the audience raised concerns regarding the deployment
-   status of ECN.  Although RFC 3168 [5] was finalized in 2001 the
-   deployment of ECN is still lacking as investigated by Bauer, et al.
-   [12].
+   congestion hence distributes the cost of congestion well and helps
+   achieving lower latency.  However, even if RFC 3168 [5] was finalized
+   in 2001 the deployment of ECN is still lacking as investigated by
+   Bauer, et al. [12].  A few participants noted that they believe that
+   the deployment of LTE networks will also increase the deployment of
+   ECN.
 
    Mo Zahaty [13] discussed TFRC [8] and TFRC with weighted fairness
    (MulTFRC) [14], which tunes TFRC to consider multiple flows, and
@@ -441,18 +437,18 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    destroy quality of call.  Two types of losses were analyzed, namely
    losses that result from a packet being dropped in the network (e.g.,
    due to congestion or link errors) and losses that result from the
-
-
-
-Tschofenig, et al.        Expires July 26, 2013                 [Page 8]
-
-Internet-Draft     Congestion Control Workshop Report       January 2013
-
-
    delayed arrival of the packet (due to buffering) when the audio
    packet misses the deadline for the codec to decode and play the
    transmitted content.  Consequently, even a moderate number of TCP
    flows typically used by browsers to retrieve content on Web pages in
+
+
+
+Tschofenig, et al.        Expires July 30, 2013                 [Page 8]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
    parallel causes irreparable harm for audio transfers.  The size of
    the initial window also impacts interactive real-time communication
    since a larger TCP initial window size (e.g., IW(10) with ten
@@ -497,18 +493,18 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    real-time communication.
 
    Packets may get buffered at various places along the end-to-end path
-
-
-
-Tschofenig, et al.        Expires July 26, 2013                 [Page 9]
-
-Internet-Draft     Congestion Control Workshop Report       January 2013
-
-
    including in the operating system/device drivers, customer premise
    equipment (such as cable modem and DSL routers), base stations, and
    routers.  While the understanding of too large buffers has improved
    over the last few years the participants were still concerned that
+
+
+
+Tschofenig, et al.        Expires July 30, 2013                 [Page 9]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
    many equipment manufactures and network operators do not yet
    acknowledge the existence of the problem.  This lack of understanding
    is caused by the strong focus on throughput network performance
@@ -553,18 +549,18 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    router to segregate and by using it at the edge of a network where
    bottleneck links are is already sufficient.
 
-
-
-
-Tschofenig, et al.        Expires July 26, 2013                [Page 10]
-
-Internet-Draft     Congestion Control Workshop Report       January 2013
-
-
    It was noted that current interactive voice usage over the Internet
    works most of the time satisfactory.  In typical networks, the reason
    voice works is because networks are underloaded.  As long as there is
    idle capacity and when your packets arrive and the queue is empty,
+
+
+
+Tschofenig, et al.        Expires July 30, 2013                [Page 10]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
    traffic does not be separated into distinct queues.  Further
    explanations were offered why many networks work surprisingly well:
    LEDBAT [31] is used for the download of software updates, voice
@@ -609,18 +605,18 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    routers and updating routers with modern AQM algorithms was seen as a
    longer-term effort.  Also, the time scale for changing TCP's
    congestion control is on the time scale as deploying ECN [5].  Colin
-
-
-
-Tschofenig, et al.        Expires July 26, 2013                [Page 11]
-
-Internet-Draft     Congestion Control Workshop Report       January 2013
-
-
    Perkins noted that while we cannot change TCP quickly, but the way
    TCP is being used is changing quickly and we can impact the way TCP
    is used.  When TCP is used for file transfer it will send data as
    fast as it can but when TCP is used for WebSockets, the dynamics are
+
+
+
+Tschofenig, et al.        Expires July 30, 2013                [Page 11]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
    different.  WebSockets and SPDY are clearly changing the behavior of
    TCP.  Also, Netflix-style video streaming applications are huge users
    of TCP and those applications can change rather quickly.  Matt
@@ -665,28 +661,28 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
    heuristics, for example, data from the last call to figure out what
    to do on the next call.  Lars Eggert highlighted that the start-up
    behavior of an application affects ongoing performance of other flows
-
-
-
-Tschofenig, et al.        Expires July 26, 2013                [Page 12]
-
-Internet-Draft     Congestion Control Workshop Report       January 2013
-
-
    if, for example, an application blast at line rate at the beginning
    of a video stream.  You need to start slow enough to not cause
    congestion to others.  Randell Jesup argued that for an interactive
    real-time video application, you really need to have most of your
+
+
+
+Tschofenig, et al.        Expires July 30, 2013                [Page 12]
+
+Internet-Draft     Congestion Control Workshop Report       January 2013
+
+
    bandwidth right away.  Colin Perkins agreed and added that on startup
    you need good quality video quickly, but how quickly?  For a phone
    call one needs to be able to say "Hello!" pretty quickly, but for
    video it may not be necessary to see the other person very quickly.
-   Those requirements are likely going to different from audio to video
-   and maybe even between different applications.  Various protocol
-   exchanges take place before media is exchanged between endpoints
-   (such as STUN packets [34] as part of the ICE [35] or a DTLS security
-   handshake [36]) and may be used to the advantage to obtain a couple
-   simple measurements.
+   Those requirements are likely going to be different from audio to
+   video and maybe even vary between different applications.  Various
+   protocol exchanges take place before media is exchanged between
+   endpoints (such as STUN packets [34] as part of the ICE [35] or a
+   DTLS security handshake [36]) and may be used to the advantage to
+   obtain a couple simple measurements.
 
    The group agreed that it is feasible to design a congestion control
    algorithm that work on mostly idle networks.  In the view of the
@@ -724,7 +720,11 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 13]
+
+
+
+
+Tschofenig, et al.        Expires July 30, 2013                [Page 13]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -780,7 +780,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 14]
+Tschofenig, et al.        Expires July 30, 2013                [Page 14]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -836,7 +836,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 15]
+Tschofenig, et al.        Expires July 30, 2013                [Page 15]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -892,7 +892,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 16]
+Tschofenig, et al.        Expires July 30, 2013                [Page 16]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -948,7 +948,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 17]
+Tschofenig, et al.        Expires July 30, 2013                [Page 17]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1004,7 +1004,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 18]
+Tschofenig, et al.        Expires July 30, 2013                [Page 18]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1060,7 +1060,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 19]
+Tschofenig, et al.        Expires July 30, 2013                [Page 19]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1116,7 +1116,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 20]
+Tschofenig, et al.        Expires July 30, 2013                [Page 20]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1172,7 +1172,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 21]
+Tschofenig, et al.        Expires July 30, 2013                [Page 21]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1228,7 +1228,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 22]
+Tschofenig, et al.        Expires July 30, 2013                [Page 22]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1284,7 +1284,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 23]
+Tschofenig, et al.        Expires July 30, 2013                [Page 23]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1340,7 +1340,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 24]
+Tschofenig, et al.        Expires July 30, 2013                [Page 24]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1396,7 +1396,7 @@ Appendix A.  Program Committee
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 25]
+Tschofenig, et al.        Expires July 30, 2013                [Page 25]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1452,7 +1452,7 @@ Appendix B.  Workshop Material
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 26]
+Tschofenig, et al.        Expires July 30, 2013                [Page 26]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1508,7 +1508,7 @@ Appendix C.  Accepted Position Papers
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 27]
+Tschofenig, et al.        Expires July 30, 2013                [Page 27]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1564,7 +1564,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 28]
+Tschofenig, et al.        Expires July 30, 2013                [Page 28]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1620,7 +1620,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 29]
+Tschofenig, et al.        Expires July 30, 2013                [Page 29]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1676,7 +1676,7 @@ Appendix D.  Workshop Participants
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 30]
+Tschofenig, et al.        Expires July 30, 2013                [Page 30]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1732,7 +1732,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 31]
+Tschofenig, et al.        Expires July 30, 2013                [Page 31]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1788,7 +1788,7 @@ Internet-Draft     Congestion Control Workshop Report       January 2013
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 32]
+Tschofenig, et al.        Expires July 30, 2013                [Page 32]
 
 Internet-Draft     Congestion Control Workshop Report       January 2013
 
@@ -1844,5 +1844,5 @@ Authors' Addresses
 
 
 
-Tschofenig, et al.        Expires July 26, 2013                [Page 33]
+Tschofenig, et al.        Expires July 30, 2013                [Page 33]
 
