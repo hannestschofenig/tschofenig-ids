@@ -241,24 +241,19 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
 
+   opaque subjectPublicKeyInfo<1..2^24-1>;
 
-        // Certificate
-        opaque ASN.1Cert<1..2^24-1>;
-
-        // SubjectPublicKeyInfo
-        opaque RawPublicKeyCert[Handshake.length];
-
-        struct {
+   struct {
            select(certificate_type){
-                   case X.509-Offer:
+                   case X.509:
                      ASN.1Cert certificate_list<0..2^24-1>;
-                   case RawPublicKey-Offer:
-                 RawPublicKeyCert certificate;
+                   case RawPublicKey:
+             subjectPublicKeyInfo SubjectPublicKeyInfo;
            };
-        } Certificate;
+   } Certificate;
 
 
-         Figure 1: Certificate and SubjectPublicKeyInfo Structure.
+                   Figure 1: TLS Certificate Structure.
 
    The SubjectPublicKeyInfo structure is defined in Section 4.1 of RFC
    5280 [PKIX] and does not only contain the raw keys, such as the
@@ -274,18 +269,16 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
            subjectPublicKey     BIT STRING  }
 
 
-
-
-Wouters, et al.          Expires August 12, 2013                [Page 5]
-
-Internet-Draft        TLS OOB Public Key Validation        February 2013
-
-
               Figure 2: SubjectPublicKeyInfo ASN.1 Structure.
 
    The algorithm identifiers are Object Identifiers (OIDs).  RFC 3279
    [RFC3279], for example, defines the following OIDs shown in Figure 3.
 
+
+
+Wouters, et al.          Expires August 12, 2013                [Page 5]
+
+Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
 Key Type               | Document                   | OID
@@ -331,15 +324,18 @@ Algorithm (ECDSA)      | Section 2.3.5 of RFC 3279  | 1.2.840.10045.2.1
    Application Data        <------->     Application Data
 
 
+               Figure 4: Basic Raw Public Key TLS Exchange.
+
+   The semantic of the two extensions is defined as follows:
+
+
+
+
 
 Wouters, et al.          Expires August 12, 2013                [Page 6]
 
 Internet-Draft        TLS OOB Public Key Validation        February 2013
 
-
-               Figure 4: Basic Raw Public Key TLS Exchange.
-
-   The semantic of the two extensions is defined as follows:
 
       The 'client_certificate_type' and 'server_certificate_type' sent
       in the client hello, may carry a list of supported certificate
@@ -367,8 +363,12 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
       server-supported certificate types the 'server_certificate_type'
       payload sent in the server hello is omitted.
 
-   The "extension_data" field of this extension contains a
-   CertTypeExtension structure as shown in Figure 5.
+   The "extension_data" field of this extension contains the
+   ClientCertTypeExtension or the ServerCertTypeExtension structure, as
+   shown in Figure 5.  The CertificateType structure is an enum with
+   with values from TLS Certificate Type Registry.
+
+
 
 
 
@@ -393,23 +393,23 @@ Wouters, et al.          Expires August 12, 2013                [Page 7]
 Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
-      enum {
-             X.509 (0),
-             OpenPGP (1),
-             RawPublicKey (TBD),
-         (255)
-      } CertificateType;
+   struct {
+           select(ClientOrServerExtension)
+               case client:
+                 CertificateType client_certificate_types<1..2^8-1>;
+               case server:
+                 CertificateType client_certificate_type;
+           }
+   } ClientCertTypeExtension;
 
-      struct {
-         select(ClientOrServerExtension)
-             case client:
-               CertificateType client_certificate_types<1..2^8-1>;
-               CertificateType server_certificate_types<1..2^8-1>;
-             case server:
-               CertificateType client_certificate_type;
-               CertificateType server_certificate_type;
-         }
-      } CertTypeExtension;
+   struct {
+           select(ClientOrServerExtension)
+               case client:
+                 CertificateType server_certificate_types<1..2^8-1>;
+               case server:
+                 CertificateType server_certificate_type;
+           }
+   } ServerCertTypeExtension;
 
 
                   Figure 5: CertTypeExtension Structure.

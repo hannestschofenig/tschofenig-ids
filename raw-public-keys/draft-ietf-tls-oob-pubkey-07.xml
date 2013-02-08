@@ -196,24 +196,19 @@ Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resour
 </t>   
    
 <t>
-<figure anchor="Certificate" title="Certificate and SubjectPublicKeyInfo Structure.">
+<figure anchor="Certificate" title="TLS Certificate Structure.">
 <artwork>
 <![CDATA[    
+opaque subjectPublicKeyInfo<1..2^24-1>;
 
-     // Certificate
-     opaque ASN.1Cert<1..2^24-1>; 
-
-     // SubjectPublicKeyInfo
-     opaque RawPublicKeyCert[Handshake.length];
-
-     struct {
-     	select(certificate_type){
-     		case X.509-Offer:
-     		  ASN.1Cert certificate_list<0..2^24-1>;
-     		case RawPublicKey-Offer:      		
-              RawPublicKeyCert certificate;
-     	};
-     } Certificate;
+struct {
+ 	select(certificate_type){
+ 		case X.509:
+ 		  ASN.1Cert certificate_list<0..2^24-1>;
+ 		case RawPublicKey:      		
+          subjectPublicKeyInfo SubjectPublicKeyInfo;
+ 	};
+} Certificate;
 ]]>
 </artwork>
 </figure>
@@ -298,30 +293,42 @@ These extension MUST be omitted if the client only supports X.509 certificates. 
    </t> 
    
    <t>The
-   "extension_data" field of this extension contains a
-   CertTypeExtension structure as shown in <xref target="types"/>.</t>
+   "extension_data" field of this extension contains the ClientCertTypeExtension or the ServerCertTypeExtension
+   structure, as shown in <xref target="types"/>. The CertificateType structure is an enum with with values from TLS Certificate Type Registry. </t>
+
+<!-- 
+
+// Enum with values from TLS Certificate Type Registry
+enum { 
+   	  X.509 (0), 
+   	  OpenPGP (1),
+   	  RawPublicKey (TBD),
+      (255)
+} CertificateType;
+
+--> 
    
 <t>
 <figure anchor="types" title="CertTypeExtension Structure.">
 <artwork>
 <![CDATA[
-   enum { 
-   	  X.509 (0), 
-   	  OpenPGP (1),
-   	  RawPublicKey (TBD),
-      (255)
-   } CertificateType;
-             
-   struct {
-      select(ClientOrServerExtension)
-          case client:
-            CertificateType client_certificate_types<1..2^8-1>;
-            CertificateType server_certificate_types<1..2^8-1>;
-          case server:
-            CertificateType client_certificate_type;
-            CertificateType server_certificate_type;
-      }
-   } CertTypeExtension;
+struct {
+        select(ClientOrServerExtension)
+            case client:
+              CertificateType client_certificate_types<1..2^8-1>;
+            case server:
+              CertificateType client_certificate_type;
+        }
+} ClientCertTypeExtension;
+
+struct {
+        select(ClientOrServerExtension)
+            case client:
+              CertificateType server_certificate_types<1..2^8-1>;
+            case server:
+              CertificateType server_certificate_type;
+        }
+} ServerCertTypeExtension;   
 ]]>
 </artwork>
 </figure>
