@@ -120,11 +120,11 @@ Table of Contents
    3.  New TLS Extension  . . . . . . . . . . . . . . . . . . . . . .  5
    4.  TLS Handshake Extension  . . . . . . . . . . . . . . . . . . .  8
      4.1.  Client Hello . . . . . . . . . . . . . . . . . . . . . . .  8
-     4.2.  Server Hello . . . . . . . . . . . . . . . . . . . . . . .  8
+     4.2.  Server Hello . . . . . . . . . . . . . . . . . . . . . . .  9
      4.3.  Certificate Request  . . . . . . . . . . . . . . . . . . .  9
      4.4.  Other Handshake Messages . . . . . . . . . . . . . . . . .  9
      4.5.  Client authentication  . . . . . . . . . . . . . . . . . .  9
-   5.  Examples . . . . . . . . . . . . . . . . . . . . . . . . . . .  9
+   5.  Examples . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
    6.  Security Considerations  . . . . . . . . . . . . . . . . . . . 12
    7.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 13
    8.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 13
@@ -241,14 +241,21 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
 
-   opaque subjectPublicKeyInfo<1..2^24-1>;
+   opaque ASN.1Cert<1..2^24-1>;
 
    struct {
            select(certificate_type){
-                   case X.509:
+
+                   // certificate type defined in this document.
+           case RawPublicKey:
+             opaque ASN.1_subjectPublicKeyInfo<1..2^24-1>;
+
+                   // X.509 certificate defined in RFC 5246
+           case X.509:
                      ASN.1Cert certificate_list<0..2^24-1>;
-                   case RawPublicKey:
-             subjectPublicKeyInfo SubjectPublicKeyInfo;
+
+                   // Additional certificate type based on TLS
+           // Certificate Type Registry
            };
    } Certificate;
 
@@ -264,6 +271,16 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
 
+
+
+
+
+
+Wouters, et al.          Expires August 13, 2013                [Page 5]
+
+Internet-Draft        TLS OOB Public Key Validation        February 2013
+
+
       SubjectPublicKeyInfo  ::=  SEQUENCE  {
            algorithm            AlgorithmIdentifier,
            subjectPublicKey     BIT STRING  }
@@ -274,11 +291,6 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
    The algorithm identifiers are Object Identifiers (OIDs).  RFC 3279
    [RFC3279], for example, defines the following OIDs shown in Figure 3.
 
-
-
-Wouters, et al.          Expires August 13, 2013                [Page 5]
-
-Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
 Key Type               | Document                   | OID
@@ -299,6 +311,30 @@ Algorithm (ECDSA)      | Section 2.3.5 of RFC 3279  | 1.2.840.10045.2.1
    The message exchange in Figure 4 shows the 'client_certificate_type'
    and 'server_certificate_type' extensions added to the client and
    server hello messages.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wouters, et al.          Expires August 13, 2013                [Page 6]
+
+Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
     client_hello,
@@ -328,15 +364,6 @@ Algorithm (ECDSA)      | Section 2.3.5 of RFC 3279  | 1.2.840.10045.2.1
 
    The semantic of the two extensions is defined as follows:
 
-
-
-
-
-Wouters, et al.          Expires August 13, 2013                [Page 6]
-
-Internet-Draft        TLS OOB Public Key Validation        February 2013
-
-
       The 'client_certificate_type' and 'server_certificate_type' sent
       in the client hello, may carry a list of supported certificate
       types, sorted by client preference.  It is a list in the case
@@ -358,6 +385,14 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
       'server_certificate_type' MUST be selected from one of the values
       provided in the 'server_certificate_type' sent in the client
       hello.  If the server does not send a certificate_request payload
+
+
+
+Wouters, et al.          Expires August 13, 2013                [Page 7]
+
+Internet-Draft        TLS OOB Public Key Validation        February 2013
+
+
       or none of the certificates supported by the client (as indicated
       in the 'server_certificate_type' in the client hello) match the
       server-supported certificate types the 'server_certificate_type'
@@ -368,29 +403,6 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
    shown in Figure 5.  The CertificateType structure is an enum with
    with values from TLS Certificate Type Registry.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Wouters, et al.          Expires August 13, 2013                [Page 7]
-
-Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
    struct {
@@ -428,6 +440,15 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
    'server_certificate_type' extensions extended client hello message.
    The hello extension mechanism is described in TLS 1.2 [RFC5246].
 
+
+
+
+
+Wouters, et al.          Expires August 13, 2013                [Page 8]
+
+Internet-Draft        TLS OOB Public Key Validation        February 2013
+
+
 4.2.  Server Hello
 
    If the server receives a client hello that contains the
@@ -441,14 +462,6 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
    2.  The server supports the extension defined in this document and
        has at least one certificate type in common with the client.  In
        this case it returns the 'server_certificate_type' and indicates
-
-
-
-Wouters, et al.          Expires August 13, 2013                [Page 8]
-
-Internet-Draft        TLS OOB Public Key Validation        February 2013
-
-
        the selected certificate type value.
 
    3.  The server supports the extension defined in this document but
@@ -486,6 +499,12 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
    out-of-band method.
 
 
+
+Wouters, et al.          Expires August 13, 2013                [Page 9]
+
+Internet-Draft        TLS OOB Public Key Validation        February 2013
+
+
 5.  Examples
 
    Figure 6, Figure 7, and Figure 8 illustrate example exchanges.
@@ -497,14 +516,6 @@ Internet-Draft        TLS OOB Public Key Validation        February 2013
    have credentials (at the TLS layer) it could send.  The
    'client_certificate_type' extension indicates this in [1].  When the
    TLS server receives the client hello it processes the
-
-
-
-Wouters, et al.          Expires August 13, 2013                [Page 9]
-
-Internet-Draft        TLS OOB Public Key Validation        February 2013
-
-
    'client_certificate_type' extension.  Since it also has a raw public
    key it indicates in [2] that it had choosen to place the
    SubjectPublicKeyInfo structure into the Certificate payload [3].  The
@@ -542,6 +553,14 @@ Application Data        <------->     Application Data
    indicates these capabilities in [1].  As in the previously shown
    example the server fulfills the client's request, indicates this via
    the "RawPublicKey" value in the server_certificate_type payload, and
+
+
+
+Wouters, et al.          Expires August 13, 2013               [Page 10]
+
+Internet-Draft        TLS OOB Public Key Validation        February 2013
+
+
    provides a raw public key into the Certificate payload back to the
    client (see [3]).  The TLS server, however, demands client
    authentication and therefore a certificate_request is added [4].  The
@@ -549,16 +568,6 @@ Application Data        <------->     Application Data
    raw public keys.  The TLS client, who has a raw public key pre-
    provisioned, returns it in the Certificate payload [5] to the server.
 
-
-
-
-
-
-
-
-Wouters, et al.          Expires August 13, 2013               [Page 10]
-
-Internet-Draft        TLS OOB Public Key Validation        February 2013
 
 
 client_hello,
@@ -598,15 +607,6 @@ Application Data        <------->     Application Data
    format and requests a certificate from the client in [5].  The TLS
    client provides a raw public key in [6] after receiving and
    processing the TLS server hello message.
-
-
-
-
-
-
-
-
-
 
 
 
