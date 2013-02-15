@@ -63,13 +63,13 @@ Table of Contents
    2.  Terminology  . . . . . . . . . . . . . . . . . . . . . . . . .  4
    3.  Conceptual Keying Database . . . . . . . . . . . . . . . . . .  5
    4.  Examples . . . . . . . . . . . . . . . . . . . . . . . . . . .  8
-   5.  Security Considerations  . . . . . . . . . . . . . . . . . . .  9
-   6.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 10
-   7.  Acknowledgments  . . . . . . . . . . . . . . . . . . . . . . . 11
-   8.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 12
-     8.1.  Normative References . . . . . . . . . . . . . . . . . . . 12
-     8.2.  Informative References . . . . . . . . . . . . . . . . . . 12
-   Author's Address . . . . . . . . . . . . . . . . . . . . . . . . . 13
+   5.  Security Considerations  . . . . . . . . . . . . . . . . . . . 10
+   6.  IANA Considerations  . . . . . . . . . . . . . . . . . . . . . 11
+   7.  Acknowledgments  . . . . . . . . . . . . . . . . . . . . . . . 12
+   8.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+     8.1.  Normative References . . . . . . . . . . . . . . . . . . . 13
+     8.2.  Informative References . . . . . . . . . . . . . . . . . . 13
+   Author's Address . . . . . . . . . . . . . . . . . . . . . . . . . 14
 
 
 
@@ -242,8 +242,7 @@ Internet-Draft          Diameter Keying Database           February 2013
       sender-side it provides information about what key to use for
       applying integrity and/or confidentiality protection.  On the
       receiver-side this value provides information about the key to use
-      for verification.  For an asymmetric key the LocalKeyName is a NI
-      URI [3].
+      for verification.
 
    DestinationRealm:  The DestinationRealm provides information for the
       sending host to decide what messages to protect.  This selector
@@ -258,21 +257,22 @@ Internet-Draft          Diameter Keying Database           February 2013
    ApplicationID:  The ApplicationID provides information for the
       sending host to decide what messages to protect.  This field
       contains a list of comma separated application id values.  This
-      field may be empty.  The value of "*" refers to all application
-      ids that match the DestinationRealm and/or DestinationHost field.
+      field may be empty.  The value "*" refers to all application ids
+      that match the DestinationRealm and/or DestinationHost field.
 
    AVPCodeList:  The AVPCodeList provides information for the sending
       host to decide what AVPs need to experience integrity, and
       optionally confidentiality protection.  This selector field
-      contains a list of AVP codes.  This field may be empty.
+      contains a list of AVP codes.  The value "*" indicates that the
+      protection covers all AVP fields included in the message.
 
    KDF:  The KDF field indicates which key derivation function is used
       to generate short-lived keys from a long-lived symmetric key in
-      the Key field.  When the long-lived value in the Key field is
-      intended for direct use, the KDF field is set to "none".  This
+      the Key field.  For symmetric keys, when the long-lived shared key
+      is intended for direct use, the KDF field is set to "none".  This
       document re-used the KDF algorithm registry established in [5].
       The protocol indicates what (if any) KDFs are valid.  For
-      asymmetric algorithm the KDF is "none".
+      asymmetric algorithm the KDF is left empty.
 
 
 
@@ -285,13 +285,14 @@ Internet-Draft          Diameter Keying Database           February 2013
       with the security protocol.  The algorithm may be an encryption
       algorithm and mode (such as AES-128-CBC), an authentication
       algorithm (such as HMAC-SHA1-96 or AES-128-CMAC), or an algorithm
-      applicable to asymmetric cryptography (such as RSA with SHA-256).
-      If the KDF field contains "none", then a long-lived shared secret
-      key is used directly with this algorithm, otherwise the derived
-      short-lived symmetric key is used with this algorithm.  When the
-      long-lived key is used to generate a set of short-lived keys for
-      use with the security protocol, the AlgID field identifies a
-      ciphersuite rather than a single cryptographic algorithm.
+      applicable to asymmetric cryptography (such as RS256 indicating
+      RSA with SHA-256).  If the KDF field contains "none", then a long-
+      lived shared secret key is used directly with this algorithm,
+      otherwise the derived short-lived symmetric key is used with this
+      algorithm.  When the long-lived key is used to generate a set of
+      short-lived keys for use with the security protocol, the AlgID
+      field identifies a ciphersuite rather than a single cryptographic
+      algorithm.
 
    KeyType:  The KeyType provides information about the type of key
       found in the Key field.  Two values are possible:  "SymmetricKey"
@@ -299,11 +300,17 @@ Internet-Draft          Diameter Keying Database           February 2013
 
    Key:  The Key field contains a symmetric or an asymmetric key.  A
       lower-case hexadecimal string is used for representing a symmetric
-      key.  For asymmetric keys the NI URI format is used:  [3].  The
-      size of the Key field depends on the type of key, the selected
-      KDF, and the AlgID.  For instance, a KDF=none and AlgID=AES128
-      requires a 128-bit symmetric key, which is represented by 32
-      hexadecimal digits.
+      key.  For asymmetric keys the NI URI format [3] is used.  The size
+      of the Key field depends on the type of key, the selected KDF, and
+      the AlgID.  For instance, a KDF=none and AlgID=AES128 requires a
+      128-bit symmetric key, which is represented by 32 hexadecimal
+      digits.
+
+   Direction:  The Direction field indicates whether this key may be
+      used for inbound traffic, outbound traffic, both, or whether the
+      key has been disabled and may not currently be used at all.  The
+      supported values are "in", "out", "both", and "disabled",
+      respectively.
 
    SendNotBefore:  The NotBefore field specifies the earliest date and
       time in Universal Coordinated Time (UTC) at which this key should
@@ -311,23 +318,16 @@ Internet-Draft          Diameter Keying Database           February 2013
       digits specify the year, two digits specify the month, two digits
       specify the day, two digits specify the hour, two digits specify
       the minute, and two digits specify the second.  The "Z" is
-      included as a clear indication that the time is in UTC.
+      included as a clear indication that the time is in UTC.  This
+      field is empty if the key is for immediate use.  If the Direction
+      field indicates that the key is used not used for outbound traffic
+      then this field is ignored.
 
    SendNotAfter:  The SendNotAfter field specifies the latest date and
       time at which this key should be considered for use when sending
-      messages.  The format is the same as the SendNotBefore field.
-
-   RcvNotBefore:  The RcvNotBefore field specifies the earliest date and
-      time in Universal Coordinated Time (UTC) at which this key should
-      be considered for use when processing received messages.  The
-      format is YYYYMMDDHHSSZ, where four digits specify the year, two
-      digits specify the month, two digits specify the day, two digits
-      specify the hour, two digits specify the minute, and two digits
-      specify the second.  The "Z" is included as a clear indication
-      that the time is in UTC.
-
-
-
+      messages.  The format is the same as the SendNotBefore field.  If
+      the Direction field indicates that the key is used not used for
+      outbound traffic then this field is ignored.
 
 
 
@@ -337,30 +337,30 @@ Tschofenig               Expires August 19, 2013                [Page 6]
 Internet-Draft          Diameter Keying Database           February 2013
 
 
+   RcvNotBefore:  The RcvNotBefore field specifies the earliest date and
+      time in Universal Coordinated Time (UTC) at which this key should
+      be considered for use when processing received messages.  The
+      format is YYYYMMDDHHSSZ, where four digits specify the year, two
+      digits specify the month, two digits specify the day, two digits
+      specify the hour, two digits specify the minute, and two digits
+      specify the second.  The "Z" is included as a clear indication
+      that the time is in UTC.  This field is empty if there is no
+      restriction regarding the use of the key when processing received
+      messages.  If the Direction field indicates that the key is used
+      not used for inbound traffic then this field is ignored.
+
    RcvNotAfter:  The RcvNotAfter field specifies the latest date and
       time at which this key should be considered for use when
       processing received traffic.  The format of this field is
-      identical to the format of NotBefore.
+      identical to the format of NotBefore.  If the Direction field
+      indicates that the key is used not used for inbound traffic then
+      this field is ignored.
 
    KeyManagement:  Specifies whether a entry was statically configured
       or dynamically discovered.  This field may help to create a new
-      key when the existing key is expired.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      key when the existing key is expired.  An empty field indicates a
+      statically configured key.  Values are reserved for automated key
+      management protocols.
 
 
 
@@ -395,48 +395,48 @@ Internet-Draft          Diameter Keying Database           February 2013
 
 4.  Examples
 
-   This section gives a few examples.
+   This section gives a few examples.  For editorial reasons (i.e., the
+   per-line character limit of Internet drafts) a list representation is
+   used instead of a table.
 
 
 
+   +----------------+                                 +----------------+
+   |                |           +----------+          |                |
+   |   Diameter     |           |          |          |   Diameter     |
+   |   Client       |           | Diameter |          |   Server       |
+   |                |---------->| Proxy    |--------->|                |
+   |                |           |          |          |                |
+   +----------------+           +----------+          +----------------+
+
+   client.example.com        proxy.example.com        server.example.com
 
 
+               Figure 1: Example Diameter Deployment Setup.
+
+   The first example illustrates an entry in the key table at a Diameter
+   client.
 
 
+   KeyName: abc123
+   DestinationRealm:
+   DestinationHost: server.example.com
+   ApplicationID: *
+   AVPCodeList: *
+   KDF: none
+   AlgID: HMAC-SHA1-96
+   KeyType: SymmetricKey
+   Key: 617CAA833BEF64D88E45
+   Direction: out
+   SendNotBefore:
+   SendNotAfter: 201302142000Z
+   RcvNotBefore:
+   RcvNotAfter :
+   KeyManagement:
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   The second example illustrates the entries of the key database for an
+   asymmetric key as stored at the Diameter client.
 
 
 
@@ -445,6 +445,62 @@ Internet-Draft          Diameter Keying Database           February 2013
 
 
 Tschofenig               Expires August 19, 2013                [Page 8]
+
+Internet-Draft          Diameter Keying Database           February 2013
+
+
+   KeyName: abc123
+   DestinationRealm:
+   DestinationHost: server.example.com
+   ApplicationID: *
+   AVPCodeList: *
+   KDF: none
+   AlgID: RS256
+   KeyType: AsymmetricKey
+   Key: ni:///sha-256;UyaQV-Ev4rdLoHyJJWCi11OHfrYv9E1aGQAlMO2X_-Q
+   Direction: both
+   SendNotBefore:
+   SendNotAfter: 201302142000Z
+   RcvNotBefore:
+   RcvNotAfter : 201302142000Z
+   KeyManagement:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires August 19, 2013                [Page 9]
 
 Internet-Draft          Diameter Keying Database           February 2013
 
@@ -500,7 +556,7 @@ Internet-Draft          Diameter Keying Database           February 2013
 
 
 
-Tschofenig               Expires August 19, 2013                [Page 9]
+Tschofenig               Expires August 19, 2013               [Page 10]
 
 Internet-Draft          Diameter Keying Database           February 2013
 
@@ -556,7 +612,7 @@ Internet-Draft          Diameter Keying Database           February 2013
 
 
 
-Tschofenig               Expires August 19, 2013               [Page 10]
+Tschofenig               Expires August 19, 2013               [Page 11]
 
 Internet-Draft          Diameter Keying Database           February 2013
 
@@ -612,7 +668,7 @@ Internet-Draft          Diameter Keying Database           February 2013
 
 
 
-Tschofenig               Expires August 19, 2013               [Page 11]
+Tschofenig               Expires August 19, 2013               [Page 12]
 
 Internet-Draft          Diameter Keying Database           February 2013
 
@@ -668,7 +724,7 @@ Internet-Draft          Diameter Keying Database           February 2013
 
 
 
-Tschofenig               Expires August 19, 2013               [Page 12]
+Tschofenig               Expires August 19, 2013               [Page 13]
 
 Internet-Draft          Diameter Keying Database           February 2013
 
@@ -724,5 +780,5 @@ Author's Address
 
 
 
-Tschofenig               Expires August 19, 2013               [Page 13]
+Tschofenig               Expires August 19, 2013               [Page 14]
 
