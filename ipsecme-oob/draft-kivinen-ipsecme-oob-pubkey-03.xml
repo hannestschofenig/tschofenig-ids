@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+    <!ENTITY rfc2119 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+    <!ENTITY rfc3447 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.3447.xml'>
+    <!ENTITY rfc4025 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4025.xml'>
+    <!ENTITY rfc4754 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4754.xml'>
+    <!ENTITY rfc5280 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5280.xml'>
+    <!ENTITY rfc5480 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5480.xml'>
+    <!ENTITY rfc5996 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5996.xml'>
+    <!ENTITY rfc6394 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6394.xml'>
+    <!ENTITY wou12 PUBLIC '' 
+      'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-oob-pubkey.xml'>
+]>
+
+<rfc category='std' ipr='trust200902' updates='RFC 5996'
+     docName='draft-kivinen-ipsecme-oob-pubkey-03.txt'>
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+<?rfc toc='yes' ?>
+<?rfc symrefs='yes' ?>
+<?rfc sortrefs='yes'?>
+<?rfc iprnotified='no' ?>
+<?rfc compact='yes' ?>
+<?rfc strict='yes' ?>
+
+<front>
+  <title>More Raw Public Keys for IKEv2 </title>
+        
+  <author initials='T.' surname='Kivinen' fullname='Tero Kivinen'>
+    <organization>AuthenTec</organization>
+    <address>
+      <postal>
+        <street>Eerikinkatu 28</street>
+        <code>FI-00180</code>
+        <city>HELSINKI</city>
+        <country>FI</country>
+      </postal>
+      <email>kivinen@iki.fi</email>
+    </address>
+  </author>
+  <author fullname="Paul Wouters" initials="P." surname="Wouters">
+    <organization>Red Hat</organization>
+    <address>
+      <postal>
+	<street/>
+	<city/>
+	<region/>
+	<code/>
+	<country/>
+      </postal>
+      <email>pwouters@redhat.com</email>
+    </address>
+  </author>
+  <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+    <organization>Nokia Siemens Networks</organization>
+    <address>
+      <postal>
+	<street>Linnoitustie 6</street>
+	<city>Espoo</city>
+	<code>02600</code>
+	<country>Finland</country>
+      </postal>
+      <phone>+358 (50) 4871445</phone>
+      <email>Hannes.Tschofenig@gmx.net</email>
+      <uri>http://www.tschofenig.priv.at</uri>
+    </address>
+  </author>
+  <date month='November' year='2012' />
+  <area>Security</area>
+  <workgroup>IP Security Maintenance and Extensions
+    (ipsecme)</workgroup>
+  <abstract>
+    <t>The Internet Key Exchange Version 2 (IKEv2) protocol currently
+    only supports raw RSA keys. In some environments it is useful to
+    make use of other types of public keys, such as those based on
+    Elliptic Curve Cryptography. This documents adds support for other
+    types of raw public keys to IKEv2 and obsoletes the old raw RSA
+    key format.</t>
+  </abstract>
+</front>
+
+<middle>
+  <section title='Introduction'>
+    <t>Secure DNS allows public keys to be associated with domain
+    names for usage with security protocols like Internet Key Exchange
+    Version 2 (IKEv2) <xref target='RFC5996'/> and Transport Layer
+    Security (TLS) but it relies on extensions in those protocols to
+    be specified.</t>
+
+    <t>IKEv2 already offers support for PKCS #1 encoded RSA keys,
+    i.e., a DER- encoded RSAPublicKey structure (see <xref
+    target='RSA'/> and <xref target='RFC3447'/>). Other raw public
+    keys types are, however, not supported.</t>
+
+    <t>The TLS Out-of-Band Public Key Validation specification (<xref
+    target='I-D.ietf-tls-oob-pubkey'/>) adds generic support for raw
+    public keys to TLS by re-using the SubjectPublicKeyInfo format
+    from the X.509 Public Key Infrastructure Certificate profile <xref
+    target='RFC5280'/>.</t>
+    
+    <t>This document is similar than the TLS Out-of-Band Public Key
+    Validation specification, and applies the concept to IKEv2 to
+    support all public key formats defined by PKIX. This approach also
+    allows future public key extensions to be supported without the
+    need to introduce further enhancements to IKEv2.</t>
+
+    <t>To support new types of public keys in IKEv2 the following
+    changes are needed:</t>
+    
+    <t><list style='symbols'>
+      
+      <t>A new Certificate Encoding format needs to be defined for
+      carrying the SubjectPublicKeyInfo structure. <xref
+      target='cert-encoding'/> specifies this new encoding format.</t>
+      
+      <t>A new Certificate Encoding type needs to be allocated from
+      the IANA registry. <xref target='iana'/> contains this request
+      to IANA.</t>
+    </list>
+    </t>
+   </section>
+
+
+   <section anchor="terminology" title="Terminology">
+
+    <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+    NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL"
+    in this document are to be interpreted as described in <xref
+    target='RFC2119'/>.</t>
+  </section>
+
+  <section title='Certificate Encoding Payload' anchor='cert-encoding'>
+
+    <t>Section 3.6 of RFC 5996 defines the Certificate payload format
+    as shown in <xref target="payload"/>.</t>
+    
+    <figure anchor="payload" title="Certificate Payload Format." ><artwork><![CDATA[
+                     1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Next Payload  |C|  RESERVED   |         Payload Length        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Cert Encoding |                                               |
++-+-+-+-+-+-+-+-+                                               |
+~                       Certificate Data                        ~
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork></figure>
+
+    <t><list style='symbols'>
+      
+      <t>Certificate Encoding (1 octet) - This field indicates the
+      type of certificate or certificate-related information
+      contained in the Certificate Data field.
+      
+      <figure><artwork><![CDATA[
+   Certificate Encoding                 Value
+   ----------------------------------------------------
+   Raw Public Key                       TBD
+]]></artwork></figure></t>
+
+      <t>Certificate Data (variable length) - Actual encoding of the
+      certificate data. The type of certificate is indicated by the
+      Certificate Encoding field.</t>
+	
+    </list></t>
+
+    <t>When the certificate encoding type 'Raw Public Key' is used
+    then the Certificate Data only contains the SubjectPublicKeyInfo
+    part of the PKIX certificate.</t>
+    
+    <t>In the case of the Certificate Request payload the
+    Certification Authority field MUST be empty if the "Raw Public
+    Key" certificate encoding is used.</t>
+    
+  </section>
+
+  <section title='Old Raw RSA Key Certificate Type'>
+
+    <t>After this there would be two ways of sending Raw RSA public
+    keys in the IKEv2: The original IKEv2 mechanism (Raw RSA Key,
+    encoding value 11), and the new format defined here. The old Raw
+    RSA Key encoding has not been widely used. The IKEv2 protocol
+    already supports a method to indicate what certificate encoding
+    formats are supported, i.e. a peer can send one or multiple
+    Certificate Request payload with the certificate encoding types it
+    supports. From this list the recipient can see what formats are
+    supported and select one which is used to send Certificate
+    back.</t>
+
+    <t>Implementations conforming to this document MUST use the new
+    format defined here for the raw public keys, regardless of the key
+    type. This means that old Raw RSA Key encoding value 11 MUST NOT
+    be used for certificate or certificate request payloads. </t>
+
+    <t>Note, that recipients can simply process the old Raw RSA key
+    encodings just like any other unsupported or unknown certificate
+    encoding type, i.e. skip over it, recipients MUST NOT consider
+    receiving such payloads as fatal error (if other end sends such
+    payloads, it is completely possible that the peers do not have
+    common format for certificate encoding and the authentication will
+    fail because of that).</t>
+
+  </section>
+
+  <section title='Security Considerations'>
+
+    <t>An IKEv2 deployment using raw public keys needs to utilize an
+    out-of-band public key validation procedure to be confident in the
+    authenticity of the keys being used. One such mechanism is to use
+    a configuration mechanism for provisioning raw public keys into
+    the IKEv2 software. A suitable deployment is likely to be found
+    with smart objects. Yet another approach is to rely on secure DNS
+    to associate public keys to be associated with domain names using
+    the IPSECKEY DNS RRtype <xref target='RFC4025'/>. More information
+    can be found in DNS-Based Authentication of Named Entities (DANE)
+    <xref target='RFC6394'/>.</t>
+
+    <t>This document does not change the assumptions made by the IKEv2
+    specifications since "Raw RSA Key" support is already available in
+    IKEv2. This document only generalizes the raw public key support
+    and obsoletes the old "Raw RSA Key" format.</t>
+
+  </section>
+  
+  <section title='IANA Considerations' anchor='iana'>
+
+    <t>This document allocates a new value from the IKEv2 Certificate
+    Encodings registry:</t>
+
+    <figure><artwork><![CDATA[
+TBD      Raw Public Key
+]]></artwork></figure>
+
+    <t>This document also obsoletes the old value in the same
+    registry, and the entry for "Raw RSA Key" should be changed
+    to:</t>
+
+    <figure><artwork><![CDATA[
+11       Obsoleted (was Raw RSA Key)
+]]></artwork></figure>
+    
+  </section>
+
+  <section title='Acknowledgements'>
+
+    <t>This document copies parts from the similar TLS document (<xref
+    target='I-D.ietf-tls-oob-pubkey'/>).</t>
+
+  </section>
+</middle>
+<back>
+
+  <references title="Normative References">
+    &rfc2119;
+    &rfc5280;
+    &rfc5996;
+  </references>
+
+  <references title='Informative References'>
+    &rfc3447;
+    &rfc4025;
+    &rfc4754;
+    &rfc5480;
+    &rfc6394;
+    &wou12;
+
+    <reference anchor='RSA'>
+      <front>
+        <title>A Method for Obtaining Digital
+        Signatures and Public-Key Cryptosystems</title>
+        <author surname='R. Rivest'><organization/></author>
+        <author surname='A. Shamir'><organization/></author>
+        <author surname='L. Adleman'><organization/></author>
+        <date month='February' year='1978'/>
+      </front>
+      <format type='TXT' 
+              target='Communications of the ACM, v. 21, n. 2'/>
+    </reference>
+
+  </references>
+
+  <section title='Examples'>
+    <t>This appendix provides examples of the actual packets sent on
+    the wire. This uses the 256-bit ECDSA private/public key pair
+    defined in the section 8.1. of the IKEv2 ECDSA document <xref
+    target='RFC4754'/>.</t>
+
+    <t>The public key is as followed:</t>
+
+    <t><list style='symbols'>
+
+      <t>Algorithm : id-ecPublicKey (1.2.840.10045.2.1)</t>
+      
+      <t>Fixed curve: secp256r1 (1.2.840.10045.3.1.7)</t>
+
+      <t>Public key x coordinate : 
+          cb28e099 9b9c7715 fd0a80d8 e47a7707
+	  9716cbbf 917dd72e 97566ea1 c066957c
+      </t>
+
+      <t>Public key y coordinate : 
+          2b57c023 5fb74897 68d058ff 4911c20f
+	  dbe71e36 99d91339 afbb903e e17255dc
+      </t>
+    </list></t>
+
+    <t>The SubjectPublicKeyInfo ASN.1 object is as follows:
+
+    <figure><artwork><![CDATA[
+0000 :     SEQUENCE
+0002 :       SEQUENCE
+0004 :         OBJECT IDENTIFIER  id-ecPublicKey (1.2.840.10045.2.1)
+000d :         OBJECT IDENTIFIER  secp256r1 (1.2.840.10045.3.1.7)
+0017 :       BIT STRING  (66 bytes)
+00000000: 0004 cb28 e099 9b9c 7715 fd0a 80d8 e47a
+00000010: 7707 9716 cbbf 917d d72e 9756 6ea1 c066
+00000020: 957c 2b57 c023 5fb7 4897 68d0 58ff 4911
+00000030: c20f dbe7 1e36 99d9 1339 afbb 903e e172
+00000040: 55dc
+]]></artwork></figure>
+    </t>
+
+    <t>The first byte (00) of the bit string indicates that there is
+    no "number of unused bits", and the second byte (04) indicates
+    uncompressed form (<xref target='RFC5480'/>). Those two octets are
+    followed by the values of X and Y.</t>
+    
+    <t>The final encoded SubjectPublicKeyInfo object is as follows:
+    <figure><artwork><![CDATA[
+00000000: 3059 3013 0607 2a86 48ce 3d02 0106 082a
+00000010: 8648 ce3d 0301 0703 4200 04cb 28e0 999b
+00000020: 9c77 15fd 0a80 d8e4 7a77 0797 16cb bf91
+00000030: 7dd7 2e97 566e a1c0 6695 7c2b 57c0 235f
+00000040: b748 9768 d058 ff49 11c2 0fdb e71e 3699
+00000050: d913 39af bb90 3ee1 7255 dc
+]]></artwork></figure>
+    </t>
+    
+    <t>This will result the final IKEv2 Certificate Payload to be:
+    <figure><artwork><![CDATA[
+00000000: NN00 0060 XX30 5930 1306 072a 8648 ce3d 
+00000010: 0201 0608 2a86 48ce 3d03 0107 0342 0004 
+00000020: cb28 e099 9b9c 7715 fd0a 80d8 e47a 7707 
+00000030: 9716 cbbf 917d d72e 9756 6ea1 c066 957c 
+00000040: 2b57 c023 5fb7 4897 68d0 58ff 4911 c20f 
+00000050: dbe7 1e36 99d9 1339 afbb 903e e172 55dc
+]]></artwork></figure>
+    </t>
+
+    <t>Where the NN will be the next payload type (i.e. that value
+    depends on what is the next payload after this certificate
+    payload).</t>
+
+    <t>Note to the RFC editor / IANA, replace the XX above with the
+    newly allocated Raw Public Key number, and remove this note.</t>
+
+  </section>
+
+</back>
+
+</rfc>
