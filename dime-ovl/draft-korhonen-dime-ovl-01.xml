@@ -1,0 +1,817 @@
+<?xml version="1.0"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY RFC2119 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'> 
+<!ENTITY RFC2234 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2234.xml'>     
+<!ENTITY RFC3588 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.3588.xml'>     
+<!ENTITY RFC4005 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4005.xml'> 
+<!ENTITY RFC4072 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4072.xml'> 
+<!ENTITY RFC3748 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.3748.xml'> 
+<!ENTITY RFC4282 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4282.xml'> 
+<!ENTITY RFC4284 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4284.xml'> 
+<!ENTITY RFC4283 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4283.xml'> 
+<!ENTITY RFC2486 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2486.xml'> 
+<!ENTITY RFC2865 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2865.xml'> 
+<!ENTITY RFC5113 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5113.xml'> 
+<!ENTITY RFC1034 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.1034.xml'> 
+<!ENTITY RFC1035 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.1035.xml'> 
+<!ENTITY RFC3490 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.3490.xml'> 
+<!ENTITY RFC6408 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6408.xml'> 
+<!ENTITY RFC6733 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6733'> 
+<!ENTITY I-D.ietf-dime-overload-reqs PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dime-overload-reqs'> 
+<!ENTITY I-D.campbell-dime-overload-data-analysis PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.campbell-dime-overload-data-analysis'> 
+
+
+]>
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc toc="yes" ?>
+<?rfc symrefs="yes" ?>
+<?rfc sortrefs="yes"?>
+<?rfc iprnotified="no" ?>
+<?rfc strict="no" ?>
+<?rfc compact="yes" ?><?rfc subcompact="yes" ?>
+<rfc ipr="trust200902"
+
+    category="std" docName="draft-korhonen-dime-ovl-01.txt">
+  <front>
+    <title abbrev="DOCA">The Diameter Overload Control Application (DOCA)</title>
+
+   <author initials='J.' surname="Korhonen" fullname='Jouni Korhonen'>
+           <organization>Renesas Mobile</organization>
+            <address>
+                <postal>
+                    <street> Porkkalankatu 24</street>
+					<city>Helsinki</city>
+                    <code>00180</code>
+                    <country>Finland</country>
+                </postal>
+                <email>jouni.nospam@gmail.com</email>
+             </address>
+        </author>
+			
+    <author role="editor" initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+
+    <date year="2013"/>
+    <area>Operations and Management</area>
+    <workgroup>Diameter Maintenance and Extensions (DIME)</workgroup>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Diameter</keyword>
+    <keyword>Overload</keyword>
+<abstract>
+ <t>This specification documents a Diameter Overload Control Application  
+  (DOCA), which uses the normal Diameter application approach for the capability
+  negotiation, propagation and  management of Diameter overload control
+  information between Diameter nodes.</t>
+    </abstract>
+ </front>
+ 
+<middle>
+
+<section anchor="introduction" title="Introduction">
+ <t>The existing toolbox offered by the Diameter Base Protocol <xref 
+  target="RFC6733"/> to prevent and recover from signaling overload situations 
+  is rather limited. Apart from out-of-band altering of the transport 
+  connection congestion control behavior or other non-standard 
+  application level throttling, the protocol error DIAMETER_TOO_BUSY, the 
+  permanent error DIAMETER_UNABLE_TO_COMPLY (for some unspecified reason) and
+  the Disconnect-Cause Attribute Value Pair (AVP) code BUSY or
+  DO_NOT_WANT_TO_TALK_TO_YOU are more or less all there is. Unfortunately, the
+  mentioned three indications are coarse, concern one peer connection at a time
+  or lack detailed information for problem diagnosis and mitigation. They also
+  treat all applications in a single Diameter node (identified by a single
+  DiameterIdentity) as a lump. There is no way communicate any kind of grouping
+  of applications or what is the scope/partitioning of the delivered 
+  information. Furthermore, there is no way to signal when the overload
+  situation is over. The request initiator and forwarders are therefore forced 
+  to keep re-submitting their messages to determine whether the situation has 
+  changed.</t>
+  
+ <t>The situation is further complicated by the hop-by-hop nature of Diameter
+  deployments. This makes the propagation of possible overload situation 
+  information non-trivial, even for existing protocol errors since every
+  intermediate Diameter node is allowed to react to the error situation. Either the information is
+  never propagated to the originator of the request or it takes an unacceptable 
+  long time.</t>
+  
+ <t>A problem statement of overload control for Diameter and requirements 
+  are documented in <xref target="I-D.ietf-dime-overload-reqs"/>. This
+  specification describes a solution to the Diameter overload Diameter 
+  Overload Control Application (DOCA), which fulfills the requirements of 
+  <xref target="I-D.ietf-dime-overload-reqs"/> and defines a Diameter
+  application to convey overload information between Diameter nodes.</t>
+  
+  <t>Note: The recent publication of <xref target="I-D.campbell-dime-overload-data-analysis"/> 
+  illustrates the overload information data model and the design space. As the working group makes progress in deciding about specific 
+features this document will be updated accordingly.</t>
+</section>
+
+<!-- ******************************************************************** -->
+
+<section title="Requirements">
+   <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in <xref
+   target="RFC2119">RFC 2119</xref>.
+   </t>
+</section>
+
+<!-- ******************************************************************** -->
+  
+<section title="DOCA Overview">
+
+  <t>Any the DOCA capable Diameter 
+    node MAY initiate a DOCA-Report-Request at any given time. The receiver of
+    the DOCA-Report-Request acknowledges with a DOCA-Report-Answer and includes
+    the Result-Code AVP indicating whether it
+    could honor the action/report in the request. The DOCA-Report-Answer SHOULD
+    also piggyback overload control information.
+  </t>
+  
+    <t>A DOCA client MUST
+   set the Auth-Session-State AVP to the value NO_STATE_MAINTAINED and SHOULD 
+   include the OC-Information AVP with overload information into the
+   DOCA-Report-Request, if available. The 
+   DOCA-Report-Response message MUST contain the Auth-Session-State AVP set to
+   value NO_STATE_MAINTAINED.
+  </t>
+  
+  <t>Note that information exchanges regarding various DOCA related
+   timers serve only as a hint since they cannot be enforced.
+   Consequently, care should be taken not to send DOCA-Report-Requests too frequently. 
+   </t>
+
+   <t>When a Diameter node receives overload control information and is also
+    requested to act on it, the DOCA functionality is applied to all specified
+    applications within a given scope. How the Diameter node accomplishes the
+    node wide DOCA action enforcement is implementation specific.
+   </t>
+   
+   <t>When a Diameter node receives (interim) overload information but the
+    overload condition has not exceeded a certain threshold, then the receiver is not required
+    to act based on the received information. However, it is RECOMMENDED that
+    the receiver makes proactive actions to avoid entering the overload 
+    condition based on the newly received overload information.
+   </t>
+   
+   <t>There may be zero or more intermediate Diameter agents on the path between
+    the DOCA client and the DOCA server. Understanding the DOCA functionality is not
+    expected from relays and redirect agents. A Diameter proxy, which 
+    obviously understands the DOCA application, MAY inspect the DOCA related 
+    AVPs in the DOCA-Report-Request/Answer message pair and depending on the 
+    value of the OC-Scope AVP (see <xref target="oc-scope"/>) inject its own 
+    information. A proxy is always RECOMMENDED to react according to the
+    overload information when it comes to, for example, peer selection and
+    traffic throttling.
+   </t>
+   
+   <t>When a Diameter agent receives overload control information and is also
+    requested to act on it, the DOCA functionality is applied to all specified
+    applications within a given scope. How the Diameter agent accomplishes the
+    node wide DOCA action enforcement is implementation specific.
+   </t>
+</section>
+
+<section title="DOCA Commands" anchor="doca-report">
+  <t>The DOCA-Report-Request (DRR) message is used to report overload condition  
+   information. The message can be originated as a 
+   result of emerging overload condition or as a periodic unsolicited report.
+  </t>
+
+  <figure><artwork><![CDATA[
+<DOCA-Report-Request> ::= < Diameter Header: TBD2, REQ, PXY >
+                          < Session-Id >
+                          { Auth-Application-Id }
+                          { Origin-Host }
+                          { Origin-Realm }
+                          { Destination-Realm }
+                          { Auth-Request-Type }
+                          { Destination-Host }
+                          [ Auth-Session-State ]
+                        * [ Class ]
+                          [ Origin-State-Id ]
+                        * [ Proxy-Info ]
+                        * [ Route-Record ] 
+
+                          { OC-Scope }
+                          [ OC-Algorithm ]
+                          [ OC-Action ]
+                          [ OC-Tocl ]
+                          [ OC-Applications ]
+                        * [ OC-Information ]
+
+                        * [ AVP ]
+]]></artwork></figure>
+
+  <t>The DOCA-Report-Answer (DRA) message is used 
+   as a response to the DOCA-Report-Request. The message MAY piggyback overload
+   condition information in order to avoid unnecessary DOCA-Report-Request
+   messages to the reverse direction.
+  </t>
+  <t>
+  <figure><artwork><![CDATA[
+<DOCA-Report-Answer> ::= < Diameter Header: TBD2, PXY >
+                       < Session-Id >
+                       { Result-Code }
+                       { Origin-Host }
+                       { Origin-Realm }
+                       [ Auth-Session-State ]
+                     * [ Class ]
+                       [ Error-Message ]
+                       [ Error-Reporting-Host ]
+                       [ Failed-AVP ]
+                       [ Origin-State-Id ]
+                     * [ Redirect-Host ]
+                       [ Redirect-Host-Usage ]
+                       [ Redirect-Max-Cache-Time ]
+                     * [ Proxy-Info ]
+
+                       { OC-Scope }
+                       [ OC-Action ]
+                     * [ OC-Information ]
+
+                     * [ AVP ]
+]]></artwork></figure>
+ </t>
+
+</section>
+
+
+<section title="Attribute Value Pairs" anchor="avps">
+
+ <section title="OC-Information AVP" anchor="oc-information">
+  <t>The OC-Information AVP (AVP Code TBD3) is of type Grouped and contains a 
+   set AVPs that identify the source of the overload control information (the 
+   OC-Origin AVP), the overload information itself and which 
+   applications the information concerns.
+  </t>
+
+   <figure><artwork><![CDATA[
+OC-Information  ::= < AVP Header: TBD3 >
+                    { OC-Origin }
+                    { OC-Best-Before }
+                    [ OC-Level ]
+                    [ OC-Algorithm ]
+                    [ OC-Sending-Rate ]
+                    [ Vendor-Id ]
+                    [ OC-Applications ]
+                    [ Product-Name ]
+                    [ OC-Utilization ]
+                    [ OC-Priority ]
+                  * [ AVP ]
+]]></artwork></figure>
+
+  <t>Diameter proxies on path MAY add one or more OC-Information AVPs into the
+   DOCA-Report-Request/answer messages.
+  </t>
+ </section>
+
+ <section title="OC-Scope AVP" anchor="oc-scope">
+  <t>The OC-Scope (AVP Code TBD4) is of type Unsigned32 and  contains the scope
+   where and concerning what the overload control information can be injected.
+   The OC-Scope is formatted as a vector of scope flag bits.
+   The following scopes are supported:
+  </t>
+  <t><list style="hanging">
+   <t hangText="Host scope (0x00000001)">
+   <vspace blankLines="1"/>The OC-Information AVP concerns only a single
+    host within a realm (which internally MAY represent of pool).
+   <vspace blankLines="1"/></t>
+   <t hangText="Realm scope (0x00000002)">
+   <vspace blankLines="1"/>The OC-Information AVP concerns a realm. No specific
+    hosts are identified.
+   <vspace blankLines="1"/></t>
+   <t hangText="Only origin realm (0x00000004)">
+   <vspace blankLines="1"/>The OC-Information AVP can only be included
+    by a Diameter node on the path that has the same Origin-Realm as the
+    DOCA client.
+   <vspace blankLines="1"/></t>
+
+   <t hangText="Application information (0x00010000)">
+   <vspace blankLines="1"/>The OC-Information AVP MAY contain application
+   related information (the OC-Applications AVP).
+   <vspace blankLines="1"/></t>
+   <t hangText="Node utilization information (0x00020000)">
+   <vspace blankLines="1"/>The OC-Information AVP MAY contain node wide
+   load related information (the OC-Utilization AVP).
+   <vspace blankLines="1"/></t>
+   <t hangText="Application priorities (0x00040000)">
+   <vspace blankLines="1"/>The OC-Information AVP SHOULD priority information 
+   (the OC-Priority AVP) so when the overload condition is on, Diameter nodes
+   are able to prioritize between different applications, for example, when
+   dropping or throttling messages.
+  </t>
+  </list></t>
+  <t>Any other value is reserved.
+  </t>
+  <t>A scope is active when a corresponding flag is set in the OC-Scope AVP.
+   During the initialization state a DOCA client includes those scopes it
+   supports and is interested in. A DOCA server then returns the scope
+   that it has in common with the DOCA client (and intends to use). The common
+   scopes are then used during the established state. Note that some scope
+   combinations make little sense while still being valid.  The general guide
+   when multiple scopes collide is that the least restrictive wins.
+  </t>
+  <t>A sender of the overload information MUST adhere to the scope it announces
+   regarding the information it itself sends. 
+  </t>
+  <t>If a DOCA server does not have a common scope with a DOCA client or
+   the DOCA server cannot agree on one based on a local policy, then the DOCA
+   server MUST send the DOCA-Report-Answer indicating an error and set the
+   Result-Code to the DIAMETER_NO_COMMON_SCOPE value.
+  </t>
+
+ </section>
+ <section title="OC-Applications AVP" anchor="oc-applications">
+  <t>The OC-Applications (AVP Code TBD5) is of type Grouped and contains a 
+   list of Application-IDs of interest when found in the
+   DOCA-Report-Request/Answer
+   command main level and meant to be used during the initialization state to
+   agree on the common set of supported applications of monitoring
+   interest. When used within the OC-Information AVP,
+   the OC-Applications AVP identify those applications the overload information
+   concerns.  The OC-Applications AVPs on the command main level and inside the
+   OC-Information AVP MUST NOT have conflicting views of the applications of
+   interest. However, the OC-Applications AVP can be see as a superset of 
+   applications i.e., not all applications of interest need to be included every
+   time into the OC-Information AVP.
+  </t>
+  <figure><artwork><![CDATA[
+OC-Applications  ::= < AVP Header: TBD3 >
+                   * [ Auth-Application-Id ]
+                   * [ Acct-Application-Id ]
+                   * [ Vendor-Specific-Application-Id ]
+                   * [ AVP ]
+]]></artwork></figure>
+  <t>The absence of the OC-Applications AVP indicates the Diameter node has
+   no specific preference or interest in specific applications. The overload
+   information is then signaled as concerning the whole Diameter node. This
+   default behavior is useful when the DOCA does not maintain session state.  
+   If there are no common applications, then the DOCA-Report-Answer MUST
+   contain the Result-Code with the DIAMETER_NO_COMMON_APPLICATION value.
+  </t>
+  <t>When the DOCA maintains state, there is no need to include the 
+   OC-Applications AVP into the DOCA-Report-Request/Answer command main level
+   after the initial message exchange. The agreed common set of application is
+   expected to be known by both DOCA client and server throughout the session
+   lifetime.
+  </t>
+ </section>
+
+ <section title="OC-Action AVP" anchor="oc-action">
+  <t>The OC-Action (AVP Code TBD6) is of type OctetString and size of one
+   octet. The octet has the following three possible values:
+  </t>
+  <t><list style="hanging">
+   <t hangText="Start (1)">
+   <vspace blankLines="1"/>Signals the start of the overload condition. This
+    implies the receiver is requested to act according to the information
+    found in the OC-Information.
+   <vspace blankLines="1"/></t>
+   <t hangText="Stop (2)">
+   <vspace blankLines="1"/>Signals the end of the overload condition. 
+   <vspace blankLines="1"/></t>
+   <t hangText="Interim (3)">
+   <vspace blankLines="1"/>Updates the overload information. The interim
+    can be sent during the overload condition or
+    during the normal condition. This is the default value.
+   </t>
+  </list>
+  </t>
+  <t>Any other value is reserved.
+  </t>
+ </section>
+ 
+ <section title="OC-Algorithm AVP" anchor="oc-algorithm">
+  <t>The OC-Algorithm (AVP Code TBD7) is of type Unsigned32. The 
+   contains supported 'algorithms' to mitigate the
+   overload condition. The OC-Algorithm AVP is formatted as a vector of
+   algorithm flag bits.  The following 'algorithms' are supported:
+  </t>
+  <t><list style="hanging">
+   <t hangText="Drop (0x00000001)">
+   <vspace blankLines="1"/>Messages are plain dropped. It is RECOMMENDED to
+    drop messages selectively based, for example, on application priorities.
+    This is the default algorithm.
+   <vspace blankLines="1"/></t>
+   <t hangText="Throttle (0x00000002)">
+   <vspace blankLines="1"/>The message sending rate is according to the
+    OC-Sending-Rate AVP.  
+   <vspace blankLines="1"/></t>
+   <t hangText="Prioritize (0x00000004)">
+   <vspace blankLines="1"/>Apply priorities among applications and the 
+    other used means for holding traffic. 
+   </t>
+
+  </list></t>
+  <t>Any other value is reserved.
+  </t>
+  <t>The 'algorithms' are only applied at a Diameter node when the 
+   overload condition has been signaled. 
+  </t>
+  <t>During the initialization state a DOCA client includes those algorithms it
+   supports and is interested in. A DOCA server then returns the algorithm
+   that it has in common with the DOCA client (and intends to use). One or more
+   common algorithms are then used during the established state.
+  </t>
+  <t>If a DOCA server does not have a common algorithm with a DOCA client or
+   the DOCA server cannot agree on one based on a local policy, then the DOCA
+   server MUST send the DOCA-Report-Answer indicating an error and set the
+   Result-Code to the DIAMETER_NO_COMMON_ALGORITHM value.
+  </t>
+ </section>
+ <section title="OC-Level AVP" anchor="oc-level">
+  <t>The OC-Level (AVP Code TBD8) is of type OctetString and size of one
+   octet. The octet has the following five possible values:
+  </t>
+  <t><list style="hanging">
+   <t hangText="Normal (1)">
+   <vspace blankLines="1"/>Everything is in control. Meaningful only
+    when the OC-Action is set to 'Interim' since when the overload
+    condition level is considered normal, the overload condition
+    SHOULD be stopped. This is the default value.
+   <vspace blankLines="1"/></t>
+   <t hangText="Raising (2)">
+   <vspace blankLines="1"/>There is a sign of increasing load.
+   <vspace blankLines="1"/></t>
+   <t hangText="Alarming (3)">
+   <vspace blankLines="1"/>The overload condition is reaching the level
+    where quick measures SHOULD be done to mitigate the overload condition.
+   <vspace blankLines="1"/></t>
+   <t hangText="Panic (4)">
+   <vspace blankLines="1"/>The overload condition is severe. Apply any
+    measure to mitigate the overload condition but still allowed to send
+    messages.
+   <vspace blankLines="1"/></t>
+   <t hangText="Hold (5)">
+   <vspace blankLines="1"/>Do not send any messages, please. When this level is
+    signaled, the OC-Best-Before time SHOULD NOT be respected but an explicit
+    overload condition stop has to be received (with an exception the Diameter
+    node realizes its other end has rebooted or otherwise lost its state).
+   <vspace blankLines="1"/></t>
+   <t hangText="Switch servers (6)">
+   <vspace blankLines="1"/>Do not talk to me again. When this level is
+    signaled, the DOCA client MUST switch to an alternative server.
+   <vspace blankLines="1"/></t>
+  </list>
+  </t>
+  <t>Any other value is reserved.
+  </t>
+  <t>If the receiver cannot agree on or does not understand the OC-Level AVP
+   value, the an error MUST be returned with the Result-Code AVP set to the
+   value DIAMETER_INVALID_AVP_VALUE and the Failed-AVP AVP containing the
+   OC-Level AVP.
+  </t>
+ </section>
+ 
+ <section title="OC-Utilization AVP" anchor="oc-utilization">
+  <t>The OC-Utilization (AVP Code TBD9) is of type Float32 and tells the
+   overall utilization level percentage of the Diameter node. Values between
+   0.0 to 100.0 are valid.
+  </t>
+ </section>
+ <section title="OC-Tocl AVP" anchor="oc-Tolc">
+  <t>The OC-Tocl (AVP Code TBD10) is of type Unsigned32 and tells the
+   Tolc timer value in milliseconds. This timer defines the interval for
+   sending periodic DOCA-Report-Request messages with the OC-Action AVP set
+   to 'Interim'. The value of zero (0) means no periodic DOCA-Report-Request 
+   messages are sent or desired. The default value is 120000.
+  </t>
+  <t>The OC-Tocl AVP can be considered
+   as a hint for a desired sending rate of subsequent messages.
+  </t>
+  <t>If a DOCA server find the Tocl value proposed by a DOCA client either
+   too small (i.e. too frequent periodic messages) or too big (i.e. too
+   seldom periodic messages), then the DOCA server MUST send the
+   DOCA-Report-Answer indicating an error and set the Result-Code either to the 
+   DIAMETER_TOCL_TOO_SMALL or DIAMETER_TOCL_TOO_BIG value. 
+  </t>
+
+ </section>
+ <section title="OC-Sending-Rate AVP" anchor="oc-sending-rate">
+  <t>The OC-Sending-Rate (AVP Code TBD11) is of type Float32 and tells the
+   the maximum Diameter message sending rate per second the sender of this
+   information wishes to receive Diameter messages. Only positive values
+   are valid. A value of zero (0.0) of the absence of this AVP means the
+   information sender has no specific rate preference.
+  </t>
+  <t>If a DOCA server finds the sending rate value proposed by a DOCA client
+   too big (i.e., too frequent periodic messages), then the DOCA server
+   MUST send the DOCA-Report-Answer indicating an error and set the Result-Code
+   to the DIAMETER_RATE_TOO_BIG value. 
+  </t>
+ </section>
+ <section title="OC-Best-Before AVP" anchor="oc-best-before">
+  <t>The OC-Best-Before (AVP Code TBD12) is of type Time and tells
+   the expiration time/date for the information received in the OC-Information.
+   For example, when the overload condition is on, the expiration of
+   the 'best before' timer causes the same as receiving a
+   DOCA-Report-Request/Answer with the OC-Action set to 'Stop'.
+  </t>
+  <t><list>
+   <t>[Editor's node: to be decided whether a duration timer is a better 
+   measure. Using Time has the assumptions nodes have actually clocks that
+   a running approximately same time.]</t>
+  </list></t>
+ </section>
+ <section title="OC-Origin AVP" anchor="OC-Origin">
+  <t>The OC-Origin (AVP Code TBD13) is of type DiameterIdentity and tells
+   the identity of the Diameter node that originated included the overload
+   control information. Both host and realm information MUST be included in
+   the OC-Origin AVP. Note, if the OC-Scope AVP indicates only a realm wide
+   scope for the overload information, then the realm part of the OC-Origin AVP
+   is meaningful and the host information only serves as an additional 
+   information of the representative for the realm wide information.
+  </t>
+ </section>
+
+ <section title="OC-Priority AVP" anchor="oc-pririty">
+  <t>The OC-Priority (AVP Code TBD14) is of type Unsigned32 and defines the
+   priority level. The value of 0x00000000 is the highest priority and the
+   value of 0xffffffff is the lowest priority. The absence of the OC-Priority
+   AVP means there is not specific priority level defined and the priority
+   SHOULD be considered as the lowest possible.
+  </t>
+  <t>When used within the OC-Information grouped AVP, the OC-Priority AVP
+   defines the priority for the listed applications within the OC-Applications
+   AVP.
+  </t>
+ </section>
+
+ <section title="Attribute Value Pair flag rules">
+  <figure><artwork><![CDATA[
+                                                    +---------+
+                                                    |AVP flag |
+                                                    |rules    |
+                                                    +----+----+
+                  AVP   Section                     |    |MUST|
+ Attribute Name   Code  Defined  Value Type         |MUST| NOT|
++---------------------------------------------------+----+----+
+|OC-Information   TBD3  x.x      Grouped            |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Scope         TBD4  x.x      Unsigned32         |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Application   TBD5  x.x      Grouped            |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Action        TBD6  x.x      OctetString        |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Algorithm     TBD7  x.x      Unsigned32         |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Level         TBD8  x.x      OctetString        |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Utilization   TBD9  x.x      Float32            |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Tocl          TBD10 x.x      Unsigned32         |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Sending-Rate  TBD11 x.x      Float32            |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Best-Before   TBD12 x.x      Time               |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Origin        TBD13 x.x      DiameterIdentity   |  M | V  |
++---------------------------------------------------+----+----+
+|OC-Priority      TBD14 x.x      Unsigned32         |  M | V  |
++---------------------------------------------------+----+----+
+]]></artwork></figure>
+ </section>
+</section>
+
+
+<section title="Transport Considerations" anchor="sctp">
+ <t>In case of Stream Control Transmission Protocol (SCTP) transport,
+  the DOCA application is RECOMMENDED to mark its Diameter packets using
+  the DOCA defined SCTP Payload Protocol Identifier (PPID) TBD1. The PPID MAY
+  be used by intermediating network nodes or agents to peek into SCTP
+  message and find out that this is about overload control. Such information
+  can be used for prioritizing SCTP packet handling as an example.
+ </t>
+</section>
+
+<section title="Examples">
+
+<t>Consider the following simplified scenario shown in <xref target="example1"/> where two servers 
+are connected to a proxy. All three nodes understand the DOCA application. These three nodes belong to the same administrative domain and the operator decided that he wants to hide the Diameter topology of his own network. Consequently, aggregate information is provided by the proxy for any Diameter overload message exchange. The Diameter client also supports the DOCA application. Between the client and the Diameter proxy we assume an arbitrary Diameter network that passes Diameter messages back and forth. 
+
+ <figure anchor="example1">
+ <artwork>
+ <![CDATA[
++------------------+     +------------------+
+|     Server 1     |     |     Server 2     |
+| (DOCA capable)   |     |  (DOCA capable)  |
++----------`.------+     +------------------+
+             `.                 
+               `.             
+                 `.         
+                   `.     
+             +-------`.---------+
+             |      Proxy       |
+             |  (DOCA capable)  |
+             +--------+---------+
+                      |
+......................+......................
+                      |
+             +-------`.'--------+
+             |                  |
+             |  Intermediate    |
+             |  Diameter nodes  |
+             +--------+---------+
+                      |
+                      |
+             +--------+---------+
+             |     Client       |
+             |  (DOCA capable)  |
+             +------------------+
+			 ]]>
+</artwork>
+</figure>
+Let us assume that the DOCA exchange is initiated by server 1 who determines that the load situation increases. It sends a DOCA-Report-Request message (with piggybacked overload information) towards the client. The message also instructs the client to reduce it's sending rate. The proxy, who receives the DOCA-Report-Request decides to change the included OC-Origin information and forwards the request to the client.</t>
+
+<t>When the client receives the DOCA-Report-Request message is processes the content, evaluates the overload information content and reacts accordingly, and returns a DOCA-Report-Answer message back to acknowledge the receipt. </t>
+
+<t>Alternatively, let us assume that the proxy does not forward the message but instead terminates the DOCA-Report-Request received from Server 1. 
+It instead decides to route traffic to the backup server, Server 2. In this case the entire process was transparent for the client.</t>
+</section>
+
+
+
+<section title="IANA Considerations">
+ <section title="Application Identifiers">
+  <t>This specification reserves a new Diameter Application-ID TBD14 for
+   the Diameter Overload Control Application (DOCA) from the 'Authentication, 
+   Authorization, and Accounting (AAA) Parameters' Application IDs registry.
+  </t>
+ </section>
+
+ <section title="SCTP Payload Protocol Identifier">
+  <t><xref target="sctp"/> reserves a new SCTP Payload Protocol
+   Identifier for the DOCA application usage. The value is reserved from
+   the existing SCTP Payload Protocol Identifiers registry.
+  </t>
+ </section>
+
+
+ <section title="Command Codes">
+  <t>Two command codes are defined in <xref target="doca-report"/>. 
+   The DOCA-Report-Request Command Code is TBD and the DOCA-Report-Answer Command Code is TBD. 
+   Both are allocated
+   from the  'Authentication,  Authorization, and Accounting (AAA) Parameters'
+   Command Codes registry.
+  </t>
+ </section>
+
+ <section title="AVP Codes">
+  <t>New AVPs defined by this specification are listed in <xref target="avps"/>.
+   All AVP codes allocated from the  'Authentication,  Authorization, and
+   Accounting (AAA) Parameters' AVP Codes registry.
+  </t>
+ </section>
+ <section title="Result-Code Values">
+  <t>This specification adds several Diameter Overload Control Application
+   specific Permanent Failure codes from the 'Authentication,  Authorization,
+   and Accounting (AAA) Parameters' Result-Code AVP Values (code 268) - 
+   Permanent Failure registry:
+  </t>
+  <figure><artwork><![CDATA[
+AVP Values | Attribute Name                | Reference
+-----------+-------------------------------+----------
+ 5xxx      | DIAMETER_NO_COMMON_SCOPE      | RFCxxxx
+ 5xxx      | DIAMETER_NO_COMMON_ALGORITHM  | RFCxxxx
+ 5xxx      | DIAMETER_TOCL_TOO_SMALL       | RFCxxxx
+ 5xxx      | DIAMETER_TOCL_TOO_BIG         | RFCxxxx
+ 5xxx      | DIAMETER_RATE_TOO_BIG         | RFCxxxx
+]]></artwork></figure>
+ </section>
+ <section title="New Registries">
+ <t>Four new registries are needed under the 'Authentication,  Authorization, 
+ and Accounting (AAA) Parameters' registry:
+ </t>
+ <t><list style="symbols">
+  <t>OC-Scope AVP Values: the policy for this registry is Specification 
+   Required.</t>
+  <t>OC-Action AVP Values: the policy for this registry is Standards Action.</t>
+  <t>OC-Level AVP Values: the policy for this registry is Standards Action.</t>
+  <t>OC-Algorithm AVP Values: the policy for this registry is Specification 
+   Required.</t>
+ </list>
+ </t>
+ </section>
+</section>
+
+<section title="Security Considerations">
+ <t>The security properties of the Diameter Overload Control Application 
+  (DOCA) follows the security model of Diameter <xref target="RFC6733"/>.
+
+ 
+  This implies there is no proper means to verify the message and AVP content
+  correctness if multiple intermediate Diameter agents are present on the
+  path between the DOCA client and server. As a result a malicious intermediate
+  could feed incorrect overload control information to DOCA clients and peers, 
+  and thus affect negatively to the overload condition recovery. A possible way 
+  to overcome the obvious security vulnerability is to mandate the use of end-to-end security
+  at the Diameter AVP level.
+ </t>
+ 
+ <t>As such, like any other Diameter application this document would benefit from a Diameter end-to-end security 
+ mechanism. While work is in progress it has not yet been finalized and therefore this specification 
+ does not rely on it. 
+ </t>
+</section>
+
+
+<section title="Acknowledgements">
+ <t>The author thanks Annett Seefeldt for her constructive comments on
+    the technical aspects on this document.
+ </t>
+</section>
+
+
+</middle>
+
+    <!-- ====================================================================== -->
+
+<back>
+ <references title="Normative References">
+  &RFC2119;
+  &RFC6733;
+  &I-D.ietf-dime-overload-reqs;
+ </references>
+
+ <references title="Informative References">
+  &RFC6408; &I-D.campbell-dime-overload-data-analysis; 
+ </references>
+ 
+ 
+  <section title="Design Justification">
+    <t><xref target="introduction"/> discussed the motivation and the background for the
+  Diameter enhancements for an explicit Diameter overload control solution. This
+  specification solves the overload control at the application level instead of
+  extending the Diameter base protocol or piggybacking overload control 
+  information on top of existing applications. The reasoning
+  is the following:
+ </t>
+ <t>
+  <list style="numbers">
+   <t>The support for Diameter overload control capability between Diameter
+    peers is explicit (i.e., a new application-id is advertised) and thus not 
+    build on an exchange of optional Attribute Value Pairs (AVPs).
+   </t>
+   <t>The support for Diameter overload control capability between Diameter
+    client and server is explicit.
+   </t>
+   <t>The peer selection follows the existing standards including DNS-based 
+    discovery <xref target="RFC6408"/> and does not assume additional peer
+    selection criteria learnt from an exchange of optional AVPs.
+   </t>
+   <t>The application based solution is able to traverse and also
+    propagate overload control information through realms that deploy relay agents without Diameter overload control support.
+   </t>
+   <t>The propagation does not depend on a modified behavior of already specified Diameter command codes.
+   </t>
+   <t>Pretending not to establish a state when there actually is an overload
+    capability and information state still maintained. The state might not be
+    at the application level but is there.
+   </t>
+   <t>Trying to avoid information flooding, especially across administrative
+    domains.
+   </t>
+   <t>The use of the application concept allows established mechanisms for filtering and Diameter
+    traffic engineering, since it behaves like any other Diameter application.</t>
+	<t>The use of the dedicated application allows to isolate (even physically)
+      the overload signaling into a dedicated transport that is not affected
+      by other Diameter messages and network traffic.</t>
+  </list>
+  </t>
+  </section> 
+  
+</back>
+</rfc>
