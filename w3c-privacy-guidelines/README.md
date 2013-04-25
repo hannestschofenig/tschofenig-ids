@@ -1,1 +1,0 @@
-To view this draft in nicely rendered form, see: http://w3c.github.com/fingerprinting-guidance/
