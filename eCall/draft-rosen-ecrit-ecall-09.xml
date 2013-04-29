@@ -1,0 +1,301 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="rfc2629.xslt" ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY RFC2119   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY RFC5012   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5012.xml">
+<!ENTITY RFC6881   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6881.xml">
+<!ENTITY RFC6442   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6442.xml">
+<!ENTITY RFC5962   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5962.xml">
+<!ENTITY RFC5491   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5491.xml">
+<!ENTITY RFC5069   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5069.xml">
+<!ENTITY RFC4481   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4481.xml">
+<!ENTITY RFC5031   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5031.xml">
+<!ENTITY RFC4119   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4119.xml">
+<!ENTITY I-D.ietf-ecrit-trustworthy-location PUBLIC "" "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-ecrit-trustworthy-location.xml">
+<!ENTITY I-D.ietf-ecrit-additional-data PUBLIC "" "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-ecrit-additional-data.xml">
+]>
+
+<?rfc inline="yes"?>
+<?rfc toc="yes" ?>
+<?rfc tocdepth="2" ?> 
+<?rfc symrefs="no" ?>
+<?rfc iprnotified="no" ?>
+<?rfc strict="no" ?>
+<?rfc compact="no" ?>
+<?rfc sortrefs="yes" ?>
+<?rfc colonspace='yes' ?>
+
+<rfc category="std" ipr="trust200902" docName="draft-rosen-ecrit-ecall-09.txt">
+  <front>
+    <title abbrev="IP-based In-Vehicle Emergency Call">Internet Protocol-based In-Vehicle Emergency Call</title>
+    <author initials="B." surname="Rosen" fullname="Brian Rosen">
+      <organization>NeuStar, Inc. </organization>
+      <address>
+        <postal>
+          <street>470 Conrad Dr</street>
+          <city>Mars</city>
+          <region> PA </region>
+          <code>16046 </code>
+          <country>US </country>
+        </postal>
+        <phone> </phone>
+        <email>br@brianrosen.net</email>
+      </address>
+    </author>
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+	
+    <author initials="R." surname="Gellens" fullname="Randall Gellens">
+      <organization>QUALCOMM Incorporated</organization>
+      <address>
+        <postal>
+          <street>5775 Morehouse Drive</street>
+          <city>San Diego</city>
+          <code>92651</code>
+          <country>US</country>
+        </postal>
+        <email>rg+ietf@qualcomm.com</email>
+      </address>
+    </author>
+	
+    <date year="2013"/>
+    <area>Real-Time Applications and Infrastructure</area>
+    <workgroup>ECRIT</workgroup>
+    <keyword>Internet-Draft</keyword>
+    <abstract>
+      <t>This document describes how to re-use the emergency services mechanisms specified for the Session Initiation Protocol (SIP) 
+	  to accomplishing emergency calling support in vehicles. Profiling and simplifications are possible due to the
+        nature of the functionality that is going to be provided in vehicles with the usage of Global Positioning System (GPS).</t>
+     
+    </abstract>
+  </front>
+  <middle>
+
+    <section anchor="intro" title="Introduction">
+      <t>Emergency calls made from vehicles can assist with the objective of significantly reducing
+        road deaths and injuries. Unfortunately, drivers often have a poor location-awareness,
+        especially on urban roads (also during night) and abroad. In the most crucial cases, the
+        victim(s) may not be able to call because they have been injured or trapped.</t>
+
+      <t>In Europe the European Commission has launched the 'eCall' initiative that may best be
+        described as a user initiated or automatically triggered system to provide notifications to
+        Public Safety Answering Point's (PSAP), by means of cellular communications, that a vehicle
+        has crashed, and to provide geodetic location information and where possible a voice channel
+        to the PSAP. At the time of writing the support for eCall is focused on legacy mobile circuit switched voice technology.
+         This document details how the same functionality (and even more) can be accomplished using Internet protocols and SIP. 
+		The goal is to re-use existing specifications in the area of SIP-based emergency calling.</t>
+
+      <t>This document is organized as follows: <xref target="terminology"/> defines the
+        terminology, <xref target="data-profile"/> describes how the required functionality can be accomplished by combining several already existing standards, and <xref target="example"/> shows an example message exchange.
+        This document concludes with the security considerations in <xref target="security"/> and
+        IANA considerations in <xref target="iana"/>. <xref target="msd"/> illustrates how to map the functionality in this document to the eCall Minimum Set of Data (MSD) specified for mobile circuit switched voice.</t>
+    </section>
+
+    <section anchor="terminology" title="Terminology">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT",
+        "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in
+          <xref target="RFC2119"/>. </t>
+      <t>This document re-uses terminology defined in Section 3 of <xref
+          target="RFC5012"/>.</t>
+    </section>
+
+    <section anchor="data-profile" title="Profile">
+      <t>In the context of emergncy calls placed from a vehicle it is assumed that the car is equipped with a built-in GPS receiver. 
+	  For this reason only geodetic location information will
+        be sent within an emergency call. The following location shapes MUST be implemented: 2d and 3d Point (see
+        Section 5.2.1 of <xref target="RFC5491"/>), Circle (see Section
+        5.2.3 of <xref target="RFC5491"/>), and Ellipsoid (see Section
+        5.2.7 of <xref target="RFC5491"/>). The coordinate reference
+        systems (CRS) specified in <xref target="RFC5491"/> are also
+        mandatory for this document. The &lt;direction&gt; element, as defined in <xref target="RFC5962"/> which indicates the direction of travel of the vehicle, is
+        important for dispatch and hence it MUST be included in the PIDF-LO . The
+        &lt;heading&gt; element specified in <xref
+          target="RFC5962"/> MUST be implemented and MAY be included. </t>
+		  
+	<t>This specification also inherits the ability to utilize test call functionality from Section 15 of <xref target="RFC6881"/>.</t>
+    </section>
+
+    <section anchor="example" title="Example">
+      <t>
+        <xref target="fig1"/> shows an emergency call placed from a vehicle whereby location
+        information information is directly attached to the SIP INVITE message itself. The call is
+        marked as an emergency call using the 'urn:service:sos.ecall.automatic' service URN and the PSAP of the
+        VoIP provider determines which PSAP to contact based on the provided location information.
+        The emergency
+        call continues towards the PSAP and in this example it hits the ESRP, as the entry point to
+        the PSAP operators emergency services network. Finally, the emergency call will be received
+        by a call taker and first reponders will be dispatched. </t>
+      <t>
+        <figure anchor="fig1" title="Example of In-Vehicular Emergency Call Message Flow">
+          <artwork><![CDATA[
+                 +--------+
+                 | LoST   |
+                 | Server |
+                 +--------+
+                     ^                         +-------+
+                     |                         | PSAP2 |
+                     |                         +-------+
+                     v
+                 +-------+     +------+     +-------+
+  Vehicle ------>| Proxy |---->| ESRP |---->| PSAP1 |-----> Call-Taker
+                 +-------+     +------+     +-------+
+
+                                               +-------+
+                                               | PSAP3 |
+                                               +-------+
+            ]]></artwork>
+        </figure>
+      </t>
+      <t>The example, shown in <xref target="fig2"/>, illustrates a SIP INVITE and location information encoded in a
+        PIDF-LO that is being conveyed in such an emergency call.</t>
+      <t>
+        <figure anchor="fig2" title="SIP INVITE indicating an In-Vehicular Emergency Call">
+          <artwork><![CDATA[
+   INVITE urn:service:sos.ecall.automatic SIP/2.0
+   To: urn:service:sos.ecall.automatic 
+   From: <sip:+13145551111@example.com>;tag=9fxced76sl
+   Call-ID: 3848276298220188511@atlanta.example.com
+   Geolocation: <cid:target123@example.com>
+   Geolocation-Routing: no
+   Accept: application/sdp, application/pidf+xml
+   CSeq: 31862 INVITE
+   Content-Type: multipart/mixed; boundary=boundary1
+   Content-Length: ...
+
+   --boundary1
+
+   Content-Type: application/sdp
+
+   ...Session Description Protocol (SDP) goes here
+
+   --boundary1
+
+Content-Type: application/pidf+xml
+Content-ID: <target123@atlanta.example.com>
+<?xml version="1.0" encoding="UTF-8"?>
+<presence
+       xmlns="urn:ietf:params:xml:ns:pidf"
+       xmlns:dm="urn:ietf:params:xml:ns:pidf:data-model"
+       xmlns:gp="urn:ietf:params:xml:ns:pidf:geopriv10"
+       xmlns:dyn="urn:ietf:params:xml:ns:pidf:geopriv10:dynamic"
+       xmlns:gml="http://www.opengis.net/gml"
+       xmlns:gs="http://www.opengis.net/pidflo/1.0"
+       entity="sip:+13145551111@example.com">
+       <dm:device id="123">
+           <gp:geopriv>
+               <gp:location-info>
+                   <gml:Point srsName="urn:ogc:def:crs:EPSG::4326">
+                      <gml:pos>-34.407 150.883</gml:pos>
+                   </gml:Point>
+                    <dyn:Dynamic>
+                       <dyn:heading>278</dyn:heading>
+					   <dyn:direction><dyn:direction>
+                    </dyn:Dynamic>
+               </gp:location-info>
+               <gp:usage-rules/>
+               <method>gps</method>
+           </gp:geopriv>
+           <timestamp>2012-04-5T10:18:29Z</timestamp>
+           <dm:deviceID>1M8GDM9A_KP042788</dm:deviceID>
+       </dm:device>
+</presence>
+   --boundary1--
+]]></artwork>
+        </figure>
+      </t>
+    </section>
+
+    <section anchor="security" title="Security Considerations">
+      <t>This document does not raise security considerations beyond those described in <xref
+          target="RFC5069"/>. As with emergency service systems with end host provided location
+        information there is the possibility that that location is incorrect, either intentially (in
+        case of an a denial of service attack against the emergency services infrastructure) or due
+        to a malfunctioning devices. The reader is referred to <xref
+          target="I-D.ietf-ecrit-trustworthy-location"/> for a discussion of some of these
+        vulnerabilities. </t>
+    </section>
+
+    <section anchor="iana" title="IANA Considerations">
+      <t>IANA is requested to register the URN 'urn:service:sos.ecall' under the sub-services 'sos'
+        registry defined in Section 4.2 of <xref target="RFC5031"/>.</t>
+      
+          <t>This service identifier reaches a public safety answering
+            point (PSAP), which in turn dispatches aid appropriate to the emergency related to
+            accidents of vehicles. Two sub-services are registered as well, namely 
+            
+            <list style='hanging'> 
+            <t hangText="urn:service:sos.ecall.manual"><vspace blankLines="1"/> This service URN indicates that an eCall had been triggered based on the manual interaction of the driver or a passenger.</t>
+            <t hangText="urn:service:sos.ecall.automatic"><vspace blankLines="1"/> This service URN indicates that an eCall had been triggered automatically, for example, due to a crash. No human involvement was detected.</t>
+             
+            </list> 
+            </t>
+    </section>
+    
+    <section title="Contributors">
+      <t>We would like to thank Ulrich Dietz for his help with earlier versions of the document.</t>
+    </section>
+
+    <section title="Acknowledgements">
+      <t>We would like to thank Michael Montag, Arnoud van Wijk, Ban Al-Bakri, and Gunnar Hellström for their feedback.</t>
+    </section>
+
+  </middle>
+  <back>
+    <references title="Normative References"> &RFC2119; &RFC4119;
+      &RFC5491; &RFC6881;
+      &RFC6442; &RFC5962;
+	  &I-D.ietf-ecrit-additional-data; 
+      &RFC5031; </references>
+    <references title="Informative references"> &RFC5012; &RFC5069;
+      &I-D.ietf-ecrit-trustworthy-location;
+	  &RFC4481; 
+
+ <reference anchor="eCall-MSD">
+      <front>
+       <title>Intelligent transport systems - eSafety - eCall minimum set of data (MSD), EN 15722</title>
+       <author fullname="CEN" initials="" surname="CEN"> </author>
+       <date year="2011" month="June"/>
+      </front>
+     </reference>
+  
+ </references>
+  
+  <section anchor="msd" title="Matching Functionality with eCall Minimum Set of Data (MSD)">
+  <t><xref target="eCall-MSD"/> outlines a number of data elements that are transmitted in an emergency call triggered by a vehicle. Note that the work on eCall for mobile circuit switched voice is constrained in a number of ways since legacy eCall uses an inband voice modem for backwards compatibility with the already deployed cellular infrastructure to transmit data from a vehicle to a PSAP. Since the functionality in this document is based on the Session Initiation Protocol (SIP) these limitations do not exist. As such, it is not useful to transmit the MSD inband in the voice channel but to rather use the SIP mechanisms standardized for emergency call handling. Any voice, video, or real-text communication will be negotiated using the Session Description Protocol (SDP), as shown in <xref target="fig2"/>, and the actual media stream will then take place in RTP packets. For transmitting location information an XML-based data structure had been defined, the so-called Presence Information Data Format Location Object (PIDF-LO). </t> 
+  
+  <t>The following list compares the eCall minimum set of data with the functionality provided in this document.
+  <list style="hanging">
+   <t hangText="Version of the MSD Format:">Conveying information in a SIP-based emergency call is accomplished by using XML payloads and XML provides namespace declarations that allow a receipient of that information to distinguish different versions and additional extensions. For example, if additional data about a vehicle is defined and can be 
+   transmitted by vehicle then a respective extension can be defined inside the additional data XML structure <xref target="I-D.ietf-ecrit-additional-data"/>. Selecting the appropriate extension point depends on the type of extension envisioned.</t> 
+   <t hangText="Message Identifier:">Every SIP INVITE message contains a Call-ID, which is a globally unique identifier for this call.</t>
+   <t hangText="Vehicle Type Encoding:">[Editor's Note: Description to be added.].</t>
+   <t hangText="Test Call Indication">A service URN starting with "test." indicates a request for an automated test. For example,
+   "urn:service:test.sos.ecall.automatic" indicates such a test feature. This functionality is defined in <xref target="RFC6881"/>.</t>
+   <t hangText="Automatic Activation Indication:">This document registers new service URNs, which allow the differentiation between manually and automatically triggered emergency calls. The two service URNs are: urn:service:sos.ecall.automatic and urn:service:sos.ecall.manual</t>
+   <t hangText="Vehicle Identification:">The PIDF data structure contains a deviceID field that holds the Vehicle Identification Number (VIN).</t>
+   <t hangText="Vehicle Propulsion Storage type:"> These parameters identify the type of vehicle
+energy storage(s) present. [Editor's Note: Description to be added.]</t>
+   <t hangText="Timestamp of Incident Event:">The PIDF-LO element contains the timestamp when the PIDF-LO was created, which is at the time of the incident.</t>
+   <t hangText="Vehicle Location:">The location of the vehicle is conveyed using the PIDF location objection, as described in <xref target="data-profile"/>.</t>
+   <t hangText="Vehicle Direction:">The direction of the vehicle is part of location information, as described in <xref target="data-profile"/>.</t>
+   <t hangText="Recent Vehicle Location:">With this optional functionality multiple location objects may be required to be transported simultaneously. This can be achieved using &lt;timed-presence&gt;, defined
+   in RFC 4481 <xref target="RFC4481"/>.</t>
+   <t hangText="Number of Passengers:">Minimum known number of fastened seatbelts. [Editor's Note: Description to be added.]</t>
+   <t hangText="Additional Data:"><xref target="I-D.ietf-ecrit-additional-data"/> provides the ability to carry additional data for an emergency call.</t>
+  </list> 
+  </t> 
+  </section> 
+  </back>
+</rfc>
