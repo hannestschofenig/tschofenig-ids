@@ -1,0 +1,4591 @@
+
+
+
+
+ECRIT                                                         B.R. Rosen
+Internet-Draft                                                   NeuStar
+Intended status: Standards Track                           H. Tschofenig
+Expires: November 14, 2013                        Nokia Siemens Networks
+                                                             R. Marshall
+                                         TeleCommunication Systems, Inc.
+                                                              R. Gellens
+                                             Qualcomm Technologies, Inc.
+                                                            May 13, 2013
+
+
+              Additional Data related to an Emergency Call
+                draft-ietf-ecrit-additional-data-09.txt
+
+Abstract
+
+   When an emergency call is sent to a Public Safety Answering Point
+   (PSAP), the device that sends it, as well as any application service
+   provider in the path of the call, or access network provider through
+   which the call originated may have information about the call or the
+   caller which the PSAP may be able to use.  This document describes
+   data structures and a mechanism to convey such data to the PSAP.  The
+   mechanism uses a Uniform Resource Identifier (URI), which may point
+   to either an external resource or an object in the body of the SIP
+   message.  The mechanism thus allows the data to be passed by
+   reference (when the URI points to an external resource) or by value
+   (when it points into the body of the message).  This follows the
+   tradition of prior emergency services standardization work where data
+   can be conveyed by value within the call signaling (i.e., in body of
+   the SIP message) and also by reference.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on November 14, 2013.
+
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 1]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+Copyright Notice
+
+   Copyright (c) 2013 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   4
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   3.  Data Structure Overview . . . . . . . . . . . . . . . . . . .   7
+   4.  Transmitting Blocks of Additional Data  . . . . . . . . . . .   8
+     4.1.  Transmitting blocks using Call-Info . . . . . . . . . . .   9
+     4.2.  Transmitting blocks by reference using Provided-By  . . .   9
+     4.3.  Transmitting blocks by value using Provided-By  . . . . .  10
+   5.  Data Provider Information . . . . . . . . . . . . . . . . . .  10
+     5.1.  Data Provider String  . . . . . . . . . . . . . . . . . .  11
+     5.2.  Data Provider ID  . . . . . . . . . . . . . . . . . . . .  11
+     5.3.  Data Provider ID Series . . . . . . . . . . . . . . . . .  12
+     5.4.  Type of Data Provider . . . . . . . . . . . . . . . . . .  12
+     5.5.  Data Provider Contact URI . . . . . . . . . . . . . . . .  13
+     5.6.  Data Provider Languages(s) Supported  . . . . . . . . . .  14
+     5.7.  xCard of Data Provider  . . . . . . . . . . . . . . . . .  14
+     5.8.  Subcontractor Principal . . . . . . . . . . . . . . . . .  15
+     5.9.  Subcontractor Priority  . . . . . . . . . . . . . . . . .  15
+     5.10. emergencyCall.ProviderInfo XML Schema . . . . . . . . . .  16
+     5.11. emergencyCall.ProviderInfo Example  . . . . . . . . . . .  17
+   6.  Service Information . . . . . . . . . . . . . . . . . . . . .  19
+     6.1.  Service Environment . . . . . . . . . . . . . . . . . . .  19
+     6.2.  Service Delivered by Provider to End User . . . . . . . .  20
+     6.3.  Service Mobility Environment  . . . . . . . . . . . . . .  21
+     6.4.  emergencyCall.SvcInfo XML Schema  . . . . . . . . . . . .  22
+     6.5.  emergencyCall.SvcInfo Example . . . . . . . . . . . . . .  23
+   7.  Device Information  . . . . . . . . . . . . . . . . . . . . .  23
+     7.1.  Device Classification . . . . . . . . . . . . . . . . . .  23
+     7.2.  Device Manufacturer . . . . . . . . . . . . . . . . . . .  25
+     7.3.  Device Model Number . . . . . . . . . . . . . . . . . . .  26
+     7.4.  Unique Device Identifier  . . . . . . . . . . . . . . . .  26
+     7.5.  Type of Device Identifier . . . . . . . . . . . . . . . .  27
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 2]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+     7.6.  Device/Service Specific Additional Data Structure . . . .  27
+     7.7.  Device/Service Specific Additional Data Structure Type  .  28
+     7.8.  Choosing between defining a new type of block or new type
+           of device/service specific additional data  . . . . . . .  29
+     7.9.  emergencyCall.DevInfo XML Schema  . . . . . . . . . . . .  29
+     7.10. emergencyCall.DevInfo Example . . . . . . . . . . . . . .  30
+   8.  Owner/Subscriber Information  . . . . . . . . . . . . . . . .  31
+     8.1.  xCard for Subscriber's Data . . . . . . . . . . . . . . .  31
+     8.2.  emergencyCall.SubInfo XML Schema  . . . . . . . . . . . .  31
+     8.3.  emergencyCall.SubInfo Example . . . . . . . . . . . . . .  32
+   9.  Comment . . . . . . . . . . . . . . . . . . . . . . . . . . .  34
+     9.1.  Comment . . . . . . . . . . . . . . . . . . . . . . . . .  35
+     9.2.  emergencyCall.Comment XML Schema  . . . . . . . . . . . .  35
+     9.3.  emergencyCall.Comment Example . . . . . . . . . . . . . .  36
+   10. Example . . . . . . . . . . . . . . . . . . . . . . . . . . .  36
+   11. Main Telephone Number . . . . . . . . . . . . . . . . . . . .  37
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  37
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  38
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  39
+     14.1.  Registry creation  . . . . . . . . . . . . . . . . . . .  39
+       14.1.1.  Additional Call Data Provider ID Series Registry . .  39
+       14.1.2.  Additional Call Data Service Provider Type Registry   39
+       14.1.3.  Additional Call Data Service Delivered Registry  . .  40
+       14.1.4.  Additional Call Data Device Classification Registry   41
+       14.1.5.  Additional Call Data Device ID Type Type Registry  .  42
+       14.1.6.  Device/Service Specific Additional Data Type
+                Registry . . . . . . . . . . . . . . . . . . . . . .  43
+       14.1.7.  Additional Call Data Blocks Registry . . . . . . . .  43
+     14.2.  'emergencyCallData' Purpose Parameter Value  . . . . . .  44
+     14.3.  URN Sub-Namespace Registration for provided-by Registry
+            Entry  . . . . . . . . . . . . . . . . . . . . . . . . .  44
+       14.3.1.  Provided-By XML Schema . . . . . . . . . . . . . . .  45
+     14.4.  MIME Registrations . . . . . . . . . . . . . . . . . . .  45
+       14.4.1.  MIME Content-type Registration for
+                'application/emergencyCall.ProviderInfo+xml' . . . .  45
+       14.4.2.  MIME Content-type Registration for
+                'application/emergencyCall.SvcInfo+xml'  . . . . . .  47
+       14.4.3.  MIME Content-type Registration for
+                'application/emergencyCall.DevInfo+xml'  . . . . . .  48
+       14.4.4.  MIME Content-type Registration for
+                'application/emergencyCall.SubInfo+xml'  . . . . . .  49
+       14.4.5.  MIME Content-type Registration for
+                'application/emergencyCall.Comment+xml'  . . . . . .  50
+     14.5.  URN Sub-Namespace Registration . . . . . . . . . . . . .  52
+       14.5.1.  Registration for
+                urn:ietf:params:xml:ns:emergencyCallAddlData . . . .  52
+       14.5.2.  Registration for
+                urn:ietf:params:xml:ns:emergencyCallProviderInfo . .  52
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 3]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+       14.5.3.  Registration for
+                urn:ietf:params:xml:ns:emergencyCall.SvcInfo . . . .  53
+       14.5.4.  Registration for
+                urn:ietf:params:xml:ns:emergencyCall.DevInfo . . . .  54
+       14.5.5.  Registration for
+                urn:ietf:params:xml:ns:emergencyCall.SubInfo . . . .  54
+       14.5.6.  Registration for
+                urn:ietf:params:xml:ns:emergencyCall.Comment . . . .  55
+     14.6.  Schema Registrations . . . . . . . . . . . . . . . . . .  56
+     14.7.  VCard Parameter Value Registration . . . . . . . . . . .  57
+   15. Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  57
+   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  57
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  57
+     16.2.  Informational References . . . . . . . . . . . . . . . .  58
+   Appendix A.  XML Schema for vCard/xCard . . . . . . . . . . . . .  59
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  81
+
+1.  Introduction
+
+   When an emergency call is triggered and the Session Initiation
+   Protocol (SIP) is used, a rich set of data is conveyed to the Public
+   Safety Answering Point (PSAP) as part of the call setup.  This data
+   includes information about the calling party identity, the multimedia
+   capabilities of the device, the emergency service number, etc.  The
+   device, as well as any service provider in the path may have even
+   more information that may be useful for a PSAP call taker.  This
+   document extends the basic signaling of an emergency call, as
+   described in [RFC6443] and [RFC6881], in order to carry additional
+   data which may be useful to an entity handling the call.  This data
+   is "additional" to the basic information found in the emergency call
+   signaling used.
+
+   Three general categories of such data are defined, namely data about
+   the call, the location and the caller.  In more detail, the three
+   types of data exchanged are:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 4]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Data Associated with a Call:  While information is carried in the
+      call setup procedure itself (as part of the SIP headers as well as
+      in the body of the SIP message), there is additional data known by
+      the device making the call, or a service provider in the path of
+      the call.  This information may include the identity and contact
+      information of the service provider, subscriber identity and
+      contact information, the type of service the provider offers, what
+      kind of device is being used, etc.  Some data is device or service
+      dependent data.  For example, a car telematics system or service
+      may have crash information.  A medical monitoring device may have
+      sensor data.  While the details of the information may vary by
+      device or service, there needs to be a common way to send such
+      data to a PSAP.
+
+   Data Associated with a Location:  Location data is conveyed in the
+      Presence Informatoin Data Format Location Object (PIDF-LO) data
+      structure originally defined in RFC 4119 [RFC4119].  There may be
+      data that is specific to the location not available in the
+      location data structure itself, such as floor plans, tenant and
+      building owner contact data, Heating, Ventilation and Air
+      Conditioning (HVAC) status, etc.
+
+   Data Associated with a Caller:  This is personal data about a caller,
+      such as medical information and emergency contact data.
+
+   This document only defines data structures relevant to data
+   associated with the call.  Other forms of additional data may use
+   this mechanism to carry data, but those blocks are not defined in
+   this document.
+
+   Data structures are defined for such data, and a means of conveying
+   the data by including a Uniform Resource Identifier (URI) in an
+   existing SIP header field, the Call-Info header, which is specified
+   in Section 20.9 of [RFC3261].  For this purpose a new token, namely
+   'emergencyCallData' is defined to be carried in the "purpose"
+   parameter.  If the "purpose" parameter is set to 'emergencyCallData'
+   then the Call-Info header contains an HTTPS URL that resolves to a
+   data structure with information about the call, or is a CID (content
+   indirection) that allows the data structure to be placed in the body
+   of the message.  The "purpose" parameter also contains an indication
+   of what kind of data is available at the URI.
+
+
+
+
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 5]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   As the data is conveyed using a Uniform Resource Identifier (URI) in
+   the SIP signaling, the data itself may reside on an external
+   resource, or may be contained within the BODY of the SIP message.
+   When the URI refers to data at an external resource, the data is said
+   to be passed by reference.  When the URI refers to data contained
+   within the body of the SIP message, the data is said to be passed by
+   value.
+
+   Section 10 shows a SIP INVITE example containing such a Call-Info
+   header using the purpose parameter.
+
+   Besides a service provider in the path of a call, the access network
+   provider (which may provide location in the form of a PIDF-LO
+   [RFC4119] from a location server via a location configuration
+   protocol) may also have similar information that may be valuable to
+   the PSAP.  This information is not specific to the location itsef,
+   but rather provides descriptive information having to do with the
+   immediate circumstances about the provision of the location (who the
+   access network is, how to contact that entity, what kind of service
+   the access network provides, subscriber information, etc.).  This
+   data is similar in nearly every respect to the data known by service
+   providers in the path of the call.  When the access network provider
+   and service provider are separate entities, the access network does
+   not participate in the application layer signaling (and hence cannot
+   add a Call-Info' header field to the SIP message), but may provide
+   location information to assist in locating the caller's device.  The
+   'provided-by' element of the PIDF-LO is a mechanism for the access
+   network to supply the information about the entity or organization
+   that supplied this location information.  For this reason, this
+   document describes a namespace per [RFC4119] for inclusion in the
+   "provided-by" element of a PIDF-LO for adding information known to
+   the access network.
+
+   More technically, the data structure described in this document is
+   represented as one or more "blocks" of information.  Each of the
+   blocks is a Multipurpose Internet Mail Extensions (MIME) type, and an
+   extensible set of these types constitute the data set.  A registry is
+   defined to list the block types that may be included.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+   This document also uses terminology from [RFC5012].  We use the term
+   service provider to refer to an Application Service Provider (ASP) or
+   to Voice Service Provider (VSP), which is a specific type of ASP.
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 6]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   With the term "Access Network Provider" we refer to the Internet
+   Access Provider (IAP) and the Internet Service Provider (ISP) without
+   further distinguishing these two entities, since the difference
+   between the two is not relevant for this document.  Note that the
+   roles of ASP and access network provider may be provided by a single
+   company.
+
+   In the data block definitions, the "Use:" values are specified as one
+   of:
+
+   'Mandatory':  means they must be present in the data structure.
+
+   'Conditional':  means they must be present unless the specified
+      condition is met, in which case the they may be present.
+
+   'Optional':  means they may be present.
+
+3.  Data Structure Overview
+
+   The following section defines an initial set of blocks which may be
+   sent by value or by reference in SIP signaling or within a PIDF-LO.
+   For each block, we define the MIME type, and the XML data structure
+   for the block.  The following blocks are defined:
+
+   'Data Provider':  This block supplies name and contact information
+      for the entity that created the data.
+
+   'Service Information':  This block supplies information about the
+      service provided by a service provider.
+
+   'Device Information':  This block supplies information about the
+      device placing the call.
+
+   'Owner/Subscriber':  This block supplies information about the owner
+      of the device or about the subscriber of the application service.
+
+   'Comment':  This block provides a way to supply free form human
+      readable text to the PSAP or emergency responders.
+
+   A PSAP or emergency responder is able to examine the type of data
+   provided and selectively retrieve the data it is interested in, while
+   forwarding all of it (the values or references) to downstream
+   entities.
+
+   Blocks can be sent by value (the data in the SIP body or PIDF-LO) or
+   by reference (the data is retrieved via HTTPS from an external
+   server).  Data may be provided by the device and/or one or more
+   service providers.  For example, the device may provide device
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 7]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   specific information by value, a telematics service provider may
+   provide its contact data and data derived from the sensor data (e.g.,
+   injury prediction) by reference, and an access network provider may
+   provide contact information by value, all in the same SIP INVITE.
+
+   The access network provider may supply additional data as well, by
+   including the data within a Provided-By element of a PDIF-LO it
+   returns for emergency use (e.g., if requested with a HELD
+   "responseTime" attribute of "emergencyRouting" or "emergencyDispatch"
+   [RFC5985]).  Access network providers are expected to normally supply
+   such information by reference (by including an HTTPS URI within the
+   Provided-By element).  This document defines a namespace and adds the
+   namespace to the "provided-by" registry defined by PIDF-LO [RFC4119].
+
+4.  Transmitting Blocks of Additional Data
+
+   One or more blocks of data registered in the Emergency Call
+   Additional Data registry, as defined in Section 14.1, may be included
+   or referenced in the SIP signaling (using the Call-Info header field)
+   or in the provided-by element of a PIDF-LO.  Each block is a MIME
+   type, and any set of blocks may be included.
+
+   Additional data about a call is defined as a series of MIME objects,
+   each with an XML data structure contained inside.  As usual, whenever
+   more than one MIME part is included in the body of a message, MIME-
+   multipart (i.e., 'multipart/mixed') encloses them all.  The sections
+   below define the XML schema and MIME types used for each block.  When
+   additional data is passed by value in the SIP signaling, each CID URL
+   points to one block in the body.  Multiple URIs are used within a
+   Call-Info header field (or multiple Call-Info header fields) to point
+   to multiple blocks.  When additional data is provided by reference
+   (in SIP signaling or Provided-By), each HTTPS URL references one
+   block; the data is retrieved with an HTTP GET operation, which
+   returns one of the blocks as an XML object.
+
+   A registry of allowed types is created by this document.  Every block
+   must be one of the types in the registry.
+
+   In regions where callers can elect to suppress certain personally
+   identifying information, the network or PSAP functionality can
+   inspect privacy flags within the SIP headers to determine what
+   information may be passed, stored, or displayed to comply with local
+   policy or law.
+
+   Each entity adding additional data MUST supply the "Data Provider"
+   block.  All other blocks are optional, but each entity SHOULD supply
+   any blocks where it has at least some of the information in the
+   block.
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 8]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+4.1.  Transmitting blocks using Call-Info
+
+   A URI to a block MAY be inserted in a SIP request or response method
+   (most often INVITE or MESSAGE) with a Call-Info header field
+   containing a purpose of "emergencyCallData" together with the type of
+   data available at the URI.  The type of data is denoted by including
+   the root of the MIME type (not including the emergencyCall prefix and
+   the +xml suffix) with a "."  separator.  For example, when
+   referencing a block with MIME type 'application/
+   emergencyCall.ProviderInfo+xml', the 'purpose' parameter is set to
+   'emergencyCallData.ProviderInfo'.  An example "Call-Info" header
+   field for this would be:
+
+   Call-Info:  https://www.example.com/23sedde3;
+       purpose="emergencyCallData.ProviderInfo"
+
+   The Call-info header with purpose='emergencyCallData' MUST only be
+   sent on an emergency call, which can be ascertained by the presence
+   of an emergency service urn in a Route header of a SIP message.
+
+   If the data is provided by reference, it may be retrieved with an
+   HTTPS GET from the URI.  The URI MUST specify an HTTPS scheme, and
+   consequently Transport Layer Security (TLS) protection is applied.
+
+   The data may also be supplied by value in a SIP message.  In this
+   case, Content Indirection (CID) [RFC2392] is used, with the CID URL
+   referencing the MIME body part.
+
+   More than one Call-Info header with an emergencyCallData purpose can
+   be expected, but at least one MUST be provided.  The device MUST
+   provide one if it knows no service provider is in the path of the
+   call.  The device MAY insert one if it uses a service provider.  Any
+   service provider in the path of the call MUST insert its own.  For
+   example, a device, a telematics service provider in the call path, as
+   well as the mobile carrier handling the call will each provide one.
+   There may be circumstances where there is a service provider who is
+   unaware that the call is an emergency call and cannot reasonably be
+   expected to determine that it is an emergency call.  In that case,
+   that service provider is not expected to provide emergencyCallData.
+
+4.2.  Transmitting blocks by reference using Provided-By
+
+   The 'emergencyCallDataReference' element is used to transmit an
+   additional data block by reference within a 'Provided-By' element of
+   a PIDF-LO.  The 'emergencyCallDataReference' element has two
+   attributes: 'ref' to specify the URL, and 'purpose' to indicate the
+   type of data block referenced.  The value of 'ref' is an HTTPS URL
+   that resolves to a data structure with information about the call.
+
+
+
+Rosen, et al.          Expires November 14, 2013                [Page 9]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   The value of 'purpose' is the same as used in a 'Call-Info' header
+   field (as specified in section Section 4.1, Transmitting blocks using
+   Call-Info).
+
+   For example, to reference a block with MIME type 'application/
+   emergencyCall.ProviderInfo+xml', the 'purpose' parameter is set to
+   'emergencyCallData.ProviderInfo'.  An example
+   'emergencyCallDataReference' element for this would be:
+
+      <emergencyCallDataReference ref="https://www.example.com/23sedde3"
+      purpose="emergencyCallData.ProviderInfo"/>
+
+4.3.  Transmitting blocks by value using Provided-By
+
+   It is RECOMMENDED that access networks supply the data specified in
+   this document by reference, but they MAY provide the data by value.
+
+   The 'emergencyCallDataValue' element is used to transmit an
+   additional data block by value within a 'Provided-By' element of a
+   PIDF-LO.  The 'emergencyCallDataValue' element has one attribute:
+   'purpose' to indicate the type of data block contained.  The value of
+   'purpose' is the same as used in a 'Call-Info' header field (as
+   specified in Section 4.1, and in Section 4.1).  The same XML
+   structure as would be wrapped in the corresponding MIME type is
+   placed inside the emergencyCallDataValue element.
+
+   For example:
+
+
+
+       <provided-by: xmlns="urn:ietf:params:xml:ns:
+                            emergencyCallAddlData">
+           <emergencyCallDataValue purpose=
+                           "emergencyCallData.ProviderInfo">
+           <ProviderID>HooThrooPoo</ProviderID>
+           <ProviderIDSeries>NENA</ProviderIDSeries>
+           <TypeOfProviderID>Access Infrastructure Provider
+                           </TypeOfProviderID>
+           <ContactURI>sip:15555550987@burf.example.com;user=phone
+                           </ContactURI>
+           </emergencyCallDataValue>
+       </provided-by>
+
+
+                       Example Provided-By by Value.
+
+5.  Data Provider Information
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 10]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   This block is intended to be provided by any service provider in the
+   path of the call or the access network provider.  It includes
+   identification and contact information.  This block SHOULD be
+   provided by every service provider in the call path, and by the
+   access network provider.  Devices MAY use this block to provide
+   identifying information.  The MIME subtype is "application/
+   emergencyCall.ProviderInfo+xml".
+
+5.1.  Data Provider String
+
+   Data Element:  Data Provider String
+
+
+   Use:  Required
+
+
+   XML Element:  <DataProviderString>
+
+
+   Description:  This is a plain language string suitable for displaying
+      the name of the service provider that created the additional data
+      structure.  If the device created the structure the value is
+      identical to the contact header in the SIP INVITE.
+
+
+   Reason for Need:  Inform the call taker of the identity of the entity
+      providing the additional call data structure.
+
+   How Used by Call Taker:  Allows the call taker to interpret the data
+      in this structure.  The source of the information often influences
+      how the information is used, believed or verified.
+
+5.2.  Data Provider ID
+
+   Data Element:  Data Provider ID
+
+
+   Use:  Conditional.  Must be provided if the service provider is
+      located in a jurisdiction that maintains such ids.  Devices are
+      not required to provide it.
+
+
+   XML Element:  <ProviderID>
+
+
+   Description:  A jurisdiction specific code for the provider shown in
+      the <DataProvidedBy> element that created the structure of the
+      call.  This data SHOULD be provided if the local jurisdiction
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 11]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      maintains such an ID list.  For example, in North America, this
+      would be a "NENA Company ID".  Devices SHOULD NOT use this
+      element.
+
+
+   Reason for Need:  Inform the call taker of the identity of the entity
+      providing the additional call data structure.
+
+
+   How Used by Call Taker:  Where jurisdictions have lists of providers
+      the Data Provider ID can be useful.
+
+5.3.  Data Provider ID Series
+
+   Data Element:  Data Provider ID Series
+
+
+   Use:  Conditional.  If Data Provider ID is provided, Data Provider ID
+      Series is required.
+
+
+   XML Element:  <ProviderIDSeries>
+
+
+   Description:  Identifies the issuer of the the ProviderId.  A
+      registry will reflect the following valid entries:
+
+      *  NENA
+
+      *  EENA
+
+
+   Reason for Need:  Identifies how to interpret the Data Provider ID.
+
+
+   How Used by Call Taker:  Determines which provider ID registry to
+      consult for more information
+
+5.4.  Type of Data Provider
+
+   Data Element:  Type of Data Provider ID
+
+
+   Use:  Conditional.  If Data Provider ID is provided, Type of Data
+      Provider ID is required.
+
+
+   XML Element:  <TypeOfProviderID>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 12]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Description:  Identifies the type of data provider id being supplied
+      in the ProviderId data element.  A registry will reflect the
+      following valid entries:
+
+      *  Access Network Provider
+
+      *  Service Provider
+
+      *  Service Provider Subcontractor
+
+      *  Telematics Provider
+
+      *  Relay Provider
+
+      *  Other
+
+
+   Reason for Need:  Identifies what kind of data provider this is.
+
+
+   How Used by Call Taker:  To decide who to contact when further
+      information is needed
+
+5.5.  Data Provider Contact URI
+
+   Data Element:  Data Provider Contact URI
+
+
+   Use:  Required
+
+
+   XML Element:  <ContactURI>
+
+
+   Description:  For a service provider the contact SHOULD be a contact
+      URI.  This MUST be a SIP URI.  If a telephone number is the
+      contact address it should be provided in the form of
+      sip:telephonenumber@serviceprovider:user=phone.  If the call is
+      from a device, this would reflect the contact information of the
+      owner of the device.  When provided by a service provider, this
+      would be a URI to a 24/7 support organization tasked to provide
+      PSAP support for this emergency call.
+
+
+   Reason for Need:  Additional data providers may need to be contacted
+      for error or other unusual circumstances.
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 13]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   How Used by Call Taker:  To contact the supplier of the additional
+      data for assistance in handling the call.
+
+5.6.  Data Provider Languages(s) Supported
+
+   Data Element:  Data Provider Language(s) supported
+
+
+   Use:  Conditional
+
+
+   XML Element:  <Language>
+
+
+   Description:  The language used by the entity at the Data Provider
+      Contact URI as an alpha 2-character code as defined in ISO
+      639-1:2002 Codes for the representation of names of languages --
+      Part 1: Alpha-2 code Multiple instances of this element may occur.
+      Order is significant; preferred language should appear first.
+      This data is required if a Data Provider Contact URI is provided.
+      The content must reflect the languages supported at the contact
+      URI.
+
+
+   Reason for Need:  Information needed to determine if emergency
+      service authority can communicate with the service provider or if
+      an interpreter will be needed.
+
+
+   How Used by Call Taker:  If call taker cannot speak language(s)
+      supported by the service provider, a translation service will need
+      to be added to the conversation.
+
+5.7.  xCard of Data Provider
+
+   Data Element:  xCard of Data Provider
+
+
+   Use:  Optional
+
+
+   XML Element:  <DataProviderContact>
+
+
+   Description:  There are many fields in the xCARD and the creator of
+      the data structure is encouraged to provide as much information as
+      they have available.  N, ORG, ADR, TEL, EMAIL are suggested at a
+      minimum.  N should contain name of support group or device owner
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 14]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      as appropriate.  If more than one TEL property is provided, a
+      parameter from the vCard Property Value registry MUST be specified
+      on each TEL.  For encoding of the xCard this specification uses
+      the XML-based encoding specified in [RFC6351].
+
+      and is hereinafter referred to as "xCard"
+
+   Reason for Need:  Information needed to determine additional contact
+      information.
+
+
+   How Used by Call Taker:  Assists call taker by providing additional
+      contact information that may not be included in the SIP invite or
+      the PIDF-LO.
+
+5.8.  Subcontractor Principal
+
+   Data Element:  Subcontractor Principal
+
+
+   XML Element:  <SubcontratorPrincipal>
+
+
+   Description:  If the data provider is a subcontractor to another
+      provider such as an access infrastructure provider or telematics
+      provider, this element contains the DataProviderString of the
+      service provider to indicate which provider the subcontractor is
+      working for.  This data is required if the Data Provider type is
+      subcontractor.
+
+
+   Reason for Need:  Identify the entity the subcontractor works for.
+
+   How Used by Call Taker:  Allows the call taker to understand what the
+      relationship between data providers and the service providers in
+      the path of the call are.
+
+5.9.  Subcontractor Priority
+
+   Data Element:  Subcontractor Priority
+
+
+   Use:  Required
+
+
+   XML Element:  <SubcontractorPriority>
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 15]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Description:  If the subcontractor should be contacted first, this
+      element should have a "sub" value.  If the access or origination
+      service provider should be contacted first, this element should
+      have a "main" value.  This data is required if the Data Provider
+      type is "subcontractor".
+
+
+   Reason for Need:  Inform the call taker whether the network operator
+      or the subcontractor should be contacted first if support is
+      needed.
+
+   How Used by Call Taker:  To decide which entity to contact first if
+      assistance is needed.
+
+5.10.  emergencyCall.ProviderInfo XML Schema
+
+
+
+   <?xml version="1.0"?>
+   <xs:schema
+      targetNamespace="urn:ietf:params:xml:ns:emergencyCall.ProviderInfo"
+      xmlns:xs="http://www.w3.org/2001/XMLSchema"
+      xmlns:ad="urn:ietf:params:xml:ns:emergencyCall.ProviderInfo"
+      xmlns:xml="http://www.w3.org/XML/1998/namespace"
+      xmlns:xc="urn:ietf:params:xml:ns:vcard-4.0"
+      elementFormDefault="qualified"
+       ttributeFormDefault="unqualified">
+
+        <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+                   schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+
+
+        <xs:simpleType name="iso3166a2">
+          <xs:restriction base="xs:token">
+            <xs:pattern value="[A-Z]{2}"/>
+          </xs:restriction>
+        </xs:simpleType>
+
+       <xs:element name="emergencyCall.ProviderInfo">
+           <xs:complexType>
+               <xs:sequence>
+                   <xs:element name="DataProviderString"
+                       type="xs:string" minOccurs="1" maxOccurs="1"/>
+                   <xs:element name="ProviderID"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="ProviderIDSeries"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="TypeOfProvider"
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 16]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="ContactURI" type="xs:anyURI"
+                       minOccurs="1" maxOccurs="1"/>
+                   <xs:element name="Language" type="ad:iso3166a2"
+                       minOccurs="0" maxOccurs="unbounded" />
+                     <xs:element name="DataProviderContact"
+                         type="xc:vcardType" minOccurs="0"
+                         maxOccurs="1"/>
+
+                   <xs:any namespace="##other" processContents="lax"
+                       minOccurs="0" maxOccurs="unbounded"/>
+               </xs:sequence>
+           </xs:complexType>
+       </xs:element>
+   </xs:schema>
+
+              Figure 1: emergencyCall.ProviderInfo XML Schema
+
+5.11.  emergencyCall.ProviderInfo Example
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <ad:emergencyCall.ProviderInfo
+       xmlns:ad="urn:ietf:params:xml:ns:emergencyCall.ProviderInfo"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+       <ad:DataProviderString>Example VoIP Provider
+       </ad:DataProviderString>
+       <ad:ProviderID>ID123</ad:ProviderID>
+       <ad:ProviderIDSeries>NENA</ad:ProviderIDSeries>
+       <ad:TypeOfProvider>Service Provider</ad:TypeOfProvider>
+       <ad:ContactURI>sip:voip-provider@example.com</ad:ContactURI>
+       <ad:Language>EN</ad:Language>
+       <xc:DataProviderContact
+           xmlns:xc="urn:ietf:params:xml:ns:vcard-4.0">
+                   <vcard>
+                       <fn><text>Hannes Tschofenig</text></fn>
+                       <n>
+                           <surname>Hannes</surname>
+                           <given>Tschofenig</given>
+                           <additional/>
+                           <prefix/>
+                           <suffix>Dipl. Ing.</suffix>
+                       </n>
+                       <bday><date>--0203</date></bday>
+                       <anniversary>
+                           <date-time>20090808T1430-0500</date-time>
+                       </anniversary>
+                       <gender><sex>M</sex></gender>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 17]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                       <lang>
+                           <parameters><pref><integer>1</integer></pref>
+                           </parameters>
+                           <language-tag>de</language-tag>
+                       </lang>
+                       <lang>
+                           <parameters><pref><integer>2</integer></pref>
+                           </parameters>
+                           <language-tag>en</language-tag>
+                       </lang>
+                       <org>
+                           <parameters><type><text>work</text></type>
+                           </parameters>
+                           <text>Example VoIP Provider</text>
+                       </org>
+                       <adr>
+                           <parameters>
+                               <type><text>work</text></type>
+                               <label><text>Hannes Tschofenig
+                                   Linnoitustie 6
+                                   Espoo , Finland
+                                   02600</text></label>
+                           </parameters>
+                           <pobox/>
+                           <ext/>
+                           <street>Linnoitustie 6</street>
+                           <locality>Espoo</locality>
+                           <region>Uusimaa</region>
+                           <code>02600</code>
+                           <country>Finland</country>
+                       </adr>
+                       <tel>
+                           <parameters>
+                               <type>
+                                   <text>work</text>
+                                   <text>voice</text>
+                               </type>
+                           </parameters>
+                           <uri>tel:+358 50 4871445</uri>
+                       </tel>
+                       <email>
+                           <parameters><type><text>work</text></type>
+                           </parameters>
+                           <text>hannes.tschofenig@nsn.com</text>
+                       </email>
+                       <geo>
+                           <parameters><type><text>work</text></type>
+                           </parameters>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 18]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                           <uri>geo:60.210796,24.812924</uri>
+                       </geo>
+                       <key>
+                           <parameters><type><text>home</text></type>
+                           </parameters>
+                           <uri>
+                           http://www.tschofenig.priv.at/key.asc
+                           </uri>
+                       </key>
+                       <tz><text>Finland/Helsinki</text></tz>
+                       <url>
+                           <parameters><type><text>home</text></type>
+                           </parameters>
+                           <uri>http://www.tschofenig.priv.at</uri>
+                       </url>
+                   </vcard>
+       </xc:DataProviderContact>
+   </ad:emergencyCall.ProviderInfo>
+
+               Figure 2: emergencyCall.ProviderInfo Example
+
+6.  Service Information
+
+   This block describes the service that the service provider provides
+   to the caller.  It SHOULD be included by all SPs in the path of the
+   call.  The mime subtype is "application/emergencyCall.SvcInfo+xml".
+
+6.1.  Service Environment
+
+   Data Element:  Service Environment
+
+
+   Use:  Required
+
+
+   XML Element:  <SvcEnvironment>
+
+
+   Description:  This element defines whether a call is from a business
+      or residence caller.  Currently, the only valid entries are
+      'Business' or 'Residence'.
+
+
+   Reason for Need:  To assist in determining equipment and manpower
+      requirements.
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 19]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   How Used by Call Taker:  Information may be used to assist in
+      determining equipment and manpower requirements for emergency
+      responders.  As the information is not always available, and the
+      registry is not all encompassing, this is at best advisory
+      information, but since it mimics a similar capability in some
+      current emergency calling systems, it is known to be valuable.
+      The service provider uses its best information (such as a rate
+      plan, facilities used to deliver service or service description)
+      to determine the information and is not responsible for
+      determining the actual characteristics of the location where the
+      call originates from.
+
+6.2.  Service Delivered by Provider to End User
+
+   Data Element:  Service Delivered by Provider to End User
+
+
+   Use:  Required
+
+
+   XML Element:  <SvcDelByProvider>
+
+
+   Description:  This defines the type of service the end user has
+      subscribed to.  The implied mobility of this service can not be
+      relied upon.  A registry defined in this document will reflect the
+      following initial valid entries:
+
+      *  Wireless Telephone Service: Includes Satellite, CDMA, GSM, Wi-
+         Fi, WiMAX, UTMS/WCDMA, LTE (Long Term Evolution)
+
+      *  Fixed Public Pay/Coin telephones: Any coin or credit card
+         operated device.
+
+      *  One way outbound service
+
+      *  Inmate call/service
+
+      *  Soft dialtone/quick service/warm disconnect/suspended
+
+      *  Multi-line telephone system (MLTS): Includes all PBX, Centrex,
+         key systems, Shared Tenant Service.
+
+      *  Sensor, unattended: Includes devices that generate DATA ONLY.
+         This is one-way information exchange and there will be no other
+         form of communication.
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 20]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      *  Sensor, attended: Includes devices that are supported by a
+         monitoring service provider or automatically open a two-way
+         communication path.
+
+      *  Wireline: Plain Old Telephone Service (POTS).
+
+      *  VoIP Telephone Service: A type of service that offers
+         communication over internet protocol, such as Fixed, Nomadic,
+         Mobile, Unknown
+
+      *  Relay Service: a type of service where there is a human 3rd
+         party agent who provides some kind of additional assistance to
+         the caller.  Includes sign language relay and telematics
+         services which provide a service assistant on the call.
+
+      *  Remote (off premise extension)
+
+      There can be more than one value returned.  For example, a VoIP
+      inmate telephone service is a reasonable combination.
+
+
+   Reason for Need:  Knowing the type of service may assist the PSAP
+      with the handling of the call.
+
+
+   How Used by Call Taker:  Call takers often use this information to
+      determine what kinds of questions to ask callers, and how much to
+      rely on supportive information.  An emergency call from a prison
+      is treated differently that a call from a sensor device.  As the
+      information is not always available, and the registry is not all
+      encompassing, this is at best advisory information, but since it
+      mimics a similar capability in some current emergency calling
+      systems, it is known to be valuable.
+
+6.3.  Service Mobility Environment
+
+   Data Element:  Service Mobility Environment
+
+
+   Use:  Required
+
+
+   XML Element:  <SvcMobility>
+
+
+   Description:  This provides the service providers view of the
+      mobility of the caller.  As the service provider may not know the
+      characteristics of the actual access network used, the value not
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 21]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      be relied upon.  A registry will reflect the following initial
+      valid entries:
+
+      *  Mobile: the device should be able to move at any time
+
+      *  Fixed: the device is not expected to move unless the service is
+         relocated
+
+      *  Nomadic: the device is not expected to change its point of
+         attachment while on a call
+
+      *  Unknown: no information is known about the service mobility
+         environment for the device
+
+
+   Reason for Need:  Knowing the service provider's belief of mobility
+      may assist the PSAP with the handling of the call.
+
+
+   How Used by Call Taker:  To determine whether to assume the location
+      of the caller might change.
+
+6.4.  emergencyCall.SvcInfo XML Schema
+
+
+
+   <?xml version="1.0"?>
+   <xs:schema
+        targetNamespace="urn:ietf:params:xml:ns:emergencyCall.SvcInfo"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        xmlns:svc="urn:ietf:params:xml:ns:emergencyCall.SvcInfo"
+        xmlns:xml="http://www.w3.org/XML/1998/namespace"
+        elementFormDefault="qualified"
+        attributeFormDefault="unqualified">
+
+        <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+                   schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+
+       <xs:element name="emergencyCall.SvcInfo">
+           <xs:complexType>
+               <xs:sequence>
+                   <xs:element name="SvcEnvironment"
+                     type="xs:string" minOccurs="1" maxOccurs="1"/>
+                   <xs:element name="SvcDelByProvider"
+                     type="xs:string" minOccurs="1" maxOccurs="1"/>
+                   <xs:element name="SvcMobility"
+                     type="xs:string" minOccurs="1" maxOccurs="1"/>
+                   <xs:element name="Link"
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 22]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:any namespace="##other" processContents="lax"
+                       minOccurs="0" maxOccurs="unbounded"/>
+               </xs:sequence>
+           </xs:complexType>
+       </xs:element>
+   </xs:schema>
+
+                Figure 3: emergencyCall.SvcInfo XML Schema
+
+6.5.  emergencyCall.SvcInfo Example
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <svc:emergencyCall.SvcInfo
+        xmlns:svc="urn:ietf:params:xml:ns:emergencyCall.SvcInfo"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+       <svc:SvcEnvironment>Business</svc:SvcEnvironment>
+       <svc:SvcDelByProvider>MLTS</svc:SvcDelByProvider>
+       <svc:SvcMobility>Fixed</svc:SvcMobility>
+   </svc:emergencyCall.SvcInfo>
+
+                  Figure 4: emergencyCall.SvcInfo Example
+
+7.  Device Information
+
+   This block provides information about the device used to place the
+   call.  It should be provided by any service provider that knows what
+   device is being used, and by the device itself.  The mime subtype is
+   "application/emergencyCall.DevInfo+xml".
+
+7.1.  Device Classification
+
+   Data Element:  Device Classification
+
+
+   Use:  Optional
+
+
+   XML Element:  <DeviceClassification>
+
+
+   Description:  This data element defines the kind of device making the
+      emergency call.  If the device provides the data structure, the
+      device information SHOULD be provided.  If the service provider
+      provides the structure and it knows what the device is, the
+      service provider SHOULD provide the device information.  Often the
+      carrier does not know what the device is.  It is possible to
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 23]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      receive two Additional Data Associated with a Call data
+      structures, one created by the device and one created by the
+      service provider.  This information describes the device, not how
+      it is being used.  This data element defines the kind of device
+      making the emergency call.  A registry will reflect the following
+      valid entries:
+
+      *  Cordless handset
+
+      *  Fixed phone
+
+      *  Mobile handset
+
+      *  ATA (analog terminal adapter)
+
+      *  Satellite phone
+
+      *  Stationary computing device (alarm system, data sensor)
+
+      *  Guardian devices
+
+      *  Desktop PC
+
+      *  Laptop computing device
+
+      *  Tablet computing device
+
+      *  Alarm system
+
+      *  Data sensor
+
+      *  Personal beacons (spot)
+
+      *  Auto telematics (indicates VEDS data set)
+
+      *  Trucking telematics
+
+      *  Farm equipment telematics
+
+      *  Marine telematics
+
+      *  PDA (personal digital assistant)
+
+      *  PND (personal navigation device)
+
+      *  Smart phone
+
+      *  Internet tablet
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 24]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      *  Gaming console
+
+      *  Video phone
+
+      *  Other text device
+
+      *  Not Available
+
+
+   Reason for Need:  The device classification implies the capability of
+      the calling device and assists in identifying the meaning of the
+      emergency call location information that is being presented.  For
+      example, does the device require human intervention to initiate a
+      call or is this call the result of programmed instructions?  Does
+      the calling device have the ability to update location or
+      condition changes?  Is this device interactive or a one-way
+      reporting device?
+
+
+   How Used by Call Taker:  May assist with location of caller.  For
+      example, a cordless handset may be outside or next door.  May
+      provide calltaker some context about the caller, the capabilities
+      of the device used for the call or the environment the device is
+      being used in.
+
+7.2.  Device Manufacturer
+
+   Data Element:  Device Manufacturer
+
+
+   Use:  Optional
+
+
+   XML Element:  <DeviceMfgr>
+
+
+   Description:  The plain language name of the manufacturer of the
+      device.
+
+
+   Reason for Need:  Used by PSAP management for post-mortem
+      investigation/resolution.
+
+
+   How Used by Call Taker:  Probably not used by calltaker, but by PSAP
+      management.
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 25]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+7.3.  Device Model Number
+
+   Data Element:  Device Model Number
+
+
+   Use:  Optional
+
+
+   XML Element:  <DeviceModelNr>
+
+
+   Description:  Model number of the device.
+
+
+   Reason for Need:  Used by PSAP management for after action
+      investigation/resolution.
+
+
+   How Used by Call Taker:  Probably not used by calltaker, but by PSAP
+      management.
+
+7.4.  Unique Device Identifier
+
+   Data Element:  Unique Device Identifier
+
+
+   Use:  Optional
+
+
+   XML Element:  <UniqueDeviceID>
+
+
+   Description:  String that identifies the specific device making the
+      call or creating an event.
+
+
+   Reason for Need:  Uniquely identifies the device as opposed to any
+      signaling identifiers encountered in the call signaling stream.
+
+
+   How Used by Call Taker:  Probably not used by calltaker they would
+      need to refer to management for investigation.
+
+
+
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 26]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+7.5.  Type of Device Identifier
+
+   Data Element:  Type of Device Identifier
+
+
+   Use:  Conditional: must be provided if DeviceID is provided
+
+
+   XML Element:  <TypeOfDeviceID>
+
+
+   Description:  Identifies the type of device identifier being
+      generated in the unique device identifier data element.  A
+      registry will reflect the following valid entries:
+
+      *  MEID (CDMA)
+
+      *  ESN (Electronic Serial Number -- superseded by MEID)
+
+      *  MAC (Media Access Control) Address -- IEEE-delegated address of
+         any of the interfaces of the device with a MAC address (e.g.,
+         Ethernet, WiFi)
+
+      *  WiMAX device certificate subject unique identifier
+
+      *  IMEI (International Mobile Equipment Identifier - GSM)
+
+      *  Unique Device Identifier (UDI) assigned by US FDA for medical
+         devices
+
+      *  RFID (Radio Frequency Identification)
+
+      *  Sensors (types to be identified in a future document version)
+
+      *  Manufacturer Serial Number
+
+      *  Other
+
+
+   Reason for Need:  Identifies how to interpret the Unique Device
+      Identifier.
+
+
+   How Used by Call Taker:  Additional information that may be used to
+      assist with call handling.
+
+7.6.  Device/Service Specific Additional Data Structure
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 27]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Data Element:  Device/service specific additional data structure
+
+
+   Use:  Optional
+
+
+   XML Element:  <DeviceSpecificData>
+
+
+   Description:  A URI representing additional data whose schema is
+      specific to the device or service which created it.  An example is
+      the VEDs structure for a vehicle telematics device.  The URI, when
+      dereferenced, MUST yield a data structure defined by the Device/
+      service specific additional data type value.  Different data may
+      be created by each classification; e.g., telematics creates VEDS
+      data set.
+
+
+   Reason for Need:  Provides device/service specific data that may be
+      used by the call taker and/or responders.
+
+
+   How Used by Call Taker:  Provide information to guide call takers to
+      select appropriate responders, give appropriate pre-arrival
+      instructions to callers, and advise responders of what to be
+      prepared for.  May be used by responders to guide assistance
+      provided.
+
+7.7.  Device/Service Specific Additional Data Structure Type
+
+   Data Element:  Type of Device/service specific additional data
+      structure
+
+
+   Use:  Conditional.  MUST be provided when Device/service specific
+      additional URI is provided
+
+
+   XML Element:  <DeviceSpecificType>
+
+
+   Description:  Value from a registry defined by this document to
+      describe the type of data that can be retrieved from the Device/
+      service specific additional data structure.  Initial values are:
+
+      *  IEEE 1512 - USDOT Model for traffic incidents
+
+      *  VEDS
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 28]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Reason for Need:  This data element allows identification of
+      externally defined schemas, which may have additional data that
+      may assist in emergency response.
+
+
+   How Used by Call Taker:  This data element allows the end user
+      (calltaker or first responder) to know what type of additional
+      data may be available to aid in providing the needed emergency
+      services.
+
+
+   Note:  Information which is specific to a location or a caller
+      (person) should not be placed in this section.
+
+7.8.  Choosing between defining a new type of block or new type of
+      device/service specific additional data
+
+   For devices that have device or service specific data, there are two
+   choices to carry it.  A new block can be defined, or the device/
+   service specific additional data URL the the DevInfo block can be
+   used and a new type for it defined .  The data passed would likely be
+   the same in both cases.  Considerations for choosing which mechanism
+   to register under include:
+
+   Applicability:  Information which will be carried by many kinds of
+      devices or services are more appropriately defined as separate
+      blocks.
+
+   Privacy:  Information which may contain private data may be better
+      sent in the DevInfo block, rather than a new block so that
+      implementations are not tempted to send the data by value, and
+      thus having more exposure to the data than forcing the data to be
+      retrieved via the URL in DevInfo.
+
+   Size:  Information which may be very may be better sent in the
+      DevInfo block, rather than a new block so that implementations are
+      not tempted to send the data by value.  Conversely, data which is
+      small may best be sent in a separate block so that it can be sent
+      by value
+
+   Availability of a server:  Providing the data via the device block
+      requires a server be made available to retrieve the data.
+      Providing the data via new block allows it to be sent by value
+      (CID).
+
+7.9.  emergencyCall.DevInfo XML Schema
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 29]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   <?xml version="1.0"?>
+   <xs:schema
+        targetNamespace="urn:ietf:params:xml:ns:emergencyCall.DevInfo"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        xmlns:svc="urn:ietf:params:xml:ns:emergencyCall.DevInfo"
+        xmlns:xml="http://www.w3.org/XML/1998/namespace"
+        elementFormDefault="qualified"
+        attributeFormDefault="unqualified">
+
+        <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+                   schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+
+       <xs:element name="emergencyCall.DevInfo">
+           <xs:complexType>
+               <xs:sequence>
+                   <xs:element name="DeviceClassification"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="DeviceMfgr"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="DeviceModelNr"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="UniqueDeviceID"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="TypeOfDeviceID"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="DeviceSpecificData"
+                       type="xs:anyURI" minOccurs="0" maxOccurs="1"/>
+                   <xs:element name="DeviceSpecificType"
+                       type="xs:string" minOccurs="0" maxOccurs="1"/>
+                   <xs:any namespace="##other" processContents="lax"
+                       minOccurs="0" maxOccurs="unbounded"/>
+               </xs:sequence>
+           </xs:complexType>
+       </xs:element>
+   </xs:schema>
+
+                 Figure 5: emergencyCallDevInfo XML Schema
+
+7.10.  emergencyCall.DevInfo Example
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <svc:emergencyCall.DevInfo
+        xmlns:svc="urn:ietf:params:xml:ns:emergencyCall.DevInfo"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+       <svc:DeviceClassification>Fixed phone</svc:DeviceClassification>
+       <svc:DeviceMfgr>Nokia</svc:DeviceMfgr>
+       <svc:DeviceModelNr>Lumia 800</svc:DeviceModelNr>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 30]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+       <svc:UniqueDeviceID>35788104</svc:UniqueDeviceID>
+       <svc:TypeOfDeviceID>IMEI</svc:TypeOfDeviceID>
+   </svc:emergencyCall.DevInfo>
+
+                  Figure 6: emergencyCallDevInfo Example
+
+8.  Owner/Subscriber Information
+
+   This block describes the owner of the device (if provided by the
+   device) or the subscriber information, if provided by a service
+   provider.  The contact location is not necessarily the location of
+   the caller or incident, but is rather the nominal contact address.
+   The mime subtype is "application/emergencyCall.Subscriber+xml".
+
+8.1.  xCard for Subscriber's Data
+
+   Data Element:  xCARD for Subscriber's Data
+
+
+   Use:  Conditional: Some services (e.g., prepaid phones, initialized
+      phones, etc.)  may not have this information.
+
+
+   XML Element:  <SubscriberData>
+
+
+   Description:  Information known by the service provider or device
+      about the subscriber; e.g., Name, Address, Individual Telephone
+      Number, Main Telephone Number and any other data.  N, ORG (if
+      appropriate), ADR, TEL, EMAIL are suggested at a minimum.  If more
+      than one TEL property is provided, a parameter from the vCard
+      Property Value registry MUST be specified on each TEL.
+
+
+   Reason for Need:  When the caller is unable to provide information,
+      this data may be used to obtain it
+
+
+   How Used by Call Taker:  Obtaining critical information about the
+      caller and possibly the location when it is not able to be
+      obtained otherwise.
+
+8.2.  emergencyCall.SubInfo XML Schema
+
+
+
+   <?xml version="1.0"?>
+   <xs:schema
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 31]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+       targetNamespace="urn:ietf:params:xml:ns:emergencyCall.SubInfo"
+       xmlns:xs="http://www.w3.org/2001/XMLSchema"
+       xmlns:sub="urn:ietf:params:xml:ns:emergencyCall.SubInfo"
+       xmlns:xml="http://www.w3.org/XML/1998/namespace"
+       xmlns:xc="urn:ietf:params:xml:ns:vcard-4.0"
+       elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+       <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+           schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+
+       <xs:element name="emergencyCall.SubInfo">
+           <xs:complexType>
+               <xs:sequence>
+                   <!-- VCard data structure goes in here.
+                   <xs:element name="SubscriberData"
+                       type="xc:vcard" minOccurs="0" maxOccurs="1"/>
+                   -->
+                <xs:any namespace="##other" processContents="lax"
+                    minOccurs="0" maxOccurs="unbounded"/>
+               </xs:sequence>
+           </xs:complexType>
+       </xs:element>
+   </xs:schema>
+
+                Figure 7: emergencyCall.SubInfo XML Schema
+
+8.3.  emergencyCall.SubInfo Example
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <ad:emergencyCall.SubInfo
+        xmlns:ad="urn:ietf:params:xml:ns:emergencyCall.SubInfo"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+       <xc:SubscriberData xmlns:xc="urn:ietf:params:xml:ns:vcard-4.0">
+           <vcards xmlns="urn:ietf:params:xml:ns:vcard-4.0">
+               <vcard>
+                   <fn><text>Simon Perreault</text></fn>
+                   <n>
+                       <surname>Perreault</surname>
+                       <given>Simon</given>
+                       <additional/>
+                       <prefix/>
+                       <suffix>ing. jr</suffix>
+                       <suffix>M.Sc.</suffix>
+                   </n>
+                   <bday><date>--0203</date></bday>
+                   <anniversary>
+                       <date-time>20090808T1430-0500</date-time>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 32]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                   </anniversary>
+                   <gender><sex>M</sex></gender>
+                   <lang>
+                       <parameters><pref><integer>1</integer></pref>
+                       </parameters>
+                       <language-tag>fr</language-tag>
+                   </lang>
+                   <lang>
+                       <parameters><pref><integer>2</integer></pref>
+                       </parameters>
+                       <language-tag>en</language-tag>
+                   </lang>
+                   <org>
+                       <parameters><type><text>work</text></type>
+                       </parameters>
+                       <text>Viagenie</text>
+                   </org>
+                   <adr>
+                       <parameters>
+                           <type><text>work</text></type>
+                           <label><text>Simon Perreault
+                               2875 boul. Laurier, suite D2-630
+                               Quebec, QC, Canada
+                               G1V 2M2</text></label>
+                       </parameters>
+                       <pobox/>
+                       <ext/>
+                       <street>2875 boul. Laurier, suite D2-630</street>
+                       <locality>Quebec</locality>
+                       <region>QC</region>
+                       <code>G1V 2M2</code>
+                       <country>Canada</country>
+                   </adr>
+                   <tel>
+                       <parameters>
+                           <type>
+                               <text>work</text>
+                               <text>voice</text>
+                           </type>
+                       </parameters>
+                       <uri>tel:+1-418-656-9254;ext=102</uri>
+                   </tel>
+                   <tel>
+                       <parameters>
+                           <type>
+                               <text>work</text>
+                               <text>text</text>
+                               <text>voice</text>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 33]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                               <text>cell</text>
+                               <text>video</text>
+                           </type>
+                       </parameters>
+                       <uri>tel:+1-418-262-6501</uri>
+                   </tel>
+                   <email>
+                       <parameters><type><text>work</text></type>
+                       </parameters>
+                       <text>simon.perreault@viagenie.ca</text>
+                   </email>
+                   <geo>
+                       <parameters><type><text>work</text></type>
+                       </parameters>
+                       <uri>geo:46.766336,-71.28955</uri>
+                   </geo>
+                   <key>
+                       <parameters><type><text>work</text></type>
+                       </parameters>
+                       <uri>
+                       http://www.viagenie.ca/simon.perreault/simon.asc
+                       </uri>
+                   </key>
+                   <tz><text>America/Montreal</text></tz>
+                   <url>
+                       <parameters><type><text>home</text></type>
+                       </parameters>
+                       <uri>http://nomis80.org</uri>
+                   </url>
+               </vcard>
+           </vcards>
+       </xc:SubscriberData>
+   </ad:emergencyCall.SubInfo>
+
+                  Figure 8: emergencyCall.SubInfo Example
+
+9.  Comment
+
+   This block provides a mechanism for the data provider to supply
+   extra, human readable information to the PSAP.  It is not intended
+   for a general purpose extension mechanism.  The mime subtype is
+   "application/emergencyCall.Comment+xml"
+
+
+
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 34]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+9.1.  Comment
+
+   Data Element:  EmergencyCall.Comment
+
+
+   Use:  Optional
+
+
+   XML Element:  <Comment>
+
+
+   Description:  Human readable text providing additional information to
+      the PSAP staff.
+
+
+   Reason for Need:  Explanatory information for values in the data
+      structure
+
+
+   How Used by Call Taker:  To interpret the data provided
+
+9.2.  emergencyCall.Comment XML Schema
+
+
+
+   <?xml version="1.0"?>
+   <xs:schema
+        targetNamespace="urn:ietf:params:xml:ns:emergencyCall.Comment"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        xmlns:sub="urn:ietf:params:xml:ns:emergencyCall.Comment"
+        xmlns:xml="http://www.w3.org/XML/1998/namespace"
+        elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+        <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+                   schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+
+       <xs:element name="emergencyCall.Comment">
+           <xs:complexType>
+               <xs:sequence>
+                   <xs:element name="Comment"
+                       type="sub:CommentType" minOccurs="0" maxOccurs="unbounded"/>
+                   <xs:any namespace="##other" processContents="lax" minOccurs="0"
+                       maxOccurs="unbounded"/>
+              </xs:sequence>
+           </xs:complexType>
+       </xs:element>
+
+       <xs:complexType name="CommentType">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 35]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+        <xs:simpleContent>
+         <xs:extension base="xs:string">
+          <xs:attribute ref="xml:lang"/>
+         </xs:extension>
+        </xs:simpleContent>
+       </xs:complexType>
+
+   </xs:schema>
+
+                Figure 9: EmergencyCall.Comment XML Schema
+
+9.3.  emergencyCall.Comment Example
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <sub:emergencyCall.Comment
+        xmlns:sub="urn:ietf:params:xml:ns:emergencyCall.Comment"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <sub:Comment xml:lang="en">This is an example text.</sub:Comment>
+   </sub:emergencyCall.Comment>
+
+                 Figure 10: EmergencyCall.Comment Example
+
+10.  Example
+
+
+
+      INVITE sips:bob@biloxi.example.com SIP/2.0
+      Via: SIPS/2.0/TLS pc33.atlanta.example.com;branch=z9hG4bK74bf9
+      Max-Forwards: 70
+      To: Bob <sips:bob@biloxi.example.com>
+      From: Alice <sips:alice@atlanta.example.com>;tag=9fxced76sl
+      Call-ID: 3848276298220188511@atlanta.example.com
+      Call-Info: <http://wwww.example.com/alice/photo.jpg> ;purpose=icon,
+        <http://www.example.com/alice/> ;purpose=info,
+        <cid:1234567890@atlanta.example.com>
+            ;purpose=emergencyCallData.ProviderInfo
+      Geolocation: <cid:target123@atlanta.example.com>
+      Geolocation-Routing: no
+      Accept: application/sdp, application/pidf+xml,
+         application/emergencyCallProviderinfo+xml
+      CSeq: 31862 INVITE
+      Contact: <sips:alice@atlanta.example.com>
+      Content-Type: multipart/mixed; boundary=boundary1
+
+      Content-Length: ...
+
+      --boundary1
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 36]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      Content-Type: application/sdp
+
+      ...SDP goes here
+
+      --boundary1
+
+      Content-Type: application/pidf+xml
+      Content-ID: <target123@atlanta.example.com>
+
+      \0x2026PIDF-LO goes here
+
+      --boundary1--
+
+      Content-Type: application/emergencyCall.ProviderInfo+xml
+      Content-ID: <1234567890@atlanta.example.com>
+
+      ...Additional Data goes here
+
+      --boundary1--
+
+        Example: Attaching Additional Data via CID to a SIP INVITE
+
+11.  Main Telephone Number
+
+   In a xCard, used extensively in this document, there is no way to
+   specify a "Main" telephone number.  These numbers are useful to
+   emergency responders who are called to a large enterprise.  This
+   document adds a new Property Value to the "tel" property of the TYPE
+   parameter called "main".  It can be used in any xCard in additional
+   data.
+
+12.  Security Considerations
+
+   The information in this data structure will usually be considered
+   private.  HTTPS is specified to require the provider of the
+   information to validate the credentials of the requester.  While the
+   creation of a PKI that has global scope may be difficult, the
+   alternatives to creating devices and services that can provide
+   critical information securely are more daunting.  The provider may
+   enforce any policy it wishes to use, but PSAPs and responder agencies
+   should deploy a PKI so that providers of additional data can check
+   the certificate of the client and decide the appropriate policy to
+   enforce based on that certificate.
+
+   Ideally, the PSAP and emergency responders will be given credentials
+   signed by an authority trusted by the data provider.  In most
+   circumstances, nationally recognized credentials would be sufficient,
+   and if the emergency services arranges a PKI, data providers could be
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 37]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   provisioned with the root CA public key for a given nation.  Some
+   nations are developing a PKI for this, and related, purposes.  Since
+   calls could be made from devices where the device and/or the service
+   provider(s) are not local to the emergency authorities, globally
+   recognized credentials are useful.  This might be accomplished by
+   extending the notion of the "forest guide" described in [RFC5222] to
+   allow the forest guide to provide the credential of the PKI root for
+   areas that it has coverage information for, but standards for such a
+   mechanism are not yet available.  In its absence, the data provider
+   will need to obtain the root CA credentials for any areas it is
+   willing to provide additional data by out of band means.  With the
+   credential of the root CA for a national emergency services PKI, the
+   data provider server can validate the credentials of an entity
+   requesting additional data by reference.
+
+   The data provider also needs a credential that can be verified by the
+   emergency services to know that it is receiving data from the right
+   server.  The emergency authorities could provide credentials,
+   distinguishable from credentials it provides to emergency responders
+   and PSAPs, which could be used to validate data providers.  Such
+   credentials would have to be acceptable to any PSAP or responder that
+   could receive a call with additional data supplied by that provider.
+   This would be extensible to global credential validation using the
+   forest guide as above.  In the absence of such credentials, the
+   emergency authorities could maintain a list of local data providers'
+   credentials provided to it out of band.  At a minimum, the emergency
+   authorities could obtain a credential from the DNS entry of the
+   domain in the Addional Data URI to at least validate that the server
+   is known to the domain providing the URI.
+
+   Data provided by devices by reference have similar credential
+   validation issues to service providers, and the solutions are the
+   same.
+
+13.  Privacy Considerations
+
+   There is much private data in this information.  Local regulations
+   may govern what data must be provided in emergency calls, but in
+   general, the emergency call system is often aided by the kinds of
+   information described in this document.  There is a tradeoff between
+   the privacy considerations and the utility of the data.  Certainly,
+   if the data cannot be protected, due to failure to establish (by TLS)
+   a secure connection to the data provider, data SHOULD NOT be sent
+   unless specifically required by regulation.
+
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 38]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Some forms of data can be sent by value in the SIP signaling or by
+   value (URL in SIP signaling).  When data is sent by value, all
+   intermediaries have access to the data.  If the data is private,
+   sending by reference is more appropriate.
+
+14.  IANA Considerations
+
+14.1.  Registry creation
+
+   This document creates a new registry called 'Emergency Call
+   Additional Data'.  The following subregistries are created in
+   Emergency Call Additional Data:
+
+14.1.1.  Additional Call Data Provider ID Series Registry
+
+   This document creates a new subregistry called 'Additional Call Data
+   Provider ID Series'.  As defined in [RFC5226], this registry operates
+   under "Expert Review" rules.  The expert should determine that the
+   entity requesting a new value is a legitimate issuer of service
+   provider IDs suitable for use in Additional Call Data.
+
+   The content of this registry includes:
+
+   Name: The identifier which will be used in the ProviderIDSeries
+   element
+
+   Source: The full name of the organization issuing the identifiers
+
+   URL: A URL to the organization for further information
+
+   The values defined are:
+
+      +-----------+-----------+--------------+--------------+
+      | Name      | Source                   |     URL      |
+      +-----------+--------------------------+--------------+
+      | NENA      | North American Emergency | www.nena.org |
+      |           | Number Association       |              |
+      | EENA      | European Emergency       | www.eena.org |
+      |           | Number Association       |              |
+      +-----------+--------------------------+--------------+
+   RFC Editor Note:
+      replace XXXX in the table above with this documents RFC number
+
+
+14.1.2.  Additional Call Data Service Provider Type Registry
+
+   This document creates a new subregistry called 'Service Provider
+   Type'.  As defined in [RFC5226], this registry operates under "Expert
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 39]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Review".  The expert should determine that the proposed new value is
+   distinct from existing values and appropriate for use in the
+   TypeOfServicerProvider element
+
+   The content of this registry includes:
+
+   Name: Value to be used in TypeOfServiceProvider.
+
+   Description: A short description of the type of service provider
+
+   The values defined are:
+
+      +------------------------------+------------------------------------+
+      | Name                         | Description                        |
+      +------------------------------+------------------------------------+
+      |Access Infrastructure Provider| Access network service provider    |
+      |Service Provider              | Calling or Origination telecom SP  |
+      |Service Provider Subcontractor| A contractor to another kind of SP |
+      |Telematics Provider           | A sensor based SP, especially      |
+      |                              | vehicle based                      |
+      |Relay Provider                | A interpretation SP, for example,  |
+      |                              | video relay for sign language      |
+      |                              | interpretors                       |
+      |Other                         | Any other type of service provider |
+      +------------------------------+------------------------------------+
+   RFC Editor Note:
+      replace XXXX in the table above with this documents RFC number
+
+
+14.1.3.  Additional Call Data Service Delivered Registry
+
+   This document creates a new registry called 'Additional Call Data
+   Service Delivered'.  As defined in [RFC5226], this registry operates
+   under "Expert Review" rules.  The expert should consider whether the
+   proposed service is unique from existing services and the definition
+   of the service will be clear to implementors and PSAPS/responders.
+
+   The content of this registry includes:
+
+   Name: enumeration token of the service.
+
+   Description: Short description identifying the service.
+
+   The values defined are:
+
+   +--------+----------------------------------------+
+   | Name   | Description                            |
+   +--------+----------------------------------------+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 40]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   | Wrless | Wireless Telephone Service: Includes   |
+   |        |   Satellite, CDMA, GSM, Wi-Fi, WiMAX,  |
+   |        |   LTE (Long Term Evolution)            |
+   | Coin   | Fixed Public Pay/Coin telephones: Any  |
+   |        |   coin or credit card operated device  |
+   | 1way   | One way outbound service               |
+   | Prison | Inmate call/service                    |
+   | Temp   | Soft dialtone/quick service/warm       |
+   |        |   disconnect/suspended                 |
+   | MLTS   | Multi-line telephone system: Includes  |
+   |        |   all PBX, Centrex, key systems,       |
+   |        |   Shared Tenant Service                |
+   | SenseU | Sensor, unattended: Includes devices   |
+   |        |   that generate DATA ONLY. This is     |
+   |        |   one-way information exchange and     |
+   |        |   there will be no other form of       |
+   |        |   communication                        |
+   | SenseA | Sensor, attended: Includes devices     |
+   |        |   that are supported by a monitoring   |
+   |        |   service provider or automatically    |
+   |        |   open a two-way communication path    |
+   | POTS   | Wireline: Plain Old Telephone Service  |
+   | VOIP   | VoIP Telephone Service: A type of      |
+   |        |   service that offers communication    |
+   |        |   over internet protocol, such as Fixed|
+   |        |   Nomadic, Mobile, ...                 |
+   +--------+----------------------------------------+
+
+
+14.1.4.  Additional Call Data Device Classification Registry
+
+   This document creates a new registry called 'Additional Call Data
+   Device Classification'.  As defined in [RFC5226], this registry
+   operates under "Expert Review" rules.  The expert should consider
+   whether the proposed class is unique from existing classes and the
+   definition of the class will be clear to implementors and PSAPS/
+   responders.
+
+   The content of this registry includes:
+
+   Name: enumeration token of the device classification.
+
+   Description: Short description identifying the device type.
+
+   The values defined are:
+
+   +--------+----------------------------------------+
+   | Name   | Description                            |
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 41]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   +--------+----------------------------------------+
+   |Cordless| Cordless handset                       |
+   | Fixed  | Fixed phone                            |
+   | Mobile | Mobile handset                         |
+   | ATA    | analog terminal adapter                |
+   |Satphone| Satellite phone                        |
+   | FSense | Stationary computing device (alarm     |
+   |        |   system, data sensor)                 |
+   | Guard  | Guardian devices                       |
+   | Desktop| Desktop PC                             |
+   | Laptop | Laptop computing device                |
+   | Tablet | Tablet computing device                |
+   | Alarm  | Alarm system                           |
+   | MSense | Mobile Data sensor                     |
+   | Beacon | Personal beacons (spot)                |
+   | Auto   | Auto telematics                        |
+   | Truck  | Truck telematics                       |
+   | Farm   | Farm equipment telematics              |
+   | Marine | Marine telematics                      |
+   | PDA    | Personal digital assistant             |
+   | PND    | Personal navigation device)            |
+   | SmrtPhn| Smart phone                            |
+   | Itab   | Internet tablet                        |
+   | Game   | Gaming console                         |
+   | Video  | Video phone                            |
+   | Text   | Other text device                      |
+   | NA     | Not Available                          |
+   +--------+----------------------------------------+
+
+
+14.1.5.  Additional Call Data Device ID Type Type Registry
+
+   This document creates a new registry called 'Additional Call Data
+   Device ID Type'.  As defined in [RFC5226], this registry operates
+   under "Expert Review" rules.  The expert should ascertain that the
+   proposed type is well understood, and provides the information useful
+   to PSAPs and responders to uniquely identify a device.
+
+   The content of this registry includes:
+
+   Name: enumeration token of the device id type.
+
+   Description: Short description identifying type of device id.
+
+   The values defined are:
+
+   +--------+----------------------------------------+
+   | Name   | Description                            |
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 42]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   +--------+----------------------------------------+
+   | MEID   | Mobile Equipment Identifier  (CDMA)    |
+   | ESN    | Electronic Serial Number(GSM)          |
+   | MAC    | Media Access Control Address (IEEE)    |
+   | WiMAX  | device certificate unique id           |
+   | IMEI   | International Mobile Equipment ID (GSM)|
+   | UDI    | Unique Device Identifier (medical)     |
+   | RFID   | Radio Frequency Identification         |
+   | SN     | Manufacturer Serial Number             |
+   +--------+----------------------------------------+
+
+
+14.1.6.  Device/Service Specific Additional Data Type Registry
+
+   This document creates a new registry called 'Device/Service Specific
+   Additional Data Type Registry'.  As defined in [RFC5226], this
+   registry operates under "Expert Review" and "Specification Required"
+   rules.  The expert should ascertain that the proposed type is well
+   understood, and provides information useful to PSAPs and responders.
+   The specification must contain a complete description of the data,
+   and a precise format specification suitable to allow interoperable
+   implementations.
+
+   The content of this registry includes:
+
+   Name: enumeration token of the data type.
+
+   Description: Short description identifying the the data.
+
+   Specification: Citation for the specification of the data.
+
+   The values defined are:
+
+   +---------+----------------------------------------+----------------+
+   | Name    | description                            | specification  |
+   +---------+-------+--------------------------------+----------------+
+   | IEE1512 | Common Incident Management Message Set | IEEE 1512-2006 |
+   +---------+----------------------------------------+----------------+
+   | VEDS    | Vehicle Emergency Data Set             | APCO/NENA VEDS |
+   +---------+----------------------------------------+----------------+
+
+
+14.1.7.  Additional Call Data Blocks Registry
+
+   This document creates a new subregistry called 'Additional Call Data
+   Blocks' in the purpose registry established by RFC 261.  As defined
+   in [RFC5226], this registry operates under "Expert Review" and
+   "Specification Required" rules.  The expert is responsible for
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 43]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   verifying that the document contains a complete and clear
+   specification of the block and the block does not obviously duplicate
+   existing blocks.
+
+   The content of this registry includes:
+
+   Name: Element Name of enclosing block.
+
+   Reference: The document that describes the block
+
+   The values defined are:
+
+      +-------------+-----------+
+      | Name        | Reference |
+      +-------------+-----------+
+      |ProviderInfo | RFCXXXX   |
+      | SvcInfo     | RFCXXXX   |
+      | DevInfo     | RFCXXXX   |
+      | Subscriber  | RFCXXXX   |
+      | Comment     | RFCXXXX   |
+      +-------------+-----------+
+   RFC Editor Note:
+      replace XXXX in the table above with this documents RFC number
+
+
+14.2.  'emergencyCallData' Purpose Parameter Value
+
+   This document defines the 'emergencyCall' value for the "purpose"
+   parameter of the Call-Info header field.  The Call-Info header and
+   the corresponding registry for the 'purpose' parameter was
+   established with RFC 3261 [RFC3261].
+
+
+
+      Header       Parameter   New
+      Field        Name        Value               Reference
+      ----------   ---------   -----------------   ---------
+      Call-Info    purpose     emergencyCall   [This RFC]
+
+
+
+
+14.3.  URN Sub-Namespace Registration for provided-by Registry Entry
+
+   This section registers the namespace specified in Section 14.5.1 in
+   the provided-by registry established by RFC 4119, for usage within
+   the 'provided-by' element of a PIDF-LO.
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 44]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+14.3.1.  Provided-By XML Schema
+
+
+
+   <?xml version="1.0"?>
+   <xs:schema
+        targetNamespace="urn:ietf:params:xml:ns:emergencyCallAddlData"
+        targetNamespace="urn:ietf:params:xml:ns:pidf:
+                         geopriv10:emergencyCallData"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        xmlns:ad="urn:ietf:params:xml:ns:pidf:geopriv10:emergencyCallData"
+        xmlns:xml="http://www.w3.org/XML/1998/namespace"
+        elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+        <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+                   schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+
+        <xs:simpleType name="iso3166a2">
+          <xs:restriction base="xs:token">
+            <xs:pattern value="[A-Z]{2}"/>
+          </xs:restriction>
+        </xs:simpleType>
+
+       <xs:element name="emergencyCallDataReference">
+           <xs:complexType>
+               <xs:sequence>
+                   <xs:attribute name="ref"
+                       type="xs:anyURI" use="required"/>
+                   <xs:attribute name="purpose"
+                       type="xs:string" use="required"/>
+               </xs:sequence>
+           </xs:complexType>
+       </xs:element>
+
+       <xs:element name="emergencyCallDataValue">
+                   <xs:attribute name="purpose"
+                       type="xs:string" use="required"/>
+       </xs:element>
+   </xs:schema>
+
+
+
+                     Figure 11: Provided-By XML Schema
+
+14.4.  MIME Registrations
+
+14.4.1.  MIME Content-type Registration for 'application/
+         emergencyCall.ProviderInfo+xml'
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 45]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   This specification requests the registration of a new MIME type
+   according to the procedures of RFC 4288 [RFC4288] and guidelines in
+   RFC 3023 [RFC3023].
+
+      MIME media type name: application
+
+      MIME subtype name: emergencyCall.ProviderInfo+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of enclosed XML.
+
+      Encoding considerations:
+
+      Uses XML, which can employ 8-bit characters, depending on the
+      character encoding used.  See Section 3.2 of RFC 3023 [RFC3023].
+
+      Security considerations:
+
+      This content type is designed to carry the data provider
+      information, which is a sub-category of additional data about an
+      emergency call.
+
+      Since this data contains personal information appropriate
+      precautions have to be taken to limit unauthorized access,
+      inappropriate disclosure to third parties, and eavesdropping of
+      this information.  Please refer to Section 12 and Section 13 for
+      more information.
+
+      Interoperability considerations: None
+
+      Published specification: [TBD: This specification]
+
+      Applications which use this media type: Emergency Services
+
+      Additional information:
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+
+      Person and email address for further information: Hannes
+      Tschofenig, Hannes.Tschofenig@gmx.net
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 46]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      Intended usage: LIMITED USE
+
+      Author: This specification is a work item of the IETF ECRIT
+      working group, with mailing list address <ecrit@ietf.org>.
+
+      Change controller: The IESG <ietf@ietf.org>
+
+14.4.2.  MIME Content-type Registration for 'application/
+         emergencyCall.SvcInfo+xml'
+
+   This specification requests the registration of a new MIME type
+   according to the procedures of RFC 4288 [RFC4288] and guidelines in
+   RFC 3023 [RFC3023].
+
+      MIME media type name: application
+
+      MIME subtype name: emergencyCall.SvcInfo+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of enclosed XML.
+
+      Encoding considerations:
+
+      Uses XML, which can employ 8-bit characters, depending on the
+      character encoding used.  See Section 3.2 of RFC 3023 [RFC3023].
+
+      Security considerations:
+
+      This content type is designed to carry the service information,
+      which is a sub-category of additional data about an emergency
+      call.
+
+      Since this data contains personal information appropriate
+      precautions have to be taken to limit unauthorized access,
+      inappropriate disclosure to third parties, and eavesdropping of
+      this information.  Please refer to Section 12 and Section 13 for
+      more information.
+
+      Interoperability considerations: None
+
+      Published specification: [TBD: This specification]
+
+      Applications which use this media type: Emergency Services
+
+      Additional information:
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 47]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+
+      Person and email address for further information: Hannes
+      Tschofenig, Hannes.Tschofenig@gmx.net
+
+      Intended usage: LIMITED USE
+
+      Author: This specification is a work item of the IETF ECRIT
+      working group, with mailing list address <ecrit@ietf.org>.
+
+      Change controller: The IESG <ietf@ietf.org>
+
+14.4.3.  MIME Content-type Registration for 'application/
+         emergencyCall.DevInfo+xml'
+
+   This specification requests the registration of a new MIME type
+   according to the procedures of RFC 4288 [RFC4288] and guidelines in
+   RFC 3023 [RFC3023].
+
+      MIME media type name: application
+
+      MIME subtype name: emergencyCall.DevInfo+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of enclosed XML.
+
+      Encoding considerations:
+
+      Uses XML, which can employ 8-bit characters, depending on the
+      character encoding used.  See Section 3.2 of RFC 3023 [RFC3023].
+
+      Security considerations:
+
+      This content type is designed to carry the device information
+      information, which is a sub-category of additional data about an
+      emergency call.
+
+      Since this data contains personal information appropriate
+      precautions have to be taken to limit unauthorized access,
+      inappropriate disclosure to third parties, and eavesdropping of
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 48]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      this information.  Please refer to Section 12 and Section 13 for
+      more information.
+
+      Interoperability considerations: None
+
+      Published specification: [TBD: This specification]
+
+      Applications which use this media type: Emergency Services
+
+      Additional information:
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+
+      Person and email address for further information: Hannes
+      Tschofenig, Hannes.Tschofenig@gmx.net
+
+      Intended usage: LIMITED USE
+
+      Author: This specification is a work item of the IETF ECRIT
+      working group, with mailing list address <ecrit@ietf.org>.
+
+      Change controller: The IESG <ietf@ietf.org>
+
+14.4.4.  MIME Content-type Registration for 'application/
+         emergencyCall.SubInfo+xml'
+
+   This specification requests the registration of a new MIME type
+   according to the procedures of RFC 4288 [RFC4288] and guidelines in
+   RFC 3023 [RFC3023].
+
+      MIME media type name: application
+
+      MIME subtype name: emergencyCall.SubInfo+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of enclosed XML.
+
+      Encoding considerations:
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 49]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      Uses XML, which can employ 8-bit characters, depending on the
+      character encoding used.  See Section 3.2 of RFC 3023 [RFC3023].
+
+      Security considerations:
+
+      This content type is designed to carry owner/subscriber
+      information, which is a sub-category of additional data about an
+      emergency call.
+
+      Since this data contains personal information appropriate
+      precautions have to be taken to limit unauthorized access,
+      inappropriate disclosure to third parties, and eavesdropping of
+      this information.  Please refer to Section 12 and Section 13 for
+      more information.
+
+      Interoperability considerations: None
+
+      Published specification: [TBD: This specification]
+
+      Applications which use this media type: Emergency Services
+
+      Additional information:
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+
+      Person and email address for further information: Hannes
+      Tschofenig, Hannes.Tschofenig@gmx.net
+
+      Intended usage: LIMITED USE
+
+      Author: This specification is a work item of the IETF ECRIT
+      working group, with mailing list address <ecrit@ietf.org>.
+
+      Change controller: The IESG <ietf@ietf.org>
+
+14.4.5.  MIME Content-type Registration for 'application/
+         emergencyCall.Comment+xml'
+
+   This specification requests the registration of a new MIME type
+   according to the procedures of RFC 4288 [RFC4288] and guidelines in
+   RFC 3023 [RFC3023].
+
+      MIME media type name: application
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 50]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      MIME subtype name: emergencyCall.Comment+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of enclosed XML.
+
+      Encoding considerations:
+
+      Uses XML, which can employ 8-bit characters, depending on the
+      character encoding used.  See Section 3.2 of RFC 3023 [RFC3023].
+
+      Security considerations:
+
+      This content type is designed to carry a comment, which is a sub-
+      category of additional data about an emergency call.
+
+      This data may contain personal information.  Appropriate
+      precautions may have to be taken to limit unauthorized access,
+      inappropriate disclosure to third parties, and eavesdropping of
+      this information.  Please refer to Section 12 and Section 13 for
+      more information.
+
+      Interoperability considerations: None
+
+      Published specification: [TBD: This specification]
+
+      Applications which use this media type: Emergency Services
+
+      Additional information:
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+
+      Person and email address for further information: Hannes
+      Tschofenig, Hannes.Tschofenig@gmx.net
+
+      Intended usage: LIMITED USE
+
+      Author: This specification is a work item of the IETF ECRIT
+      working group, with mailing list address <ecrit@ietf.org>.
+
+      Change controller: The IESG <ietf@ietf.org>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 51]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+14.5.  URN Sub-Namespace Registration
+
+14.5.1.  Registration for urn:ietf:params:xml:ns:emergencyCallAddlData
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:emergencyCallAddlData
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+        <title>Namespace for Additional Emergency Call Data</title>
+      </head>
+      <body>
+        <h1>Namespace for Additional Data related to an Emergency Call</h1>
+      <p>See [TBD: This document].</p>
+      </body>
+      </html>
+      END
+
+
+
+14.5.2.  Registration for
+         urn:ietf:params:xml:ns:emergencyCallProviderInfo
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:emergencyCallProviderInfo
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 52]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+        <title>Namespace for Additional Emergency Call Data:
+               Data Provider Information</title>
+      </head>
+      <body>
+        <h1>Namespace for Additional Data related to an Emergency Call</h1>
+        <h2>Data Provider Information</h2>
+      <p>See [TBD: This document].</p>
+      </body>
+      </html>
+      END
+
+
+
+14.5.3.  Registration for urn:ietf:params:xml:ns:emergencyCall.SvcInfo
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:emergencyCall.SvcInfo
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+        <title>Namespace for Additional Emergency Call Data:
+               Service Information</title>
+      </head>
+      <body>
+        <h1>Namespace for Additional Data related to an Emergency Call</h1>
+        <h2>Service Information</h2>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 53]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      <p>See [TBD: This document].</p>
+      </body>
+      </html>
+      END
+
+
+
+14.5.4.  Registration for urn:ietf:params:xml:ns:emergencyCall.DevInfo
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:emergencyCall.DevInfo
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+        <title>Namespace for Additional Emergency Call Data:
+               Device Information</title>
+      </head>
+      <body>
+        <h1>Namespace for Additional Data related to an Emergency Call</h1>
+        <h2>Device Information</h2>
+      <p>See [TBD: This document].</p>
+      </body>
+      </html>
+      END
+
+
+
+14.5.5.  Registration for urn:ietf:params:xml:ns:emergencyCall.SubInfo
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:emergencyCall.SubInfo
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 54]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+        <title>Namespace for Additional Emergency Call Data:
+               Owner/Subscriber Information</title>
+      </head>
+      <body>
+        <h1>Namespace for Additional Data related to an Emergency Call</h1>
+        <h2> Owner/Subscriber Information</h2>
+      <p>See [TBD: This document].</p>
+      </body>
+      </html>
+      END
+
+
+
+14.5.6.  Registration for urn:ietf:params:xml:ns:emergencyCall.Comment
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:emergencyCall.Comment
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 55]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+        <title>Namespace for Additional Emergency Call Data:Comment</title>
+      </head>
+      <body>
+        <h1>Namespace for Additional Data related to an Emergency Call</h1>
+        <h2> Comment</h2>
+      <p>See [TBD: This document].</p>
+      </body>
+      </html>
+      END
+
+
+
+14.6.  Schema Registrations
+
+   This specification registers five schemas, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+      URI: urn:ietf:params:xml:schema:additional-
+      data:emergencyCallProviderInfo
+
+      Registrant Contact: IETF, ECRIT Working Group (ecrit@ietf.org), as
+      delegated by the IESG (iesg@ietf.org).
+
+      XML: The XML schema can be found in Figure 1.
+
+      URI: urn:ietf:params:xml:schema:additional-data:addCallSvcInfo
+
+      Registrant Contact: IETF, ECRIT Working Group (ectit@ietf.org), as
+      delegated by the IESG (iesg@ietf.org).
+
+      XML: The XML schema can be found in Figure 3.
+
+      URI: urn:ietf:params:xml:schema:additional-
+      data:emergencyCallDevInfo
+
+      Registrant Contact: IETF, ECRIT Working Group (ecrit@ietf.org), as
+      delegated by the IESG (iesg@ietf.org).
+
+      XML: The XML schema can be found in Figure 5.
+
+      URI: urn:ietf:params:xml:schema:additional-
+      data:emergencyCall.SubInfo
+
+      Registrant Contact: IETF, ECRIT Working Group (ecrit@ietf.org), as
+      delegated by the IESG (iesg@ietf.org).
+
+      XML: The XML schema can be found in Section 8.2.
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 56]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+      URI: urn:ietf:params:xml:schema:additional-
+      data:emergencyCall.Comment
+
+      Registrant Contact: IETF, ECRIT Working Group (ecrit@ietf.org), as
+      delegated by the IESG (iesg@ietf.org).
+
+      XML: The XML schema can be found in Section 9.2.
+
+14.7.  VCard Parameter Value Registration
+
+   This document registers a new value in the vCARD Parameter Values
+   registry as defined by [RFC6350] with the following template:
+
+   Value:  main
+
+   Purpose:  The main telephone number, typically of an enterprise, as
+      opposed to a direct dial number of an individual employee
+
+   Conformance:  This value can be used with the "TYPE" parameter
+      applied on the "TEL" property.
+
+   Example(s):  TEL;VALUE=uri;TYPE="main,voice";PREF=1:tel:+1-418-656-90
+      00
+
+15.  Acknowledgments
+
+   This work was originally started in NENA and has benefitted from a
+   large number of participants in NENA standardization efforts,
+   originally in the Long Term Definition Working Group, the Data
+   Technical Committee and most recently the Additional Data working
+   group.  The authors are grateful for the initial work and extended
+   comments provided by the many NENA participants.
+
+16.  References
+
+16.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC2392]  Levinson, E., "Content-ID and Message-ID Uniform Resource
+              Locators", RFC 2392, August 1998.
+
+   [RFC3023]  Murata, M., St. Laurent, S., and D. Kohn, "XML Media
+              Types", RFC 3023, January 2001.
+
+   [RFC3261]  Rosenberg, J., Schulzrinne, H., Camarillo, G., Johnston,
+              A., Peterson, J., Sparks, R., Handley, M., and E.
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 57]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+              Schooler, "SIP: Session Initiation Protocol", RFC 3261,
+              June 2002.
+
+   [RFC3688]  Mealling, M., "The IETF XML Registry", BCP 81, RFC 3688,
+              January 2004.
+
+   [RFC4119]  Peterson, J., "A Presence-based GEOPRIV Location Object
+              Format", RFC 4119, December 2005.
+
+   [RFC4288]  Freed, N. and J. Klensin, "Media Type Specifications and
+              Registration Procedures", RFC 4288, December 2005.
+
+   [RFC5226]  Narten, T. and H. Alvestrand, "Guidelines for Writing an
+              IANA Considerations Section in RFCs", BCP 26, RFC 5226,
+              May 2008.
+
+   [RFC6350]  Perreault, S., "vCard Format Specification", RFC 6350,
+              August 2011.
+
+   [RFC6351]  Perreault, S., "xCard: vCard XML Representation", RFC
+              6351, August 2011.
+
+16.2.  Informational References
+
+   [I-D.iab-privacy-considerations]
+              Cooper, A., Tschofenig, H., Aboba, B., Peterson, J.,
+              Morris, J., Hansen, M., and R. Smith, "Privacy
+              Considerations for Internet Protocols", draft-iab-privacy-
+              considerations-03 (work in progress), July 2012.
+
+   [RFC5012]  Schulzrinne, H. and R. Marshall, "Requirements for
+              Emergency Context Resolution with Internet Technologies",
+              RFC 5012, January 2008.
+
+   [RFC5222]  Hardie, T., Newton, A., Schulzrinne, H., and H.
+              Tschofenig, "LoST: A Location-to-Service Translation
+              Protocol", RFC 5222, August 2008.
+
+   [RFC5985]  Barnes, M., "HTTP-Enabled Location Delivery (HELD)", RFC
+              5985, September 2010.
+
+   [RFC6443]  Rosen, B., Schulzrinne, H., Polk, J., and A. Newton,
+              "Framework for Emergency Calling Using Internet
+              Multimedia", RFC 6443, December 2011.
+
+   [RFC6881]  Rosen, B. and J. Polk, "Best Current Practice for
+              Communications Services in Support of Emergency Calling",
+              BCP 181, RFC 6881, March 2013.
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 58]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+Appendix A.  XML Schema for vCard/xCard
+
+   This section contains the vCard/xCard XML schema version of the Relax
+   NG schema defined in RFC 6351 [RFC6351] for simplified use with the
+   XML schemas defined in this document.  The schema in RFC 6351
+   [RFC6351] is the normative source and this section is informative
+   only.
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   elementFormDefault="qualified"
+   targetNamespace="urn:ietf:params:xml:ns:vcard-4.0"
+   xmlns:ns1="urn:ietf:params:xml:ns:vcard-4.0">
+     <!--
+
+       3.3
+       iana-token = xsd:string { pattern = "[a-zA-Z0-9-]+" }
+       x-name = xsd:string { pattern = "x-[a-zA-Z0-9-]+" }
+     -->
+     <xs:simpleType name="iana-token">
+       <xs:annotation>
+         <xs:documentation>vCard Format Specification
+         </xs:documentation>
+       </xs:annotation>
+       <xs:restriction base="xs:string"/>
+     </xs:simpleType>
+     <xs:simpleType name="x-name">
+       <xs:restriction base="xs:string"/>
+     </xs:simpleType>
+     <!--
+
+       4.1
+     -->
+     <xs:element name="text" type="xs:string"/>
+     <xs:group name="value-text-list">
+       <xs:sequence>
+         <xs:element maxOccurs="unbounded" ref="ns1:text"/>
+       </xs:sequence>
+     </xs:group>
+     <!-- 4.2 -->
+     <xs:element name="uri" type="xs:anyURI"/>
+     <!-- 4.3.1 -->
+     <xs:element name="date"
+     substitutionGroup="ns1:value-date-and-or-time">
+       <xs:simpleType>
+         <xs:restriction base="xs:string">
+           <xs:pattern value="\d{8}|\d{4}-\d\d|
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 59]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+           --\d\d(\d\d)?|---\d\d"/>
+         </xs:restriction>
+       </xs:simpleType>
+     </xs:element>
+     <!-- 4.3.2 -->
+     <xs:element name="time"
+     substitutionGroup="ns1:value-date-and-or-time">
+       <xs:simpleType>
+         <xs:restriction base="xs:string">
+           <xs:pattern value="(\d\d(\d\d(\d\d)?)?|-\d\d(\d\d?)|--\d\d)
+           (Z|[+\-]\d\d(\d\d)?)?"/>
+         </xs:restriction>
+       </xs:simpleType>
+     </xs:element>
+     <!-- 4.3.3 -->
+     <xs:element name="date-time"
+     substitutionGroup="ns1:value-date-and-or-time">
+       <xs:simpleType>
+         <xs:restriction base="xs:string">
+           <xs:pattern value=
+           "(\d{8}|--\d{4}|---\d\d)T
+           \d\d(\d\d(\d\d)?)?(Z|[+\-]\d\d(\d\d)?)?"/>
+         </xs:restriction>
+       </xs:simpleType>
+     </xs:element>
+     <!-- 4.3.4 -->
+     <xs:element name="value-date-and-or-time" abstract="true"/>
+     <!-- 4.3.5 -->
+     <xs:complexType name="value-timestamp">
+       <xs:sequence>
+         <xs:element ref="ns1:timestamp"/>
+       </xs:sequence>
+     </xs:complexType>
+     <xs:element name="timestamp">
+       <xs:simpleType>
+         <xs:restriction base="xs:string">
+           <xs:pattern value="\d{8}T\d{6}(Z|[+\-]\d\d(\d\d)?)?"/>
+         </xs:restriction>
+       </xs:simpleType>
+     </xs:element>
+     <!-- 4.4 -->
+     <xs:element name="boolean" type="xs:boolean"/>
+     <!-- 4.5 -->
+     <xs:element name="integer" type="xs:integer"/>
+     <!-- 4.6 -->
+     <xs:element name="float" type="xs:float"/>
+     <!-- 4.7 -->
+     <xs:element name="utc-offset">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 60]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+       <xs:simpleType>
+         <xs:restriction base="xs:string">
+           <xs:pattern value="[+\-]\d\d(\d\d)?"/>
+         </xs:restriction>
+       </xs:simpleType>
+     </xs:element>
+     <!-- 4.8 -->
+     <xs:element name="language-tag">
+       <xs:simpleType>
+         <xs:restriction base="xs:string">
+           <xs:pattern
+           value="([a-z]{2,3}((-[a-z]{3}){0,3})?|[a-z]{4,8})
+           (-[a-z]{4})?(-([a-z]{2}|\d{3}))?(-([0-9a-z]{5,8}|
+           \d[0-9a-z]{3}))*(-[0-9a-wyz](-[0-9a-z]{2,8})+)*
+           (-x(-[0-9a-z]{1,8})+)?|x(-[0-9a-z]{1,8})+|[a-z]{1,3}
+           (-[0-9a-z]{2,8}){1,2}"/>
+         </xs:restriction>
+       </xs:simpleType>
+     </xs:element>
+     <!--
+
+       5.1
+     -->
+     <xs:group name="param-language">
+       <xs:annotation>
+         <xs:documentation>Section 5: Parameters</xs:documentation>
+       </xs:annotation>
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:language"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="language">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:language-tag"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.2 -->
+     <xs:group name="param-pref">
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:pref"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="pref">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element name="integer">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 61]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+             <xs:simpleType>
+               <xs:restriction base="xs:integer">
+                 <xs:minInclusive value="1"/>
+                 <xs:maxInclusive value="100"/>
+               </xs:restriction>
+             </xs:simpleType>
+           </xs:element>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.4 -->
+     <xs:group name="param-altid">
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:altid"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="altid">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.5 -->
+     <xs:group name="param-pid">
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:pid"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="pid">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element maxOccurs="unbounded" name="text">
+             <xs:simpleType>
+               <xs:restriction base="xs:string">
+                 <xs:pattern value="\d+(\.\d+)?"/>
+               </xs:restriction>
+             </xs:simpleType>
+           </xs:element>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.6 -->
+     <xs:group name="param-type">
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:type"/>
+       </xs:sequence>
+     </xs:group>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 62]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+     <xs:element name="type">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element maxOccurs="unbounded" name="text">
+             <xs:simpleType>
+               <xs:restriction base="xs:token">
+                 <xs:enumeration value="work"/>
+                 <xs:enumeration value="home"/>
+               </xs:restriction>
+             </xs:simpleType>
+           </xs:element>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.7 -->
+     <xs:group name="param-mediatype">
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:mediatype"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="mediatype">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.8 -->
+     <xs:group name="param-calscale">
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:calscale"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="calscale">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element name="text">
+             <xs:simpleType>
+               <xs:restriction base="xs:token">
+                 <xs:enumeration value="gregorian"/>
+               </xs:restriction>
+             </xs:simpleType>
+           </xs:element>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.9 -->
+     <xs:group name="param-sort-as">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 63]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:sort-as"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="sort-as">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element maxOccurs="unbounded" ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 5.10 -->
+     <xs:group name="param-geo">
+       <xs:sequence>
+         <xs:element minOccurs="0" name="geo">
+           <xs:complexType>
+             <xs:sequence>
+               <xs:element ref="ns1:uri"/>
+             </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:sequence>
+     </xs:group>
+     <!-- 5.11 -->
+     <xs:group name="param-tz">
+       <xs:sequence>
+         <xs:element minOccurs="0" name="tz">
+           <xs:complexType>
+             <xs:choice>
+               <xs:element ref="ns1:text"/>
+               <xs:element ref="ns1:uri"/>
+             </xs:choice>
+           </xs:complexType>
+         </xs:element>
+       </xs:sequence>
+     </xs:group>
+     <!--
+
+       6.1.3
+     -->
+     <xs:element name="source">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 64]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.1.4 -->
+     <xs:element name="kind">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" maxOccurs="unbounded" name="text">
+             <xs:simpleType>
+               <xs:union memberTypes="ns1:x-name ns1:iana-token">
+                 <xs:simpleType>
+                   <xs:restriction base="xs:token">
+                     <xs:enumeration value="individual"/>
+                   </xs:restriction>
+                 </xs:simpleType>
+                 <xs:simpleType>
+                   <xs:restriction base="xs:token">
+                     <xs:enumeration value="group"/>
+                   </xs:restriction>
+                 </xs:simpleType>
+                 <xs:simpleType>
+                   <xs:restriction base="xs:token">
+                     <xs:enumeration value="org"/>
+                   </xs:restriction>
+                 </xs:simpleType>
+                 <xs:simpleType>
+                   <xs:restriction base="xs:token">
+                     <xs:enumeration value="location"/>
+                   </xs:restriction>
+                 </xs:simpleType>
+               </xs:union>
+             </xs:simpleType>
+           </xs:element>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.2.1 -->
+     <xs:element name="fn">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 65]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.2.2 -->
+     <xs:element name="n">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-sort-as"/>
+                 <xs:group ref="ns1:param-altid"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element maxOccurs="unbounded" ref="ns1:surname"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:given"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:additional"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:prefix"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:suffix"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <xs:element name="surname" type="xs:string"/>
+     <xs:element name="given" type="xs:string"/>
+     <xs:element name="additional" type="xs:string"/>
+     <xs:element name="prefix" type="xs:string"/>
+     <xs:element name="suffix" type="xs:string"/>
+     <!-- 6.2.3 -->
+     <xs:element name="nickname">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 66]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:group ref="ns1:value-text-list"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.2.4 -->
+     <xs:element name="photo">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.2.5 -->
+     <xs:element name="bday">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-calscale"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:choice>
+             <xs:element ref="ns1:value-date-and-or-time"/>
+             <xs:element ref="ns1:text"/>
+           </xs:choice>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 67]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+     <!-- 6.2.6 -->
+     <xs:element name="anniversary">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-calscale"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:choice>
+             <xs:element ref="ns1:value-date-and-or-time"/>
+             <xs:element ref="ns1:text"/>
+           </xs:choice>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.2.7 -->
+     <xs:element name="gender">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:sex"/>
+           <xs:element minOccurs="0" ref="ns1:identity"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <xs:element name="sex">
+       <xs:simpleType>
+         <xs:restriction base="xs:token">
+           <xs:enumeration value=""/>
+           <xs:enumeration value="M"/>
+           <xs:enumeration value="F"/>
+           <xs:enumeration value="O"/>
+           <xs:enumeration value="N"/>
+           <xs:enumeration value="U"/>
+         </xs:restriction>
+       </xs:simpleType>
+     </xs:element>
+     <xs:element name="identity" type="xs:string"/>
+     <!-- 6.3.1 -->
+     <xs:group name="param-label">
+       <xs:sequence>
+         <xs:element minOccurs="0" ref="ns1:label"/>
+       </xs:sequence>
+     </xs:group>
+     <xs:element name="label">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 68]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <xs:element name="adr">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-geo"/>
+                 <xs:group ref="ns1:param-tz"/>
+                 <xs:group ref="ns1:param-label"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element maxOccurs="unbounded" ref="ns1:pobox"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:ext"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:street"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:locality"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:region"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:code"/>
+           <xs:element maxOccurs="unbounded" ref="ns1:country"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <xs:element name="pobox" type="xs:string"/>
+     <xs:element name="ext" type="xs:string"/>
+     <xs:element name="street" type="xs:string"/>
+     <xs:element name="locality" type="xs:string"/>
+     <xs:element name="region" type="xs:string"/>
+     <xs:element name="code" type="xs:string"/>
+     <xs:element name="country" type="xs:string"/>
+     <!-- 6.4.1 -->
+     <xs:element name="tel">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 69]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:element minOccurs="0" name="type">
+                   <xs:complexType>
+                     <xs:sequence>
+                       <xs:element maxOccurs="unbounded" name="text">
+                         <xs:simpleType>
+                           <xs:restriction base="xs:token">
+                             <xs:enumeration value="work"/>
+                             <xs:enumeration value="home"/>
+                             <xs:enumeration value="text"/>
+                             <xs:enumeration value="voice"/>
+                             <xs:enumeration value="fax"/>
+                             <xs:enumeration value="cell"/>
+                             <xs:enumeration value="video"/>
+                             <xs:enumeration value="pager"/>
+                             <xs:enumeration value="textphone"/>
+                           </xs:restriction>
+                         </xs:simpleType>
+                       </xs:element>
+                     </xs:sequence>
+                   </xs:complexType>
+                 </xs:element>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:choice>
+             <xs:element ref="ns1:text"/>
+             <xs:element ref="ns1:uri"/>
+           </xs:choice>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.4.2 -->
+     <xs:element name="email">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 70]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.4.3 -->
+     <xs:element name="impp">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.4.4 -->
+     <xs:element name="lang">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:language-tag"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.5.1 -->
+     <xs:group name="property-tz">
+       <xs:sequence>
+         <xs:element name="tz">
+           <xs:complexType>
+             <xs:sequence>
+               <xs:element minOccurs="0" name="parameters">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 71]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                 <xs:complexType>
+                   <xs:sequence>
+                     <xs:group ref="ns1:param-altid"/>
+                     <xs:group ref="ns1:param-pid"/>
+                     <xs:group ref="ns1:param-pref"/>
+                     <xs:group ref="ns1:param-type"/>
+                     <xs:group ref="ns1:param-mediatype"/>
+                   </xs:sequence>
+                 </xs:complexType>
+               </xs:element>
+               <xs:choice>
+                 <xs:element ref="ns1:text"/>
+                 <xs:element ref="ns1:uri"/>
+                 <xs:element ref="ns1:utc-offset"/>
+               </xs:choice>
+             </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:sequence>
+     </xs:group>
+     <!-- 6.5.2 -->
+     <xs:group name="property-geo">
+       <xs:sequence>
+         <xs:element name="geo">
+           <xs:complexType>
+             <xs:sequence>
+               <xs:element minOccurs="0" name="parameters">
+                 <xs:complexType>
+                   <xs:sequence>
+                     <xs:group ref="ns1:param-altid"/>
+                     <xs:group ref="ns1:param-pid"/>
+                     <xs:group ref="ns1:param-pref"/>
+                     <xs:group ref="ns1:param-type"/>
+                     <xs:group ref="ns1:param-mediatype"/>
+                   </xs:sequence>
+                 </xs:complexType>
+               </xs:element>
+               <xs:element ref="ns1:uri"/>
+             </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:sequence>
+     </xs:group>
+     <!-- 6.6.1 -->
+     <xs:element name="title">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 72]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.6.2 -->
+     <xs:element name="role">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.6.3 -->
+     <xs:element name="logo">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 73]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.6.4 -->
+     <xs:element name="org">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-sort-as"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:group ref="ns1:value-text-list"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.6.5 -->
+     <xs:element name="member">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.6.6 -->
+     <xs:element name="related">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 74]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:element minOccurs="0" name="type">
+                   <xs:complexType>
+                     <xs:sequence>
+                       <xs:element maxOccurs="unbounded" name="text">
+                         <xs:simpleType>
+                           <xs:restriction base="xs:token">
+                             <xs:enumeration value="work"/>
+                             <xs:enumeration value="home"/>
+                             <xs:enumeration value="contact"/>
+                             <xs:enumeration value="acquaintance"/>
+                             <xs:enumeration value="friend"/>
+                             <xs:enumeration value="met"/>
+                             <xs:enumeration value="co-worker"/>
+                             <xs:enumeration value="colleague"/>
+                             <xs:enumeration value="co-resident"/>
+                             <xs:enumeration value="neighbor"/>
+                             <xs:enumeration value="child"/>
+                             <xs:enumeration value="parent"/>
+                             <xs:enumeration value="sibling"/>
+                             <xs:enumeration value="spouse"/>
+                             <xs:enumeration value="kin"/>
+                             <xs:enumeration value="muse"/>
+                             <xs:enumeration value="crush"/>
+                             <xs:enumeration value="date"/>
+                             <xs:enumeration value="sweetheart"/>
+                             <xs:enumeration value="me"/>
+                             <xs:enumeration value="agent"/>
+                             <xs:enumeration value="emergency"/>
+                           </xs:restriction>
+                         </xs:simpleType>
+                       </xs:element>
+                     </xs:sequence>
+                   </xs:complexType>
+                 </xs:element>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:choice>
+             <xs:element ref="ns1:uri"/>
+             <xs:element ref="ns1:text"/>
+           </xs:choice>
+         </xs:sequence>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 75]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.7.1 -->
+     <xs:element name="categories">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:group ref="ns1:value-text-list"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.7.2 -->
+     <xs:element name="note">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.7.3 -->
+     <xs:element name="prodid">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:text"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.7.4 -->
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 76]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+     <xs:element name="rev" type="ns1:value-timestamp"/>
+     <!-- 6.7.5 -->
+     <xs:element name="sound">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-language"/>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.7.6 -->
+     <xs:element name="uid">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.7.7 -->
+     <xs:element name="clientpidmap">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element ref="ns1:sourceid"/>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <xs:element name="sourceid" type="xs:positiveInteger"/>
+     <!-- 6.7.8 -->
+     <xs:element name="url">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 77]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.8.1 -->
+     <xs:element name="key">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:choice>
+             <xs:element ref="ns1:uri"/>
+             <xs:element ref="ns1:text"/>
+           </xs:choice>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.9.1 -->
+     <xs:element name="fburl">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 78]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.9.2 -->
+     <xs:element name="caladruri">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- 6.9.3 -->
+     <xs:element name="caluri">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element minOccurs="0" name="parameters">
+             <xs:complexType>
+               <xs:sequence>
+                 <xs:group ref="ns1:param-altid"/>
+                 <xs:group ref="ns1:param-pid"/>
+                 <xs:group ref="ns1:param-pref"/>
+                 <xs:group ref="ns1:param-type"/>
+                 <xs:group ref="ns1:param-mediatype"/>
+               </xs:sequence>
+             </xs:complexType>
+           </xs:element>
+           <xs:element ref="ns1:uri"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+     <!-- Top-level grammar -->
+     <xs:group name="property">
+       <xs:choice>
+         <xs:element ref="ns1:adr"/>
+         <xs:element ref="ns1:anniversary"/>
+         <xs:element ref="ns1:bday"/>
+         <xs:element ref="ns1:caladruri"/>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 79]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+         <xs:element ref="ns1:caluri"/>
+         <xs:element ref="ns1:categories"/>
+         <xs:element ref="ns1:clientpidmap"/>
+         <xs:element ref="ns1:email"/>
+         <xs:element ref="ns1:fburl"/>
+         <xs:element ref="ns1:fn"/>
+         <xs:group ref="ns1:property-geo"/>
+         <xs:element ref="ns1:impp"/>
+         <xs:element ref="ns1:key"/>
+         <xs:element ref="ns1:kind"/>
+         <xs:element ref="ns1:lang"/>
+         <xs:element ref="ns1:logo"/>
+         <xs:element ref="ns1:member"/>
+         <xs:element ref="ns1:n"/>
+         <xs:element ref="ns1:nickname"/>
+         <xs:element ref="ns1:note"/>
+         <xs:element ref="ns1:org"/>
+         <xs:element ref="ns1:photo"/>
+         <xs:element ref="ns1:prodid"/>
+         <xs:element ref="ns1:related"/>
+         <xs:element ref="ns1:rev"/>
+         <xs:element ref="ns1:role"/>
+         <xs:element ref="ns1:gender"/>
+         <xs:element ref="ns1:sound"/>
+         <xs:element ref="ns1:source"/>
+         <xs:element ref="ns1:tel"/>
+         <xs:element ref="ns1:title"/>
+         <xs:group ref="ns1:property-tz"/>
+         <xs:element ref="ns1:uid"/>
+         <xs:element ref="ns1:url"/>
+       </xs:choice>
+     </xs:group>
+
+     <xs:element name="vcards">
+       <xs:complexType>
+         <xs:sequence>
+           <xs:element maxOccurs="unbounded" ref="ns1:vcard"/>
+         </xs:sequence>
+       </xs:complexType>
+     </xs:element>
+
+     <xs:complexType name="vcardType">
+       <xs:complexContent>
+         <xs:restriction base="xs:anyType">
+           <xs:choice maxOccurs="unbounded">
+             <xs:group ref="ns1:property"/>
+             <xs:element ref="ns1:group"/>
+           </xs:choice>
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 80]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+         </xs:restriction>
+       </xs:complexContent>
+     </xs:complexType>
+
+     <xs:element name="vcard"  type="ns1:vcardType"/>
+
+     <xs:element name="group">
+       <xs:complexType>
+         <xs:group minOccurs="0" maxOccurs="unbounded"
+         ref="ns1:property"/>
+         <xs:attribute name="name" use="required"/>
+       </xs:complexType>
+     </xs:element>
+   </xs:schema>
+
+
+
+Authors' Addresses
+
+   Brian Rosen
+   NeuStar
+   470 Conrad Dr.
+   Mars, PA  16046
+   US
+
+   Phone: +1 724 382 1051
+   Email: br@brianrosen.net
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 81]
+
+Internet-Draft            Additional Call Data                  May 2013
+
+
+   Roger Marshall
+   TeleCommunication Systems, Inc.
+   2401 Elliott Avenue
+   Seattle, WA  98121
+   US
+
+   Phone: +1 206 792 2424
+   Email: rmarshall@telecomsys.com
+   URI:   http://www.telecomsys.com
+
+
+   Randall Gellens
+   Qualcomm Technologies, Inc.
+   5775 Morehouse Drive
+   San Diego, CA  92121
+   US
+
+   Email: rg+ietf@qti.qualcomm.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosen, et al.          Expires November 14, 2013               [Page 82]
