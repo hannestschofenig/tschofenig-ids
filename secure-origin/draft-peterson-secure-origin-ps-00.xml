@@ -8,11 +8,15 @@ vim:et:ts=2:sw=2:spell:spelllang=en:tw=80
 <!ENTITY I-D.cooper-iab-secure-origin SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.cooper-iab-secure-origin.xml">
 <!ENTITY I-D.rosenberg-sip-rfc4474-concerns SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.rosenberg-sip-rfc4474-concerns.xml">
 <!ENTITY I-D.peterson-sipping-retarget SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.peterson-sipping-retarget.xml">
+<!ENTITY I-D.jennings-vipr-overview SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.jennings-vipr-overview.xml">
+<!ENTITY I-D.ietf-straw-b2bua-loop-detection SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-straw-b2bua-loop-detection.xml">
 <!ENTITY RFC4916 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4916.xml">
 <!ENTITY RFC4474 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4474.xml">
 <!ENTITY RFC3261 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3261.xml">
+<!ENTITY RFC3966 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3966.xml">
 <!ENTITY RFC3261 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3261.xml">
 <!ENTITY RFC3263 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3263.xml">
+<!ENTITY RFC6698 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6698.xml">
 <!ENTITY RFC3325 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3325.xml">
 ]>
 <!--?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?-->
@@ -139,64 +143,43 @@ vim:et:ts=2:sw=2:spell:spelllang=en:tw=80
       <t>After the publication of the PAI and SIP Identity specifications various further attempts have been made to tackle the topic but unfortunately with little success. The complexity resides in the deployment situation and the long list of (often conflicting) requirements. A number of years have passed since the last attempts were made to improve the situation and we therefore believe it is time to give it another try. With this document we would like to start an attempt to develop a common understanding of the problem statement as well as requirements to develop a vision on how to advance the state of the art and to initiate technical work to enable secure call origin identification.</t>
     </section> 
     
-    <section title="The Problem"> 
+    <section title="Problem Statement"> 
      
-     <t>The PSTN builds on a walled garden with a chain-of-trust security
-       model. This is a convenient assumption as long as the participating parties are
-       indeed well-behaving.  Unfortunately, this is not true anymore (and has
-       not been the case for a long time already). 
-       Caller ID spoofing is common and even transit providers are not
-       trustworthy either.
-       
-       Some parties are leveraging the lack of Caller ID in the SIP world to launch bulk commercial telephone calls (commonly "robocalling", see, for example, the FCC webpage <xref target="robocall"/>) in the traditional telephone network, which are difficult to block or trace due to the lack of identity conveyed through the SIP-PSTN interworking deployments.</t>
-       
-       <t>
-        For example, a recent telephony denial-of-service attack against emergency communications centers have created some press attention <xref target="TDOS"/>.
-       In this specific case the extortion scheme starts with a phone call to an organization from an individual claiming to represent a collections company for payday loans. Failing to get payment from an individual or organization, an attack is launched with a high volume of calls utilizing spoofed phone numbers, which ties up the target system from receiving legitimate calls. 
+     
+          <t>In the classical public-switched telephone network, a limited number of carriers trusted each other, without any cryptographic validation, to provide accurate caller origination information. In some cases, national telecommunication regulation codified these obligations. This model worked as long as the number of entities was relatively small, easily identified (e.g., through the concept of certificated carriers) and subject to effective legal sanctions in case of misbehavior. However, for some time, these assumptions have no longer held true. For example, entities that are not traditional telecommunication carriers, possibly located outside the country whose country code they are using, can act as voice service providers. While in the past, there was a clear distinction between customers and service providers, VoIP service providers can now easily act as customers, originating and transit providers. For telephony, Caller ID spoofing has become common, with a small subset of entities either ignoring abuse of their services or willingly serving to enable fraud and other illegal behavior. For example, recently, enterprises and public safety organizations <xref target="TDOS"/> have been subjected to telephony denial-of-service attacks.
+In this case, an individual claiming to represent a collections company for payday loans starts the extortion scheme with a phone call to an organization. Failing to get payment from an individual or organization, the criminal organization launches a barrage of phone calls, with spoofed numbers, preventing the targeted organization from receiving legitimate phone calls. Other boiler-room organizations use number spoofing to place illegal "robocalls" (automated telemarketing, see, for example, the FCC webpage <xref target="robocall"/> on this topic). Robocalls is a problem that has been recognized already by various regulators, for example the Federal Communications Commission (FCC) recently organized a robocall competition to solicit ideas for creating solutions that will block illegal robocalls <xref target="robocall-competition"/>. Criminals may also use number spoofing to impersonate banks or bank customers to gain access to information or financial accounts. </t>
+
+<t>In general, number spoofing is used in two ways, impersonation and anonymization. For impersonation, the attacker pretends to be a specific individual. Impersonation can be used for pretexting, where the attacker obtains information about the individual impersonated, activates credit cards or for harassment, e.g., by causing utility services to be disconnected, take-out food to be delivered, or by causing police to respond to a non-existing hostage situation ("swatting", see <xref target="swatting"/>). Some voicemail systems can be set up so that they grant access to stored messages without a password, relying solely on the caller identity. As an example, the News International phone-hacking scandal <xref target="news-hack"/> has also gained a lot of press attention where employees of the newspaper were accused of engaging in phone hacking by utilizing Caller ID spoofing to get access to a voicemail. For numbers where the caller has suppressed textual caller identification, number spoofing can be used to retrieve this information, stored in the so-called Calling Name (CNAM) database. For anonymization, the caller does not necessarily care whether the number is in service, or who it is assigned to, and may switch rapidly and possibly randomly between numbers. Anonymization facilitates automated illegal telemarketing or telephony denial-of-service attacks, as described above, as it makes it difficult to blacklist numbers. It also makes tracing such calls much more labor-intensive, as each such call has to be identified in each transit carrier hop-by-hop, based on destination number and time of call.
+</t>
+	
+	<t>Secure origin identification should prevent impersonation and, to a lesser extent, anonymization. However, if numbers are easy and cheap to obtain, and if the organizations assigning identifiers cannot or will not establish the true corporate or individual identity of the entity requesting such identifiers, robocallers will still be able to switch between many different identities.</t>
     
-       Robocalls is a problem that has been recognized already by various regulators, for example the FCC recently organized a robocall competition to solicit ideas for creating solutions that will block illegal robocalls <xref target="robocall-competition"/>. Similarly, the News International phone-hacking scandal <xref target="news-hack"/> has also gained a lot of press attention where employees of the newspaper were accused of engaging in phone hacking by utilizing Caller ID spoofing to get access to a voice mail boxes. 
-    
-    
- 
-    
-    </t>
-    
-    <t>Not all forms of Caller ID spoofing are, however, malicious. There are at least two common legitimate cases of Caller ID spoofing that need to be taken into account that constrain the solution space:
+    <t>It is insufficient to simply outlaw all spoofing of originating telephone numbers, because the entities spoofing numbers are already committing other crimes and thus unlikely to be deterred by legal sanctions. Also, in some cases, third parties may need to temporarily use the identity of another individual or organization, with full consent of the "owner" of the identifier. For example:
     <list style="hanging"> 
     
-    <t hangText="The Doctor's Office:">Doctors calling their patients using their cell phones would like to replace their mobile phone number with the number of their office to avoid receiving callbacks from patients during out-of-office hours.     
-    </t>
+    <t hangText="The doctor's office:">Physicians calling their patients using their cell phones would like to replace their mobile phone number with the number of their office to avoid being called back by patients on their personal phone.
+	</t>
     
-    <t hangText="Call Centers:">Call centers operate on behalf of companies and the called party expects to see the Caller ID of the company 
+    <t hangText="Call centers:">Call centers operate on behalf of companies and the called party expects to see the Caller ID of the company, not the call center. 
     </t>
     </list> 
     </t>
-    
-    </section> 
+
+   </section> 
     
 
 <section title="Use Cases"> 
 
-<t>In order to explain the requirements and other design assumptions we will 
-explain some of the scenarios that need to be supported by any solutions.
-Note that the figures do not show the VSPs infrastructure equipment (like proxies) 
-editorial reasons.</t>
+<t>In order to explain the requirements and other design assumptions we will explain some of the scenarios that need to be supported by any solution.
+To reduce clutter, the figures do not show call routing elements, such as SIP proxies, of voice or text service providers. We generally assume that the PSTN component of any call path cannot be altered.</t>
 
+<section title="VoIP-to-VoIP Call">
 
-<section title="IP-to-IP Communication Use Case">
+<t>For the IP-to-IP communication case, a group of service providers that offer interconnected VoIP service exchange calls using SIP end-to-end, but may also deliver some calls via circuit-switched facilities, as described below. These service providers use telephone numbers as source and destination identifiers, either as the user component of a SIP URI (e.g., sip:12125551234@example.com) or as a tel URI <xref target="RFC3966"/>.</t>
 
-<t>The first use case is that of a call that originates and terminates
-   on the IP network without ever touching the PSTN but that uses E.164
-   numbers instead of a SIP URI. This case is quite
-   prevalent today in some of the private peering federations. Since these
-   federations are being used in conjunction with the PSTN it is quite
-   logical that the addressing will be E.164 and not SIP URI based. The 
-   use of E.164 numbers (unlike SIP URIs that have a username and a domain component)
-   changes the authorization model.</t>
+<t>As illustrated in <xref target="case1"/>, if Alice calls Bob, the call will use SIP end-to-end. (The call may or may not traverse the Internet.)
 
-<t>As can be seen in <xref target="case1"/> if Alice calls Bob the call will be IP
-   based end-to-end.
-<figure anchor="case1" title="IP-to-IP Use Case.">
+<figure anchor="case1" title="VoIP-to-VoIP Call.">
                     <artwork><![CDATA[
             +------------+
             |  IP-based  |
@@ -228,10 +211,9 @@ editorial reasons.</t>
 
 <section title="IP-PSTN-IP Use Case">
 
-<t>In this use case Dan's VSP is not a member of the federation Alice's and Bob's VSP belongs to. As far as Alice is concerned Dan
-   is not accessible via IP and the PSTN is used as an interconnection network. <xref target="case2"/> shows the resulting exchange. 
+<t>Frequently, two VoIP-based service providers are not directly connected by VoIP and use TDM circuits to exchange calls, leading to the IP-PSTN-IP use case. In this use case, Dan's VSP is not a member of the interconnect federation Alice's and Bob's VSP belongs to. As far as Alice is concerned Dan is not accessible via IP and the PSTN is used as an interconnection network. <xref target="case2"/> shows the resulting exchange.
    
-<figure anchor="case2" title="IP-PSTN-IP Use Case.">
+<figure anchor="case2" title="IP-PSTN-IP Call.">
                     <artwork><![CDATA[
                                         --------
                                     ////        \\\\
@@ -263,16 +245,16 @@ editorial reasons.</t>
             
 </section> 
 
-<section title="PSTN-to-IP Case">
+<section title="PSTN-to-VoIP Call">
 
 <t>Consider <xref target="case3"/> where Carl is using a PSTN phone and initiates
-   calls to Alice.  Alice is using an IP-based phone.  The call of Carl
-   traverses the PSTN and enters the Internet via some PSTN/VoIP 
-   gateway.  This gateway attaches some identity information to the call (for example based on the 
-   information it had received through the PSTN, if available).
+   a call to Alice.  Alice is using a VoIP-based phone.  The call of Carl
+   traverses the PSTN and enters the Internet via a PSTN/VoIP 
+   gateway.  This gateway attaches some identity information to the call, for example based on the 
+   information it had received through the PSTN, if available.
 
 
-<figure anchor="case3" title="PSTN-to-IP Use Case.">
+<figure anchor="case3" title="PSTN-to-VoIP Call.">
                     <artwork><![CDATA[
                --------
            ////        \\\\
@@ -301,14 +283,13 @@ editorial reasons.</t>
 ]]></artwork>
                 </figure>
             </t>
-
-<t>Note: A B2BUA/Session Border Controller (SBC) would exhibit behavior that looks similar to this 
-scenario since the original call content would, in the worst case, be re-built entirely (except for the 
-destination number, which might be changed afterwards due to retargeting). </t>
  
+ <t>Note: A B2BUA/Session Border Controller (SBC) exhibits behavior that looks similar to this scenario since the original call content would, in the worst case, be re-created on the call origination side.</t>
+
+
 </section> 
                                                                 
-<section title="IP-to-PSTN Use Case"> 
+<section title="VoIP-to-PSTN Call Use Case"> 
 
 <t>
    Consider <xref target="case4"/> where Alice calls Carl.  Carl uses a PSTN phone and
@@ -351,14 +332,14 @@ destination number, which might be changed afterwards due to retargeting). </t>
 </section> 
 
 
-<section title="PSTN-IP-PSTN Use Case"> 
+<section title="PSTN-VoIP-PSTN Call"> 
 
 <t>
    Consider <xref target="case5"/> where Carl calls Alice. Both users have PSTN phones but interconnection between the two PSTN networks 
    is accomplished via an IP network. Consequenly, Carl's operator uses a PSTN-to-VoIP gateway to route the call via an IP network to a gateway 
    to break out into the PSTN again. 
       
-<figure anchor="case5" title="IP-to-PSTN Use Case.">
+<figure anchor="case5" title="PSTN-VoIP-PSTN Call.">
                     <artwork><![CDATA[
                                                   +----------+
                                                   |PSTN Phone|
@@ -375,7 +356,7 @@ destination number, which might be changed afterwards due to retargeting). </t>
 |PSTN Phone|             /  '`''''''' \             --------
 |of Carl   |           //      |       \\              ^
 +----------+          //       |        \\\            |
-                    ///        -. INVITE   -----       |
+                    ///        -. Invite   -----       |
                  ////            `-.           \\\\    |
                 /                   `..            \   |
                |    IP-based           `._       ,--+----+
@@ -390,15 +371,25 @@ destination number, which might be changed afterwards due to retargeting). </t>
 </section> 
 
 
-
+<section title="PSTN-to-PSTN Call">
+<t>For the "legacy" case of a PSTN-to-PSTN call, otherwise beyond improvement, we may be able to use out-of-band IP connectivity at both the originating and terminating carrier to validate the call information.</t>
+</section>
 
 </section> 
 
     <section anchor="background" title="Limitations of Current Solutions">
 
-<t>From the inception of SIP, the From header field value has held an arbitrary user-supplied identity, much like the From header field value of an email message. During work on <xref target="RFC3261"/>, efforts began to provide a secure origin for SIP requests as an extension to SIP. The so-called "short term" solution, the P-Asserted-Identity header described in <xref target="RFC3325"/>, has had the largest impact on deployments to date, though its applicability is limited to closed trusted networks where end-user devices cannot alter or inspect SIP messages. Unfortunately, as P-Asserted-Identity use has become more popular, its applicability has grown murkier.</t>
 
-<t>Subsequent efforts to prevent calling identity spoofing in SIP include the SIP Identity effort (the "long term" identity solution) and Verification Involving PSTN Reachability (VIPR). SIP Identity focused on attaching a new header to SIP requests with a signature over the From header field value in way that prevented replay attacks. The VIPR architecture attacked a broader suite of problems relating to spam, routing and identity with a new infrastructure for managing rendezvous and security which operated alongside of SIP deployments.</t>
+
+
+<t>From the inception of SIP, the From header field value has held an arbitrary user-supplied identity, much like the From header field value of an SMTP email message. During work on <xref target="RFC3261"/>, efforts began to provide a secure origin for SIP requests as an extension to SIP. The so-called "short term" solution, the P-Asserted-Identity header described in <xref target="RFC3325"/>, is deployed fairly widely, even though it is limited to closed trusted networks where end-user devices cannot alter or inspect SIP messages and offers no cryptographic validation. As P-Asserted-Identity is used increasingly across multiple networks, it cannot offer any protection against identity spoofing by intermediaries or entities that allow end users to set the P-Asserted-Identity information.</t>
+
+<t>Subsequent efforts to prevent calling origin identity spoofing in SIP include the SIP Identity effort (the "long term" identity solution) <xref target="RFC4474"/> and Verification Involving PSTN Reachability (VIPR) <xref target="I-D.jennings-vipr-overview"/>. SIP Identity attaches a new header field to SIP requests containing a signature over the From header field value combined with other message components to prevent replay attacks. SIP Identity is meant both to prevent originating calls with spoofed From headers and intermediaries, such as SIP proxies, from launching man-in-the-middle attacks to alter calls passing through. The VIPR architecture attacked a broader range of problems relating to spam, routing and identity with a new infrastructure for managing rendezvous and security, which operated alongside of SIP deployments.</t>
+
+<t>As we will describe in more detail below, both SIP Identity and VIPR suffer from serious limitations that have prevented their deployment at significant scale, but they may still offer ideas and protocol building blocks for a solution.</t>
+
+
+
 
 <section title="SIP Identity">
 
@@ -406,23 +397,23 @@ destination number, which might be changed afterwards due to retargeting). </t>
 
 <t>The Identity header field value contains a signature over a hash of selected elements of a SIP request, including several header field values (most significantly, the From header field value) and the entirety of the body of the request. The set of header field values was chosen specifically to prevent cut-and-paste attacks; it requires the verification service to retain some state to guard against replays. The signature over the body of a request has different properties for different SIP methods, but all prevent tampering by man-in-the-middle attacks. For a SIP MESSAGE request, for example, the signature over the body covers the actual message conveyed by the request: it is pointless to guarantee the source of a request if a man-in-the-middle can change the content of the message, as in that case the message content is created by an attacker. Similar threats exist against the SIP NOTIFY method. For a SIP INVITE request, a signature over the SDP body is intended to prevent a man-in-the-middle from changing properties of the media stream, including the IP address and port to which media should be sent, as this provides a means for the man-in-the-middle to direct session media to resource that the originator did not specify, and thus to impersonate an intended listener.</t>
 
-<t>The Identity-Info header field value contains a URI designating the location of the certificate corresponding to the private key that signed the hash in the Identity header. That certificate could be passed by-value along with the SIP request, in which case a "cid" URI appears in Identity-Info, or by-reference, for example when the Identity-Info header field value has the URL of a web service that delivers the certificate. <xref target="RFC4474"/> levies further constraints governing the subject of that certificate: namely, that it must cover the domain name indicated in the domain component of the URI in the From header field value of the request.</t>
+<t>The Identity-Info header field value contains a URI designating the location of the certificate corresponding to the private key that signed the hash in the Identity header. That certificate could be passed by-value along with the SIP request, in which case a "cid" URI appears in Identity-Info, or by-reference, for example when the Identity-Info header field value has the URL of a web service that delivers the certificate. <xref target="RFC4474"/> imposes further constraints governing the subject of that certificate: namely, that it must cover the domain name indicated in the domain component of the URI in the From header field value of the request.</t>
 
 <t>The SIP Identity mechanism, however, has two fundamental limitations that have precluded its deployment: first, that it provides Identity only for domain name rather than other identifiers; second, that it does not tolerate intermediaries that alter the bodies, or certain header fields, of SIP requests.</t>
 
-<t>As deployed, SIP predominantly mimics the structures of the telephone network, and thus uses telephone numbers as identifiers. Telephone numbers in the From header field value of a SIP request may appear as the user part of a SIP URI, or alternatively in an independent tel URI. The certificate designated by the Identity-Info header field as specified, however, corresponds only to the domain portion of a SIP URI in the From header field. As such, <xref target="RFC4474"/> does not have any provision to identify the assignee of a telephone number. While it could be the case that the domain name portion of a SIP URI signifies a carrier (like "att.com") to whom numbers are assigned, the SIP Identity mechanism provides no assurance that a number is assigned to any carrier. For a tel URI, moreover, it is unclear in <xref target="RFC4474"/> what entity should hold a corresponding certificate.</t>
+<t>As deployed, SIP predominantly mimics the structures of the telephone network, and thus uses telephone numbers as identifiers. Telephone numbers in the From header field value of a SIP request may appear as the user part of a SIP URI, or alternatively in an independent tel URI. The certificate designated by the Identity-Info header field as specified, however, corresponds only to the domain portion of a SIP URI in the From header field. As such, <xref target="RFC4474"/> does not have any provision to identify the assignee of a telephone number. While it could be the case that the domain name portion of a SIP URI signifies a carrier (like "att.com") to whom numbers are assigned, the SIP Identity mechanism provides no assurance that a number is assigned to any carrier. For a tel URI, moreover, it is unclear in <xref target="RFC4474"/> what entity should hold a corresponding certificate. In general, the caller may not want to reveal the identity of its service provider to the callee, and may thus prefer tel URIs in the From header field.</t>
 
 <t>This lack of authority gives rise to a whole class of SIP identity problems when dealing with telephone numbers, as is explored in <xref target="I-D.rosenberg-sip-rfc4474-concerns"/>. That document shows how the Identity header of a SIP request targeting a telephone number (embedded in a SIP URI) could be dropped by an intermediate domain, which then modifies and resigns the request, all  without alerting the verification service: the verification service has no way of knowing which original domain signed the request. Provided that the local authentication service is complicit, an originator can claim virtually any telephone number, impersonating any chosen Caller ID from the perspective of the verifier. Both of these attacks are rooted in the inability of the verification service to ascertain a specific certificate that is authoritative for a telephone number.</t>
 
-<t>As deployed, SIP is moreover highly mediated, and mediated in ways that <xref target="RFC3261"/> did not anticipate. As request routing commonly depends on policies dissimilar to <xref target="RFC3263"/>, requests transit multiple intermediate domains to reach a destination; some forms of intermediaries in those domains may effectively re-initate the session.</t>
+<t>As deployed, SIP is moreover highly mediated, and mediated in ways that <xref target="RFC3261"/> did not anticipate. As request routing commonly depends on policies dissimilar to <xref target="RFC3263"/>, requests transit multiple intermediate domains to reach a destination; some forms of intermediaries in those domains may effectively re-initiate the session.</t>
 
 <t>One of the main reasons that SIP deployments mimic the PSTN architecture is because the requirement for interconnection with the PSTN remains paramount:  a call may originate in SIP and terminate on the PSTN, or vice versa; and worse still, a PSTN-to-PSTN call may transit a SIP network in the middle, or vice versa. This necessarily reduces SIP's feature set to the least common dominator of the telephone network, and mandates support for telephone numbers as a primary calling identifier.</t>
 
-<t>Interworking with non-SIP networks makes end-to-end identity hugely problematic. When a PSTN gateway sends a call to a SIP network, it creates the INVITE request anew, regardless of whether a previous leg of the call originated in a SIP network that later dropped the call to the PSTN. As these gateways are not necessarily operated by entities that have any relationship to the number assignee, it is unclear how they could provide an identity signature that a verifier should trust. Moreover, how could the gateway know that the calling party number it receives from the PSTN is actually authentic? And when a gateway receives a call via SIP and terminates a call to the PSTN, how can that gateway verify that a telephone number in the From header field value is authentic, before it presents that number as the calling party number in the PSTN?</t>
+<t>Interworking with non-SIP networks makes end-to-end identity problematic. When a PSTN gateway sends a call to a SIP network, it creates the INVITE request anew, regardless of whether a previous leg of the call originated in a SIP network that later dropped the call to the PSTN. As these gateways are not necessarily operated by entities that have any relationship to the number assignee, it is unclear how they could provide an identity signature that a verifier should trust. Moreover, how could the gateway know that the calling party number it receives from the PSTN is actually authentic? And when a gateway receives a call via SIP and terminates a call to the PSTN, how can that gateway verify that a telephone number in the From header field value is authentic, before it presents that number as the calling party number in the PSTN?</t>
 
 <t>Similarly, some SIP networks deploy intermediaries that act as back-to-back user agents (B2BUAs), typically in order to enforce policy at network boundaries (hence the nickname "Session Border Controller"). As a common practice, these entities modify SIP INVITE requests in transit in such a way that they no longer satisfy the transaction-mapping semantics of <xref target="RFC3261"/>, commonly changing the From, Contact and Call-ID header field values, as well as aspects of the SDP, including especially the IP addresses and ports associated with media. The policies that motivate these changes may be associated with topology hiding, or may alter messages to interoperate successfully with particular SIP implementations, or may simply involve network address translation from private address space. But effectively, a SIP request exiting a B2BUA has no necessary relationship to the original request received by the B2BUA, much like a request exiting a PSTN gateway has no necessary relationship to any SIP request in a pre-PSTN leg of the call. An Identity signature provided for the original INVITE has no bearing on the post-B2BUA INVITE, and, were the B2BUA to preserve the original Identity header, any verification service would detect a violation of the integrity protection.</t>
 
-<t>The SIP community has long been aware of these problems with <xref target="RFC4474"/> in practical deployments. Some have therefore proposed weakening the security constraints of <xref target="RFC4474"/> so that at least some deployments of B2BUAs will not violate (or remove) the integrity protection of SIP requests. However, such solutions do not address the root problems identified above: the lack of any clear authority for telephone numbers, and the fact that some INVITEs are generated by intermediaries rather than endpoints. Removing the signature over the SDP from the Identity header will not, for example, make it any clearer how a PSTN gateway should assert identity in an INVITE.</t>
+<t>The SIP community has long been aware of these problems with <xref target="RFC4474"/> in practical deployments. Some have therefore proposed weakening the security constraints of <xref target="RFC4474"/> so that at least some deployments of B2BUAs will not violate (or remove) the integrity protection of SIP requests. However, such solutions do not address one key problem identified above: the lack of any clear authority for telephone numbers, and the fact that some INVITE requests are generated by intermediaries rather than endpoints. Removing the signature over the SDP from the Identity header will not, for example, make it any clearer how a PSTN gateway should assert identity in an INVITE request.</t>
 
 </section> 
 
@@ -434,11 +425,11 @@ destination number, which might be changed afterwards due to retargeting). </t>
 
 <t>Through this mechanism, the VIPR system provides a suite of properties, ones that go well beyond merely securing the origins of communications. It also provides a routing system which dynamically discovers mappings between telephone numbers and URIs, effectively building an ad hoc ENUM database in every VIPR implementation. The tokens exchanged over the out-of-band connection established by VIPR moreover provide an authorization mechanism for accepting calls over the Internet that significantly reduces the potential for spam. Because the token can act as a nonce due to the presence of this out-of-band connectivity, the VIPR token is less susceptible to cut-and-paste attacks and thus needs to cover with its signature far less of a SIP request.</t>
 
-<t>Due to its narrow scope of applicability, and the details of its implementation, VIPR has some significant limitations. The most salient for the purposes of this document is that it only has bearing on repeated communications between entities: it has no bearing on the classic "robocall" problem, where the target receives a call from a number that has never called before. All of VIPRs strengths in establishing identity and spam prevention kick in only after an initial PSTN call has been completed, and subsequent attempts at communication begin. Every VIPR-compliant entity moreover maintains its own stateful database of previous contacts and authorizations, which lends itself more aggregators like IP PBXs that may front for thousands of users than to individual phones. That database must be refreshed by periodic PSTN calls to determine that control over the number has not shifted to some other entity; figuring out when data has grown stale is one the challenges of the architecture. As VIPR requires compliant implementations to operate both a PSTN interface and an IP interface, it has little apparent applicability to ordinary desktop PCs or similar devices with no ability to place direct PSTN calls.</t>
+<t>Due to its narrow scope of applicability, and the details of its implementation, VIPR has some significant limitations. The most salient for the purposes of this document is that it only has bearing on repeated communications between entities: it has no bearing on the classic "robocall" problem, where the target receives a call from a number that has never called before. All of VIPRs strengths in establishing identity and spam prevention kick in only after an initial PSTN call has been completed, and subsequent attempts at communication begin. Every VIPR-compliant entity moreover maintains its own stateful database of previous contacts and authorizations, which lends itself to more aggregators like IP PBXs that may front for thousands of users than to individual phones. That database must be refreshed by periodic PSTN calls to determine that control over the number has not shifted to some other entity; figuring out when data has grown stale is one the challenges of the architecture. As VIPR requires compliant implementations to operate both a PSTN interface and an IP interface, it has little apparent applicability to ordinary desktop PCs or similar devices with no ability to place direct PSTN calls.</t>
 
 <t>The distributed hash table also creates a new attack surface for impersonation. Attackers who want to pose as the owners of telephone numbers can advertise themselves as routes to a number in the hash table. VIPR has no inherent restriction on the number of entities that may advertise themselves as routes for a number, and thus an originator may find multiple advertisements for a number on the DHT even when an attack is not in progress. As for attackers, even if they cannot successfully verify themselves to the originators of calls (because they lack the call detail information), they may learn from those verification attempts which VIPR entities recently placed calls to the target number: it may be that this information is all the attacker hopes to glean. The fact that advertisements and verifications are public is rooted in the public nature of the DHT that VIPR creates. The public DHT prevents any centralized control, or attempts to impede communications, but those come at the cost of apparently unavoidable privacy  losses.</t>
 
-<t>Because of these limitations, VIPR, much like SIP Identity, has had little impact in the marketplace. Ultimately, VIPR's utility as an identity mechanism is limited by its reliance on the PSTN, especially its need for an initial PSTN call to complete before any of VIPR's benefits can be realized, and by the drawbacks of the highly-public exchanges requires to create the out-of-band connection between VIPR entities. As such, there is no obvious solution to providing secure origin services for SIP on the Internet today. However, it seems like the fundamental principles embodied by SIP Identity and VIPR could still be viable, if they were staged in a slightly different manner.</t>
+<t>Because of these limitations, VIPR, much like SIP Identity, has had little impact in the marketplace. Ultimately, VIPR's utility as an identity mechanism is limited by its reliance on the PSTN, especially its need for an initial PSTN call to complete before any of VIPR's benefits can be realized, and by the drawbacks of the highly-public exchanges requires to create the out-of-band connection between VIPR entities. As such, there is no obvious solution to providing secure origin services for SIP on the Internet today. </t>
 
 </section> 
 
@@ -449,27 +440,31 @@ destination number, which might be changed afterwards due to retargeting). </t>
 
 
 <section title="Shift to Mobile Communication"> 
-<t>In the years since <xref target="RFC4474"/> was conceived, there have been a number of fundamental shifts in the communications marketplace. The most transformative has been the precipitous rise of mobile smart phones, which are now arguably the dominant communications device in the developed world. Smart phones have both a PSTN and an IP interface, as well as an SMS capability. This suite of tools suggests that some of the techniques proposed by VIPR could be adapted to the smart phone environment. The installed base of smart phones is moreover highly upgradable, and permits rapid adoption out-of-band rendezvous services for smart phones that circumvent the PSTN: for example, the Apple iMessage service, which allows iPhone users to send SMS messages to one another over the Internet rather than over the PSTN. Like VIPR, iMessage creates an out-of-band connection over the Internet between iPhones; unlike VIPR, the rendezvous service is provided by a trusted centralized database of iPhones rather than by a DHT. While Apple's service is specific to customers of its smart phones, it seems clear that similar databases could be provided by neutral third parties in a position to coordinate between endpoints.</t>
+<t>In the years since <xref target="RFC4474"/> was conceived, there have been a number of fundamental shifts in the communications marketplace. The most transformative has been the precipitous rise of mobile smart phones, which are now arguably the dominant communications device in the developed world. Smart phones have both a PSTN and an IP interface, as well as an SMS and MMS capabilities. This suite of tools suggests that some of the techniques proposed by VIPR could be adapted to the smart phone environment. The installed base of smart phones is moreover highly upgradable, and permits rapid adoption out-of-band rendezvous services for smart phones that circumvent the PSTN: for example, the Apple iMessage service, which allows iPhone users to send SMS messages to one another over the Internet rather than over the PSTN. Like VIPR, iMessage creates an out-of-band connection over the Internet between iPhones; unlike VIPR, the rendezvous service is provided by a trusted centralized database of iPhones rather than by a DHT. While Apple's service is specific to customers of its smart phones, it seems clear that similar databases could be provided by neutral third parties in a position to coordinate between endpoints.</t>
 </section> 
 
 <section title="Failure of Public ENUM">
-<t>At the time <xref target="RFC4474"/> was written, the hopes for establishing a certificate authority for telephone numbers on the Internet largely rested on public ENUM deployment. The e164.arpa DNS tree established for ENUM could have grown to include certificates for telephone numbers, or at worst for number ranges. It is now clear however that public ENUM as originally envisioned has little prospect for adoption. That much said, national authorities for telephone numbers are increasingly migrating their provisioning services to the Internet, and issuing credentials that express authority for telephone numbers to secure those services. This new class of certificate authority for numbers could be opened to the public Internet to provide the necessary signatory authority for securing calling partys' numbers. While these systems are far from universal, the authors of this draft believe a certificate authority can be erected for the North American Numbering Plan in a way that numbering authorities for other country codes could follow.</t>
+<t>At the time <xref target="RFC4474"/> was written, the hopes for establishing a certificate authority for telephone numbers on the Internet largely rested on public ENUM deployment. The e164.arpa DNS tree established for ENUM could have grown to include certificates for telephone numbers or at least for number ranges. It is now clear however that public ENUM as originally envisioned has little prospect for adoption. That said, national authorities for telephone numbers are increasingly migrating their provisioning services to the Internet, and issuing credentials that express authority for telephone numbers to secure those services. This new class of certificate authority for numbers could be opened to the public Internet to provide the necessary signatory authority for securing calling partys' numbers. While these systems are far from universal, the authors of this draft believe a certificate authority can be erected for the North American Numbering Plan in a way that numbering authorities for other country codes could follow.</t>
 </section> 
 
 <section title="Public Key Infrastructure Developments">
-<t>Also, there have been a number of recent high-profile compromises of web certificate authorities. The presence of numerous (in some cases, of hundreds) of trusted certificate authorities in modern web browsers has become a significant security liability. As <xref target="RFC4474"/> relied on web certificate authorities, this too provides new lessons for any work on revising <xref target="RFC4474"/>: namely, that innovations like DANE that designate a specific certificate preferred by the owner of a DNS name could greatly improve the security of a SIP identity mechanism; and moreover, that when architecting new certificate authorities for telephone numbers, we should be wary of excessive pluralism. While a chain of delegation with a progressively narrowing scope of authority (e.g., from a regulatory to a carrier to a reseller to an end user) is needed to reflect operational practices, there is no need to have multiple roots, or peer entities that both claim authority for the same telephone number or number range.</t>
+<t>Also, there have been a number of recent high-profile compromises of web certificate authorities. The presence of numerous (in some cases, of hundreds) of trusted certificate authorities in modern web browsers has become a significant security liability. As <xref target="RFC4474"/> relied on web certificate authorities, this too provides new lessons for any work on revising <xref target="RFC4474"/>: namely, that innovations like DANE <xref target="RFC6698"/> that designate a specific certificate preferred by the owner of a DNS name could greatly improve the security of a SIP identity mechanism; and moreover, that when architecting new certificate authorities for telephone numbers, we should be wary of excessive pluralism. While a chain of delegation with a progressively narrowing scope of authority (e.g., from a regulatory entity to a carrier to a reseller to an end user) is needed to reflect operational practices, there is no need to have multiple roots, or peer entities that both claim authority for the same telephone number or number range.</t>
 </section> 
 
 <section title="Pervasive Nature of B2BUA Deployments"> 
-<t>Given the prevalence of established B2BUA deployments, we may have a further opportunity to review the elements signed by <xref target="RFC4474"/> and to decide on the worth of alternative signature mechanisms. The ongoing efforts in the STRAW working group provide one possibility worth investigating for changes to the signed elements. Separating the elements necessary for (a) securing the From header field value and preventing replays, from (b) the elements necessary to prevent men-in-the-middle from tampering with messages, may also yield a strategy for identity that will be practicable in some highly mediated networks. It could be possible, for example, to provide two signatures: one over the elements required for (b), and then a separate signature over the elements necessarily for (a) and the signature over (b); this would allow verification services in mediated networks to ignore the failure of a (b) signature while still verifying (a). Any solution along these lines must however always secure any cryptographic material necessary to support DTLS-SRTP or future security mechanisms.</t>
+<t>Given the prevalence of established B2BUA deployments, we may have a further opportunity to review the elements signed by <xref target="RFC4474"/> and to decide on the value of alternative signature mechanisms. The ongoing efforts in the STRAW working group <xref target="I-D.ietf-straw-b2bua-loop-detection"/> provide one possibility worth investigating for changes to the signed elements. Separating the elements necessary for (a) securing the From header field value and preventing replays, from (b) the elements necessary to prevent men-in-the-middle from tampering with messages, may also yield a strategy for identity that will be practicable in some highly mediated networks. It could be possible, for example, to provide two signatures: one over the elements required for (b), and then a separate signature over the elements necessary for (a) and the signature over (b); this would allow verification services in mediated networks to ignore the failure of a (b) signature while still verifying (a). Any solution along these lines must however always secure any cryptographic material necessary to support DTLS-SRTP or future security mechanisms.</t>
 </section> 
 
 <section title="Stickiness of Deployed Infrastructure"> 
 <t>One thing that has not changed, and is not likely to change in the future, is the transitive nature of trust in the PSTN. When a call from the PSTN arrives at a SIP gateway with a calling party number, the gateway will have little chance of determining whether the originator of the call was authorized to claim that calling party number. Due to roaming and countless other factors, calls on the PSTN may emerge from administrative domains that have no relationship with the number assignee. This use case will remain the most difficult to tackle for an identity system, and may prove beyond repair. It does however seem that with the changes in the solution space, and a better understanding of the limits of <xref target="RFC4474"/> and VIPR, we are today in a position to reexamine the problem space and find solutions that can have a significant impact on the secure origins problem.</t>
 </section> 
 
-<section anchor="numbering" title="Evolution with Numbering">
-<t>The assignment of telephone numbers may, in the future, no longer be restricted to entities that we traditionally consider "carriers", and will include administrative entities ranging from VSPs to end users, potentially.</t>
+<section anchor="numbering" title="Relationship with Number Assignment and Management">
+<t>Currently, telephone numbers are typically managed in a loose delegation hierarchy. For example, a national regulatory agency may task a private, neutral entity with administering numbering resources, such as area codes, and a similar entity with assigning number blocks to carriers and other authorized entities, who in turn then assign numbers to customers. In many countries, individual numbers are portable between carriers, at least within the same technology (e.g., wireline-to-wireline). Separate databases manage the mapping of numbers to switch identifiers, companies and textual caller ID information.</t>
+
+<t>As the PSTN transitions to using VoIP technologies, new assignment policies and management mechanisms are likely to emerge. For example, it has been proposed that geography could play a smaller role in number assignments, and that individual numbers are assigned to end users directly rather than only to service providers, or that the assignment of numbers does not depend on providing actual call delivery services.</t>
+
+<t>Databases today already map telephone numbers to entities that have been assigned the number, e.g., through the LERG (originally, Local Exchange Routing Guide) in the United States. Thus, the transition to IP-based networks may offer an opportunity to integrate cryptographic bindings between numbers or number ranges and service providers into databases.</t>
 </section>
 
 </section> 
@@ -479,27 +474,30 @@ destination number, which might be changed afterwards due to retargeting). </t>
      
      <list style="hanging"> 
      
-     <t hangText="Usability">Must work without human intervention</t>
-     <t hangText="Deployability">Must survive transition of the call to the PSTN and the presence of SBCs</t>
-     <t hangText="Consider existing structures"> must allow number portability among carriers and must support legitimate usage of number spoofing (doctor's office and call centers)</t>
-     <t hangText="Minimal payload overhead">Must lead to minimal expansion of SIP headers (UDP) to avoid fragmentation in deployments that use with UDP</t>
-     <t hangText="Privacy">The out-of-band validation protocol must not allows third parties to learn what numbers had been called by a specific caller.</t>
-     </list> </t>
+     <t hangText="Usability">Any validation mechanism must work without human intervention, e.g., CAPTCHA-like mechanisms.</t>
+     <t hangText="Deployability">Must survive transition of the call to the PSTN and the presence of B2BUAs.</t>
+	<t hangText="Validation by intermediaries">Intermediaries as well as end system must be able to validate the source identity information.</t>
+     <t hangText="Display name">The display name of the caller must also be validated or the callee must be able to determine that only the calling number has been validated.</t>
+     <t hangText="Consider existing structures">must allow number portability among carriers and must support legitimate usage of number spoofing (doctor's office and call centers)</t>
+     <t hangText="Minimal payload overhead">Must lead to minimal expansion of SIP headers fields to avoid fragmentation in deployments that use UDP.</t>
+     <t hangText="Privacy">Any out-of-band validation protocol must not allows third parties to learn what numbers have been called by a specific caller.</t>
+     </list> 
+</t>
     </section>
-
 
     <section anchor="roadmap" title="Roadmap">
       <t>The authors of this document believe that the entire solution scope consists of a couple of separable aspects:
       <list style='hanging'>
-      <t hangText='In-band Caller ID Conveyance:'> This functionality allows call origin identification information to be conveyed within SIP, and takes the nature of the E.164 numbers into account. This is an revised version of the SIP Identity specification that takes E.164 numbers into account. This approach considers the case where intermediaries do not strip-off header fields.</t>
-      <t hangText='Out-of-Band Caller ID Verification:'> This functionality determines whether the E.164 number used by the calling party actually exists and whether a call has recently been made from this phone number. This approach is needed when the in-band technique does not work due to intermediaries or due to interworking with PSTN networks.</t>
+      <t hangText='In-band caller ID Conveyance:'> This functionality allows call origin identification information to be conveyed within SIP, and takes the nature of E.164 numbers and the prevalence of B2BUAs into account. This may consist of a revised version of the SIP Identity specification that takes E.164 numbers into account and allows for separate validation of the SIP request headers and the SIP request body. This approach addresses the case where intermediaries do not remove header fields.</t>
+      <t hangText='Out-of-Band Caller-ID Verification:'> This functionality determines whether the E.164 number used by the calling party actually exists, the calling entity is entitled to use the number and whether a call has recently been made from this phone number. This approach is needed when the in-band technique does not work due to intermediaries or due to interworking with PSTN networks.</t>
 
-      <t hangText='Certificate Delegation Infrastructure:'> This functionality defines how certificates with E.164 numbers are used in number portability, and delegation cases. It also describes how the existing numbering infrastrufcture is re-used to maintain the lifecycle of number assignments.</t>
+      <t hangText='Certificate Delegation Infrastructure:'> This functionality defines how certificates with E.164 numbers are used in number portability, and delegation cases. It also describes how the existing numbering infrastructure is re-used to maintain the lifecycle of number assignments.</t>
       
-      <t hangText='Extended Validation:'>This functionality describes how to describes attributes of the calling party beyond the Caller ID and these attributes (e.g., the calling party is a bank) need to be verified upfront.</t>
+      <t hangText='Extended Validation:'>This functionality describes how to describes attributes of the calling party beyond the caller-id and these attributes (e.g., the calling party is a bank) need to be verified upfront.</t>
       </list> 
       </t>
     </section>
+
 
     <section anchor="Acknowledgments" title="Acknowledgments">
       <t>We would like to thank Alissa Cooper, Bernard Aboba, Sean Turner, Eric Burger, and Eric Rescorla for their discussion input that lead to this document.</t>
@@ -538,10 +536,14 @@ destination number, which might be changed afterwards due to retargeting). </t>
 &RFC3261;
 &RFC3261;
 &RFC3325;
+&RFC6698; 
 &RFC4916; 
+&RFC3966; 
 &I-D.cooper-iab-secure-origin;
 &I-D.peterson-sipping-retarget; 
 &I-D.rosenberg-sip-rfc4474-concerns;
+&I-D.ietf-straw-b2bua-loop-detection; 
+&I-D.jennings-vipr-overview; 
 &RFC3263; 
       <reference anchor="TDOS">
         <front>
@@ -614,7 +616,23 @@ destination number, which might be changed afterwards due to retargeting). </t>
       </reference>
       
     
-    
+   <reference anchor="swatting">
+        <front>
+          <title>Don't Make the Call: The New Phenomenon of 'Swatting'</title>
+
+          <author fullname="FBI" initials="" surname="Wikipedia"></author>
+
+
+          <date month="Feb" year="2008" />
+        </front>
+
+        <seriesInfo name=""
+                    value="URL: http://www.fbi.gov/news/stories/2008/february/swatting020408" />
+
+        <format target="http://www.fbi.gov/news/stories/2008/february/swatting020408"
+                type="HTML" />
+      </reference>
+ 
    
     </references>
 
