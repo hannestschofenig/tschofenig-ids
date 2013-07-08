@@ -1,0 +1,392 @@
+
+
+
+
+DIME                                                  H. Tschofenig, Ed.
+Internet-Draft                                    Nokia Siemens Networks
+Intended status: Standards Track                             J. Korhonen
+Expires: January 09, 2014                                 Renesas Mobile
+                                                                 G. Zorn
+                                                             Network Zen
+                                                               K. Pillay
+                                                             ACME Packet
+                                                           July 08, 2013
+
+
+        Diameter AVP Level Security: Requirements and Scenarios
+                draft-tschofenig-dime-e2e-sec-req-01.txt
+
+Abstract
+
+   This specification discusses requirements for providing Diameter
+   security at the level of individual Attribute Value Pairs.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on January 09, 2014.
+
+Copyright Notice
+
+   Copyright (c) 2013 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+
+
+
+Tschofenig, et al.      Expires January 09, 2014                [Page 1]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
+
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Use Case  . . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   4.  Requirements  . . . . . . . . . . . . . . . . . . . . . . . .   4
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
+   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
+   7.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .   6
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   6
+     8.1.  Normative References  . . . . . . . . . . . . . . . . . .   6
+     8.2.  Informative References  . . . . . . . . . . . . . . . . .   6
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   6
+
+1.  Introduction
+
+   The Diameter Base specification [2] offers security protection
+   between neighboring Diameter peers and mandates that either TLS (for
+   TCP), DTLS (for SCTP), or IPsec is used.  These security protocols
+   offer a wide range of security properties, including entity
+   authentication, data-origin authentication, integrity,
+   confidentiality protection and replay protection.  They also support
+   a large number of cryptographic algorithms, algorithm negotiation,
+   and different types of credentials.
+
+   The need to also offer additional security protection of AVPs between
+   non-neighboring Diameter nodes was recognized very early in the work
+   on Diameter.  This lead to work on Diameter security using the
+   Cryptographic Message Syntax (CMS) [3].  Due to lack of deployment
+   interest at that time (and the complexity of the developed solution)
+   the specification was, however, never completed.
+
+   In the meanwhile Diameter had received a lot of deployment interest
+   from the cellular operator community and because of the
+   sophistication of those deployments the need for protecting Diameter
+   AVPs between non-neighboring nodes re-surfaced.  Since early 2000
+   (when the work on [3] was discontinued) the Internet community had
+   seen advances in cryptographic algorithms (for example, authenticated
+   encryption algorithms were developed) and new security building
+   blocks were developed.
+
+   This document collects requirements for developing a solution to
+   protect Diameter AVPs.
+
+
+
+
+
+Tschofenig, et al.      Expires January 09, 2014                [Page 2]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
+
+2.  Terminology
+
+   The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
+   'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
+   specification are to be interpreted as described in [1].
+
+   This document re-uses terminology from the Diameter base
+   specification [2].
+
+3.  Use Case
+
+   Consider the following use case shown in Figure 1 where a a Diameter
+   client wants to interact with its home Diameter server in the
+   example.com realm.  The visited domain the Diameter client is
+   attached to makes use of a AAA interconnection provider, shown as AAA
+   Broker in our example.  While both the administrators of the visited
+   as well as the home domain are likely to main a business relationship
+   with the intermediate AAA broker network they may want to ensure that
+   certain Diameter AVPs are not sent in the clear or are integrity
+   protected.  Note that the security services are likely offered
+   between Diameter Proxy A and Diameter Proxy D for ease of deployment.
+   Proxy A may act on behalf of the Diameter client and Diameter Proxy D
+   acts on behalf of Diameter Server X and Y it serves.
+
+
+      +oooooooooooooooooo+              +====================+
+      |                  |              |                    |
+      |                  |              |                    |
+   +--------+      +--------+        +--------+        +--------+
+   |Diameter|      |Diameter|        |Diameter|        |Diameter|
+   |Client  +------+Proxy A +--------+Proxy B +--------+Proxy C |----+
+   +--------+      +--------+        +--------+        +--------+    |
+      |                  |              |                    |       |
+      |  Visited Domain  |              |      AAA Broker    |       |
+      +oooooooooooooooooo+              +====================+       |
+                                                                     |
+                                                                     |
+                                                                     |
+                                        +\\\\\\\\\\\\\\\\\\\\+       |
+                                 +--------+  Example.com     |       |
+                                 |Diameter|                  |       |
+                                 |Server X+--+         +--------+    |
+                                 +--------+  |         |Diameter|    |
+                                 +--------+  +---------+Proxy D |----+
+                                 |Diameter|  |         +--------+
+                                 |Server Y+--+               |
+                                 +--------+    Home Domain   |
+                                        +////////////////////+
+
+
+
+Tschofenig, et al.      Expires January 09, 2014                [Page 3]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
+
+               Figure 1: Example Diameter Deployment Setup.
+
+   Various security threats are mitigated by selectively applying
+   security protection for individual Diameter AVPs.  Without protection
+   there is the possibility for password sniffing, confidentiality
+   violation, AVP insertion, deletion or modification.  Additionally,
+   applying digital signature offers non-repudiation capabilities; a
+   feature not yet available in todays Diameter deployment.
+   Modification of certain Diameter AVPs may not necessarily be the act
+   of malicious behavior but could also be the result of
+   misconfiguration.  An over-aggressively configured firewalling
+   Diameter proxy may also remove certain AVPs.  In most cases data
+   origin authentication and integrity protection of AVPs will provide
+   most benefits for existing deployments with minimal overhead and
+   (potentially) operating in a full-backwards compatible manner.
+
+4.  Requirements
+
+   Requirement #1:  Solutions MUST support an extensible set of
+      cryptographic algorithms.
+
+         Motivation: Crypto-agility is the ability of a protocol to
+         adapt to evolving cryptographic algorithms and security
+         requirements.  This may include the provision of a modular
+         mechanism to allow cryptographic algorithms to be updated
+         without substantial disruption to deployed implementations.
+
+   Requirement #2:  Solutions MUST support confidentiality, integrity,
+      and data-origin authentication.
+
+         QUESTION: Should solutions for integrity protection work in a
+         backwards-compatible way with existing Diameter applications?
+         Should the list of integrity protected AVP be indicated in the
+         protected payload itself?
+
+   Requirement #3:  Solutions MUST support replay protection.
+
+         QUESTION: Should replay protection be based on timestamps
+         (i.e., assume synchronized clocks in Diameter networks)?
+
+   Requirement #4:  Solutions MUST support the ability to delegate
+      security functionality to another entity
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.      Expires January 09, 2014                [Page 4]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
+
+         Motivation: As described in Section 3 the ability to let a
+         Diameter proxy to perform security services on behalf of all
+         clients within the same administrative domain is important for
+         incremental deployability.  The same applies to the other
+         communication side where a load balancer terminates security
+         services for the servers it interfaces.
+
+   Requirement #5:  Solutions MUST be able to selectively apply their
+      cryptographic protection to certain Diameter AVPs.
+
+         Motivation: Some Diameter applications assume that certain AVPs
+         are added, removed, or modified by intermediaries.  As such, it
+         may be necessary to apply security protection selectively.
+
+   Requirement #6:  Solutions MUST recommend a mandatory-to-implement
+      cryptographic algorithm.
+
+         Motivation: For interoperability purposes it is beneficial to
+         have a mandatory-to-implement cryptographic algorithm specified
+         (unless profiles for specific usage environments specify
+         otherwise).
+
+   Requirement #7:  Solutions MUST support symmetric keys and asymmetric
+      keys.
+
+         Motivation: Symmetric and asymmetric cryptographic algorithms
+         provide different security services.  Asymmetric algorithms,
+         for example, allow non-repudiation services to be offered.
+
+   Requirement #8:  QUESTION: Should requirements for dynamic key
+      management be included in this document as well?  This is rather a
+      process related question as dynamic key management procedures
+      always have to be specified since otherwise the solution is
+      incomplete.
+
+   Requirement #9:  QUESTION: Should statically provisioned keys be
+      supported?  This allows easier management for small-scale
+      deployments.
+
+   Requirement #10:  QUESTION: Should solutions allow the provisioning
+      of long-term shared symmetric credentials via a command-line
+      interface / text file?  This allows easier management for small-
+      scale deployments.
+
+5.  Security Considerations
+
+   This entire document focused on the discussion of new functionality
+   for securing Diameter AVPs end-to-end.
+
+
+
+Tschofenig, et al.      Expires January 09, 2014                [Page 5]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
+
+6.  IANA Considerations
+
+   This document does not require actions by IANA.
+
+7.  Acknowledgments
+
+   We would like to thank Guenther Horn for his review comments.
+
+8.  References
+
+8.1.  Normative References
+
+   [1]        Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [2]        Fajardo, V., Arkko, J., Loughney, J., and G. Zorn,
+              "Diameter Base Protocol", RFC 6733, October 2012.
+
+8.2.  Informative References
+
+   [3]        Calhoun, P., Farrell, S., and W. Bulley, "Diameter CMS
+              Security Application", draft-ietf-aaa-diameter-cms-sec-04
+              (work in progress), March 2002.
+
+Authors' Addresses
+
+   Hannes Tschofenig (editor)
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+   Jouni Korhonen
+   Renesas Mobile
+   Porkkalankatu 24
+   Helsinki  00180
+   Finland
+
+   Email: jouni.nospam@gmail.com
+
+
+
+
+
+
+
+Tschofenig, et al.      Expires January 09, 2014                [Page 6]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
+
+   Glen Zorn
+   Network Zen
+   227/358 Thanon Sanphawut
+   Bang Na  Bangkok 10260
+   Thailand
+
+   Email: glenzorn@gmail.com
+
+
+   Kervin Pillay
+   ACME Packet
+
+   Email: kpillay@acmepacket.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.      Expires January 09, 2014                [Page 7]
