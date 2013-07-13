@@ -1,0 +1,1627 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!DOCTYPE rfc SYSTEM 'rfc2629.dtd'>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+<rfc category='std' ipr='trust200902' docName='draft-ietf-oauth-v2-http-mac-04.txt'>
+  <?rfc strict='no' ?>
+  <?rfc toc='yes' ?>
+  <?rfc tocdepth='3' ?>
+  <?rfc symrefs='yes' ?>
+  <?rfc sortrefs='yes' ?>
+  <?rfc compact='no' ?>
+  <?rfc subcompact='no' ?>
+
+  <front>
+  
+   <title abbrev="OAuth 2.0 MAC Tokens">OAuth 2.0 Message Authentication Code (MAC) Tokens</title>
+
+   <author  fullname="Justin Richer" surname="Richer">
+      <organization>The MITRE Corporation</organization>
+
+      <address>
+        <postal>
+          <street></street>
+
+          <city></city>
+
+          <region></region>
+
+          <code></code>
+
+          <country></country>
+        </postal>
+        <email>jricher@mitre.org</email>
+      </address>
+    </author>
+
+    <author fullname="William Mills" initials="W." surname="Mills">
+      <organization>Yahoo! Inc.</organization>
+      <address>
+      <postal>
+          <street></street>
+          <city></city>
+          <code></code>
+          <country></country>
+        </postal>
+        <phone></phone>
+        
+        <email>wmills@yahoo-inc.com </email>
+      </address>
+    </author>
+
+    <author role="editor" initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+ 	
+	 <author fullname="Phil Hunt" initials="P." surname="Hunt">
+      <organization>Oracle Corporation</organization>
+      <address>
+      <postal>
+          <street></street>
+          <city></city>
+          <code></code>
+          <country></country>
+        </postal>
+        <phone></phone>
+        <email>phil.hunt@yahoo.com</email>
+      </address>
+    </author>
+
+
+    <date year='2013'/>
+    <area>Security</area>
+    <workgroup>OAuth</workgroup>
+    <keyword>Internet-Draft</keyword>
+
+    <abstract>
+      <t>This specification describes how to use MAC Tokens in HTTP requests to access OAuth 2.0 protected resources.  An OAuth client willing to access a protected resource needs to demonstrate possession of a crytographic key by using it with a keyed message digest function to the request.</t>
+
+      <t>The document also defines a key distribution protocol for obtaining a fresh session key.</t>
+  </abstract>
+  </front>
+  <middle>
+    
+   <!-- ******************************************************************************** -->  
+  
+    <section title='Introduction'>
+      <t>This specification describes how to use MAC Tokens in HTTP requests and responses to access protected resources via the OAuth 2.0 protocol <xref target='RFC6749' />. An OAuth client willing to access a protected resource needs to demonstrate possession of a symmetric key by using it with a keyed message digest function to the request. The keyed message digest function is computed over a flexible set of parameters from the HTTP message.</t>
+     <!-- <t>
+        Similar to the HTTP Basic access authentication scheme <xref target='RFC2617' />, the MAC
+        scheme utilizes a set of client credentials which include an identifier and key. However,
+        in contrast with the Basic scheme, the key is never included in authenticated requests but
+        is used to calculate the request MAC value which is included instead.
+      </t>
+     --> 
+	 
+      <t>The MAC Token mechanism requires the establishment of a shared symmetric key between the client and the resource server. This specification defines a three party key distribution protocol to dynamically distribute this session key from the authorization server to the client and the resource server.</t>
+      <t>The design goal for this mechanism is to support the requirements outlined in <xref target="background"/>. In particular, when a server uses this mechanism, a passive attacker will be unable to use an eavesdropped access token exchanged between the client and the resource server. In addition, this mechanism helps secure the access token against leakage when sent over a secure channel to the wrong resource server if the client provided information about the resource server it wants to interact with in the request to the authorization server.</t>
+	  
+	  <t>Since a keyed message digest only provides integrity protection and data-origin authentication confidentiality protection can only be added by the usage of Transport Layer Security (TLS). This specification provides a mechanism for channel binding is included to ensure that a TLS channel is not terminated prematurely and indeed covers the entire end-to-end communication.</t>
+	  
+	  </section>
+	  
+   <!-- ******************************************************************************** -->  
+
+      <section title='Terminology'>
+        <t>
+          The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT', 'SHOULD',
+          'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this specification are to be
+          interpreted as described in <xref target='RFC2119' />.
+        </t>
+        <t>
+          This specification uses the Augmented Backus-Naur Form (ABNF) notation of
+          <xref target='I-D.ietf-httpbis-p1-messaging' />. Additionally, the following rules
+          are included from <xref target="RFC2617"/>: auth-param.
+        </t>
+		
+		<t><list style="hanging">
+		
+		<t hangText="Session Key:"><vspace blankLines="1"/>
+		The terms mac key, session key, and symmetric key are used interchangably and refer to the cryptographic keying material established between the client and the resource server. This temporary key used between the client and the resource server, with a
+      lifetime limited to the lifetime of the access token. This session key is generated by the authorization server.<vspace blankLines="1"/></t>
+	  
+	  <t hangText="Authenticator:"><vspace blankLines="1"/>
+      A record containing information that can be shown to have been
+      recently generated using the session key known only by the client
+      and the resource server.<vspace blankLines="1"/></t>
+	  
+	  <t hangText="Message Authentication Code (MAC):"><vspace blankLines="1"/>
+	  Message authentication codes (MACs) are hash functions that take two distinct inputs, a message and a secret key, and produce a ﬁxed-size output. The design goal is that it is practically infeasible to produce the same output without knowledge of the key. The terms keyed message digest functions and MACs are used interchangably.</t>
+      </list>
+	  </t>
+      </section>
+
+	  <!-- ******************************************************************************** -->  
+	  
+<section title="Architecture"> 
+    
+<t>The architecture of the proposal described in this document assumes that the authorization server acts as a trusted third party that provides session keys to clients and to resource servers. These session keys are used by the client and the resource server as input to a MAC. In order to obtain the session key the client interacts with the authorization server as part of the a normal grant exchange. This is shown in an abstract way in <xref target="architecture-1"/>. Together with the access token the authorization server returns a session key (in the mac_key parameter) and several other parameters. The resource server obtains the session key via the access token. Both of these two key distribution steps are described in more detail in <xref target="key-distribution"/>.</t>
+
+<t>
+<figure anchor="architecture-1" title="Architecture: Interaction between the Client and the Authorization Server.">
+<artwork>
+<![CDATA[
+                     +---------------+
+                    ^|               | AS-RS Key
+                  // | Authorization |<*******  
+                 /   | Server        |       *  
+               //    |               |       *
+              /      |               |       *
+       (I)  //      /+---------------+       *
+ Access    /      //                         *
+ Token    /      /                           *
+ Request//     //  (II) Access Token         *
+       /      /         +Session Key (SK)    *
+     //     //                               *
+    /      v                                 v
+  +-----------+                       +------------+
+  |           |                       |            |
+  |           |                       | Resource   |
+  | Client    |                       | Server     |
+  |           |                       |            |
+  |           |                       |            |
+  +-----------+                       +------------+
+  
+  ****: Out-of-Band Long-Term Key Establishment
+  ----: Dynamic Session Key Distribution
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>Once the client has obtained the necessary access token and the session key (including parameters) it can start to interact with the resource server. To demonstrate possession of the session key it computes a MAC and adds various fields to the outgoing request message. We call this structure the "Authenticator". The server evaluates the request, includes an Authenticator and returns a response back to the client. Since the access token is valid for a period of time the resource server may decide to cache it so that it does not need to be provided in every request from the client. This interaction is shown in <xref target="architecture-2"/>.
+
+<figure anchor="architecture-2" title="Architecture: Interaction between the Client and the Resource Server.">
+<artwork>
+<![CDATA[
+                   +---------------+
+                   |               |
+                   | Authorization |
+                   | Server        |
+                   |               |
+                   |               |
+                   +---------------+
+
+
+
+
+
+
++-----------+  Authenticator (a)    +------------+
+|           |---------------------->|            |
+|           |  [+Access Token]      | Resource   |
+| Client    |                       | Server     |
+|           |  Authenticator (b)    |            |
+|           |<----------------------|            |
++-----------+                       +------------+
+
+     ^                                    ^
+     |                                    |
+     |                                    |
+    SK                                   SK
+    +param                               +param
+]]>
+</artwork>
+</figure>
+</t>
+
+	  </section> 
+	  
+ 
+	<!-- ******************************************************************************** -->  
+	
+	    <section title='Key Distribution' anchor='key-distribution'>
+	  
+	  <t>For this scheme to function a session key must be available to the client and the resource server, which is then used as a parameter in the keyed message digest function. This document describes the key distribution mechanism that uses the authorization server as a trusted third party, which ensures that the session key is transported 
+	  from the authorization server to the client and the resource server.</t>
+	  
+<!--      <t>
+        This specification does not define methods for the client to specifically request a
+        MAC-type token from the authorization server. Additionally, it does not include any
+        discovery facilities for identifying which HMAC algorithms are supported by a resource
+        server, or how the client may go about obtaining MAC access tokens for any given protected
+        resource.
+      </t>
+--> 
+
+      <section anchor="transport-to-client" title='Session Key Transport to Client'>
+        <t>
+          Authorization servers issue MAC Tokens based on requests from clients. The request MUST include the audience parameter defined in <xref target="I-D.tschofenig-oauth-audience"/>, which indicates the resource server the client wants to interact with. This specification assumes use of the 'Authorization Code' grant. If the request is processed successfully by the authorization server it MUST return at least the following parameters to the client:</t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='kid'>
+              <vspace blankLines="1"/>
+              The name of the key (key id), which is an identifier generated by the resource server. It is RECOMMENDED that the authorization server generates this key id by computing a hash over the access_token, for example using SHA-1, and to encode it in a base64 format.  
+            <vspace blankLines="1"/> </t>
+			<t hangText='access_token'>
+              <vspace blankLines="1"/>
+              The OAuth 2.0 access token. 
+            <vspace blankLines="1"/> </t>
+            <t hangText='mac_key'>
+              <vspace blankLines="1"/>
+              The session key generated by the authorization server. Note that the lifetime of the session key is equal to the lifetime of the access token.
+            <vspace blankLines="1"/> </t>
+            <t hangText='mac_algorithm'>
+              <vspace blankLines="1"/>
+              The MAC algorithm used to calculate the request MAC. The value MUST be one
+              of <spanx style='verb'>hmac-sha-1</spanx>, <spanx style='verb'>hmac-sha-256</spanx>, or
+              a registered extension algorithm name as described in <xref target='registry' />. The authorization server is assumed to know the set of algorithms supported by the client and the resource server. It selects an algorithm that meets the  security policies and is supported by both nodes.
+            </t>
+          </list>
+		</t>
+		<t>
+        <figure>
+          <preamble>
+            For example:
+          </preamble>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 200 OK
+  Content-Type: application/json
+  Cache-Control: no-store
+
+  {
+    "access_token":
+"eyJhbGciOiJSU0ExXzUiLCJlbmMiOiJBMTI4Q0JDK0hTMjU2In0.
+pwaFh7yJPivLjjPkzC-GeAyHuy7AinGcS51AZ7TXnwkC80Ow1aW47kcT_UV54ubo
+nONbeArwOVuR7shveXnwPmucwrk_3OCcHrCbE1HR-Jfme2mF_WR3zUMcwqmU0RlH
+kwx9txo_sKRasjlXc8RYP-evLCmT1XRXKjtY5l44Gnh0A84hGvVfMxMfCWXh38hi
+2h8JMjQHGQ3mivVui5lbf-zzb3qXXxNO1ZYoWgs5tP1-T54QYc9Bi9wodFPWNPKB
+kY-BgewG-Vmc59JqFeprk1O08qhKQeOGCWc0WPC_n_LIpGWH6spRm7KGuYdgDMkQ
+bd4uuB0uPPLx_euVCdrVrA.
+AxY8DCtDaGlsbGljb3RoZQ.
+7MI2lRCaoyYx1HclVXkr8DhmDoikTmOp3IdEmm4qgBThFkqFqOs3ivXLJTku4M0f
+laMAbGG_X6K8_B-0E-7ak-Olm_-_V03oBUUGTAc-F0A.
+OwWNxnC-BMEie-GkFHzVWiNiaV3zUHf6fCOGTwbRckU",
+    "token_type":"mac",
+    "expires_in":3600,
+    "refresh_token":"8xLOxBtZp8",
+    "kid":"22BIjxU93h/IgwEb4zCRu5WF37s=",
+    "mac_key":"adijq39jdlaska9asud",
+    "mac_algorithm":"hmac-sha-256"
+  }
+]]>
+          </artwork>
+        </figure>
+	  </t>
+      </section>
+
+	   <section anchor="transport-to-rs" title='Session Key Transport to Resource Server'>
+       <t>The transport of the mac_key from the authorization server to the resource server
+	   is accomplished by conveying the encrypting mac_key inside the access token. At the time of writing only one standardized format for carrying the access token is defined: the JSON Web Token (JWT) <xref target="I-D.ietf-oauth-json-web-token"/>. Note that the header of the JSON Web Encryption (JWE) structure <xref target="I-D.ietf-jose-json-web-encryption"/>, which is a JWT with encrypted content, MUST contain a key id (kid) in the header to allow the resource server to select the appropriate keying material for decryption. This keying material is a symmetric or an asymmetric long-term key established between the resource server and the authorization server, as shown in <xref target="architecture-1"/> as AS-RS key. The establishment of this long-term key is outside the scope of this specification.</t>
+	   
+	   <t>This document defines two new claims to be carried in the JWT: mac_key, kid. These two parameters match the content of the mac_key and the kid conveyed to the client, as shown in <xref target="transport-to-client"/>.</t>
+	   
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='kid'>
+              <vspace blankLines="1"/>
+              The name of the key (key id), which is an identifier generated by the resource server.  
+            <vspace blankLines="1"/> </t>
+            <t hangText='mac_key'>
+              <vspace blankLines="1"/>
+              The session key generated by the authorization server.
+            <vspace blankLines="1"/> </t>
+          </list>
+        <figure>
+          <preamble>
+            This example shows a JWT claim set without header and without encryption:
+          </preamble>
+          <artwork>
+            <![CDATA[
+{"iss":"authorization-server.example.com",
+"exp":1300819380,
+"kid":"22BIjxU93h/IgwEb4zCRu5WF37s=",
+"mac_key":"adijq39jdlaska9asud",
+"aud":"apps.example.com"
+}
+]]>
+          </artwork>
+        </figure>
+	  </t>
+
+	  <t><list style="empty">
+	  <t>QUESTIONS: An alternative to the use of a JWT to convey the access token with the encrypted mac_key is use the token introspect <xref target="I-D.richer-oauth-introspection"/>. What mechanism should be described? What should be mandatory to implement?</t>
+      <t>QUESTIONS: The above description assumes that the entire access token is encrypted but it would be possible to only encrypt the session key and to only apply integrity protection to other fields. Is this desireable?</t>
+	  </list>
+	  </t>
+       </section>
+ 
+    </section>
+	
+	<!-- ******************************************************************************** -->  
+
+    <section title='The Authenticator' anchor='requests'>
+      <t>To access a protected resource the client must be in the possession of a valid set of session key
+        provided by the authorization server. The client constructs the authenticator, as described in 
+		<xref target='authz_header' />.
+      </t>
+
+      <section title='The Authenticator' anchor='authz_header'>
+        <t>The client constructs the authenticator and adds the resulting fields to the HTTP request using the
+        <spanx style='verb'>Authorization</spanx> request header field. 
+		
+          The <spanx style='verb'>Authorization</spanx> request header field uses the framework
+          defined by <xref target='RFC2617' />. To include the authenticator in a subsequent response from the authorization 
+		  server to the client the WWW-Authenticate header is used. For further exchanges a new, yet-to-be-defined header 
+		  will be used. </t>
+		  
+	    <t> 
+        <figure>
+          <artwork>
+            <![CDATA[
+  authenticator  = "MAC" 1*SP #params
+  
+  params         = id / ts / seq-nr / access_token / mac / h / cb
+
+  kid            = "kid" "=" string-value
+  ts             = "ts" "=" ( <"> timestamp <"> ) / timestamp
+  seq-nr         = "seq-nr" "=" string-value
+  access_token   = "access_token" "=" b64token
+  mac            = "mac" "=" string-value
+  cb             = "cb" "=" token
+  h              = "h" "=" h-tag
+  h-tag          = %x68 [FWS] "=" [FWS] hdr-name
+                   *( [FWS] ":" [FWS] hdr-name )
+  hdr-name       = token
+	  
+  timestamp      = 1*DIGIT
+  string-value   = ( <"> plain-string <"> ) / plain-string
+  plain-string   = 1*( %x20-21 / %x23-5B / %x5D-7E )
+  
+  b64token       = 1*( ALPHA / DIGIT /
+                       "-" / "." / "_" / "~" / "+" / "/" ) *"="
+]]>
+          </artwork>
+        </figure>
+        </t>
+	
+        <t>
+          The header attributes are set as follows:
+        </t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='kid'>
+              <vspace blankLines="1"/>
+              REQUIRED. The key identifier.
+            <vspace blankLines="1"/> </t>
+            <t hangText='ts'>
+              <vspace blankLines="1"/>
+              REQUIRED. The timestamp. The value MUST be a positive integer set by the
+              client when making each request to the number of milliseconds since 1 January 1970.
+			  <vspace blankLines="1"/> 
+			  The JavaScript getTime() function or the Java System.currentTimeMillis() function, for example, produce such a timestamp.
+            <vspace blankLines="1"/> </t>
+            <t hangText='seq-nr'>
+              <vspace blankLines="1"/>
+              OPTIONAL.
+      This optional field includes the initial sequence number to be
+      used by the messages exchange between the client and the server when the replay protection 
+	  provided by the timestamp is not sufficient enough replay protection. This
+      field specifies the initial sequence number for messages from the
+      client to the server.  When included in the response message, the
+      initial sequence number is that for messages from the server to
+      the client. Sequence numbers fall in the range 0 through 2^64 - 1 and wrap to zero following
+      the value 2^64 - 1. <vspace blankLines="1"/>
+	  The initial sequence number SHOULD be random and
+      uniformly distributed across the full space of possible sequence
+      numbers, so that it cannot be guessed by an attacker and so that
+      it and the successive sequence numbers do not repeat other
+      sequences. In the event that more than 2^64 messages are to be generated in a series of messages, 
+	  rekeying MUST be performed before sequence numbers are reused. Rekeying requires a new access token to be requested.
+            <vspace blankLines="1"/> </t>
+            <t hangText='access_token'>
+               <vspace blankLines="1"/>
+              CONDITIONAL. The access_token MUST be included in the first request from the client to the server but MUST NOT be included in a subsequent response and in a further protocol exchange. 
+            <vspace blankLines="1"/> </t>
+			
+            <t hangText='mac'>
+               <vspace blankLines="1"/>
+              REQUIRED. The result of the keyed message digest computation, as described in <xref target='mac' />.
+            <vspace blankLines="1"/> </t>
+			
+			<t hangText='cb'> 
+			 <vspace blankLines="1"/>
+			OPTIONAL. This field carries the channel binding value from RFC 5929 <xref target="RFC5929"/> in the following format: cb= channel-binding-type ":" channel-binding-content. RFC 5929 offers two types of channel bindings for TLS. First, there is the 'tls-server-end-point' channel binding, which uses a hash of the TLS server's certificate as it
+   appears, octet for octet, in the server's Certificate message. The second channel binding is 'tls-unique', which uses the first TLS Finished message sent (note: the Finished struct, not the TLS record layer message containing it) in the most
+   recent TLS handshake of the TLS connection being bound to. As an example, the cb field may contain cb=tls-unique:9382c93673d814579ed1610d3</t>
+           		
+			<t hangText='h'>
+               <vspace blankLines="1"/>
+              OPTIONAL.  This field contains a colon-separated list of header field names that identify the
+      header fields presented to the keyed message digest algorithm. If the 'h' header field is absent then the following value is set by default: h="host". The field MUST
+      contain the complete list of header fields in the order presented
+      to the keyed message digest algorithm.  The field MAY contain names of header
+      fields that do not exist at the time of computing the keyed message digest; nonexistent header fields do
+      not contribute to the keyed message digest computation (that is, they are
+      treated as the null input, including the header field name, the
+      separating colon, the header field value, and any CRLF
+      terminator).  
+	  
+	  By including header fields that do not
+         actually exist in the keyed message digest computation, the client can allow the resource server to detect
+         insertion of those header fields by intermediaries.  However, since
+         the client cannot possibly know what header fields might be
+         defined in the future, this mechanism cannot be used to prevent
+         the addition of any possible unknown header fields.
+		 
+	  The field MAY contain multiple instances of a header
+      field name, meaning multiple occurrences of the corresponding
+      header field are included in the header hash.  The field MUST NOT
+      include the mac header field.  Folding whitespace (FWS) MAY be
+      included on either side of the colon separator.  Header field
+      names MUST be compared against actual header field names in a
+      case-insensitive manner.  This list MUST NOT be empty.  See
+      <xref target="Security"/> for a discussion of choosing header fields.
+            </t>
+			
+          </list>
+        </t>
+        <t>
+          Attributes MUST NOT appear more than once. Attribute values are limited to a subset of
+          ASCII, which does not require escaping, as defined by the plain-string ABNF.
+        </t>
+      </section>
+		
+      <section title='MAC Input String' anchor='base_string'>
+         
+          <t>An HTTP message can either be a request from client to server or a
+   response from server to client.  Syntactically, the two types of
+   message differ only in the start-line, which is either a request-line
+   (for requests) or a status-line (for responses).</t>
+   
+          <t>Two parameters serve as input to a keyed message digest function: a key and an input string. 
+			 Depending on the communication direction either the request-line or the status-line is used as the first 
+		     value followed by the HTTP header fields listed in the 'h' parameter. Then, the timestamp field and  
+			 the seq-nr field (if present) is concatenated.</t>
+		
+<!-- 			<t>
+            <list style='numbers'>
+              <t>
+                The HTTP request method in upper case. For example:
+                <spanx style='verb'>HEAD</spanx>, <spanx style='verb'>GET</spanx>,
+                <spanx style='verb'>POST</spanx>, etc.
+              </t>
+              <t>
+                The HTTP request-URI as defined by <xref target='RFC2616' /> section 5.1.2.
+              </t>
+              <t>
+                The hostname included in the HTTP request using the
+                <spanx style='verb'>Host</spanx> request header field in lower case.
+              </t>
+              <t>
+                The port as included in the HTTP request using the
+                <spanx style='verb'>Host</spanx> request header field. If the header field does not
+                include a port, the default value for the scheme MUST be used (e.g., 80 for HTTP and
+                443 for HTTPS).
+              </t>
+            </list>
+          </t>
+		  --> 
+		  <t>As an example, consider the HTTP request with the new line separator character 
+		  represented by <spanx style='verb'>\n</spanx> for editorial purposes only.
+		  The h parameter is set to h=host, the kid is 314906b0-7c55, and the timstamp is 1361471629.
+          <figure>
+            <artwork>
+              <![CDATA[
+POST /request?b5=%3D%253D&a3=a&c%40=&a2=r%20b&c2&a3=2+q HTTP/1.1
+Host: example.com
+
+Hello World!
+]]>
+            </artwork>
+          </figure>
+</t>		  
+		  	
+<t>The resulting string is:
+          <figure>
+            <artwork>
+              <![CDATA[
+POST /request?b5=%3D%253D&a3=a&c%40=&a2=r%20b&c2&a3=2+q HTTP/1.1\n
+1361471629\n
+example.com\n
+]]>
+            </artwork>
+          </figure>
+		  </t> 
+		  
+        </section>
+
+		
+      <section title='Keyed Message Digest Algorithms' anchor='mac'>
+        <t>
+          The client uses a cryptographic algorithm together with a session key to calculate a keyed message digest. This
+          specification defines two algorithms: <spanx style='verb'>hmac-sha-1</spanx> and
+          <spanx style='verb'>hmac-sha-256</spanx>, and provides an extension registry for
+          additional algorithms.
+        </t>
+
+        <section title='hmac-sha-1'>
+          <t>
+            <spanx style='verb'>hmac-sha-1</spanx> uses the HMAC-SHA1 algorithm, as defined in
+            <xref target='RFC2104' />:
+          </t>
+          <figure>
+            <artwork>
+              <![CDATA[
+  mac = HMAC-SHA1 (key, text)
+]]>
+            </artwork>
+          </figure>
+          <t>
+            Where:
+          </t>
+          <t>
+            <list style='hanging' hangIndent='6'>
+              <t hangText='text'>
+                <vspace blankLines="1"/>
+                is set to the value of the input string as described in
+                <xref target='base_string' />,
+              </t>
+              <t hangText='key'>
+                <vspace blankLines="1"/>
+                is set to the session key provided by the authorization server, and
+              </t>
+              <t hangText='mac'>
+                <vspace blankLines="1"/>
+                is used to set the value of the <spanx style='verb'>mac</spanx> attribute,
+                after the result string is base64-encoded per Section 6.8 of <xref target='RFC2045' />.
+              </t>
+            </list>
+          </t>
+        </section>
+
+        <section title='hmac-sha-256'>
+          <t>
+            <spanx style='verb'>hmac-sha-256</spanx> uses the HMAC algorithm, as defined in
+            <xref target='RFC2104' />, with the SHA-256 hash function, defined in
+            <xref target='NIST-FIPS-180-3' />:
+          </t>
+          <figure>
+            <artwork>
+              <![CDATA[
+  mac = HMAC-SHA256 (key, text)
+]]>
+            </artwork>
+          </figure>
+          <t>
+            Where:
+          </t>
+          <t>
+            <list style='hanging' hangIndent='6'>
+              <t hangText='text'>
+                <vspace blankLines="1"/>
+                is set to the value of the input string as described in
+                <xref target='base_string' />,
+              </t>
+              <t hangText='key'>
+                <vspace blankLines="1"/>
+                is set to the session key provided by the authorization server, and
+              </t>
+              <t hangText='mac'>
+                <vspace blankLines="1"/>
+                is used to set the value of the <spanx style='verb'>mac</spanx> attribute,
+                after the result string is base64-encoded per Section 6.8 of <xref target='RFC2045' />.
+              </t>
+            </list>
+          </t>
+        </section>
+
+      </section>
+
+    </section>
+
+ <!-- ******************************************************************************** -->  
+
+    <section title='Verifying the Authenticator'>
+      <t>
+        When receiving a message with an authenticator the following steps are performed:
+      </t>
+      <t>
+        <list style='numbers'>
+		  <t>When the authorization server receives a message with a new access token (and consequently a new session key) then it obtains the session key by retrieving the content of the access token (which requires decryption of the session key contained inside the token).
+          The content of the access token, in particular the audience field and the scope, MUST be verified as described in  
+		  Alternatively, the kid parameter is used to look-up a cached session key from a previous exchange. </t>
+          <t>
+            Recalculate the keyed message digest, as described in <xref target='mac' />, and compare the
+            request MAC to the value received from the client via the <spanx style='verb'>mac</spanx> attribute.
+          </t>
+          <t>
+            Verify that no replay took place by comparing the value of the ts (timestamp) header with the local time. 
+			The processing of authenticators with stale timestamps is described in <xref target='ts' />.
+          </t>
+        </list>
+      </t>
+      <t>Error handling is described in <xref target="error-handling"/>.</t>
+	  
+      <section title='Timestamp Verification' anchor='ts'>
+        <t>
+          The timestamp field enables the server to detect replay attacks. Without replay protection, an
+          attacker can use an eavesdropped request to gain access to a protected resource. The following 
+		  procedure is used to detect replays:
+        </t>
+        <t>
+          <list style='symbols'>
+            <t>
+              At the time the first request is received from the client for each key
+              identifier, calculate the difference (in seconds) between the request timestamp and
+              the local clock. The difference is stored locally for later use.
+            </t>
+            <t>
+              For each subsequent request, apply the request time delta to the timestamp included in the message
+              to calculate the adjusted request time.
+            </t>
+            <t>
+              Verify that the adjusted request time is within the allowed time period defined by
+              the authorization server.
+			  If the local time and the calculated time based in the request differ by more than the 
+			  allowable clock skew (e.g., 5 minutes) a replay has to be assumed. 
+            </t>
+          </list>
+        </t>
+      </section>
+
+	  <section title='Error Handling' anchor='error-handling'>
+	  	  <t>
+          If the protected resource request does not include an access token, lacks the keyed message digest, contains
+          an invalid key identifier, or is malformed, the server SHOULD return a 401 (Unauthorized) HTTP status code.
+        </t>
+        <figure>
+          <preamble>
+            For example:
+          </preamble>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: MAC
+]]>
+          </artwork>
+        </figure>
+
+        <t>
+          The <spanx style='verb'>WWW-Authenticate</spanx> request header field uses the framework
+          defined by <xref target='RFC2617' /> as follows:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  challenge   = "MAC" [ 1*SP #param ]
+  param       = error / auth-param
+  error       = "error" "=" ( token / quoted-string)
+]]>
+          </artwork>
+        </figure>
+		 
+        <t>
+          Each attribute MUST NOT appear more than once.
+        </t>
+        <t>
+          If the protected resource request included a MAC
+          <spanx style='verb'>Authorization</spanx> request header field and failed authentication,
+          the server MAY include the <spanx style='verb'>error</spanx> attribute to provide the
+          client with a human-readable explanation why the access request was declined to assist
+          the client developer in identifying the problem.
+        </t>
+        <figure>
+          <preamble>
+            For example:
+          </preamble>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: MAC error="The MAC credentials expired"
+]]>
+          </artwork>
+        </figure>
+      </section>
+	
+	</section> 
+
+		<!-- ******************************************************************************** -->  
+
+	     <section title='Example'>
+		  <t>[Editor's Note: Full example goes in here.]</t>
+		  
+		 <!-- 
+        <t>
+          The client attempts to access a protected resource without authentication, making the
+          following HTTP request to the resource server:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  GET /resource/1?b=1&a=2 HTTP/1.1
+  Host: example.com
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The resource server returns the following authentication challenge:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: MAC
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The client has previously obtained a set of MAC credentials for accessing resources on
+          the <spanx style='verb'>http://example.com/</spanx> server. The MAC credentials
+          issued to the client include the following attributes:
+        </t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='MAC key identifier:'>h480djs93hd8</t>
+            <t hangText='MAC key:'>489dks293j39</t>
+            <t hangText='MAC algorithm:'>hmac-sha-1</t>
+          </list>
+        </t>
+        <t>
+          The client constructs the authentication header by calculating a timestamp (e.g. the
+          number of seconds since January 1, 1970 00:00:00 GMT).
+        </t>
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='Timestamp:'>1336363200</t>
+          </list>
+        </t>
+        <t>
+          The client constructs the normalized request string (the new line separator character is
+          represented by <spanx style='verb'>\n</spanx> for display purposes only; the trailing
+          new line separator signify that no extension value is included with the request,
+          explained below):
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  1336363200\n
+  dj83hs9s\n
+  GET\n
+  /resource/1?b=1&a=2\n
+  example.com\n
+  80\n
+  \n
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The request MAC is calculated using the specified MAC algorithm
+          <spanx style='verb'>hmac-sha-1</spanx> and the MAC key over the normalized request
+          string. The result is base64-encoded to produce the request MAC:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  bhCQXTVyfj5cmA9uKkPFx1zeOXM=
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The client includes the MAC key identifier, nonce, and request MAC with the request
+          using the <spanx style='verb'>Authorization</spanx> request header field:
+        </t>
+        <figure>
+          <artwork>
+            <![CDATA[
+  GET /resource/1?b=1&a=2 HTTP/1.1
+  Host: example.com
+  Authorization: MAC id="h480djs93hd8",
+                     ts="1336363200",
+                     nonce="dj83hs9s",
+                     mac="bhCQXTVyfj5cmA9uKkPFx1zeOXM="
+]]>
+          </artwork>
+        </figure>
+        <t>
+          The server validates the request by calculating the request MAC again based on the
+          request received and verifies the validity and scope of the MAC credentials. If valid,
+          the server responds with the requested resource representation.
+        </t>
+		--> 
+      </section>
+
+	<!-- ******************************************************************************** -->  
+
+    <section title='Security Considerations' anchor='Security'>
+      <t>
+        As stated in <xref target='RFC2617' />, the greatest sources of risks are usually found not
+        in the core protocol itself but in policies and procedures surrounding its use.
+        Implementers are strongly encouraged to assess how this protocol addresses their security
+        requirements and the security threats they want to mitigate. 
+      </t>
+
+      <section title='Key Distribution'>
+        <t>
+          This specification describes a key distribution mechanism for providing the session key (and parameters) from the authorization server to the client. The interaction between the client and the authorization server requires Transport Layer Security (TLS) with a ciphersuite offering confidentiality protection. The session key MUST NOT be transmitted in clear since this would completely destroy the security benefits of the proposed scheme. Furthermore, the obtained session key MUST be stored so that only the client instance has access to it. Storing the session key, for example, in a cookie allows other parties to gain access to this confidential information and compromises the security of the protocol. 
+        </t>
+      </section>
+
+      <section title='Offering Confidentiality Protection for Access to Protected Resources'>
+        <t>This specification can be used with and without Transport Layer Security (TLS).</t> 
+		
+		<t>Without TLS this protocol provides a mechanism for verifying the integrity of requests and responses, it
+          provides no confidentiality protection. Consequently, eavesdroppers will have full access to request content and further messages exchanged between the client and the resource server. This could be problematic when data is exchanged that requires care, such as personal data.
+        </t>
+		
+		<t>When TLS is used then confidentiality can be ensured and with the use of the TLS channel binding feature it ensures that the TLS channel is cryptographically bound to the used MAC token. TLS in combination with channel bindings bound to the MAC token provide security superiour to the OAuth Bearer Token.</t> 
+		
+		<t>The use of TLS in combination with the MAC token is highly recommended to ensure the confidentiality of the user's data.</t>
+      </section>
+
+      <section title='Authentication of Resource Servers'>
+        <t>This protocol allows clients to verify the authenticity of resource servers in two ways: 
+		  
+		  <list style="numbers"> 
+		  <t>The resource server demonstrates possession of the session key by computing a keyed message digest function over a number of HTTP fields in the response to the request from the client.</t>
+
+		  <t>When TLS is used the resource server is authenticated as part of the TLS handshake.</t>
+		  </list> 
+	   </t> 
+		  
+      </section>
+
+      <section title='Plaintext Storage of Credentials'>
+        <t>
+          The MAC key works in the same way passwords do in traditional authentication systems. In
+          order to compute the keyed message digest, the client and the resource server must have access to the MAC key in plaintext form.
+        </t>
+        <t>
+          If an attacker were to gain access to these MAC keys - or worse, to the resource server's or the authorization server's database
+          of all such MAC keys - he or she would be able to perform any action on behalf of any
+          client.</t> 
+		  
+		  <t>It is therefore paramount to the security of the protocol that these session keys are protected from 
+          unauthorized access.
+        </t>
+      </section>
+
+      <section title='Entropy of Session Keys'>
+        <t>
+          Unless TLS is used between the client and the resource server, eavesdroppers will have full access
+          to requests sent by the client. They will thus be able to mount offline
+          brute-force attacks to recover the session key used to compute the keyed message digest. Authorization servers should be careful to generate fresh and unique session keys with sufficient entrophy to resist such attacks for at least the
+          length of time that the session keys are valid.
+        </t>
+        <t>
+          For example, if a session key is valid for one day, authorization servers must ensure that
+          it is not possible to mount a brute force attack that recovers the session key in less than
+          one day. Of course, servers are urged to err on the side of caution, and use the
+          longest session key reasonable.
+        </t>
+        <t>
+          It is equally important that the pseudo-random number generator (PRNG) used to generate
+          these session keys be of sufficiently high quality. Many PRNG implementations generate number
+          sequences that may appear to be random, but which nevertheless exhibit patterns, which make cryptanalysis easier. Implementers are advised to follow the guidance on random number generation in <xref target="RFC4086"/>.
+        </t>
+      </section>
+
+      <section title='Denial of Service / Resource Exhaustion Attacks'>
+        <t>This specification includes a number of features which may make resource exhaustion
+          attacks against resource servers possible. For example, a resource server may need to need to 
+		  consult backend databases and the authorization server to verify an incoming request including an access token 
+		  before granting access to the protected resource.</t> 
+		<t>An attacker may exploit this to perform a denial of service attack by
+          sending a large number of invalid requests to the server. The computational overhead of verifying the 
+		  keyed message digest alone is, however, not sufficient to mount a denial of service attack since keyed message digest functions belong to the computationally fastest cryptographic algorithms. The usage of TLS does, however, require 
+		  additional computational capabity to perform the asymmetric cryptographic operations. For a brief discussion about 
+		  denial of service vulnerabilities of TLS please consult Appendix F.5 of RFC 5246 <xref target="RFC5246"/>.
+        </t>
+      </section>
+
+      <section title='Timing Attacks'>
+        <t>
+          This specification makes use of HMACs, for which a signature verification involves
+          comparing the received MAC string to the expected one. If the string comparison operator
+          operates in observably different times depending on inputs, e.g. because it compares the
+          strings character by character and returns a negative result as soon as two characters
+          fail to match, then it may be possible to use this timing information to determine the
+          expected MAC, character by character.
+        </t>
+        <t>
+          Implementers are encouraged to use fixed-time string comparators for MAC
+          verification. This means that the comparison operation is not terminated once a mismatch is found. 
+		</t>
+      </section>
+
+      <section title='CSRF Attacks'>
+        <t>
+          A Cross-Site Request Forgery attack occurs when a site, evil.com, initiates within the
+          victim's browser the loading of a URL from or the posting of a form to a web site where a
+          side-effect will occur, e.g. transfer of money, change of status message, etc. To prevent
+          this kind of attack, web sites may use various techniques to determine that the
+          originator of the request is indeed the site itself, rather than a third party. The
+          classic approach is to include, in the set of URL parameters or form content, a nonce
+          generated by the server and tied to the user's session, which indicates that only the
+          server could have triggered the action.
+        </t>
+        <t>
+          Recently, the Origin HTTP header has been proposed and deployed in some browsers. This
+          header indicates the scheme, host, and port of the originator of a request. Some web
+          applications may use this Origin header as a defense against CSRF.
+        </t>
+        <t>
+          To keep this specification simple, HTTP headers are not part of the string to be MAC'ed.
+          As a result, MAC authentication cannot defend against header spoofing, and a web site
+          that uses the Host header to defend against CSRF attacks cannot use MAC authentication to
+          defend against active network attackers. Sites that want the full protection of MAC
+          Authentication should use traditional, cookie-tied CSRF defenses.
+        </t>
+      </section>
+
+      <section title='Protecting HTTP Header Fields'>
+        <t>This specification provides flexibility for selectively protecting header fields and even the body 
+		of the message. At a minimum the following fields are included in the keyed message digest. 
+		</t>
+		
+		
+<!--		
+          The normalized request string has been designed to support the authentication methods
+          defined in this specification. Those designing additional methods, should evaluated the
+          compatibility of the normalized request string with their security requirements.
+          Since the normalized request string does not cover the entire HTTP request, servers
+          should employ additional mechanisms to protect such elements.
+        </t>
+        <t>
+          The request MAC does not cover entity-header fields which can often affect how the
+          request body is interpreted by the server (i.e., Content-Type). If the server behavior is
+          influenced by the presence or value of such header fields, an attacker can manipulate the
+          request header without being detected.
+        </t>
+--> 		
+      </section>
+
+    </section>
+	
+	<!-- ******************************************************************************** -->  
+
+    <section title='IANA Considerations' anchor='IANA'>
+
+	<section title="JSON Web Token Claims">
+	<t>This document adds the following claims to the JSON Web Token Claims registry established with <xref target="I-D.ietf-oauth-json-web-token"/>:
+	
+    <list style="symbols">
+     <t>Claim Name: "kid"</t>
+     <t>Change Controller: IETF</t>
+     <t>Specification Document(s): [[ this document ]]</t>
+    </list>
+	
+	<list style="symbols">
+     <t>Claim Name: "mac_key"</t>
+     <t>Change Controller: IETF</t>
+     <t>Specification Document(s): [[ this document ]]</t>
+    </list>
+	</t>
+	
+    </section>    
+	
+      <section title='MAC Token Algorithm Registry' anchor='registry'>
+        <t>
+          This specification establishes the MAC Token Algorithm registry.
+        </t>
+        <t>
+          Additional keyed message digest algorithms are registered on the advice of one or more Designated Experts
+          (appointed by the IESG or their delegate), with a Specification Required (using
+          terminology from <xref target='RFC5226' />). However, to allow for the allocation of
+          values prior to publication, the Designated Expert(s) may approve registration once they
+          are satisfied that such a specification will be published.
+        </t>
+        <t>
+          Registration requests should be sent to the [TBD]@ietf.org mailing list for review and
+          comment, with an appropriate subject (e.g., "Request for MAC Algorithm: example").
+          [[ Note to RFC-EDITOR: The name of the mailing list should be determined in consultation
+          with the IESG and IANA. Suggested name: http-mac-ext-review. ]]
+        </t>
+        <t>
+          Within at most 14 days of the request, the Designated Expert(s) will either approve or
+          deny the registration request, communicating this decision to the review list and IANA.
+          Denials should include an explanation and, if applicable, suggestions as to how to make
+          the request successful.
+        </t>
+        <t>
+          Decisions (or lack thereof) made by the Designated Expert can be first appealed to
+          Application Area Directors (contactable using app-ads@tools.ietf.org email address or
+          directly by looking up their email addresses on http://www.iesg.org/ website) and, if the
+          appellant is not satisfied with the response, to the full IESG (using the iesg@iesg.org
+          mailing list).
+        </t>
+        <t>
+          IANA should only accept registry updates from the Designated Expert(s), and should direct
+          all requests for registration to the review mailing list.
+        </t>
+
+        <section title='Registration Template'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Algorithm name:'>
+                <vspace blankLines="1"/>
+                The name requested (e.g., "example").
+              </t>
+              <t hangText='Change controller:'>
+                <vspace blankLines="1"/>
+                For standards-track RFCs, state "IETF". For others, give the name of the
+                responsible party. Other details (e.g., postal address, e-mail address, home page
+                URI) may also be included.
+              </t>
+              <t hangText='Specification document(s):'>
+                <vspace blankLines="1"/>
+                Reference to document that specifies the algorithm, preferably including a URI that
+                can be used to retrieve a copy of the document. An indication of the relevant
+                sections may also be included, but is not required.
+              </t>
+            </list>
+          </t>
+        </section>
+        <section title='Initial Registry Contents'>
+          <t>
+            The HTTP MAC authentication scheme algorithm registry's initial contents are:
+          </t>
+          <t>
+            <list style='symbols'>
+              <t>
+                Algorithm name: hmac-sha-1
+              </t>
+              <t>
+                Change controller: IETF
+              </t>
+              <t>
+                Specification document(s): [[ this document ]]
+              </t>
+            </list>
+          </t>
+          <t>
+            <list style='symbols'>
+              <t>
+                Algorithm name: hmac-sha-256
+              </t>
+              <t>
+                Change controller: IETF
+              </t>
+              <t>
+                Specification document(s): [[ this document ]]
+              </t>
+            </list>
+          </t>
+        </section>
+
+      </section>
+
+      <section title='OAuth Access Token Type Registration'>
+        <t>
+          This specification registers the following access token type in the OAuth Access Token
+          Type Registry.
+        </t>
+
+        <section title='The "mac" OAuth Access Token Type'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Type name:'>
+                <vspace blankLines="1"/>
+                mac
+              </t>
+              <t hangText='Additional Token Endpoint Response Parameters:'>
+                <vspace blankLines="1"/>
+                secret, algorithm
+              </t>
+              <t hangText='HTTP Authentication Scheme(s):'>
+                <vspace blankLines="1"/>
+                MAC
+              </t>
+              <t hangText='Change controller:'>
+                <vspace blankLines="1"/>
+                IETF
+              </t>
+              <t hangText='Specification document(s):'>
+                <vspace blankLines="1"/>
+                [[ this document ]]
+              </t>
+            </list>
+          </t>
+        </section>
+
+      </section>
+
+      <section title='OAuth Parameters Registration'>
+        <t>
+          This specification registers the following parameters in the OAuth Parameters Registry
+          established by <xref target='RFC6749' />.
+        </t>
+
+        <section title='The "mac_key" OAuth Parameter'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Parameter name:'>
+                mac_key
+              </t>
+              <t hangText='Parameter usage location:'>
+                authorization response, token response
+              </t>
+              <t hangText='Change controller:'>
+                IETF
+              </t>
+              <t hangText='Specification document(s):'>
+                [[ this document ]]
+              </t>
+              <t hangText='Related information:'>
+                None
+              </t>
+            </list>
+          </t>
+        </section>
+
+        <section title='The "mac_algorithm" OAuth Parameter'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Parameter name:'>
+                mac_algorithm
+              </t>
+              <t hangText='Parameter usage location:'>
+                authorization response, token response
+              </t>
+              <t hangText='Change controller:'>
+                IETF
+              </t>
+              <t hangText='Specification document(s):'>
+                [[ this document ]]
+              </t>
+              <t hangText='Related information:'>
+                None
+              </t>
+            </list>
+          </t>
+        </section>
+		
+		  <section title='The "kid" OAuth Parameter'>
+          <t>
+            <list style='hanging'>
+              <t hangText='Parameter name:'>
+                kid
+              </t>
+              <t hangText='Parameter usage location:'>
+                authorization response, token response
+              </t>
+              <t hangText='Change controller:'>
+                IETF
+              </t>
+              <t hangText='Specification document(s):'>
+                [[ this document ]]
+              </t>
+              <t hangText='Related information:'>
+                None
+              </t>
+            </list>
+          </t>
+        </section>
+
+    </section>
+
+	</section> 
+	
+	<!-- ******************************************************************************** -->  
+
+    <section title='Acknowledgments'>
+	  
+	     <t>This document is based on OAuth 1.0 and we would like to thank Eran Hammer-Lahav for his work on incorporating the ideas into OAuth 2.0. As part of this initial work the following persons provided feedback: Ben Adida, Adam Barth, Rasmus Lerdorf, James Manger, William Mills, Scott Renfro, Justin Richer, Toby White, Peter Wolanin, and Skylar Woodward</t>
+		 
+	  <t>Further work in this document was done as part of OAuth working group conference calls late 2012/early 2013 and in design team conference calls February 2013. The following persons (in addition to the OAuth WG chairs, Hannes Tschofenig, and Derek Atkins) provided their input during these calls: Bill Mills, Justin Richer, Phil Hunt, Prateek Mishra, Mike Jones, George Fletcher, Leif Johansson, Lucy Lynch, John Bradley, Tony Nadalin, Klaas Wierenga, Thomas Hardjono, Brian Campbell</t>
+
+	  <t>In the appendix of this document we re-use content from <xref target="RFC4962"/> and the authors would like thank Russ Housely and Bernard Aboba for their work on RFC 4962.</t> 
+
+    </section>
+
+    <!-- ******************************************************************************** -->  
+
+		
+  </middle>
+
+  <back>
+
+    <references title='Normative References'>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2045.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2104.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2616.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2617.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.3986.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6265.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6749.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-httpbis-p1-messaging.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.tschofenig-oauth-audience.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-json-web-token.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.richer-oauth-introspection.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-jose-json-web-encryption.xml' ?>
+      
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml4/reference.W3C.REC-html401-19991224.xml' ?>
+
+		  
+    </references>
+
+    <references title='Informative References'>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4086.xml' ?>
+	  <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4120.xml' ?>
+	  <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4279.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4962.xml' ?>
+
+	  <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5056.xml' ?>	  
+	  <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5849.xml' ?>
+	  <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5929.xml' ?>	  
+
+	  <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6125.xml' ?>
+ 	  <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6750.xml' ?> 	   	  
+	  
+	  
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.tschofenig-oauth-hotk.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.hardjono-oauth-kerberos.xml' ?>	  
+
+      <reference anchor='NIST-FIPS-180-3'>
+        <front>
+          <title>Secure Hash Standard (SHS). FIPS PUB 180-3, October 2008</title>
+          <author>
+            <organization>National Institute of Standards and Technology</organization>
+          </author>
+        </front>
+        <format type='pdf' target='http://www.nist.gov/itl/upload/fips180-3_final.pdf' />
+      </reference>
+
+	  
+    <reference anchor="NIST800-63">
+        <front>
+          <title>NIST Special Publication 800-63-1, INFORMATION SECURITY</title>
+          <author fullname="William E. Burr" initials="W." surname="Burr">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Donna F. Dodson" initials="D." surname="Dodson">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Ray A. Perlner" initials="R." surname="Perlner">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="W. Timothy Polk" initials="T." surname="Polk">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Sarbari Gupta" initials="S." surname="Gupta">
+            <organization>NIST</organization>
+          </author>
+          <author fullname="Emad A. Nabbus" initials="E." surname="Nabbus">
+            <organization>NIST</organization>
+          </author>
+          <date month="December" year="2008"/>
+        </front>
+        <format target="http://csrc.nist.gov/publications/PubsDrafts.html#SP-800-63-Rev.%201" type="HTML"/>
+     </reference>
+          
+    </references>
+	
+  <section anchor="background" title="Background Information">
+  
+    <t>With the desire to define a security mechanism in addition to bearer tokens a design team was formed to collect threats, explore different threat mitigation techniques, describe use cases, and to derive requirements for the MAC token based security mechanism defined in the body of this document. This appendix provides information about this thought process that should help to motivate design decision.</t>
+      <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="threats" title="Security and Privacy Threats">
+   
+   <t>The following list presents several common threats against protocols utilizing some form of tokens. This list of threats is based on NIST Special Publication 800-63 <xref target="NIST800-63"/>. We exclude a discussion of threats related to any form of identity proofing and authentication of the Resource Owner to the Authorization Server since these procedures are not part of the OAuth 2.0 protocol specificaiton itself.</t>
+   <t><list style="hanging">
+   <t hangText="Token manufacture/modification:"><vspace blankLines="1"/> An attacker may generate a bogus tokens or modify the token content (such as  authentication or attribute statements) of an existing token, causing Resource Server to grant inappropriate access to the Client. For example, an attacker may modify the token to extend the validity period. A Client may modify the token to have access to information that they should not be able to view.</t>
+   <t hangText="Token disclosure:">Tokens may contain personal data, such as real name, age or birthday, payment information, etc.</t>
+<!--    <t hangText="Token repudiation:">A token may be repudiated if the proper mechanisms are not in place.</t> -->
+   <t hangText="Token redirect:"><vspace blankLines="1"/>An attacker uses the token generated for consumption by the Resource Server to obtain access to another Resource Server.</t>
+   <t hangText="Token reuse:"><vspace blankLines="1"/> An attacker attempts to use a token that has already been used once with a Resource Server. The attacker may be an eavesdropper who observes the communication exchange or, worse, one of the communication end points. A Client may, for example, leak access tokens because it cannot keep secrets confidential. A Client may also re-use access tokens for some other Resource Servers. Finally, a Resource Server may use a token it had obtained from a Client and use it with another Resource Server that the Client interacts with. A Resource Server, offering relatively unimportant application services, may attempt to use an access token obtained from a Client to access a high-value service, such as a payment service, on behalf of the Client using the same access token.</t>
+</list> 
+</t>
+<t>We excluded one threat from the list, namely 'token repudiation'. Token repudiation refers to a property whereby a Resource Server is given an assurance that the Authorization Server cannot deny to have created a token for the Client. We believe that such a property is interesting but most deployments prefer to deal with the violation of this security property through business actions rather than by using cryptography.</t>
+      
+</section> 
+
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section anchor="mitigation" title="Threat Mitigation"> 
+
+<t>A large range of threats can be mitigated by protecting the content of the token, using a digital signature or a keyed message digest. Alternatively, the content of the token could be passed by reference rather than by value (requiring a separate message exchange to resolve the reference to the token content). To simplify the subsequent description we assume that the token itself is digitally signed by the Authorization Server and therefore cannot be modified. <!-- This also provides the basis for non-repudiation.--> </t>
+
+<t>To deal with token redirect it is important for the Authorization Server to include the identifier of the intended recipient - the Resource Server. A Resource Server must not be allowed to accept access tokens that are not meant for its consumption. </t>
+
+<t>To provide protection against token disclosure two approaches are possible, namely (a) not to include sensitive information inside the token or (b) to ensure confidentiality protection. The latter approach requires at least the communication interaction between the Client and the Authorization Server as well as the interaction between the Client and the Resource Server to experience confidentiality protection. As an example, Transport Layer Security with a ciphersuite that offers confidentiality protection has to be applied. Encrypting the token content itself is another alternative. In our scenario the Authorization Server would, for example, encrypt the token content with a symmetric key shared with the Resource Server.  
+</t>
+
+<t>To deal with token reuse more choices are available.</t>
+
+<section anchor="confidentiality" title="Confidentiality Protection">
+
+<t>In this approach confidentiality protection of the exchange is provided on the communication interfaces between the Client and the Resource Server, and between the Client and the Authorization Server. No eavesdropper on the wire is able to observe the token exchange. Consequently, a replay by a third party is not possible. An Authorization Server wants to ensure that it only hands out tokens to Clients it has authenticated first and who are authorized. For this purpose, authentication of the Client to the Authorization Server will be a requirement to ensure adequate protection against a range of attacks. This is, however, true for the description in <xref target="intended"/> and <xref target="confirmation"/> as well. Furthermore, the Client has to make sure it does not distribute the access token to entities other than the intended the Resource Server. For that purpose the Client will have to authenticate the Resource Server before transmitting the access token.
+</t>
+
+</section> 
+
+<section anchor="intended" title="Sender Constraint">
+
+<t>Instead of providing confidentiality protection the Authorization Server could also put the identifier of the Client into the protected token with the following semantic: 'This token is only valid when presented by a Client with the following identifer.' When the access token is then presented to the Resource Server how does it know that it was provided by the Client? It has to authenticate the Client! There are many choices for authenticating the Client to the Resource Server, for example by using client certificates in TLS <xref target="RFC5246"/>, or pre-shared secrets within TLS <xref target="RFC4279"/>. The choice of the preferred authentication mechanism and credential type may depend on a number of factors, including <list style="symbols"> 
+<t>security properties</t>
+<t>available infrastructure</t>
+<t>library support</t>
+<t>credential cost (financial)</t>
+<t>performance</t>
+<t>integration into the existing IT infrastructure</t>
+<t>operational overhead for configuration and distribution of credentials</t>
+</list> 
+</t>
+<t>This long list hints to the challenge of selecting at least one mandatory-to-implement Client authentication mechanism.</t>
+
+</section>
+
+<section anchor="confirmation" title="Key Confirmation">
+
+<t>A variation of the mechanism of sender authentication described in <xref target="intended"/> is to replace authentication with the proof-of-possession of a specific (session) key, i.e., key confirmation. In this model the Resource Server would not authenticate the Client itself but would rather verify whether the Client knows the session key associated with a specific access token. Examples of this approach can be found with the OAuth 1.0 MAC token <xref target="RFC5849"/>, Kerberos <xref target="RFC4120"/> when utilizing the AP_REQ/AP_REP exchange (see also <xref target="I-D.hardjono-oauth-kerberos"/> for a comparison between Kerberos and OAuth), the Holder-of-the-Key approach <xref target="I-D.tschofenig-oauth-hotk"/>, and also the MAC token approach defined in this document.</t>
+
+<t>To illustrate key confirmation the first examples borrow from Kerberos and use symmetric key cryptography. Assume that the Authorization Server shares a long-term secret with the Resource Server, called K(Authorization Server-Resource Server). This secret would be established between them in an initial registration phase. When the Client requests an access token the Authorization Server creates a fresh and unique session key Ks and places it into the token encrypted with the long term key K(Authorization Server-Resource Server). Additionally, the Authorization Server attaches Ks to the response message to the Client (in addition to the access token itself) over a confidentiality protected channel. When the Client sends a request to the Resource Server it has to use Ks to compute a keyed message digest for the request (in whatever form or whatever layer). The Resource Server, when receiving the message, retrieves the access token, verifies it and extracts K(Authorization Server-Resource Server) to obtain Ks. This key Ks is then used to verify the keyed message digest of the request message.  
+</t>
+
+<t>Note that in this example one could imagine that the mechanism to protect the token itself is based on a symmetric key based mechanism to avoid any form of public key infrastructure but this aspect is not further elaborated in the scenario.</t>
+
+<t>A similar mechanism can also be designed using asymmetric cryptography. When the Client requests an access token the Authorization Server creates an ephemeral public / privacy key pair (PK/SK) and places the public key PK into the protected token. When the Authorization Server returns the access token to the Client it also provides the PK/SK key pair over a confidentiality protected channel. When the Client sends a request to the Resource Server it has to use the privacy key SK to sign the request. The Resource Server, when receiving the message, retrieves the access token, verifies it and extracts the public key PK. It uses this ephemeral public key to verify the attached signature.</t>
+</section> 
+ 
+ 
+     <section title="Summary">
+
+   <t> As a high level message, there are various ways how the threats can be mitigated and while the details of each solution is somewhat different they all ultimately accomplish the goal. </t>
+   
+   <t>The three approaches are: <list style="hanging">
+   
+   <t hangText="Confidentiality Protection:"><vspace blankLines="1"/>The weak point with this approach, which is briefly described in <xref target="confidentiality"/>, is that the Client has to be careful to whom it discloses the access token. What can be done with the token entirely depends on what rights the token entitles the presenter and what constraints it contains. A token could encode the identifier of the Client but there are scenarios where the Client is not authenticated to the Resource Server or where the identifier of the Client rather represents an application class rather than a single application instance. As such, it is possible that certain deployments choose a rather liberal approach to security and that everyone who is in possession of the access token is granted access to the data. 
+   <!-- <vspace blankLines="1"/> 
+   Furthermore, to secure the access token at rest; unauthorized disclosure could be harmful particularly when the token has a rather long lifetime. Intuitively, one would argue that access tokens are easy to mint and used for a small time duration only to reduce the risk of exposure.--> </t>
+   
+   <t hangText="Sender Constraint:"><vspace blankLines="1"/>The weak point with this approach, which is briefly described in <xref target="intended"/>, is to setup the authentication infrastructure such that Clients can be authenticated towards Resource Servers. Additionally, Authorization Server must encode the identifier of the Client in the token for later verification by the Resource Server. Depending on the chosen layer for providing Client-side authentication there may be additional challenges due Web server load balancing, lack of API access to identity information, etc. 
+</t>
+   <t hangText="Key Confirmation:"><vspace blankLines="1"/>The weak point with this approach, see <xref target="confirmation"/>, is the increased complexity: a complete key distribution protocol has to be defined.  
+  </t>
+   </list> 
+   </t>
+
+<t>In all cases above it has to be ensured that the Client is able to keep the credentials secret.</t> 
+
+</section>
+    
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+ 
+<section anchor="requirements" title="Requirements"> 
+
+<t>In an attempt to address the threats described in <xref target="threats"/> the Bearer Token, which corresponds to the description in <xref target="confidentiality"/>, was standardized and the work on a JSON-based token format has been started <xref target="I-D.ietf-oauth-json-web-token"/>. The required capability to protected the content of a JSON token using integrity and confidentiality mechanisms is work in progress at the time of writing. </t>
+
+<t>Consequently, the purpose of the remaining document is to provide security that goes beyond the Bearer Token offered security protection.</t>   
+
+<t>RFC 4962 <xref target="RFC4962"/> gives useful guidelines for designers of authentication and key management protocols. While RFC 4962 was written with the AAA framework used for network access authentication in mind the offered suggestions are useful for the design of other key management systems as well. The following requirements list applies OAuth 2.0 terminology to the requirements outlined in RFC 4962.</t>
+   
+  <t>These requirements include 
+   <list style="hanging">
+   <t hangText="Cryptographic Algorithm Independent:"><vspace blankLines="1"/>  The key management protocol MUST be cryptographic algorithm
+         independent.</t>
+         
+   <t hangText="Strong, fresh session keys:"><vspace blankLines="1"/> Session keys MUST be
+         strong and fresh.  Each session deserves an independent session
+         key, i.e., one that is generated specifically
+         for the intended use. In context of OAuth this means that keying material is created in such a way that can only be used by the combination of a Client instance, protected resource, and authorization scope.</t>
+         
+   <t hangText="Limit Key Scope:"><vspace blankLines="1"/> Following the principle of least privilege, parties MUST NOT
+         have access to keying material that is not needed to perform
+         their role. Any protocol that is used to establish session keys MUST
+         specify the scope for session keys, clearly identifying the
+         parties to whom the session key is available.</t>
+         
+   <t hangText="Replay Detection Mechanism:"><vspace blankLines="1"/> The key management protocol exchanges MUST be replay
+         protected. Replay protection allows a protocol message
+         recipient to discard any message that was recorded during a
+         previous legitimate dialogue and presented as though it
+         belonged to the current dialogue.</t>
+         
+   <t hangText="Authenticate All Parties:"><vspace blankLines="1"/> Each party in the key management protocol MUST be
+         authenticated to the other parties with whom they communicate.
+         Authentication mechanisms MUST maintain the confidentiality of
+         any secret values used in the authentication process. Secrets MUST NOT be sent to
+         another party without confidentiality protection.</t>
+         
+   <t hangText="Authorization:"><vspace blankLines="1"/> Client and Resource Server authorization MUST be performed.  These
+         entities MUST demonstrate possession of the appropriate keying
+         material, without disclosing it.  Authorization is REQUIRED
+         whenever a Client interacts with an Authorization Server.  The
+         authorization checking prevents an elevation of privilege
+         attack, and it ensures that an unauthorized authorized is
+         detected.</t>
+         
+   <t hangText="Keying Material Confidentiality and Integrity:"><vspace blankLines="1"/> While preserving algorithm independence, confidentiality and
+         integrity of all keying material MUST be maintained.</t>
+         
+   <t hangText="Confirm Cryptographic Algorithm Selection:"><vspace blankLines="1"/> The selection of the "best" cryptographic algorithms SHOULD be securely
+         confirmed.  The mechanism SHOULD detect attempted roll-back
+         attacks.</t>
+         
+   <t hangText="Uniquely Named Keys:"><vspace blankLines="1"/> Key management proposals require a robust key naming
+         scheme, particularly where key caching is supported.  The key
+         name provides a way to refer to a key in a protocol so that it
+         is clear to all parties which key is being referenced.  Objects
+         that cannot be named cannot be managed.  All keys MUST be
+         uniquely named, and the key name MUST NOT directly or
+         indirectly disclose the keying material.</t>
+         
+   <t hangText="Prevent the Domino Effect:"><vspace blankLines="1"/> Compromise of a single Client MUST NOT compromise keying material
+         held by any other Client within the system, including session
+         keys and long-term keys.  Likewise, compromise of a single
+         Resource Server MUST NOT compromise keying material held by any
+         other Resource Server within the system.  In the context of a key
+         hierarchy, this means that the compromise of one node in the
+         key hierarchy must not disclose the information necessary to
+         compromise other branches in the key hierarchy.  Obviously, the
+         compromise of the root of the key hierarchy will compromise all
+         of the keys; however, a compromise in one branch MUST NOT
+         result in the compromise of other branches.  There are many
+         implications of this requirement; however, two implications
+         deserve highlighting.  First, the scope of the keying material
+         must be defined and understood by all parties that communicate
+         with a party that holds that keying material.  Second, a party
+         that holds keying material in a key hierarchy must not share
+         that keying material with parties that are associated with
+         other branches in the key hierarchy.         
+         </t>
+   <t hangText="Bind Key to its Context:"><vspace blankLines="1"/>  Keying material MUST be bound to the appropriate context.  The
+         context includes the following.<list style="symbols"> 
+         <t> The manner in which the keying material is expected to be
+               used.</t>
+
+         <t> The other parties that are expected to have access to the
+               keying material.</t>
+
+         <t> The expected lifetime of the keying material.  Lifetime
+               of a child key SHOULD NOT be greater than the lifetime of
+               its parent in the key hierarchy.</t>
+         </list> 
+         
+
+         Any party with legitimate access to keying material can
+         determine its context.  In addition, the protocol MUST ensure
+         that all parties with legitimate access to keying material have
+         the same context for the keying material.  This requires that
+         the parties are properly identified and authenticated, so that
+         all of the parties that have access to the keying material can
+         be determined. The context will include the Client and the Resource Server identities in more
+         than one form.</t>
+         
+   <t hangText="Authorization Restriction:"><vspace blankLines="1"/> If Client authorization is restricted, then the Client SHOULD be
+         made aware of the restriction. </t>
+
+   <t hangText="Client Identity Confidentiality:"><vspace blankLines="1"/> A Client has identity confidentiality when any party other than
+   the Resource Server and the Authorization Server cannot sufficiently identify the Client within the
+   anonymity set. In comparison to anonymity and pseudonymity, identity
+   confidentiality is concerned with eavesdroppers and intermediaries. A key management protocol SHOULD provide this property.</t>
+        
+    <t hangText="Resource Owner Identity Confidentiality:"><vspace blankLines="1"/> Resource servers SHOULD be prevented from knowing the real or
+      pseudonymous identity of the Resource Owner, since the Authorization Server
+       is the only entity involved in verifying the Resource Owner's identity.</t>
+
+
+   <t hangText="Collusion:"><vspace blankLines="1"/> Resource Servers that collude can be prevented from using information related to the Resource Owner to track the individual.  That is, two
+      different Resource Servers can be prevented from determining that
+      the same Resource Owner has authenticated to both of them.  This
+      requires that each Authorization Server obtains different keying material as well as different access tokens
+      with content that does not allow identification of the Resource Owner. </t>
+   
+   <t hangText="AS-to-RS Relationship Anonymity:"><vspace blankLines="1"/> This MAC Token security does not provide AAS-to-RS Relationship Anonymity since the Client has to inform the resource server about the Resource Server it wants to talk to. The Authorization Server needs to know how to encrypt the session key the Client and the Resource Server will be using.</t>
+   </list>
+   </t>
+   
+   <t>As an additional requirement a solution MUST enable support for channel bindings. The concept of channel binding, as defined in <xref target="RFC5056"/>, allows applications to establish that
+   the two end-points of a secure channel at one network layer are the
+   same as at a higher layer by binding authentication at the higher
+   layer to the channel at the lower layer.</t>
+   
+   <t>Furthermore, there are performance concerns specifically with the usage of asymmetric cryptography. As such, the requirement can be phrases as 'faster is better'. [QUESTION: How are we trading the benefits of asymmetric cryptography against the performance impact?]</t>
+
+   <t>Finally, there are threats that relate to the experience of the software developer as well as operational policies. Verifying the servers identity in TLS is discussed at length in <xref target="RFC6125"/>.</t>
+
+  
+</section> 
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+   <section title="Use Cases">
+	  <t>This section lists use cases that provide additional requirements and 
+	  constrain the solution space.</t>
+	  
+      <section title="Access to an 'Unprotected' Resource">
+          <t>This use case is for a web client that needs to access
+          a resource where no integrity and confidentiality
+          protection is provided for the exchange of data using TLS following
+          the OAuth-based request. In accessing the resource, the
+          request, which includes the access token, must be protected
+          against replay, and modification.</t>
+		  <t>While it is possible to utilize bearer tokens in this scenario, as described in  <xref target="RFC6750"/>, with TLS 
+		  protection when the request to the protected resource is made there may be the desire to avoid using TLS between the 
+		  client and the resource server at all. In such a case the bearer token approach is not possible since it relies on TLS 
+		  for ensuring integrity and confidentiality protection of the access token exchange since otherwise replay attacks
+		  are possible: First, an eavesdropper may steal an access token and
+		  represent it at a different resource server. Second, an eavesdropper may 
+		  steal an access token and replay it against the same resource server at a 
+		  later point in time. In both cases, if the attack is successful, the 
+		  adversary gets access to the resource owners data or may perform an 
+		  operation selected by the adversary (e.g., sending a message). Note that 
+		  the adversary may obtain the access token (if the recommendations in <xref target="RFC6749"/> and <xref target="RFC6750"/> are not followed) using a number of ways, including 
+		  eavesdropping the communication on the wireless link.
+        </t>
+        <t>Consequently, the important assumption in this use case is that a resource server does not have TLS support and the security solution should work in such a scenario.
+         Furthermore, it may not be necessary to provide authentication of the resource server towards the client.</t>
+      </section>
+	  
+      <section title="Offering Application Layer End-to-End Security">
+
+       <t>In Web deployments resource servers are often placed
+          behind load balancers. Note that the load balancers are deployed by the same organization that operates the resource servers. 
+		  These load balancers may terminate
+          Transport Layer Security (TLS) and the resulting HTTP
+          traffic may be transmitted in clear from the load
+          balancer to the resource server. With application layer security 
+		  independent of the underlying TLS security it is possible to allow
+		  application servers to perform cryptographic verification on an end-to-end basis.</t>
+		  
+		  
+	  <t>The key aspect in this use case is therefore to offer end-to-end
+          security in the presence of load balancers
+          via application layer security.</t>
+        
+      </section>
+      
+	  <section title="Preventing Access Token Re-Use by the Resource Server">
+              
+                <t>Imagine a scenario where a resource server that receives a valid access token re-uses it with other 
+				resource server. The reason for re-use may be malicious or may well be legimiate. In a legimiate use case 
+				consider a case where the resource server needs to consult third party resource servers to complete the 
+				requested operation. In both cases it may be assumed that the scope of the access token is sufficiently
+				large that it allows such a re-use. For example, imagine a case where a company operates email services 
+				as well as picture sharing services and that company had decided to issue access tokens with a scope 
+				that allows access to both services.</t>
+				
+				<t>With this use case the desire is to prevent such access token re-use. This also implies that 
+				the legimiate use cases require additional enhancements for request chaining.</t>
+				
+        </section>
+        
+		<section title="TLS Channel Binding Support">
+              
+			  <t>In this use case we consider the scenario where an OAuth 2.0 request to a protected resource is secured using 
+			  TLS but the client and the resource server demand that the underlying TLS exchange is bound to additional application 
+			  layer security to prevent cases where the TLS connection is terminated at a load balancer or a TLS proxy is used that 
+			  splits the TLS connection into two separate connections.</t>
+			  
+			  <t>In this use case additional information is conveyed to the resource server to ensure that no entity entity has 
+			  tampered with the TLS connection.</t>
+		</section>
+		
+	</section>
+		
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+  
+  </section>
+    </back>
+
+</rfc>
+
+
