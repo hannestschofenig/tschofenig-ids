@@ -69,11 +69,11 @@ Table of Contents
    5.  Information Elements  . . . . . . . . . . . . . . . . . . . .   6
      5.1.  Capability Indication . . . . . . . . . . . . . . . . . .   6
      5.2.  Information for Rejecting Diameter Requests . . . . . . .   6
-     5.3.  Information Elements for Loadbalancing  . . . . . . . . .   7
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
-   8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .   8
-   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   8
+     5.3.  Information Elements for Load Balancing . . . . . . . . .   7
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
+   8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .   9
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   9
      9.1.  Normative References  . . . . . . . . . . . . . . . . . .   9
      9.2.  Informative References  . . . . . . . . . . . . . . . . .   9
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
@@ -87,22 +87,22 @@ Table of Contents
    widespread industry acceptance and can be found in many large
    (mobile) operator networks.
 
-   When a Diameter server becomes overloaded, it may need to gracefully
-   reduce its load and there are two basic approaches for doing so:
-   redistributing requests to other Diameter servers (load balancing)
-   and by informing Diameter clients to reject requests. [3] aims to
-   provide background information and requirements.  This document
-   defines the next step, namely the architecture and the information
-   model.
+   When a Diameter server becomes overloaded, it may need to ask
+   Diameter clients and agents to gracefully reduce the amount of
+   signaling traffic destined for it.  For Diameter clients and agents
+   that are asked to reduce traffic there are two basic approaches for
+   doing so:
+
+   o  by sending a portion of new requests to other Diameter servers
+      which still have capacity available (load balancing), and
+
+   o  by rejecting new requests.
+
+   [3] aims to provide background information and requirements.  This
+   document defines the next step, namely the architecture and the
+   information model.
 
 2.  Terminology
-
-   The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
-   'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
-   specification are to be interpreted as described in [1].
-
-   This document re-uses terminology from the Diameter base
-   specification [2].
 
 
 
@@ -114,9 +114,16 @@ Tschofenig              Expires January 16, 2014                [Page 2]
 Internet-Draft         Diameter AVP Level Security             July 2013
 
 
+   The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
+   'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
+   specification are to be interpreted as described in [1].
+
+   This document re-uses terminology from the Diameter base
+   specification [2].
+
    The term "load balancer" in this document refers to a Diameter proxy
-   that uses load information of Diameter servers and configuration
-   seetings to adjust standard Diameter routing.
+   that uses load information received from Diameter servers and
+   configuration settings to adjust standard Diameter routing.
 
 3.  Architectural Principles
 
@@ -135,7 +142,7 @@ Internet-Draft         Diameter AVP Level Security             July 2013
       large, almost unbounded.  What use cases and optimizations are
       worthwhile to explore and to standardize solutions for?  Is the
       "sounds good" test enough or is evidence of a documented and
-      reproducable real-world problem needed?
+      reproducible real-world problem needed?
 
    Overload conditions are rare events.  The Diameter backend
       infrastructure is hopefully dimensioned in a way that overload
@@ -155,13 +162,6 @@ Internet-Draft         Diameter AVP Level Security             July 2013
       hypervisor and these hypervisors come with management interfaces
       that obtain load and other status information from their virtual
       machine instances.  It is not unlikely that these developments
-      will also impact deployments of Diameter servers within a single
-      administrative domain.
-
-   Load Balancing and Rejecting Requests are different.  Load balancing
-      is a technique that is best applied within a local administrative
-      domain to re-distribute requests.  For maximum benefit knowledge
-      by the load balancer about the system architecture and the nature
 
 
 
@@ -170,6 +170,13 @@ Tschofenig              Expires January 16, 2014                [Page 3]
 Internet-Draft         Diameter AVP Level Security             July 2013
 
 
+      will also impact deployments of Diameter servers within a single
+      administrative domain.
+
+   Load Balancing and Rejecting Requests are different.  Load balancing
+      is a technique that is best applied within a local administrative
+      domain to re-distribute requests.  For maximum benefit knowledge
+      by the load balancer about the system architecture and the nature
       of applications is required.  Rejecting requests, on the other
       hand, requires information signaling to the Diameter clients since
       Diameter is not an end-to-end protocol and information about the
@@ -188,7 +195,7 @@ Internet-Draft         Diameter AVP Level Security             July 2013
       the beautify of this model.  If the PEP functionality, however,
       gets moved to the Diameter client (or to any other node) the need
       for standardizing a "Diameter request rejection policy language"
-      arises.  Delegating functionality from the PEP to the PEP requires
+      arises.  Delegating functionality from the PDP to the PEP requires
       the PEP to have a reasonable amount of information about the
       problem the Diameter server and the support infrastructure is
       facing.  Additionally, the PEP would benefit from knowing about
@@ -211,13 +218,6 @@ Internet-Draft         Diameter AVP Level Security             July 2013
                               Overload     +  Rejection
                               Information     Policies
     +-------+        +***************************************+
-    | End   |        *                                       *
-    | Point |        *                                       *
-    +-------+        *         Capability Indication         *
-       ^             *       +------------------------+      *
-       |             *       |                        |      *
-       |             v       |                        v      *
-       |Front-End +------------+   Diameter Msg    +------------+
 
 
 
@@ -226,8 +226,15 @@ Tschofenig              Expires January 16, 2014                [Page 4]
 Internet-Draft         Diameter AVP Level Security             July 2013
 
 
+    | End   |        *                                       *
+    | Point |        *                                       *
+    +-------+        *         Capability Indication         *
+       ^             *       +------------------------+      *
+       |             *       |                        |      *
+       |             v       |                        v      *
+       |Front-End +------------+   Diameter Msg    +------------+
        |Protocol  |  Diameter  |   Exchanges       |  Diameter  |
-       +--------->|  Client    |<----------------->|  Client    |
+       +--------->|  Client    |<----------------->|  Server    |
                   +------------+                   +------------+
 
 
@@ -248,7 +255,7 @@ Internet-Draft         Diameter AVP Level Security             July 2013
 
    Figure 2 shows the information exchange between different Diameter
    servers and a load balancer within the same administrative domain.
-   Following the cpability exchange between the load balancer and the
+   Following the capability exchange between the load balancer and the
    Diameter servers load information is exchanged.  Incoming Diameter
    requests are distributed based on the collected load information and
    based on the configuration of the load balancer.
@@ -267,13 +274,6 @@ Internet-Draft         Diameter AVP Level Security             July 2013
     +----^-----+                       |
          +                             |
          //////////////////////////////+
-                Exchange of Load Info
-
-
-            Figure 2: Information Exchange for Load Balancing.
-
-   The information elements relevant to load balancing are described in
-   Section 5.1 and in Section 5.3.
 
 
 
@@ -281,6 +281,14 @@ Tschofenig              Expires January 16, 2014                [Page 5]
 
 Internet-Draft         Diameter AVP Level Security             July 2013
 
+
+                Exchange of Load Info
+
+
+            Figure 2: Information Exchange for Load Balancing.
+
+   The information elements relevant to load balancing are described in
+   Section 5.1 and in Section 5.3.
 
 5.  Information Elements
 
@@ -322,14 +330,6 @@ Internet-Draft         Diameter AVP Level Security             July 2013
 
               < Overload-Info > ::= < AVP Header: TBD >
                                 { Overload }
-                                [ Period-Of-Validity ]
-                              * [ AVP ]
-
-
-
-5.2.2.  Period-Of-Validity AVP
-
-
 
 
 
@@ -337,6 +337,13 @@ Tschofenig              Expires January 16, 2014                [Page 6]
 
 Internet-Draft         Diameter AVP Level Security             July 2013
 
+
+                                [ Period-Of-Validity ]
+                              * [ AVP ]
+
+
+
+5.2.2.  Period-Of-Validity AVP
 
    The Period-Of-Validity AVP (AVP code TBD) is of type Unsigned32, and
    is used to indicate the length of time, in seconds, the Overload-
@@ -356,18 +363,36 @@ Internet-Draft         Diameter AVP Level Security             July 2013
 
    INCREASING_OVERLOAD          1  The Diameter server uses this value
       to inform the client that overload has increased and that the
-      Diameter client shall decrease the sending rate.
+      Diameter client shall decrease the sending rate into half
+      (calculated over the last 10 minutes).
 
    DECREASING_OVERLOAD          2  The Diameter server uses this value
       to inform the client that the overload situation has improved and
       that the Diameter client is allowed to increase the rate of
-      Diameter requests.
+      Diameter requests by 10% of the requests transmitted since the
+      last overload message was received from the server.
+      Consequencely, the Diameter server can quickly increase the
+      sending rate by the client by including Overload AVPs with a value
+      set to 'DECREASING_OVERLOAD' in subsequent exchanges.
 
    OVERLOADED                   3  The Diameter server uses this value
-      to inform the client that it is completely overloaded and cannot
-      further process any requests.
+      to inform the client that it is completely overloaded and that the
+      Diameter client shall not send further requests.
 
-5.3.  Information Elements for Loadbalancing
+   The increase and decrease of the sending rate refers to new requests
+   to the same realm and the same application ID as the message carrying
+   the overload information.
+
+5.3.  Information Elements for Load Balancing
+
+
+
+
+
+Tschofenig              Expires January 16, 2014                [Page 7]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
 
 5.3.1.  Load-Info AVP
 
@@ -386,14 +411,6 @@ Internet-Draft         Diameter AVP Level Security             July 2013
 
 5.3.2.  Load AVP
 
-
-
-
-Tschofenig              Expires January 16, 2014                [Page 7]
-
-Internet-Draft         Diameter AVP Level Security             July 2013
-
-
    The Load AVP (AVP code TBD) is of type Unsigned32.  The indicated
    value MUST be between 0 and 10.  The semantics of the values are as
    follows: a Diameter server indicating a value of zero (0) notifies a
@@ -406,7 +423,9 @@ Internet-Draft         Diameter AVP Level Security             July 2013
    reason, notice that it needs to report a value of 10 even though it
    had previously reported a value of 0.  A load balancer receiving
    values other than 0 MUST reduce the sending rate of Diameter requests
-   to the Diameter server correspondingly.
+   to the Diameter server correspondingly by redistributing a portion of
+   the requests (the higher the value the bigger the portion) to
+   Diameter servers.
 
    Note that the load value does not refer to any specific resource,
    such as CPU utilization, database interconnection, etc.  The value is
@@ -414,12 +433,22 @@ Internet-Draft         Diameter AVP Level Security             July 2013
    not further specified.  Implementers should, however, ensure that the
    resources that matter for the specific Diameter deployment are taken
    into account in defining the algorithm.  The lack of a standardized
-   algorithm does, however, not impact interoperability.  A loadbalancer
-   provided by vendor A and Diameter servers provided by vendor B will
-   interoperate because they make decisions based on these artificial
-   values.  For example, a network operator may decide to configure the
-   load balancer in such a way that the second server is only used once
-   the load value of the first server reaches a certain threshold.
+   algorithm does, however, not impact interoperability.  A load
+   S.balancer provided by vendor A and Diameter servers provided by
+   vendor B will interoperate because they make decisions based on these
+   artificial values.  For example, a network operator may decide to
+   configure the load balancer in such a way that the second server is
+   only used once the load value of the first server reaches a certain
+   threshold.
+
+
+
+
+
+Tschofenig              Expires January 16, 2014                [Page 8]
+
+Internet-Draft         Diameter AVP Level Security             July 2013
+
 
    The lifetime of the load information is bound to the value
    communicated in the Sending-Rate AVP during the capability exchange.
@@ -437,18 +466,9 @@ Internet-Draft         Diameter AVP Level Security             July 2013
 
 8.  Acknowledgments
 
-   Add your name here.
+   The author would like to thank Ulrich Wiehe for his feedback.
 
 9.  References
-
-
-
-
-
-Tschofenig              Expires January 16, 2014                [Page 8]
-
-Internet-Draft         Diameter AVP Level Security             July 2013
-
 
 9.1.  Normative References
 
@@ -475,26 +495,6 @@ Author's Address
    Phone: +358 (50) 4871445
    Email: Hannes.Tschofenig@gmx.net
    URI:   http://www.tschofenig.priv.at
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

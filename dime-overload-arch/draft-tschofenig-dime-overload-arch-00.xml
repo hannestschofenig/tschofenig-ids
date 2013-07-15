@@ -58,7 +58,12 @@
     
 <t>Diameter was developed to provide an Authentication, Authorization, and Accounting (AAA) framework for a number of applications, including network access, mobility, and real-time multimedia application layer services. Over the last 10 years it has enjoyed widespread industry acceptance and can be found in many large (mobile) operator networks. </t>
 
-<t>When a Diameter server becomes overloaded, it may need to gracefully reduce its load and there are two basic approaches for doing so: redistributing requests to other Diameter servers (load balancing) and by informing Diameter clients to reject requests. <xref target="I-D.ietf-dime-overload-reqs"/> aims to provide background information and requirements. This document defines the next step, namely the architecture and the information model.</t>
+<t>When a Diameter server becomes overloaded, it may need to ask Diameter clients and agents to gracefully reduce the amount of signaling traffic destined for it. For Diameter clients and agents that are asked to reduce traffic there are two basic approaches for doing so: <list style="symbols">
+<t>by sending a portion of new requests to other Diameter servers which still have capacity available (load balancing), and</t>
+<t>by rejecting new requests.</t>
+</list> 
+</t>
+<t><xref target="I-D.ietf-dime-overload-reqs"/> aims to provide background information and requirements. This document defines the next step, namely the architecture and the information model.</t>
 
   </section>
 	  
@@ -73,7 +78,7 @@
         </t>
 		<t>This document re-uses terminology from the Diameter base specification <xref target="RFC6733"/>.</t>
 		
-		<t>The term "load balancer" in this document refers to a Diameter proxy that uses load information of Diameter servers and configuration seetings to adjust standard Diameter routing. 
+		<t>The term "load balancer" in this document refers to a Diameter proxy that uses load information received from Diameter servers and configuration settings to adjust standard Diameter routing. 
 		</t>
 			 </section>
 
@@ -90,7 +95,7 @@
       
        <t hangText="Avoid premature optimizations.">Diameter is an extensible protocol and new extensions can be added at any time (when necessary). Instead of developing the most "complete" solution there are benefits from starting with a minimal core that helps to gain initial implementation and deployment experience. This minimal core can then be used as a basis for subsequent refinements. Complexity often comes with optimizations and constraints imposed by incremental deployment strategies.</t>
        
-       <t hangText="Focus on real-world problems.">The number of theoretical use cases is large, almost unbounded. What use cases and optimizations are worthwhile to explore and to standardize solutions for? Is the "sounds good" test enough or is evidence of a documented and reproducable real-world problem needed?</t>
+       <t hangText="Focus on real-world problems.">The number of theoretical use cases is large, almost unbounded. What use cases and optimizations are worthwhile to explore and to standardize solutions for? Is the "sounds good" test enough or is evidence of a documented and reproducible real-world problem needed?</t>
 
        <t hangText="Overload conditions are rare events.">The Diameter backend infrastructure is hopefully dimensioned in a way that overload situations are the exception rather than the norm. Consequently, it is less useful to develop many optimization for those rare events (e.g., optimizations in the form of message reduction). Instead, it is more beneficial to optimize for the case where there is no overload. </t>
 
@@ -98,7 +103,7 @@
 
        <t hangText="Load Balancing and Rejecting Requests are different.">Load balancing is a technique that is best applied within a local administrative domain to re-distribute requests. For maximum benefit knowledge by the load balancer about the system architecture and the nature of applications is required. Rejecting requests, on the other hand, requires information signaling to the Diameter clients since Diameter is not an end-to-end protocol and information about the failure situation needs to be passed along to the source of the end system, such as VoIP phones initiating phone calls, end devices seeking network access.</t>
 
-       <t hangText="Delegating rejection policies creates a lot of complexity.">When a Diameter server reaches an overload state and wants to reduce the number of requests it gets it has a number of choices. In the simplest form it could return reject responses without engaging in heavy application specific processing. In such a model the Diameter server acts as a Policy Decision Point (PDP) and as a Policy Enforcement Point (PEP). By co-locating the PEP and the PDP the decision making is implementation internal, which is also the beautify of this model. If the PEP functionality, however, gets moved to the Diameter client (or to any other node) the need for standardizing a "Diameter request rejection policy language" arises. Delegating functionality from the PEP to the PEP requires the PEP to have a reasonable amount of information about the problem the Diameter server and the support infrastructure is facing. Additionally, the PEP would benefit from knowing about the tradeoff decisions the network operators wants to make regarding the different types of requests. </t>
+       <t hangText="Delegating rejection policies creates a lot of complexity.">When a Diameter server reaches an overload state and wants to reduce the number of requests it gets it has a number of choices. In the simplest form it could return reject responses without engaging in heavy application specific processing. In such a model the Diameter server acts as a Policy Decision Point (PDP) and as a Policy Enforcement Point (PEP). By co-locating the PEP and the PDP the decision making is implementation internal, which is also the beautify of this model. If the PEP functionality, however, gets moved to the Diameter client (or to any other node) the need for standardizing a "Diameter request rejection policy language" arises. Delegating functionality from the PDP to the PEP requires the PEP to have a reasonable amount of information about the problem the Diameter server and the support infrastructure is facing. Additionally, the PEP would benefit from knowing about the tradeoff decisions the network operators wants to make regarding the different types of requests. </t>
        
        </list>
        </t>
@@ -128,7 +133,7 @@
     |             v       |                        v      *
     |Front-End +------------+   Diameter Msg    +------------+
     |Protocol  |  Diameter  |   Exchanges       |  Diameter  |
-    +--------->|  Client    |<----------------->|  Client    |
+    +--------->|  Client    |<----------------->|  Server    |
                +------------+                   +------------+
 ]]>
 </artwork>
@@ -144,7 +149,7 @@ This document defines the information elements that can be used by an existing D
 
 <section title="Load Balancing"> 
 
-<t><xref target="info-exchange-loadbalancing"/> shows the information exchange between different Diameter servers and a load balancer within the same administrative domain. Following the cpability exchange between the load balancer and the Diameter servers load information is exchanged. Incoming Diameter requests are distributed based on the collected load information and based on the configuration of the load balancer. </t>
+<t><xref target="info-exchange-loadbalancing"/> shows the information exchange between different Diameter servers and a load balancer within the same administrative domain. Following the capability exchange between the load balancer and the Diameter servers load information is exchanged. Incoming Diameter requests are distributed based on the collected load information and based on the configuration of the load balancer. </t>
 
 <t><figure title="Information Exchange for Load Balancing." anchor="info-exchange-loadbalancing">
             <artwork>
@@ -254,27 +259,29 @@ This document defines the information elements that can be used by an existing D
 </t> 
 
 <t hangText="INCREASING_OVERLOAD          1"> 
-      The Diameter server uses this value to inform the client that overload has increased and that the Diameter client shall decrease the sending rate. 
+      The Diameter server uses this value to inform the client that overload has increased and that the Diameter client shall decrease the sending rate into half (calculated over the last 10 minutes).
 </t> 
 
       
 <t hangText="DECREASING_OVERLOAD          2"> 
       The Diameter server uses this value to inform the client that the overload situation has improved 
-      and that the Diameter client is allowed to increase the rate of Diameter requests.
+      and that the Diameter client is allowed to increase the rate of Diameter requests by 10% of the requests transmitted since the last overload message was received from the server. 
+      Consequencely, the Diameter server can quickly increase the sending rate by the client by including Overload AVPs with a value set to 'DECREASING_OVERLOAD' in subsequent exchanges.
 </t> 
 
 <t hangText="OVERLOADED                   3"> 
-      The Diameter server uses this value to inform the client that it is completely overloaded and cannot
-      further process any requests.</t> 
+      The Diameter server uses this value to inform the client that it is completely overloaded and that the Diameter client shall not send 
+      further requests.</t> 
 </list> 
 </t>
 
+<t>The increase and decrease of the sending rate refers to new requests to the same realm and the same application ID as the message carrying the overload information.</t>
 </section> 
 
 
 </section> 
 
-<section anchor="loadbalancing" title="Information Elements for Loadbalancing"> 
+<section anchor="loadbalancing" title="Information Elements for Load Balancing"> 
 
 <section title="Load-Info AVP">
 
@@ -299,9 +306,9 @@ This document defines the information elements that can be used by an existing D
 
 <section title="Load AVP">
 
-<t>The Load AVP (AVP code TBD) is of type Unsigned32. The indicated value MUST be between 0 and 10. The semantics of the values are as follows: a Diameter server indicating a value of zero (0) notifies a load balancer that there is no overload condition. A Diameter server indicating a value of ten (10) indicates that it is experiencing extreme overload and cannot process any further requests. The remaining other values express situations between these two extremes. Note that there is no requirement that the Diameter server reports values in incremental steps; a Diameter server may, for whatever reason, notice that it needs to report a value of 10 even though it had previously reported a value of 0. A load balancer receiving values other than 0 MUST reduce the sending rate of Diameter requests to the Diameter server correspondingly.</t>
+<t>The Load AVP (AVP code TBD) is of type Unsigned32. The indicated value MUST be between 0 and 10. The semantics of the values are as follows: a Diameter server indicating a value of zero (0) notifies a load balancer that there is no overload condition. A Diameter server indicating a value of ten (10) indicates that it is experiencing extreme overload and cannot process any further requests. The remaining other values express situations between these two extremes. Note that there is no requirement that the Diameter server reports values in incremental steps; a Diameter server may, for whatever reason, notice that it needs to report a value of 10 even though it had previously reported a value of 0. A load balancer receiving values other than 0 MUST reduce the sending rate of Diameter requests to the Diameter server correspondingly by redistributing a portion of the requests (the higher the value the bigger the portion) to Diameter servers.</t>
 
-<t>Note that the load value does not refer to any specific resource, such as CPU utilization, database interconnection, etc. The value is computed locally by the Diameter server based on an algorithm that is not further specified. Implementers should, however, ensure that the resources that matter for the specific Diameter deployment are taken into account in defining the algorithm. The lack of a standardized algorithm does, however, not impact interoperability. A loadbalancer provided by vendor A and Diameter servers provided by vendor B will interoperate because they make decisions based on these artificial values. For example, a network operator may decide to configure the load balancer in such a way that the second server is only used once the load value of the first server reaches a certain threshold.</t> 
+<t>Note that the load value does not refer to any specific resource, such as CPU utilization, database interconnection, etc. The value is computed locally by the Diameter server based on an algorithm that is not further specified. Implementers should, however, ensure that the resources that matter for the specific Diameter deployment are taken into account in defining the algorithm. The lack of a standardized algorithm does, however, not impact interoperability. A load §balancer provided by vendor A and Diameter servers provided by vendor B will interoperate because they make decisions based on these artificial values. For example, a network operator may decide to configure the load balancer in such a way that the second server is only used once the load value of the first server reaches a certain threshold.</t> 
 
 <t>The lifetime of the load information is bound to the value communicated in the Sending-Rate AVP during the capability exchange.</t>
 
@@ -327,7 +334,7 @@ This document defines the information elements that can be used by an existing D
 <!-- ******************************************************* --> 
       
     <section title='Acknowledgments'>
-	     <t>Add your name here. </t>
+	     <t>The author would like to thank Ulrich Wiehe for his feedback.</t>
     </section>
 
 <!-- ******************************************************* --> 
