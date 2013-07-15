@@ -1,0 +1,320 @@
+<?xml version="1.0"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY RFC2119 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'> 
+<!ENTITY RFC6733 PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6733'> 
+<!ENTITY I-D.ietf-dime-overload-reqs PUBLIC ''
+'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dime-overload-reqs'> 
+
+
+]>
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc toc="yes" ?>
+<?rfc symrefs="yes" ?>
+<?rfc sortrefs="yes"?>
+<?rfc iprnotified="no" ?>
+<?rfc strict="no" ?>
+<?rfc compact="yes" ?><?rfc subcompact="yes" ?>
+<rfc ipr="trust200902"
+
+    category="std" docName="draft-tschofenig-dime-dlba-00.txt">
+  <front>
+    <title abbrev="DLBA">The Diameter Load Balancing Application (DLBA)</title>
+
+			
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+
+    <date year="2013"/>
+    <area>Operations and Management</area>
+    <workgroup>Diameter Maintenance and Extensions (DIME)</workgroup>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Diameter</keyword>
+    <keyword>Load Balancing</keyword>
+
+<abstract>
+ <t>This specification documents a Diameter Load Balancing Application  
+  (DLBA), which uses the normal Diameter application approach for the capability
+  negotiation, propagation and management of Diameter load information between 
+  Diameter nodes to enable load balancing of Diameter requests.</t>
+    </abstract>
+ </front>
+ 
+<middle>
+
+<section anchor="introduction" title="Introduction">
+  
+ <t>The problem statement for Diameter overload control can be found in <xref target="I-D.ietf-dime-overload-reqs"/>. 
+  It describes the lack of support of conveying load information to enable load balancing of Diameter requests in case Diameter servers 
+  become overload and the inability of Diameter servers to communicate with Diameter servers to reject requests when they become 
+  severly overloaded. <xref target="I-D.tschofenig-dime-overload-arch"/> goes a step further in providing an outline of architectural principles and an information model.</t>
+  
+  
+  <t>
+  This document specifies Diameter Load Balancing Application  
+  (DLBA), which uses the AVPs defined in <xref target="I-D.tschofenig-dime-overload-arch"/>. 
+  </t>
+  
+    <t>The Diameter Load Balancing Application  
+  (DLBA) typically runs between a load balancer and a Diameter server. 
+  There may be zero or more intermediate Diameter agents on the path between
+    the DLBA client and the DLBA server. Understanding the DLBA functionality is not
+    expected from relays and redirect agents.</t>
+  
+  <t>The main usage for this application is within a single realm, as shown in Figure 2 of <xref target="I-D.tschofenig-dime-overload-arch"/>, where a load balancer distributes 
+  incoming Diameter requests to different Diameter servers. Designing the load balancing functionality as a stand-alone application prevents 
+  Diameter servers and load balancers to adjust their information exchange frequency to meet the needs of the network administrator regardless 
+  of remaining Diameter application traffic.</t>
+</section>
+
+<!-- ******************************************************************** -->
+
+<section title="Requirements">
+   <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in <xref
+   target="RFC2119">RFC 2119</xref>.
+   </t>
+</section>
+
+<!-- ******************************************************************** -->
+
+<section title="Commands" anchor="command-codes">
+  <t>The DLBA-Report-Request message is used to request load   
+   information.
+  </t>
+  <t>
+  <figure><artwork><![CDATA[
+<DLBA-Report-Request> ::= < Diameter Header: TBD2, REQ, PXY >
+                          < Session-Id >
+                          { Auth-Application-Id }
+                          { Origin-Host }
+                          { Origin-Realm }
+                          { Destination-Realm }
+                          { Auth-Request-Type }
+                          { Destination-Host }
+                          [ Auth-Session-State ]
+                        * [ Class ]
+                          [ Origin-State-Id ]
+                        * [ Proxy-Info ]
+                        * [ Route-Record ] 
+
+                          [ Supported-Features ] 
+                          [ Sending-Rate ] 
+                          [ Load-Info ] 
+                        * [ AVP ]
+]]></artwork></figure>
+</t>
+  <t>The DLBA-Report-Answer message is used 
+   as a response to the DLBA-Report-Request. The message MAY piggyback load
+    information in order to avoid unnecessary DLBA-Report-Request
+   messages in the reverse direction.</t>
+  <t>
+  <figure><artwork><![CDATA[
+<DLBA-Report-Answer> ::= < Diameter Header: TBD2, PXY >
+                       < Session-Id >
+                       { Result-Code }
+                       { Origin-Host }
+                       { Origin-Realm }
+                       [ Auth-Session-State ]
+                     * [ Class ]
+                       [ Error-Message ]
+                       [ Error-Reporting-Host ]
+                       [ Failed-AVP ]
+                       [ Origin-State-Id ]
+                     * [ Redirect-Host ]
+                       [ Redirect-Host-Usage ]
+                       [ Redirect-Max-Cache-Time ]
+                     * [ Proxy-Info ]
+
+                       [ Supported-Features ]
+                       [ Sending-Rate ] 
+                       [ Load-Info ] 
+                     * [ AVP ]
+]]></artwork></figure>
+ </t>
+ 
+   <t> Diameter 
+    is flexible from a message handling point of view. Therefore, any the DLBA capable Diameter 
+    node, such as a load balancer or a Diameter server, MAY initiate a DLBA-Report-Request at any given time.    
+    The receiver of
+    the DLBA-Report-Request responds with a DLBA-Report-Answer and includes
+    the Result-Code AVP indicating whether it
+    could honor the action/report in the request. The DLBA-Report-Answer SHOULD
+    also piggyback load information.
+  </t>
+  
+    <t>A DLBA client MUST
+   set the Auth-Session-State AVP to the value NO_STATE_MAINTAINED and SHOULD 
+   include load information into the
+   DLBA-Report-Request message, if available. The 
+   DLBA-Report-Response message MUST contain the Auth-Session-State AVP set to
+   value NO_STATE_MAINTAINED.
+  </t>
+
+</section>
+
+
+
+ <section title="Attribute Value Pair Flag Rules">
+<t>
+<figure><artwork><![CDATA[
+                                                      +---------+
+                                                      |AVP flag |
+                                                      |rules    |
+                                                      +----+----+
+                    AVP   Defined                     |    |MUST|
+ Attribute Name     Code  in       Value Type         |MUST| NOT|
++-----------------------------------------------------+----+----+
+|Load-Info          TBD   RFC XYZ  Grouped            |  M | V  |
++-----------------------------------------------------+----+----+
+|Load               TBD   RFC XYZ  Unsigned32         |  M | V  |
++-----------------------------------------------------+----+----+
+|Supported-Features TBD   RFC XYZ  Uint64             |  M | V  |
++-----------------------------------------------------+----+----+
+|Sending-Rate       TBD   RFC XYZ  Unsigned32         |  M | V  |
++-----------------------------------------------------+----+----+
+]]></artwork></figure>
+</t> 
+<t>All AVPs are defined in <xref target="I-D.tschofenig-dime-overload-arch"/>.</t>
+
+ </section>
+
+
+<section title="Example"> 
+
+<t>This example shows the simplicity of the DLBA application. Here the load balancer initiates the DLBA exchange and solicits load information from a Diameter server. The rate at which these messages are exchange depend on the Sending-Rate AVP. The Diameter server may, however, at any time send an unsolicited DLBA-Report-Request message in case the load situation changes unexpectely. 
+</t> 
+<t>
+<figure><artwork><![CDATA[
+Diameter-based                   Diameter
+Load Balancer                     Server
+    |                               |
+    |  DLBA-Report-Request Command  |
+    |    Supported-Features AVP     |
+    |    Sending-Rate AVP           |
+    |------------------------------>|
+    |                               |
+    |                               |
+    |  DLBA-Report-Answer Command   |
+    |    Load AVP                   |
+    |<------------------------------|
+    |                               |
+    :                               :
+    :                               :
+    |                               |
+    |...more load info exchanges... |
+    |                               |
+    |                               |
+]]></artwork></figure>
+</t> 
+
+</section> 
+
+<section title="Transport Considerations" anchor="sctp">
+ <t>In case of Stream Control Transmission Protocol (SCTP) transport,
+  it is RECOMMENDED to mark Diameter packets using
+  the DLBA defined SCTP Payload Protocol Identifier (PPID) TBD1. The PPID MAY
+  be used by intermediating network nodes or agents to peek into SCTP
+  message and find out that this is about overload control. Such information
+  can be used for prioritizing SCTP packet handling as an example.
+ </t>
+</section>
+
+
+<section title="IANA Considerations">
+ <section title="Application Identifiers">
+  <t>This specification reserves a new Diameter Application-ID TBD14 for
+   the Diameter Load Balancing Application (DLBA) from the 'Authentication, 
+   Authorization, and Accounting (AAA) Parameters' Application IDs registry.
+  </t>
+ </section>
+
+ <section title="SCTP Payload Protocol Identifier">
+  <t><xref target="sctp"/> reserves a new SCTP Payload Protocol
+   Identifier for the DLBA application usage. The value is reserved from
+   the existing SCTP Payload Protocol Identifiers registry.
+  </t>
+ </section>
+
+ <section title="Command Codes">
+  <t>Two command codes are defined in <xref target="command-codes"/>. 
+   The DLBA-Report-Request Command Code is TBD and the DLBA-Report-Answer Command Code is TBD. 
+   Both are allocated
+   from the  'Authentication,  Authorization, and Accounting (AAA) Parameters'
+   Command Codes registry.
+  </t>
+ </section>
+
+ <section title="Result-Code Values">
+  <t>This specification adds Diameter Overload Control Application
+   specific Permanent Failure codes from the 'Authentication,  Authorization,
+   and Accounting (AAA) Parameters' Result-Code AVP Values (code 268) - 
+   Permanent Failure registry:
+  </t>
+  <figure><artwork><![CDATA[
+AVP Values | Attribute Name                | Reference
+-----------+-------------------------------+----------
+ 5xxx      | DIAMETER_RATE_TOO_BIG         | RFCxxxx
+ 5xxx      | DIAMETER_NO_COMMON-FEATURES   | RFCxxxx 
+]]></artwork></figure>
+ </section>
+ </section>
+
+<section title="Security Considerations">
+ <t>This Diameter application uses the Diameter <xref target="RFC6733"/> security mechanisms and, what is more important, 
+ is primarily used within a single realm to allow a load balancer to obtain load information from Diameter servers for 
+ distributing Diameter requests depending on the utilization of these servers. Passing load information beyond an administrative 
+ domain is possible with Diameter but not advisable to avoid leaking valuable information to potentially untrustworthy parties. 
+ </t> 
+</section>
+
+
+<section title="Acknowledgements">
+ <t>This document re-uses the design from the Diameter-OVL application. 
+ </t>
+</section>
+
+
+</middle>
+
+    <!-- ====================================================================== -->
+
+<back>
+ <references title="Normative References">
+  &RFC2119;
+  &RFC6733;
+
+ </references>
+
+ <references title="Informative References">
+   &I-D.ietf-dime-overload-reqs;
+   
+    <reference anchor="I-D.tschofenig-dime-overload-arch">
+      <front>
+       <title>Diameter Overload Architecture and Information Model</title>
+       <author fullname="Hannes Tschofenig" initials="Hannes" surname="Tschofenig"> </author>
+       <date year="2013" month="July"/>
+      </front>
+     </reference>
+  
+ </references>
+ 
+
+  
+</back>
+</rfc>
