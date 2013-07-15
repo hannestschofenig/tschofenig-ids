@@ -124,64 +124,61 @@
          keywords will be used for the search engine. -->
 
     <abstract>
-      <t>
-         This document specifies a new certificate type for exchanging
-         raw public keys in Transport Layer Security (TLS)
-         and Datagram Transport Layer Security (DTLS) for use with out-of-band
-         public key validation. When using private/public key cryptography for 
-authentication, TLS currently uses certified public keys either with X.509 certificates issued by a 
-Public Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum resource for raw
-         public key exchange, implementations can use alternative public key validation
-         methods.
-      </t>
-      <t>
-         One such alternative public key valiation method is offered by the DNS-Based Authentication of Named Entities (DANE) together with DNS Security. Another alternative is to utilize pre-configured keys, as is the case with sensors and other
-         embedded devices. The usage of raw public keys, instead of X.509-based certificates, leads to a smaller 
-         code footprint. 
-      </t>
-
-      <t>This document introduces the support for raw public keys in TLS.</t>
+      <t> This document specifies a new certificate type and two TLS extensions,
+ one for the client and one for the server, for exchanging raw
+ public keys in Transport Layer Security (TLS) and Datagram Transport
+ Layer Security (DTLS) for use with out-of-band public key validation.</t>
     </abstract>
   </front>
 
    <middle>
     <section anchor="into" title="Introduction">
-       <t>Traditionally, TLS server public keys are obtained in PKIX containers
+       <t> Traditionally, TLS client and server public keys are obtained in PKIX containers
           in-band using the TLS handshake and validated using trust anchors
           based on a  <xref target='PKIX'/> certification authority (CA). This
           method can add a complicated trust relationship that is difficult
           to validate. Examples of such complexity can be seen in
           <xref target='Defeating-SSL'/>.</t>
 
-       <t>Alternative methods are available that allow a TLS client to obtain
-          the TLS server public key:</t>
 
-       <t><list style="symbols">
-          <t>The TLS server public key is obtained from a DNSSEC secured resource records              
-             using DANE <xref target="RFC6698"/>.</t>
+ <t>Alternative methods are available that allow a TLS clients/servers
+ to obtain the TLS servers/client public key:
 
-          <t>The TLS server public key is obtained from a <xref target='PKIX'/>
-             certificate chain from an Lightweight Directory Access Protocol (LDAP) <xref target="LDAP"/> server.</t>
+   <list style="symbols">
+          <t>TLS clients can obtain the TLS server public key from a
+      DNSSEC secured resource records using DANE <xref target="RFC6698"/>.</t>
 
-          <t>The TLS client and server public key is provisioned into the operating system firmware image,
-             and updated via software updates.</t>
 
-          </list>
-       </t>
+   <t>The TLS client or server public key is obtained from a
+      <xref target='PKIX'/> certificate chain from an Lightweight Directory
+      Access Protocol (LDAP) <xref target="LDAP"/> server or web page.</t>
 
-       <t>Some smart objects use the UDP-based Constrained Application Protocol (CoAP) <xref target="I-D.ietf-core-coap"/> to
-	      interact with a Web server to upload sensor data at a regular intervals, such as
-          temperature readings. CoAP <xref target="I-D.ietf-core-coap"/> can utilize
-          DTLS for securing the client-to-server communication. As part of the manufacturing process,
-          the embeded device may be configured with the address and the public key of a
-          dedicated CoAP server, as well as a public key for the client itself. 
-		  The usage of X.509-based PKIX certificates <xref target='PKIX'/> may not suit all 
-		  smart object deployments and would therefore be an unneccesarry burden.
+   <t>The TLS client and server public key is provisioned into
+      the operating system firmware image, and updated via
+      software updates. For example:
+      <vspace blankLines="1"/>
+      Some smart objects use the UDP-based Constrained
+        Application Protocol (CoAP) <xref target="I-D.ietf-core-coap"/> to
+        interact with a Web server to upload sensor data at
+        a regular intervals, such as temperature readings.
+        CoAP <xref target="I-D.ietf-core-coap"/> can utilize DTLS for securing
+        the client-to-server communication.  As part of the
+        manufacturing process, the embedded device may be
+        configured with the address and the public key of
+        a dedicated CoAP server, as well as a public key for
+        the client itself.</t>
+   </list>
        </t>
 	   
-	   <t>The Transport Layer Security (TLS) Protocol Version 1.2 <xref target="RFC5246"/> provides
-         a framework for extensions to TLS as well as guidelines for
-         designing such extensions.  This document registers a new value to the IANA certificate types registry for the support of raw public keys. </t>
+<t>The mechanism defined herein only provides authentication when
+  an out-of-band mechanism is also used to bind the public key
+  to the entity presenting the key.</t>
+
+	   <t>This document registers a new value to the IANA certificate
+ types registry for the support of raw public keys.  It also
+ defines two new TLS extensions, "client_certificate_type" and
+ "server_certificate_type".</t>
+ 
       </section>
 	  
       <section title="Terminology" anchor="terminology">
@@ -192,7 +189,7 @@ Public Key Infrastructure (PKI) or OpenPGP certificates. By specifying a minimum
 
 
     <section title="New TLS Extension">
-  <t>This section describes the changes to the TLS handshake message contents when raw public key certificates are to be used.
+  <t>This section describes the changes to the TLS handshake message contents when raw public keys are to be used.
 <xref target="flow"/> illustrates the exchange of messages as described in the sub-sections below. The client and the server exchange make use of two new TLS extensions, namely 'client_certificate_type' and 'server_certificate_type', and an already available IANA TLS Certificate Type registry <xref target="TLS-Certificate-Types-Registry"/> to indicate their ability and desire to exchange raw public keys. These raw public keys, in the form of a SubjectPublicKeyInfo structure, are then carried inside the Certificate payload. The Certificate and the SubjectPublicKeyInfo structure is shown in <xref target="Certificate"/>.
 </t>   
    
@@ -222,23 +219,27 @@ struct {
 </figure>
 </t>
      
-<t>The SubjectPublicKeyInfo structure is defined in Section 4.1 of RFC 5280 <xref target="PKIX"/> and does not only contain the raw keys, such as the public exponent and the modulus of an RSA public key, but also an algorithm identifier. The structure, as shown in <xref target="SubjectPublicKeyInfo"/>, is encoded in an ASN.1 format and therefore contains length information as well. An example is provided in <xref target="Example"/>.</t>
+<t>The SubjectPublicKeyInfo structure is defined in Section 4.1 of RFC 5280 <xref target="PKIX"/> and does not only contain the raw keys, such as the public exponent and the modulus of an RSA public key, but also an algorithm identifier. The algorithm identifier can also include parameters.  The structure, as shown in <xref target="SubjectPublicKeyInfo"/>, is encoded in an DER encoded ASN.1 format <xref target="X.690"/> and therefore contains length information as well. An example is provided in <xref target="Example"/>.</t>
 
 <t>
 <figure anchor="SubjectPublicKeyInfo" title="SubjectPublicKeyInfo ASN.1 Structure.">
 <artwork>
 <![CDATA[    
    SubjectPublicKeyInfo  ::=  SEQUENCE  {
-        algorithm            AlgorithmIdentifier,
-        subjectPublicKey     BIT STRING  }
+        algorithm               AlgorithmIdentifier,
+        subjectPublicKey        BIT STRING  }
+
+   AlgorithmIdentifier   ::=  SEQUENCE  {
+        algorithm               OBJECT IDENTIFIER,
+        parameters              ANY DEFINED BY algorithm OPTIONAL  }
 ]]>
 </artwork>
 </figure>
 </t>
 
-  <t>The algorithm identifiers are Object Identifiers (OIDs). RFC 3279 <xref target="RFC3279"/>, for example, defines the following OIDs shown in <xref target="alg-ids"/>.</t>
+  <t>The algorithm identifiers are Object Identifiers (OIDs). RFC 3279 <xref target="RFC3279"/> and <xref target="RFC5480"/> define the following OIDs shown in <xref target="alg-ids"/>.</t>
   <t>
-<figure anchor="alg-ids" title="Example Algorithm Identifiers.">
+<figure anchor="alg-ids" title="Example Algorithm Object Identifiers.">
 <artwork>
 <![CDATA[    
 Key Type               | Document                   | OID
@@ -250,7 +251,7 @@ Algorithm (DSS)        | Section 2.3.2 of RFC 3279  | 1.2.840.10040.4.1
 .......................|............................|...................
 Elliptic Curve         |                            |
 Digital Signature      |                            |
-Algorithm (ECDSA)      | Section 2.3.5 of RFC 3279  | 1.2.840.10045.2.1
+Algorithm (ECDSA)      | Section 2.3.5 of RFC 5480  | 1.2.840.10045.2.1
 -----------------------+----------------------------+-------------------
 ]]>
 </artwork>
@@ -354,7 +355,7 @@ struct {
 
    <t>
    In order to indicate the support of out-of-band raw public keys,
-   clients MUST include the 'client_certificate_type' and 'server_certificate_type' extensions extended
+   clients MUST include the 'client_certificate_type' and 'server_certificate_type' extensions in an extended
    client hello message. The hello extension mechanism is described in TLS 1.2 <xref target="RFC5246"/>.
    </t>
 
@@ -381,7 +382,11 @@ struct {
 in the 'client_certificate_type' of the client hello). 
 </t>
 
-<t>If the client indicated the support of raw public keys in the 'client_certificate_type' extension in the client hello and the server is able to provide such raw public key then the TLS server MUST place the SubjectPublicKeyInfo structure into the Certificate payload. The public key algorithm MUST match the selected key exchange algorithm.</t>
+<t>If the client hello indicates support of raw public keys in the
+'client_certificate_type' extension and the
+server chooses to use raw public keys then the TLS server
+MUST place the SubjectPublicKeyInfo structure into the Certificate
+payload.</t>
 
 </section>
 
@@ -434,7 +439,7 @@ in the 'client_certificate_type' of the client hello).
   <t>The first example shows an exchange where the TLS client indicates its ability to 
   receive and validate raw public keys from the server. In our example the client is quite restricted since it is unable to process other certificate types sent by the server. It also does not have credentials (at the TLS layer) it could send. The 'client_certificate_type' extension indicates this in [1]. When the TLS server receives the client hello it 
   processes the 'client_certificate_type' extension. Since it also has a raw public key it indicates 
-  in [2] that it had choosen to place the SubjectPublicKeyInfo structure into the Certificate 
+  in [2] that it had chosen to place the SubjectPublicKeyInfo structure into the Certificate 
   payload [3]. The client uses this raw public key in the TLS handshake and an out-of-band technique, 
   such as DANE, to verify its validity.</t>
   
@@ -538,17 +543,16 @@ Application Data        <------->     Application Data
 	<t>The transmission of raw public keys, as described in this document, 
 	provides benefits by lowering the over-the-air transmission overhead since 
 	raw public keys are quite naturally smaller than an entire certificate. 
-	There are also advantages from a codesize point of view for parsing and
-    processing these keys. The crytographic procedures for assocating the 
+	There are also advantages from a code size point of view for parsing and
+    processing these keys. The cryptographic procedures for associating the 
 	public key with the possession of a private key also follows standard 
 	procedures.</t>
 
     <t>The main security challenge is, however, how to associate the public 
-    key with a specific entity. This information will be needed to make 
-    authorization decisions. Without a secure binding, man-in-the-middle 
-    attacks may be the consequence. This document assumes that such 
+    key with a specific entity. Without a secure binding between identity and key the protocol will be vulnerable to masquerade and man-in-the-middle attacks. This document assumes that such 
 	binding can be made out-of-band and we list a few examples in <xref target="into"/>. 
-	DANE <xref target="RFC6698"/> offers one such approach. 
+	DANE <xref target="RFC6698"/> offers one such approach. In order to address these vulnerabilities, specifications that make use of the extension MUST specify how the identity and public key are bound.
+	
 	If public keys are obtained using DANE, these public keys are authenticated via DNSSEC.
 	Pre-configured keys is another out of band method for authenticating raw public keys.
 	 While pre-configured keys are not suitable for 
@@ -593,7 +597,7 @@ Reference: [[THIS RFC]]
 	     
       <t>We would like to thank the following persons for their review comments: Martin Rex, Bill Frantz, Zach Shelby, 
 	     Carsten Bormann, Cullen Jennings, Rene Struik, Alper Yegin, Jim Schaad, Barry Leiba, Paul Hoffman, Robert Cragie, Nikos Mavrogiannopoulos, Phil Hunt, John Bradley, Klaus Hartke, Stefan Jucker, Kovatsch Matthias, Daniel Kahn Gillmor, Peter Sylvester, and James Manger. Nikos Mavrogiannopoulos contributed the design for re-using the certificate type registry. Barry Leiba contributed guidance for the IANA consideration text. Stefan Jucker, Kovatsch Matthias, and Klaus Hartke provided implementation feedback regarding the SubjectPublicKeyInfo structure.</t>
-	  <t>Finally, we would like to thank our TLS working group chairs, Eric Rescorla and Joe Salowey, for their guidance and support.</t>
+	  <t>We would like to thank our TLS working group chairs, Eric Rescorla and Joe Salowey, for their guidance and support. Finally, we would like to thank Sean Turner, who is the responsible security area director for this work for his review comments and suggestions.</t>
       </section>
 
   </middle>
@@ -649,11 +653,26 @@ Reference: [[THIS RFC]]
       <format type='TXT' octets='352580' target='ftp://ftp.isi.edu/in-notes/rfc5280.txt' />
    </reference>
 
+  <reference anchor='X.690'>
+      <front>
+      <title>Information technology - ASN.1 encoding rules:
+>              Specification of Basic Encoding Rules (BER), Canonical
+>              Encoding Rules (CER) and Distinguished Encoding Rules
+>              (DER).</title>
+      <author initials='' surname='' fullname='ITU-T Recommendation X.690 (2002) | ISO/IEC 8825-1:2002'>
+      <organization /></author>
+      <date year='2002' />
+      </front>
+      <seriesInfo name='RFC' value='5280' />
+<!--      <format type='TXT' octets='352580' target='ftp://ftp.isi.edu/in-notes/rfc5280.txt' /> --> 
+   </reference>
+   
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.3279.xml"?> 
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5480.xml"?> 
 
 </references>
 
 <references title="Informative References">
-<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.3279.xml"?> 
 <?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6698.xml"?>  
 <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-core-coap.xml"?>  
 <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-cached-info.xml"?>  
