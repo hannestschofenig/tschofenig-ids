@@ -1,0 +1,350 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="rfc2629.xslt" ?>
+
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY RFC2119   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY I-D.ietf-dime-overload-reqs PUBLIC "" "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dime-overload-reqs.xml">
+<!ENTITY RFC6733 PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6733.xml">
+]>
+
+<?rfc inline="yes"?>
+<?rfc toc="yes" ?>
+<?rfc tocdepth="2" ?> 
+<?rfc symrefs="no" ?>
+<?rfc iprnotified="no" ?>
+<?rfc strict="no" ?>
+<?rfc compact="no" ?>
+<?rfc sortrefs="yes" ?>
+<?rfc colonspace='yes' ?>
+
+
+<rfc category='std' ipr='trust200902' docName='draft-tschofenig-dime-overload-arch-00.txt'>
+
+  <front>
+    <title abbrev="Diameter AVP Level Security">Diameter Overload Architecture and Information Model</title>
+
+    <author role="editor" initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>Nokia Siemens Networks</organization>
+      <address>
+        <postal>
+          <street>Linnoitustie 6</street>
+          <city>Espoo</city>
+          <code>02600</code>
+          <country>Finland</country>
+        </postal>
+        <phone>+358 (50) 4871445</phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>	
+    <date year='2013'/>
+    <area>OPS</area>
+    <workgroup>DIME</workgroup>
+    <keyword>I-D</keyword>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Diameter</keyword>
+    <keyword>Overload</keyword>
+    <keyword>Load Balancing</keyword>
+
+    <abstract>
+      <t>This document describes the architecture for Diameter overload control architecture in form of principles and presents an information model.</t>
+  </abstract>
+  </front>
+  <middle>
+    
+  
+ 
+    <section title='Introduction'>
+    
+<t>Diameter was developed to provide an Authentication, Authorization, and Accounting (AAA) framework for a number of applications, including network access, mobility, and real-time multimedia application layer services. Over the last 10 years it has enjoyed widespread industry acceptance and can be found in many large (mobile) operator networks. </t>
+
+<t>When a Diameter server becomes overloaded, it may need to gracefully reduce its load and there are two basic approaches for doing so: redistributing requests to other Diameter servers (load balancing) and by informing Diameter clients to reject requests. <xref target="I-D.ietf-dime-overload-reqs"/> aims to provide background information and requirements. This document defines the next step, namely the architecture and the information model.</t>
+
+  </section>
+	  
+	  <!-- ******************************************************* --> 
+      
+      
+      <section title='Terminology'>
+        <t>
+          The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT', 'SHOULD',
+          'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this specification are to be
+          interpreted as described in <xref target='RFC2119' />.
+        </t>
+		<t>This document re-uses terminology from the Diameter base specification <xref target="RFC6733"/>.</t>
+		
+		<t>The term "load balancer" in this document refers to a Diameter proxy that uses load information of Diameter servers and configuration seetings to adjust standard Diameter routing. 
+		</t>
+			 </section>
+
+
+<!-- ******************************************************* --> 
+      
+      
+      
+      <section anchor="arch" title="Architectural Principles"> 
+      
+      <t>This section outlines several principles guiding the solution design.</t> 
+      
+      <t><list style="hanging"> 
+      
+       <t hangText="Avoid premature optimizations.">Diameter is an extensible protocol and new extensions can be added at any time (when necessary). Instead of developing the most "complete" solution there are benefits from starting with a minimal core that helps to gain initial implementation and deployment experience. This minimal core can then be used as a basis for subsequent refinements. Complexity often comes with optimizations and constraints imposed by incremental deployment strategies.</t>
+       
+       <t hangText="Focus on real-world problems.">The number of theoretical use cases is large, almost unbounded. What use cases and optimizations are worthwhile to explore and to standardize solutions for? Is the "sounds good" test enough or is evidence of a documented and reproducable real-world problem needed?</t>
+
+       <t hangText="Overload conditions are rare events.">The Diameter backend infrastructure is hopefully dimensioned in a way that overload situations are the exception rather than the norm. Consequently, it is less useful to develop many optimization for those rare events (e.g., optimizations in the form of message reduction). Instead, it is more beneficial to optimize for the case where there is no overload. </t>
+
+       <t hangText="Consider advances in information technology.">At the time of writing cloud computing and virtualization has gained widespread industry interest, even in the telecommunication sector. These new computing paradigms provide built-in support for handling load variation (e.g., by spawning new virtual machines or migrating code). The orchestration and management of these virtual machine instances is often provided in a centralized fashion using a hypervisor and these hypervisors come with management interfaces that obtain load and other status information from their virtual machine instances. It is not unlikely that these developments will also impact deployments of Diameter servers within a single administrative domain. </t>
+
+       <t hangText="Load Balancing and Rejecting Requests are different.">Load balancing is a technique that is best applied within a local administrative domain to re-distribute requests. For maximum benefit knowledge by the load balancer about the system architecture and the nature of applications is required. Rejecting requests, on the other hand, requires information signaling to the Diameter clients since Diameter is not an end-to-end protocol and information about the failure situation needs to be passed along to the source of the end system, such as VoIP phones initiating phone calls, end devices seeking network access.</t>
+
+       <t hangText="Delegating rejection policies creates a lot of complexity.">When a Diameter server reaches an overload state and wants to reduce the number of requests it gets it has a number of choices. In the simplest form it could return reject responses without engaging in heavy application specific processing. In such a model the Diameter server acts as a Policy Decision Point (PDP) and as a Policy Enforcement Point (PEP). By co-locating the PEP and the PDP the decision making is implementation internal, which is also the beautify of this model. If the PEP functionality, however, gets moved to the Diameter client (or to any other node) the need for standardizing a "Diameter request rejection policy language" arises. Delegating functionality from the PEP to the PEP requires the PEP to have a reasonable amount of information about the problem the Diameter server and the support infrastructure is facing. Additionally, the PEP would benefit from knowing about the tradeoff decisions the network operators wants to make regarding the different types of requests. </t>
+       
+       </list>
+       </t>
+      
+      </section> 
+      
+      <!-- ******************************************************* --> 
+      
+	  <section title="Information Exchanges"> 
+
+	  <section title="End-to-End Overload Feedback"> 
+
+<t>The information elements described in this document follow the pattern shown in <xref target="info-exchange-overload"/>. Following the exchange of Diameter application messages between a Diameter client and a Diameter server (through zero or more Diameter intermediaries) a Diameter server may indicate that it is currently suffering an overload situation. To ensure that the load information is understood by the Diameter client a prior capability exchange is provided.</t>
+
+<t>
+<figure title="Information Exchange for End-to-End Overload Feedback." anchor="info-exchange-overload">
+            <artwork>
+              <![CDATA[
+                           Overload     +  Rejection
+                           Information     Policies
+ +-------+        +***************************************+
+ | End   |        *                                       *
+ | Point |        *                                       *
+ +-------+        *         Capability Indication         *
+    ^             *       +------------------------+      *
+    |             *       |                        |      *
+    |             v       |                        v      *
+    |Front-End +------------+   Diameter Msg    +------------+
+    |Protocol  |  Diameter  |   Exchanges       |  Diameter  |
+    +--------->|  Client    |<----------------->|  Client    |
+               +------------+                   +------------+
+]]>
+</artwork>
+</figure>
+</t>
+          
+<t>The basic functionality starts with the support of DIAMETER_TOO_BUSY, which is defined in the Diameter Base specification. While it does indeed not provide information to the Diameter client about how it react on future Diameter messages. While this can be seen as a design weakness it also has the benefit of a lower standardization need and minimal implementation complexity.
+This document defines the information elements that can be used by an existing Diameter application to convey overload information.</t>
+
+<t>The necessary AVPs are defined in the <xref target="capability"/> and in <xref target="overload"/>.</t> 
+
+</section> 
+
+<section title="Load Balancing"> 
+
+<t><xref target="info-exchange-loadbalancing"/> shows the information exchange between different Diameter servers and a load balancer within the same administrative domain. Following the cpability exchange between the load balancer and the Diameter servers load information is exchanged. Incoming Diameter requests are distributed based on the collected load information and based on the configuration of the load balancer. </t>
+
+<t><figure title="Information Exchange for Load Balancing." anchor="info-exchange-loadbalancing">
+            <artwork>
+              <![CDATA[
+             Exchange of Load Info
+     \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\+
+     +                              |
+ +---v------+                       |
+ | Diameter |                       |
+ | Server A <--+   Diameter   +-----v--+      Incoming
+ +----------+  |   Exchanges  |Load    |   Diameter Requests
+ +----------+  +--------------+Balancer|<<<------------------
+ | Diameter |  |              +-----^--+
+ | Server B <--+                    |
+ +----^-----+                       |
+      +                             |
+      //////////////////////////////+
+             Exchange of Load Info
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>The information elements relevant to load balancing are described in <xref target="capability"/> and in <xref target="loadbalancing"/>.</t>
+
+</section> 
+
+</section> 
+
+
+<!-- ******************************************************* --> 
+      
+
+<section title="Information Elements"> 
+
+
+<section anchor="capability" title="Capability Indication"> 
+
+
+<section title="Supported-Features AVP">
+
+<t>The Supported-Features AVP (AVP code TBD) is of type Uint64, and contains a bitmap that allows the Diameter client to inform the Diameter server about the functionality it supports. This scheme allows for up to 64 total scopes to be supported. </t>
+
+<t>
+<figure>
+            <artwork>
+              <![CDATA[
++---------+-----------------------+
+| Bitmask | Feature               |
++---------+-----------------------+
+| 0000001 | [TBD: This document.] |
++---------+-----------------------+
+]]>
+</artwork>
+</figure>
+</t>
+
+</section> 
+
+
+<section title="Sending-Rate AVP">
+
+<t>The Sending-Rate AVP (AVP Code TBD10) is of type Unsigned32 and indicates the time in milliseconds between subsequent load updates. Higher values lead to fewer load updates and therefore reduce the signaling overhead but lead to less up-to-date information.</t>
+
+</section> 
+
+</section> 
+
+<section anchor="overload" title="Information for Rejecting Diameter Requests"> 
+
+<section title="Overload-Info AVP">
+
+<t>The Overload-Info AVP (AVP Code TBD) is of type Grouped, and is used as a top-level container for information about the overload status.</t>
+
+<t>The grouped data field of the Overload-Info AVP has the following grammar:</t>
+
+<t>
+<figure>
+            <artwork>
+              <![CDATA[
+           < Overload-Info > ::= < AVP Header: TBD >
+                             { Overload }
+                             [ Period-Of-Validity ]
+                           * [ AVP ]
+]]>
+</artwork>
+</figure>
+</t>
+
+</section> 
+
+<section title="Period-Of-Validity AVP"> 
+
+<t>The Period-Of-Validity AVP (AVP code TBD) is of type Unsigned32, and is used to indicate the length of time, in seconds, the Overload-Metric is to be considered valid. The maximum value in this AVP is 5 minutes, which is also the default value. If this AVP is absent in a subsequent message then the indicated value is valid till the next overload report is received.</t>
+
+</section> 
+
+<section title="Overload AVP">
+
+<t>The Overload AVP (AVP code TBD) is of type Enumerated. Four values are defined: 
+
+<list style="hanging"> 
+
+<t hangText="NO_OVERLOAD                  0"> 
+      The Diameter server uses this value to indicate that it is currently not overload and 
+      that the Diameter client should not reject any request. 
+</t> 
+
+<t hangText="INCREASING_OVERLOAD          1"> 
+      The Diameter server uses this value to inform the client that overload has increased and that the Diameter client shall decrease the sending rate. 
+</t> 
+
+      
+<t hangText="DECREASING_OVERLOAD          2"> 
+      The Diameter server uses this value to inform the client that the overload situation has improved 
+      and that the Diameter client is allowed to increase the rate of Diameter requests.
+</t> 
+
+<t hangText="OVERLOADED                   3"> 
+      The Diameter server uses this value to inform the client that it is completely overloaded and cannot
+      further process any requests.</t> 
+</list> 
+</t>
+
+</section> 
+
+
+</section> 
+
+<section anchor="loadbalancing" title="Information Elements for Loadbalancing"> 
+
+<section title="Load-Info AVP">
+
+<t>The Load-Info AVP (AVP Code TBD) is of type Grouped, and is used as a top-level container for information about the load status.</t>
+
+<t>The grouped data field of the Load-Info AVP has the following grammar:</t>
+
+<t>
+<figure>
+            <artwork>
+              <![CDATA[
+           < Load-Info > ::= < AVP Header: TBD >
+                             { Load }
+                           * [ AVP ]
+]]>
+</artwork>
+</figure>
+</t>
+
+</section> 
+
+
+<section title="Load AVP">
+
+<t>The Load AVP (AVP code TBD) is of type Unsigned32. The indicated value MUST be between 0 and 10. The semantics of the values are as follows: a Diameter server indicating a value of zero (0) notifies a load balancer that there is no overload condition. A Diameter server indicating a value of ten (10) indicates that it is experiencing extreme overload and cannot process any further requests. The remaining other values express situations between these two extremes. Note that there is no requirement that the Diameter server reports values in incremental steps; a Diameter server may, for whatever reason, notice that it needs to report a value of 10 even though it had previously reported a value of 0. A load balancer receiving values other than 0 MUST reduce the sending rate of Diameter requests to the Diameter server correspondingly.</t>
+
+<t>Note that the load value does not refer to any specific resource, such as CPU utilization, database interconnection, etc. The value is computed locally by the Diameter server based on an algorithm that is not further specified. Implementers should, however, ensure that the resources that matter for the specific Diameter deployment are taken into account in defining the algorithm. The lack of a standardized algorithm does, however, not impact interoperability. A loadbalancer provided by vendor A and Diameter servers provided by vendor B will interoperate because they make decisions based on these artificial values. For example, a network operator may decide to configure the load balancer in such a way that the second server is only used once the load value of the first server reaches a certain threshold.</t> 
+
+<t>The lifetime of the load information is bound to the value communicated in the Sending-Rate AVP during the capability exchange.</t>
+
+</section> 
+
+</section> 
+</section> 
+
+<!-- ******************************************************* --> 
+      
+      
+    <section title='Security Considerations' anchor='Security'>
+  <t>This document describes architectural principles and an information model. Security considerations are described in the documents that utilize these AVPs.</t> 
+    </section>
+
+<!-- ******************************************************* --> 
+      
+      
+    <section title='IANA Considerations' anchor='IANA'>
+	 <t>TBD: Create registry for supported feature AVP and register AVPs defined in the document.</t>
+    </section>
+
+<!-- ******************************************************* --> 
+      
+    <section title='Acknowledgments'>
+	     <t>Add your name here. </t>
+    </section>
+
+<!-- ******************************************************* --> 
+      
+  </middle>
+
+  <back>
+
+    <references title='Normative References'>
+   &RFC2119; 
+   &RFC6733; 
+  
+    </references>
+
+    <references title='Informative References'>
+    &I-D.ietf-dime-overload-reqs; 
+    </references>
+  </back>
+
+</rfc>
