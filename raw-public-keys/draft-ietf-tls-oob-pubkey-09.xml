@@ -1,0 +1,773 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc strict="no" ?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="4"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes" ?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+
+<rfc category="std" docName="draft-ietf-tls-oob-pubkey-09.txt" ipr="trust200902">
+
+  <front>
+    <!-- The abbreviated title is used in the page header - it is only necessary if the 
+         full title is longer than 39 characters -->
+
+    <title abbrev="TLS OOB Public Key Validation">Out-of-Band Public Key Validation for Transport Layer Security (TLS)</title>
+
+    <!-- add 'role="editor"' below for the editors if appropriate -->
+
+    <author role="editor" fullname="Paul Wouters" initials="P." surname="Wouters">
+      <organization>Red Hat</organization>
+      <address>
+        <postal>
+          <street/>
+          <city/>
+          <region/>
+          <code/>
+          <country/>
+        </postal>
+        <email>paul@nohats.ca</email>
+      </address>
+    </author>
+
+
+        <author role="editor"  initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+            <organization>Nokia Siemens Networks</organization>
+            <address>
+                <postal>
+                    <street>Linnoitustie 6</street>
+                    <city>Espoo</city>
+                    <code>02600</code>
+                    <country>Finland</country>
+                </postal>
+                <phone>+358 (50) 4871445</phone>
+                <email>Hannes.Tschofenig@gmx.net</email>
+                <uri>http://www.tschofenig.priv.at</uri>
+            </address>
+        </author>
+
+
+    <author fullname="John Gilmore" initials="J." surname="Gilmore">
+      <organization />
+      <address>
+        <postal>
+          <street>PO Box 170608</street>
+          <city>San Francisco</city>
+          <region>California</region>
+          <code>94117</code>
+          <country>USA</country>
+        </postal>
+        <phone>+1 415 221 6524</phone>
+        <email>gnu@toad.com</email>
+        <uri>https://www.toad.com/</uri>
+      </address>
+    </author>
+
+    <author fullname="Samuel Weiler" initials="S." surname="Weiler">
+      <organization>SPARTA, Inc.</organization>
+      <address>
+        <postal>
+          <street>7110 Samuel Morse Drive</street>
+          <city>Columbia, Maryland</city>
+          <code>21046</code>
+          <country>US</country>
+        </postal>
+        <email>weiler@tislabs.com</email>
+      </address>
+    </author>
+
+ <author initials="T." surname="Kivinen" fullname="Tero Kivinen">
+            <organization>AuthenTec</organization>
+            <address>
+                <postal>
+                    <street>Eerikinkatu 28</street>
+                    <city>HELSINKI</city>
+                    <code>FI-00180</code>
+                    <country>FI</country>
+                </postal>
+                <email>kivinen@iki.fi</email>
+            </address>
+        </author>
+    <date year="2013" />
+
+
+    <!-- If the month and year are both specified and are the current ones, xml2rfc will fill 
+         in the current day for you. If only the current year is specified, xml2rfc will fill 
+         in the current day and month for you. If the year is not the current one, it is 
+         to specify at least a month (xml2rfc assumes day="1" if not specified for the 
+         purpose of calculating the expiry date).  With drafts it is normally sufficient to 
+         specify just the year. -->
+
+    <!-- Meta-data Declarations -->
+
+    <area>Security</area>
+
+    <workgroup>TLS</workgroup>
+
+    <!-- WG name at the upperleft corner of the doc,
+         IETF is fine for individual submissions.  
+         If this element is not present, the default is "Network Working Group",
+         which is used by the RFC Editor as a nod to the history of the IETF. -->
+
+    <keyword>TLS</keyword>
+    <keyword>DNSSEC</keyword>
+    <keyword>DANE</keyword>
+    <keyword>Raw Public Key</keyword>
+
+    <!-- Keywords will be incorporated into HTML output
+         files in a meta tag but they have no effect on text or nroff
+         output. If you submit your draft to the RFC Editor, the
+         keywords will be used for the search engine. -->
+
+    <abstract>
+      <t> This document specifies a new certificate type and two TLS extensions,
+ one for the client and one for the server, for exchanging raw
+ public keys in Transport Layer Security (TLS) and Datagram Transport
+ Layer Security (DTLS) for use with out-of-band public key validation.</t>
+    </abstract>
+  </front>
+
+   <middle>
+    <section anchor="into" title="Introduction">
+       <t> Traditionally, TLS client and server public keys are obtained in PKIX containers
+          in-band using the TLS handshake and validated using trust anchors
+          based on a  <xref target='PKIX'/> certification authority (CA). This
+          method can add a complicated trust relationship that is difficult
+          to validate. Examples of such complexity can be seen in
+          <xref target='Defeating-SSL'/>.</t>
+
+
+ <t>Alternative methods are available that allow a TLS clients/servers
+ to obtain the TLS servers/client public key:
+
+   <list style="symbols">
+          <t>TLS clients can obtain the TLS server public key from a
+      DNSSEC secured resource records using DANE <xref target="RFC6698"/>.</t>
+
+
+   <t>The TLS client or server public key is obtained from a
+      <xref target='PKIX'/> certificate chain from an Lightweight Directory
+      Access Protocol (LDAP) <xref target="LDAP"/> server or web page.</t>
+
+   <t>The TLS client and server public key is provisioned into
+      the operating system firmware image, and updated via
+      software updates. For example:
+      <vspace blankLines="1"/>
+      Some smart objects use the UDP-based Constrained
+        Application Protocol (CoAP) <xref target="I-D.ietf-core-coap"/> to
+        interact with a Web server to upload sensor data at
+        a regular intervals, such as temperature readings.
+        CoAP <xref target="I-D.ietf-core-coap"/> can utilize DTLS for securing
+        the client-to-server communication.  As part of the
+        manufacturing process, the embedded device may be
+        configured with the address and the public key of
+        a dedicated CoAP server, as well as a public key for
+        the client itself.</t>
+   </list>
+       </t>
+	   
+<t>The mechanism defined herein only provides authentication when
+  an out-of-band mechanism is also used to bind the public key
+  to the entity presenting the key.</t>
+
+	   <t>This document registers a new value to the IANA certificate
+ types registry for the support of raw public keys.  It also
+ defines two new TLS extensions, "client_certificate_type" and
+ "server_certificate_type".</t>
+ 
+      </section>
+	  
+      <section title="Terminology" anchor="terminology">
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+        document are to be interpreted as described in <xref target="RFC2119">RFC 2119</xref>.</t>
+      </section>
+
+
+    <section title="New TLS Extension">
+  <t>This section describes the changes to the TLS handshake message contents when raw public keys are to be used.
+<xref target="flow"/> illustrates the exchange of messages as described in the sub-sections below. The client and the server exchange make use of two new TLS extensions, namely 'client_certificate_type' and 'server_certificate_type', and an already available IANA TLS Certificate Type registry <xref target="TLS-Certificate-Types-Registry"/> to indicate their ability and desire to exchange raw public keys. These raw public keys, in the form of a SubjectPublicKeyInfo structure, are then carried inside the Certificate payload. The Certificate and the SubjectPublicKeyInfo structure is shown in <xref target="Certificate"/>.
+</t>   
+   
+<t>
+<figure anchor="Certificate" title="TLS Certificate Structure.">
+<artwork>
+<![CDATA[    
+opaque ASN.1Cert<1..2^24-1>;
+
+struct {
+ 	select(certificate_type){
+        
+		// certificate type defined in this document.
+    	case RawPublicKey:      		
+          opaque ASN.1_subjectPublicKeyInfo<1..2^24-1>;
+		
+		// X.509 certificate defined in RFC 5246
+        case X.509:
+		  ASN.1Cert certificate_list<0..2^24-1>;	 
+		  
+		// Additional certificate type based on TLS 
+        // Certificate Type Registry		
+ 	};
+} Certificate;
+]]>
+</artwork>
+</figure>
+</t>
+     
+<t>The SubjectPublicKeyInfo structure is defined in Section 4.1 of RFC 5280 <xref target="PKIX"/> and does not only contain the raw keys, such as the public exponent and the modulus of an RSA public key, but also an algorithm identifier. The algorithm identifier can also include parameters.  The structure, as shown in <xref target="SubjectPublicKeyInfo"/>, is encoded in an DER encoded ASN.1 format <xref target="X.690"/> and therefore contains length information as well. An example is provided in <xref target="Example"/>.</t>
+
+<t>
+<figure anchor="SubjectPublicKeyInfo" title="SubjectPublicKeyInfo ASN.1 Structure.">
+<artwork>
+<![CDATA[    
+   SubjectPublicKeyInfo  ::=  SEQUENCE  {
+        algorithm               AlgorithmIdentifier,
+        subjectPublicKey        BIT STRING  }
+
+   AlgorithmIdentifier   ::=  SEQUENCE  {
+        algorithm               OBJECT IDENTIFIER,
+        parameters              ANY DEFINED BY algorithm OPTIONAL  }
+]]>
+</artwork>
+</figure>
+</t>
+
+  <t>The algorithm identifiers are Object Identifiers (OIDs). RFC 3279 <xref target="RFC3279"/> and <xref target="RFC5480"/> define the following OIDs shown in <xref target="alg-ids"/>.</t>
+  <t>
+<figure anchor="alg-ids" title="Example Algorithm Object Identifiers.">
+<artwork>
+<![CDATA[    
+Key Type               | Document                   | OID
+-----------------------+----------------------------+-------------------
+RSA                    | Section 2.3.1 of RFC 3279  | 1.2.840.113549.1.1
+.......................|............................|...................
+Digital Signature      |                            |
+Algorithm (DSS)        | Section 2.3.2 of RFC 3279  | 1.2.840.10040.4.1
+.......................|............................|...................
+Elliptic Curve         |                            |
+Digital Signature      |                            |
+Algorithm (ECDSA)      | Section 2.3.5 of RFC 5480  | 1.2.840.10045.2.1
+-----------------------+----------------------------+-------------------
+]]>
+</artwork>
+</figure>
+</t>
+
+  <t>The message exchange in <xref target="flow"/> shows the 'client_certificate_type' and 'server_certificate_type' extensions added to the client and server hello messages. 
+  
+<figure anchor="flow" title="Basic Raw Public Key TLS Exchange.">
+<artwork>
+<![CDATA[ 
+ client_hello, 
+ client_certificate_type
+ server_certificate_type   ->
+
+                           <-  server_hello,
+                               client_certificate_type,
+                               server_certificate_type,
+                               certificate,
+                               server_key_exchange,
+                               certificate_request,
+                               server_hello_done
+ certificate,
+ client_key_exchange,
+ certificate_verify,
+ change_cipher_spec,
+ finished                  ->
+
+                           <- change_cipher_spec,
+                              finished
+
+Application Data        <------->     Application Data
+]]>
+</artwork>
+</figure>
+</t>
+
+   <t>
+   
+   The semantic of the two extensions is defined as follows:
+   <list style="empty"> 
+
+   <t>The 'client_certificate_type' and 'server_certificate_type' sent in the client hello, may carry a list of supported certificate types, sorted by client preference. It is a list in the case where the client supports multiple certificate types.
+These extension MUST be omitted if the client only supports X.509 certificates. The 'client_certificate_type' sent in the client hello indicates the certificate types the client is able to provide to the server, when requested using a certificate_request message. The 'server_certificate_type' in the client hello indicates the type of certificates the client is able to process when provided by the server in a subsequent certificate payload. </t>
+
+   <t>The 'client_certificate_type' returned in the server hello indicates the certificate type found in the attached certificate payload. Only a single value is permitted. The 'server_certificate_type' in the server hello indicates the type of certificates the client is requested to provide in a subsequent certificate payload. The value conveyed in the 'server_certificate_type' MUST be selected from one of the values provided in the 'server_certificate_type' sent in the client hello. If the server does not send a certificate_request payload or none of the certificates supported by the client (as indicated in the 'server_certificate_type' in the client hello) match the server-supported certificate types the 'server_certificate_type' payload sent in the server hello is omitted.</t>
+   </list> 
+   </t> 
+   
+   <t>The
+   "extension_data" field of this extension contains the ClientCertTypeExtension or the ServerCertTypeExtension
+   structure, as shown in <xref target="types"/>. The CertificateType structure is an enum with with values from TLS Certificate Type Registry. </t>
+
+<!-- 
+
+// Enum with values from TLS Certificate Type Registry
+enum { 
+   	  X.509 (0), 
+   	  OpenPGP (1),
+   	  RawPublicKey (TBD),
+      (255)
+} CertificateType;
+
+--> 
+   
+<t>
+<figure anchor="types" title="CertTypeExtension Structure.">
+<artwork>
+<![CDATA[
+struct {
+        select(ClientOrServerExtension)
+            case client:
+              CertificateType client_certificate_types<1..2^8-1>;
+            case server:
+              CertificateType client_certificate_type;
+        }
+} ClientCertTypeExtension;
+
+struct {
+        select(ClientOrServerExtension)
+            case client:
+              CertificateType server_certificate_types<1..2^8-1>;
+            case server:
+              CertificateType server_certificate_type;
+        }
+} ServerCertTypeExtension;   
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>No new cipher suites are required to use raw public keys.  All
+   existing cipher suites that support a key exchange method compatible
+   with the defined extension can be used.</t>
+
+</section>
+
+   <section title="TLS Handshake Extension">
+   
+  <section title="Client Hello">
+
+   <t>
+   In order to indicate the support of out-of-band raw public keys,
+   clients MUST include the 'client_certificate_type' and 'server_certificate_type' extensions in an extended
+   client hello message. The hello extension mechanism is described in TLS 1.2 <xref target="RFC5246"/>.
+   </t>
+
+
+</section>
+
+<section title="Server Hello">
+
+<t>If the server receives a client hello that contains the 'client_certificate_type' and 'server_certificate_type' 
+   extensions and chooses a cipher suite then three outcomes are possible:
+   
+   <list style="numbers"> 
+   <t>The server does not support the extension defined in this document. In this case the server returns the server hello 
+   without the extensions defined in this document.</t>
+   <t>The server supports the extension defined in this document and has at least one certificate type in common with the client. 
+   In this case it returns the 'server_certificate_type' and indicates the selected certificate type value. 
+   </t> 
+   <t>The server supports the extension defined in this document but does not have a certificate type in common with the client. In this case the server terminate the session with a
+   fatal alert of type "unsupported_certificate".</t>
+   </list> 
+   </t> 
+   
+<t>If the TLS server also requests a certificate from the client (via the certificate_request) it MUST include the 'client_certificate_type' extension with a value chosen from the list of client-supported certificates types (as provided 
+in the 'client_certificate_type' of the client hello). 
+</t>
+
+<t>If the client hello indicates support of raw public keys in the
+'client_certificate_type' extension and the
+server chooses to use raw public keys then the TLS server
+MUST place the SubjectPublicKeyInfo structure into the Certificate
+payload.</t>
+
+</section>
+
+<section title="Certificate Request">
+
+<t>
+   The semantics of this message remain the same as in the TLS
+   specification.
+</t>
+
+</section>
+
+<section title="Other Handshake Messages">
+
+<t>All the other handshake messages are identical to the TLS
+   specification.</t>
+
+</section>
+
+<section title="Client authentication">
+
+<t>Client authentication by the TLS server is supported only through
+   authentication of the received client SubjectPublicKeyInfo via an
+   out-of-band method.</t>
+</section>
+
+ </section>
+
+
+	  <!-- ******************************************************************************************** -->
+
+
+<section title="Examples">
+
+<t><xref target="flow1"/>, <xref target="flow2"/>, and <xref target="flow3"/> illustrate example exchanges. </t> 
+   
+<!--  <t> 
+    The "RawPublicKey" value
+   in the 'raw-public-key' extension allows the client to provide an 
+   indication to the server that it supports the raw public key extension 
+   in this document. The server responds with a certificate payload that 
+   contains the raw public key as defined in this document. 
+   Note that the certificate payloads only 
+   contain the SubjectPublicKeyInfo structure instead of the entire
+   certificate. 
+  </t>
+  
+  --> 
+  
+  <t>The first example shows an exchange where the TLS client indicates its ability to 
+  receive and validate raw public keys from the server. In our example the client is quite restricted since it is unable to process other certificate types sent by the server. It also does not have credentials (at the TLS layer) it could send. The 'client_certificate_type' extension indicates this in [1]. When the TLS server receives the client hello it 
+  processes the 'client_certificate_type' extension. Since it also has a raw public key it indicates 
+  in [2] that it had chosen to place the SubjectPublicKeyInfo structure into the Certificate 
+  payload [3]. The client uses this raw public key in the TLS handshake and an out-of-band technique, 
+  such as DANE, to verify its validity.</t>
+  
+  <t>
+<figure anchor="flow1" title="Example with Raw Public Key provided by the TLS Server">
+<artwork>
+<![CDATA[ 
+client_hello,
+server_certificate_type=(RawPublicKey) -> // [1]
+
+                         <-  server_hello,
+                             server_certificate_type=(RawPublicKey), // [2]
+                             certificate, // [3]
+                             server_key_exchange,
+                             server_hello_done
+
+client_key_exchange,
+change_cipher_spec,
+finished                  ->
+
+                         <- change_cipher_spec,
+                            finished
+
+Application Data        <------->     Application Data
+]]>
+</artwork>
+</figure>
+</t>
+
+ <t>In our second example the TLS client as well as the TLS server use raw public keys. This is a use case envisioned for smart object networking. The TLS client in this case is an embedded device that is configured with a raw public key for use with TLS and is also able to process raw public keys sent by the server. Therefore, it indicates these capabilities in [1]. As in the previously shown example the server fulfills the client's request, indicates this via the "RawPublicKey" value in the server_certificate_type payload, and provides a raw public key into the Certificate payload back to the client (see [3]). The TLS server, however, demands client authentication and therefore a certificate_request is added [4]. The certificate_type payload in [2] indicates that the TLS server accepts raw public keys. The TLS client, who has a raw public key pre-provisioned, 
+returns it in the Certificate payload [5] to the server.</t> 
+<t>
+<figure anchor="flow2" title="Example with Raw Public Key provided by the TLS Server and the Client">
+<artwork>
+<![CDATA[ 
+client_hello,
+client_certificate_type=(RawPublicKey) // [1]
+server_certificate_type=(RawPublicKey) // [1]
+                         -> 
+                         <-  server_hello,
+                             server_certificate_type=(RawPublicKey)//[2]
+                             certificate, // [3]
+                             client_certificate_type=(RawPublicKey)//[4]
+                             certificate_request, // [4]
+                             server_key_exchange,
+                             server_hello_done
+
+certificate, // [5]
+client_key_exchange,
+change_cipher_spec,
+finished                  ->
+
+                         <- change_cipher_spec,
+                            finished
+
+Application Data        <------->     Application Data
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>In our last example we illustrate a combination of raw public key and X.509 usage. The client uses a raw public key 
+for client authentication but the server provides an X.509 certificate. This exchange starts with the client indicating its ability to process X.509 certificates provided by the server, and the ability to send raw public keys (see [1]). The server provides the X.509 certificate in [3] with the indication present in [2]. For client authentication the server indicates in [4] that it selected the raw public key format and requests a certificate from the client in [5]. The TLS client provides a raw public key in [6] after receiving and processing the TLS server hello message.</t>
+
+ <t>
+<figure anchor="flow3" title="Hybrid Certificate Example">
+<artwork>
+<![CDATA[ 
+client_hello,
+server_certificate_type=(X.509)
+client_certificate_type=(RawPublicKey) // [1] 
+                         ->
+                         <-  server_hello,
+                             server_certificate_type=(X.509)//[2]
+                             certificate, // [3]
+                             client_certificate_type=(RawPublicKey)//[4]
+                             certificate_request, // [5]
+                             server_key_exchange,
+                             server_hello_done
+certificate, // [6]
+client_key_exchange,
+change_cipher_spec,
+finished                  ->
+
+                          <- change_cipher_spec,
+                             finished
+
+Application Data        <------->     Application Data
+]]>
+</artwork>
+</figure>
+</t>
+
+
+</section> 
+
+
+
+    <section title="Security Considerations" anchor="security">
+
+	<t>The transmission of raw public keys, as described in this document, 
+	provides benefits by lowering the over-the-air transmission overhead since 
+	raw public keys are quite naturally smaller than an entire certificate. 
+	There are also advantages from a code size point of view for parsing and
+    processing these keys. The cryptographic procedures for associating the 
+	public key with the possession of a private key also follows standard 
+	procedures.</t>
+
+    <t>The main security challenge is, however, how to associate the public 
+    key with a specific entity. Without a secure binding between identity and key the protocol will be vulnerable to masquerade and man-in-the-middle attacks. This document assumes that such 
+	binding can be made out-of-band and we list a few examples in <xref target="into"/>. 
+	DANE <xref target="RFC6698"/> offers one such approach. In order to address these vulnerabilities, specifications that make use of the extension MUST specify how the identity and public key are bound.
+	
+	If public keys are obtained using DANE, these public keys are authenticated via DNSSEC.
+	Pre-configured keys is another out of band method for authenticating raw public keys.
+	 While pre-configured keys are not suitable for 
+	a generic Web-based e-commerce environment such keys are a reasonable approach
+	for many smart object deployments where there is a close relationship between 
+	the software running on the device and the server-side communication endpoint. 
+	Regardless of the chosen mechanism for out-of-band public key validation an 
+	assessment of the most suitable approach has to be made prior to the start of a 
+	deployment to ensure the security of the system.</t>
+	
+    </section>
+
+    <section anchor="IANA" title="IANA Considerations">
+      <t>IANA is asked to register a new value in the "TLS Certificate Types"
+registry of Transport Layer Security (TLS) Extensions <xref target="TLS-Certificate-Types-Registry"/>,
+as follows:
+<figure>
+<artwork>
+<![CDATA[ 
+Value: 2
+Description: Raw Public Key
+Reference: [[THIS RFC]]
+]]>
+</artwork>
+</figure>
+</t>
+
+     <t>
+   This document asks IANA to allocate two new TLS extensions, "client_certificate_type" and "server_certificate_type", from the TLS ExtensionType registry defined in <xref target="RFC5246"/>.
+   These extensions are used in both
+   the client hello message and the server hello message.  The new
+   extension type is used for certificate type negotiation. The values carried in these extensions 
+   are taken from the TLS Certificate Types registry <xref target="TLS-Certificate-Types-Registry"/>. </t>
+    </section>
+
+  <section title="Acknowledgements" anchor="acknowledgements">
+      <t>The feedback from the TLS working group meeting at IETF#81 has 
+	     substantially shaped the document and we would like to thank the 
+	     meeting participants for their input.  The support for hashes of 
+	     public keys has been moved to <xref target="I-D.ietf-tls-cached-info"/> after the discussions at the IETF#82 
+	     meeting.</t>
+	     
+      <t>We would like to thank the following persons for their review comments: Martin Rex, Bill Frantz, Zach Shelby, 
+	     Carsten Bormann, Cullen Jennings, Rene Struik, Alper Yegin, Jim Schaad, Barry Leiba, Paul Hoffman, Robert Cragie, Nikos Mavrogiannopoulos, Phil Hunt, John Bradley, Klaus Hartke, Stefan Jucker, Kovatsch Matthias, Daniel Kahn Gillmor, Peter Sylvester, and James Manger. Nikos Mavrogiannopoulos contributed the design for re-using the certificate type registry. Barry Leiba contributed guidance for the IANA consideration text. Stefan Jucker, Kovatsch Matthias, and Klaus Hartke provided implementation feedback regarding the SubjectPublicKeyInfo structure.</t>
+	  <t>We would like to thank our TLS working group chairs, Eric Rescorla and Joe Salowey, for their guidance and support. Finally, we would like to thank Sean Turner, who is the responsible security area director for this work for his review comments and suggestions.</t>
+      </section>
+
+  </middle>
+
+  <!--  *****BACK MATTER ***** -->
+
+  <back>
+    <!-- References split into informative and normative -->
+
+    <!-- There are 2 ways to insert reference entries from the citation libraries:
+     1. define an ENTITY at the top, and use "ampersand character"RFC2629; here (as shown)
+     2. simply use a PI "less than character"?rfc include="reference.RFC.2119.xml"?> here
+        (for I-Ds: include="reference.I-D.narten-iana-considerations-rfc2434bis.xml")
+
+     Both are cited textually in the same manner: by using xref elements.
+     If you use the PI option, xml2rfc will, by default, try to find included files in the same
+     directory as the including file. You can also define the XML_LIBRARY environment variable
+     with a value containing a set of directories to search.  These can be either in the local
+     filing system or remote ones accessed by http (http://domain/dir/... ).-->
+
+<references title="Normative References">
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml"?>
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml"?>
+
+  <reference anchor='TLS-Certificate-Types-Registry' target='http://www.iana.org/assignments/tls-extensiontype-values#tls-extensiontype-values-2'>
+       <front>
+       <title>TLS Certificate Types Registry</title>
+       <author initials='' surname='' fullname='IANA'>
+       <organization /></author>
+       <date year='2013' month='February' />
+       </front>
+       <format type='HTML' target='http://www.iana.org/assignments/tls-extensiontype-values#tls-extensiontype-values-2' />
+    </reference>
+
+   <reference anchor='PKIX'>
+      <front>
+      <title>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</title>
+      <author initials='D.' surname='Cooper' fullname='D. Cooper'>
+      <organization /></author>
+      <author initials='S.' surname='Santesson' fullname='S. Santesson'>
+      <organization /></author>
+      <author initials='S.' surname='Farrell' fullname='S. Farrell'>
+      <organization /></author>
+      <author initials='S.' surname='Boeyen' fullname='S. Boeyen'>
+      <organization /></author>
+      <author initials='R.' surname='Housley' fullname='R. Housley'>
+      <organization /></author>
+      <author initials='W.' surname='Polk' fullname='W. Polk'>
+      <organization /></author>
+      <date year='2008' month='May' />
+      </front>
+      <seriesInfo name='RFC' value='5280' />
+      <format type='TXT' octets='352580' target='ftp://ftp.isi.edu/in-notes/rfc5280.txt' />
+   </reference>
+
+  <reference anchor='X.690'>
+      <front>
+      <title>Information technology - ASN.1 encoding rules:
+>              Specification of Basic Encoding Rules (BER), Canonical
+>              Encoding Rules (CER) and Distinguished Encoding Rules
+>              (DER).</title>
+      <author initials='' surname='' fullname='ITU-T Recommendation X.690 (2002) | ISO/IEC 8825-1:2002'>
+      <organization /></author>
+      <date year='2002' />
+      </front>
+      <seriesInfo name='RFC' value='5280' />
+<!--      <format type='TXT' octets='352580' target='ftp://ftp.isi.edu/in-notes/rfc5280.txt' /> --> 
+   </reference>
+   
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.3279.xml"?> 
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.5480.xml"?> 
+
+</references>
+
+<references title="Informative References">
+<?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.6698.xml"?>  
+<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-core-coap.xml"?>  
+<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-cached-info.xml"?>  
+
+
+   <reference anchor='LDAP'>
+      <front>
+      <title>Lightweight Directory Access Protocol (LDAP): The Protocol</title>
+      <author initials='J.' surname='Sermersheim' fullname='J. Sermersheim'>
+      <organization /></author>
+      <date year='2006' month='June' />      
+      </front>
+      <seriesInfo name='RFC' value='4511' />
+      <format type='TXT' octets='150116' target='ftp://ftp.isi.edu/in-notes/rfc4511.txt' />
+   </reference>
+   
+    <reference anchor='Defeating-SSL' target='http://www.blackhat.com/presentations/bh-dc-09/Marlinspike/BlackHat-DC-09-Marlinspike-Defeating-SSL.pdf'>
+       <front>
+       <title>New Tricks for Defeating SSL in Practice</title>
+       <author initials='M.' surname='Marlinspike' fullname='Moxie Marlinspike'>
+       <organization /></author>
+       <date year='2009' month='February' />
+       </front>
+       <format type='PDF' target='http://www.blackhat.com/presentations/bh-dc-09/Marlinspike/BlackHat-DC-09-Marlinspike-Defeating-SSL.pdf' />
+    </reference>
+
+    <reference anchor='ASN.1-Dump' target='http://www.cs.auckland.ac.nz/~pgut001/'>
+       <front>
+       <title>ASN.1 Object Dump Program</title>
+       <author initials='P.' surname='Gutmann' fullname='Peter Gutmann'>
+       <organization /></author>
+       <date year='2013' month='February' />
+       </front>
+       <format type='HTML' target='http://www.cs.auckland.ac.nz/~pgut001/' />
+    </reference>
+    
+    
+    
+</references>
+<section anchor="Example" title="Example Encoding"> 
+
+<t>For example, the following hex sequence describes a SubjectPublicKeyInfo structure inside the certificate payload:
+<figure anchor="example1" title="Example SubjectPublicKeyInfo Structure Byte Sequence.">
+<artwork>
+<![CDATA[
+       0     1     2     3     4     5     6     7     8     9
+---+------+-----+-----+-----+-----+-----+-----+-----+-----+-----
+1  | 0x30, 0x81, 0x9f, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 
+2  | 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x81, 
+3  | 0x8d, 0x00, 0x30, 0x81, 0x89, 0x02, 0x81, 0x81, 0x00, 0xcd, 
+4  | 0xfd, 0x89, 0x48, 0xbe, 0x36, 0xb9, 0x95, 0x76, 0xd4, 0x13, 
+5  | 0x30, 0x0e, 0xbf, 0xb2, 0xed, 0x67, 0x0a, 0xc0, 0x16, 0x3f, 
+6  | 0x51, 0x09, 0x9d, 0x29, 0x2f, 0xb2, 0x6d, 0x3f, 0x3e, 0x6c, 
+7  | 0x2f, 0x90, 0x80, 0xa1, 0x71, 0xdf, 0xbe, 0x38, 0xc5, 0xcb, 
+8  | 0xa9, 0x9a, 0x40, 0x14, 0x90, 0x0a, 0xf9, 0xb7, 0x07, 0x0b, 
+9  | 0xe1, 0xda, 0xe7, 0x09, 0xbf, 0x0d, 0x57, 0x41, 0x86, 0x60, 
+10 | 0xa1, 0xc1, 0x27, 0x91, 0x5b, 0x0a, 0x98, 0x46, 0x1b, 0xf6, 
+11 | 0xa2, 0x84, 0xf8, 0x65, 0xc7, 0xce, 0x2d, 0x96, 0x17, 0xaa, 
+12 | 0x91, 0xf8, 0x61, 0x04, 0x50, 0x70, 0xeb, 0xb4, 0x43, 0xb7, 
+13 | 0xdc, 0x9a, 0xcc, 0x31, 0x01, 0x14, 0xd4, 0xcd, 0xcc, 0xc2, 
+14 | 0x37, 0x6d, 0x69, 0x82, 0xd6, 0xc6, 0xc4, 0xbe, 0xf2, 0x34, 
+15 | 0xa5, 0xc9, 0xa6, 0x19, 0x53, 0x32, 0x7a, 0x86, 0x0e, 0x91, 
+16 | 0x82, 0x0f, 0xa1, 0x42, 0x54, 0xaa, 0x01, 0x02, 0x03, 0x01, 
+17 | 0x00, 0x01
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>The decoded byte-sequence shown in <xref target="example1"/> (for example using Peter's ASN.1 decoder <xref target="ASN.1-Dump"/>) illustrates the structure, as shown in <xref target="example2"/>.
+
+<figure anchor="example2" title="Decoding of Example SubjectPublicKeyInfo Structure.">
+<artwork>
+<![CDATA[ 
+Offset  Length   Description
+-------------------------------------------------------------------
+   0     3+159:   SEQUENCE {
+   3      2+13:     SEQUENCE {
+   5       2+9:      OBJECT IDENTIFIER Value (1 2 840 113549 1 1 1)
+              :             PKCS #1, rsaEncryption
+  16       2+0:      NULL
+              :      }
+  18     3+141:    BIT STRING, encapsulates {
+  22     3+137:      SEQUENCE {
+  25     3+129:        INTEGER Value (1024 bit)
+ 157       2+3:        INTEGER Value (65537)
+              :        }
+              :      }
+              :    }              
+]]>
+</artwork>
+</figure>
+</t>
+
+</section> 
+
+  </back>
+</rfc>
