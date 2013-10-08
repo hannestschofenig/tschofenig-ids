@@ -1,0 +1,504 @@
+
+
+
+
+Network Working Group                                      H. Tschofenig
+Internet-Draft                                                R. Housley
+Intended status: Informational                                  L. Lynch
+Expires: April 11, 2014                                    K. O'Donoghue
+                                                                 E. Lear
+                                                    IAB Security Program
+                                                        October 08, 2013
+
+
+               Evolving the Web Public Key Infrastructure
+              draft-tschofenig-iab-webpki-evolution-00.txt
+
+Abstract
+
+   The problems with the WebPKI have received the attention by the
+   Internet security community when DigiNotar, a Dutch certificate
+   authority, had a security breach in 2011 and in the same year a
+   Comodo affiliate was compromised.  Both cases lead to fraudulent
+   issue of certificates and raise questions regarding the strength of
+   the WebPKI used by so many applications.
+
+   Almost 2 years have passed since these incidents and various
+   standardization activities have happened in the meanwhile offering
+   new technical solutions to make the public key infrastructure more
+   resilient.
+
+   The important question, however, is which of the technical solutions
+   will get widespread deployment?  In this document we compare the
+   different technical solutions in an attempt to engage the impacted
+   stakeholders to trigger deployment actions to improve the status quo.
+   This document does not include any recommendations what techniques to
+   use.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 1]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+   This Internet-Draft will expire on April 11, 2014.
+
+Copyright Notice
+
+   Copyright (c) 2013 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   3.  Technical Solutions . . . . . . . . . . . . . . . . . . . . .   4
+     3.1.  DNS-Based Authentication of Named Entities (DANE) . . . .   4
+     3.2.  Certificate Transparency  . . . . . . . . . . . . . . . .   4
+     3.3.  Public Key Pinning for HTTP . . . . . . . . . . . . . . .   5
+     3.4.  Trust Assertions for Certificate Keys (TACK)  . . . . . .   6
+   4.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
+   5.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
+   6.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   7
+   7.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   7
+     7.1.  Normative References  . . . . . . . . . . . . . . . . . .   7
+     7.2.  Informative References  . . . . . . . . . . . . . . . . .   8
+
+1.  Introduction
+
+   High-profile data breaches and security incidents on the Web are
+   gaining increasing attention from the public, the press, and
+   governments.  A few examples may illustrate the problems: DigiNotar,
+   a Dutch certificate authority, had a security breach [DigiNotar] and
+   in the same year a Comodo affiliate was compromised [Comodo].  Both
+   cases lead to fraudulent issue of certificates.
+
+   Public Key Infrastructure (PKI) makes use of a trusted third party,
+   the certificate authority (CA), to bind the subject name to a public
+   key.  A CA may, however, get compromised despite the best security
+   practices and operational procedures.  The main problem, however, is
+   that any CA can issue a certificate for any domain name.  One
+   compromised CA is therefore able to impact the security of the entire
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 2]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+   public key infrastructure.  In the case of DigiNotar the attacker was
+   able to issue certificates for Google services even though Google
+   never made use of services from DigiNotar and might not have ever
+   heard of that CA before.
+
+   Furthermore, over time browsers and applications increased the number
+   of trust anchors that are shipped pre-installed.  Depending on
+   software the number of trust anchors may exceed 600, as reported by
+   the Electronic Frontier Foundation (EFF) in their SSL Observatory
+   study [SSL-Observatory].  While the larger number provides choice for
+   relying parties regarding the CA they can select for obtaining a
+   certificate there is also a downside: with today's WebPKI set-up it
+   is sufficient to compromise a single CA to impact the security for
+   all relying parties.  Many users and researchers were surprised about
+   the large number of trust anchors installed in normal operating
+   systems and browsers without having an easy way to adjust that list
+   to their preferences.
+
+   These developments have led to a number of standardization activities
+   in response to these developments.  In this document we briefly
+   summarize the available technical solutions and include an assessment
+   about who needs to make changes, what type of benefits are provided,
+   and what dependencies exist.  The investigated solutions include DANE
+   [RFC6698], Certificate Transparency [RFC6962], Public Key Pinning
+   [I-D.ietf-websec-key-pinning], TACK [I-D.perrin-tls-tack], ... [what
+   else?  Perspectives, Sovereign Keys, Mecai, Convergence, DetecTor ].
+
+   While there are other challenges with security on the Web, such as
+   user interface problems with certificate warnings, insecure use of
+   cookies, cross-site scripting attacks, injection attacks, etc., this
+   document focuses on improving the public key infrastructure only.  It
+   is also worth reminding ourselves that the Web public key
+   infrastructure is not only used for Web applications but also for a
+   range of other applications, including smart phone apps.
+   Furthermore, other public key infrastructures that operate under a
+   different regime with different policies may suffer from similar
+   problems.  Consequently, the solution techniques discussed in this
+   document are also useful for these other PKI deployments.
+
+   The main purpose of this document is to provide an overview of the
+   technical solutions.  This description will help us to develop a
+   roadmap for the deployment of the best solutions to improve the
+   overall security of the public key infrastructure.
+
+
+
+
+
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 3]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+   Final note: There are also process solutions, such as stricter audits
+   of CAs with the aim to improve operational practices, and these are
+   not described in this document.  These measures will be useful in
+   addition to the technical solutions described in this document.
+   Alone they will, however, not address the underlying problem.
+
+2.  Terminology
+
+   This document uses the following terms from from RFC 3280 [RFC3280]:
+
+   end entity:  user of PKI certificates and/or end user system that is
+      the subject of a certificate.
+
+   CA:  certification authority
+
+3.  Technical Solutions
+
+3.1.  DNS-Based Authentication of Named Entities (DANE)
+
+   DANE [RFC6698] offers the option to use the DNS infrastructure to
+   store certificates.  DANE is envisioned as a preferable basis for
+   binding public keys to DNS names, because the entities that vouch for
+   the binding of public key data to DNS names are the same entities
+   responsible for managing the DNS names in question.
+
+   Distributing certificates via the DNS does, however, require DNSSEC.
+   With the help of DNSSEC [RFC4033][RFC4034][RFC4035] this offers an
+   opportunity to eliminate off-line processes for validation of the
+   subject name, which today often requires sending a mail to the
+   administrator of that domain.  This relationship can be easily
+   demonstrated by having the zone administrator for the subject domain
+   post the public key in the DNS and digitally sign the resulting zone.
+
+   A high-level description about the different options offered by DANE
+   can be found in [IETF-Journal-DANE] and the authoritative version can
+   be found in RFC 6698 [RFC6698].
+
+3.2.  Certificate Transparency
+
+   RFC 6962 [RFC6962] specifies Certificate Transparency, a protocol for
+   publicly logging the existence of certificates as they are issued or
+   observed, in a manner that allows anyone to audit certificate
+   authority (CA) activity and notice the issuance of suspect
+   certificates as well as to audit the certificate logs themselves.
+   The intent is that eventually clients would refuse to honor
+   certificates that do not appear in a log, effectively forcing CAs to
+   add all issued certificates to the logs.
+
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 4]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+   The publicly auditable, append-only logs of all issued certificates
+   does not prevent misissue but allows interested parties to detect
+   misissuance.
+
+   While various projects, including the EFF with their SSL Observatory
+   [SSL-Observatory], have scanned the Internet to collect all
+   certificates of TLS servers to complete (in presence of IPv6, which
+   makes scanning the Internet much more difficult and the deployment of
+   the TLS Server Name Indication [RFC6066]) the cooperation from all
+   CAs of from certificate owners is required.
+
+   The expected operation is as follows: CAs or certificate owners
+   contact logs and upload certificates, as they issue them.  In
+   response, they receive a Signed Certificate Timestamp (SCT).  The SCT
+   is the log's promise to incorporate the certificate in the Merkle
+   Tree, which is the data structure used by the log, within a fixed
+   amount of time.  Everyone can check the log for consistency.
+   Particularly website operators will have an interest to regularly
+   check the logs for misissuance of certificates.  TLS clients on the
+   other hand are not expected to directly communicate with logs to
+   avoid the communication overhead.  Instead, the TLS servers provides
+   the SCT along with the certificate within the TLS handshake.  TLS
+   clients reject certificates that do not have a valid SCT for the end
+   entity certificate.  Since there is ideally more than one log TLS
+   servers need to provide SCTs from multiple logs to the client.
+
+   This document has gone through a public review process, and has been
+   approved by the Internet Engineering Steering Group and published an
+   experimental RFC.
+
+3.3.  Public Key Pinning for HTTP
+
+   [I-D.ietf-websec-key-pinning] describes a solution for instruct user
+   agents (UAs) to remember ("pin") certificates (end entity
+   certificates or CA certs) for a given period of time.  During that
+   time, UAs will require that the host present a certificate chain
+   including at least one Subject Public Key Info structure whose
+   fingerprint matches one of the pinned fingerprints for that host.
+
+   While the specification provides a number of instructions for the
+   Website operator to indicate towards the UA the basic operation is
+   rather simple and assumes a trust-on-first-use policy.  To deal with
+   the change of certificates or other failure scenarios the concept of
+   a backup pin is utilized.  A Backup Pin is a fingerprint for the
+   public key of a secondary, not-yet-deployed key pair.  The operator
+   keeps the backup key pair offline, and sets a pin for it in the
+   Public-Key-Pins header.  Then, in case the operator loses control of
+   their primary private key, they can deploy the backup key pair.  An
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 5]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+   interesting feature of the specification is to report pin validation
+   failure.
+
+   When a pin validation failure occurs the expectation is that the user
+   is notified about the inconsistency (with optionally reporting taking
+   place in the background).
+
+   This document is the product of the IETF Web Security working group.
+
+3.4.  Trust Assertions for Certificate Keys (TACK)
+
+   Similarly to the key pinning solution described in Section 3.3 TACK
+   [I-D.perrin-tls-tack] also aims to enables a TLS server to support
+   "pinning" to a self-chosen signing key.  There are, however, a number
+   of substantial differences in the design despite the similarity of
+   the name.
+
+   TLS server operators create a so-called "TACK signing key" (TSK) and
+   sign their own keys used by TLS servers.  A TACK pin then associates
+   a hostname, a TSK, and various parameters (including pin creating
+   time, and lifetime of the pin).  A TLS server operator may change a
+   key for a server at any point in time since the TSK will be
+   unchanged.  The existing public key infrastructure is replaced by a
+   form of self-signed certificates.  Clients store the TACK pins in
+   their pin stores, which they may have obtained from different
+   sources.  Although the focus of the specification is to obtain the
+   TACK pins via a TLS extension from the server directly a mechanism to
+   obtain these TACK pins from a third party infrastructure is
+   envisioned, although outside the scope of the specification.  When
+   TACK pins are obtained from the TLS server directly they follow a
+   trust-on-first-use approach; a third party distribution mechanism may
+   have additional security properties.
+
+   For incremental deployment the TLS client uses the extension
+   mechanism of TLS to indicate support for the TACK extension by
+   including a new TLS extension type in the ClientHello message.  A TLS
+   server that does not support TACK will reply with an ordinary
+   certificate.  In case the TLS server supports the extension it
+   replies with the newly defined tack structure, which contains the
+   TACK pin for that server.
+
+   This specification is an individual submission to the IETF.
+
+   [Editor's Note: The document says in some places that the proposal
+   also works with certificates but I fail to see the details since the
+   TLS server key is signed with the TSK.]
+
+
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 6]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+4.  Security Considerations
+
+   This entire document is about security.
+
+5.  IANA Considerations
+
+   This document does not require actions by IANA.
+
+6.  Acknowledgements
+
+   We would like to thank all participants of the NIST workshop on
+   "Improving Trust in the Online Marketplace", April 10-11 2013, for
+   sharing their views with the community.  We would also like to thank
+   the authors of various solution proposals for their work.
+
+7.  References
+
+7.1.  Normative References
+
+   [I-D.ietf-websec-key-pinning]
+              Evans, C., Palmer, C., and R. Sleevi, "Public Key Pinning
+              Extension for HTTP", draft-ietf-websec-key-pinning-08
+              (work in progress), July 2013.
+
+   [I-D.perrin-tls-tack]
+              Marlinspike, M., "Trust Assertions for Certificate Keys",
+              draft-perrin-tls-tack-02 (work in progress), January 2013.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3280]  Housley, R., Polk, W., Ford, W., and D. Solo, "Internet
+              X.509 Public Key Infrastructure Certificate and
+              Certificate Revocation List (CRL) Profile", RFC 3280,
+              April 2002.
+
+   [RFC4033]  Arends, R., Austein, R., Larson, M., Massey, D., and S.
+              Rose, "DNS Security Introduction and Requirements", RFC
+              4033, March 2005.
+
+   [RFC4034]  Arends, R., Austein, R., Larson, M., Massey, D., and S.
+              Rose, "Resource Records for the DNS Security Extensions",
+              RFC 4034, March 2005.
+
+   [RFC4035]  Arends, R., Austein, R., Larson, M., Massey, D., and S.
+              Rose, "Protocol Modifications for the DNS Security
+              Extensions", RFC 4035, March 2005.
+
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 7]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+   [RFC6066]  Eastlake, D., "Transport Layer Security (TLS) Extensions:
+              Extension Definitions", RFC 6066, January 2011.
+
+   [RFC6698]  Hoffman, P. and J. Schlyter, "The DNS-Based Authentication
+              of Named Entities (DANE) Transport Layer Security (TLS)
+              Protocol: TLSA", RFC 6698, August 2012.
+
+   [RFC6962]  Laurie, B., Langley, A., and E. Kasper, "Certificate
+              Transparency", RFC 6962, June 2013.
+
+7.2.  Informative References
+
+   [Comodo]   Hallam-Baker, P., "The Recent RA Compromise", URL: http://
+              blogs.comodo.com/it-security/data-security/the-recent-ra-
+              compromise/, Mar 2011.
+
+   [DigiNotar]
+              Arthur, C., "DigiNotar SSL certificate hack amounts to
+              cyberwar, says expert", URL: http://www.guardian.co.uk/
+              technology/2011/sep/05/diginotar-certificate-hack-
+              cyberwar, Sep 2011.
+
+   [IETF-Journal-DANE]
+              Barnes, R., "DANE: Taking TLS Authentication to the Next
+              Level Using DNSSEC, IETF Journal", URL: http://
+              www.internetsociety.org/articles/dane-taking-tls-
+              authentication-next-level-using-dnssec, Oct 2011.
+
+   [SSL-Observatory]
+              EFF, "The EFF SSL Observatory", URL: https://www.eff.org/
+              observatory, Oct 2013.
+
+Authors' Addresses
+
+   Hannes Tschofenig
+   IAB Security Program
+
+   EMail: Hannes.Tschofenig@gmx.net
+
+
+   Russ Housley
+   IAB Security Program
+
+   EMail: housley@vigilsec.com
+
+
+
+
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 8]
+
+Internet-Draft              WebPKI Evolution                October 2013
+
+
+   Lucy Lynch
+   IAB Security Program
+
+   EMail: lynch@isoc.org
+
+
+   K. O'Donoghue
+   IAB Security Program
+
+   EMail: odonoghue@isoc.org
+
+
+   Eliot Lear
+   IAB Security Program
+
+   EMail: elear@cisco.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.       Expires April 11, 2014                 [Page 9]
