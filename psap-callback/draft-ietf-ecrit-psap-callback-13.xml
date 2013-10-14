@@ -553,21 +553,14 @@ to the requirement to ensure that the
    <section title="Security Solution">
    
    <t>The approach for dealing with implementing the security requirements described in <xref target="req"/> 
-   can be differentiated between the behavior applied by the UA and by SIP proxies. A UA that has made an emergency call will keep state information so that it can recognize and accepted a callback from the PSAP if it occurs within a
-   reasonable time after an emergency call was placed, as described in Section 13 of <xref target="RFC6443"/>. Since UA considerations are described already in <xref target="RFC6443"/> as well as in <xref target="RFC6881"/> the rest of this section focuses on the behavior of SIP proxies.</t>
+   can be differentiated between the behavior applied by the UA and by SIP proxies. A UA that has made an emergency call MUST keep state information so that it can recognize and accepted a callback from the PSAP if it occurs within a
+   reasonable time after an emergency call was placed, as described in Section 13 of <xref target="RFC6443"/>. Only a timer started at the time when the original emergency call has ended is required; information about the calling party identity is not needed since the callback may use a different calling party identity, as described in <xref target="scenarios"/>. Since these SIP UA considerations are described already in <xref target="RFC6443"/> as well as in <xref target="RFC6881"/> the rest of this section focuses on the behavior of SIP proxies.</t>
    
    <t><xref target="identity-authz"/> shows the architecture that utilizes the identity of the PSAP 
    to decide whether a preferential treatment of callbacks should be
-   provided. To make this policy decision, the identity of the PSAP is 
-   compared with a white list of valid PSAPs available to the SIP entity.  
-   The identity assurance in SIP can come in different forms,
-   namely via the SIP Identity <xref target="RFC4474"/> or the P-Asserted-Identity <xref target="RFC3325"/> mechanisms.
-   The former technique relies on a cryptographic assurance and the
-   latter on a chain of trust. Also the usage of TLS between neighboring
-   SIP entities may provide useful identity information. At the time of writing these identity technologies are being revised in the Secure Telephone Identity Revisited (stir) working group <xref target="STIR"/> to offer better support for legacy technologies interworking and SIP intermediaries that modify the content of various SIP headers and the body. Once the work on these specifications has been completed they will offer stronger calling party's identity to limit or prevent spoofing.  
-   </t>   
-
-      <t><figure anchor="identity-authz" title="Identity-based Authorization">
+   provided. To make this policy decision, the identity of the PSAP (i.e., calling party identity) is 
+   compared with a PSAPs white list.  
+  <figure anchor="identity-authz" title="Identity-based Authorization">
           <artwork><![CDATA[
                     +----------+
                     | List of  |+
@@ -593,30 +586,31 @@ to the requirement to ensure that the
                            (if successfully verified)
 			]]></artwork>
         </figure></t>
+	<t>The identity assurance in SIP can come in different forms,
+   namely via the SIP Identity <xref target="RFC4474"/> or the P-Asserted-Identity <xref target="RFC3325"/> mechanisms.
+   The former technique relies on a cryptographic assurance and the
+   latter on a chain of trust. Also the usage of TLS between neighboring
+   SIP entities may provide useful identity information. At the time of writing these identity technologies are being revised in the Secure Telephone Identity Revisited (stir) working group <xref target="STIR"/> to offer better support for legacy technologies interworking and SIP intermediaries that modify the content of various SIP headers and the body. Once the work on these specifications has been completed they will offer a stronger calling party identity mechanism that limits or prevents identity spoofing.</t>
+   
    <t>
    An important aspect from a security point of view is the relationship
-   between the emergency services network (containing PSAPs) and the VoIP provider 
+   between the emergency services network (containing the PSAPs) and the VoIP provider 
    (assuming that the emergency call travels via the VoIP provider and not directly 
    between the SIP UA and the PSAP).  
    </t>
    <t>
-   If there is some form of relationship between the
-   emergency services operator and the VoIP provider then the identification of a
-   PSAP callback is less problematic than in the case where the two
-   entities have not entered in some form of relationship that would
-   allow the VoIP provider to verify whether the marked callback message indeed
-   came from a legitimate source.
+   The establishment of a white list with PSAP identities may be
+   operationally complex and dependent on the relationship between the
+   emergency services operator and the VoIP provider. When there is a relationship between 
+   the VoIP provider and the PSAP operator, for example when they are both operating in the same geographical region, then populating the white list is fairly simple and consequently the identification of a
+   PSAP callback is less problematic compared to the case where the two
+   entities have never interacted with each other before. In the end, the VoIP provider has to verify whether the marked callback message indeed came from a legitimate source.
    </t>
    <t>
-   The establishment of a whitelist with PSAP identities maybe be
-   operationally complex.  When there is a local relationship between 
-   the VoIP provider and the PSAP then populating the whitelist is fairly simple. Populating every SIP UA with every PSAP is, however, significantly more complex. For this reason a different approach is therefore chosen to avoid having SIP UAs maintain a list of PSAPs or their domains.</t>
-   
-   <t>
-   SIP UAs are assumed to trust their VoIP provider that they process processes the PSAP callback marking. This means that VoIP providers MUST only give calls preferential treatment when the calling party identity of the PSAP was successfully matched against entries in the whitelist. If it cannot be verified (because there was no match),then the VoIP provider MUST remove the PSAP callback marking. Thereby, the callback is degenerated to a normal call. As a second step, SIP UAs MUST maintain a timer that is started with the original emergency call and this timer expires within a reasonable amount of time, such as 30 minutes per <xref target="RFC6881"/>. Such a timer also ensures that VoIP providers do not misuse the PSAP callback mechanism, for example to ensure that their support calls reaches their customers.
+   VoIP providers MUST only give PSAP callbacks preferential treatment when the calling party identity of the PSAP was successfully matched against entries in the white list. If it cannot be verified (because there was no match),then the VoIP provider MUST remove the PSAP callback marking. Thereby, the callback is degenerated to a normal call. As a second step, SIP UAs MUST maintain a timer that is started with the original emergency call and this timer expires within a reasonable amount of time, such as 30 minutes per <xref target="RFC6881"/>. Such a timer also ensures that VoIP providers cannot misuse the PSAP callback mechanism, for example to ensure that their support calls reaches their customers.
    </t>
    
-   <t>Finally, a PSAP callback MUST use the same media as the original emergency call. For example, when an initial emergency call established real-time text communication then the PSAP callback must also attempt to establish a real-time communication interaction. The reason for this is two-fold. First, the person seeking for help may have disabilities that prevent them from using certain media and for this reason the same media has to be chosen for the callback to avoid confusion. Second, the emergency caller may have intentionally chosen a certain media and does not prefer to communicate in a different way. For example, it would be unfortunate if a hostage tries to seek for help using instant messaging to avoid any noise when subsequently the ring-tone triggered by a PSAP callback using a voice call gets the attention of the hostage-taker. User interface designs need to cater to such situations.</t>
+   <t>Finally, a PSAP callback MUST use the same media as the original emergency call. For example, when an initial emergency call established a real-time text communication session then the PSAP callback must also attempt to establish a real-time communication interaction. The reason for this is two-fold. First, the person seeking for help may have disabilities that prevent them from using certain media and hence using the same media for the callback avoids unpleasant surprises and delays. Second, the emergency caller may have intentionally chosen a certain media and does not prefer to communicate in a different way. For example, it would be unfortunate if a hostage tries to seek for help using instant messaging to avoid any noise when subsequently the ring-tone triggered by a PSAP callback using a voice call gets the attention of the hostage-taker. User interface designs need to cater to such situations.</t>
     </section>
 	</section> 
 	
