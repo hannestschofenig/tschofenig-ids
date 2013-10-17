@@ -1,0 +1,672 @@
+
+
+
+
+TLS                                                         S. Santesson
+Internet-Draft                                           3xA Security AB
+Intended status: Standards Track                           H. Tschofenig
+Expires: April 20, 2014                           Nokia Siemens Networks
+                                                        October 17, 2013
+
+
+      Transport Layer Security (TLS) Cached Information Extension
+                   draft-ietf-tls-cached-info-15.txt
+
+Abstract
+
+   Transport Layer Security (TLS) handshakes often include fairly static
+   information, such as the server certificate and a list of trusted
+   Certification Authorities (CAs).  This information can be of
+   considerable size, particularly if the server certificate is bundled
+   with a complete certificate path (including all intermediary
+   certificates up to the trust anchor public key).
+
+   This document defines an extension that omits the exchange of already
+   available information.  The TLS client informs a server of cached
+   information, for example from a previous TLS handshake, allowing the
+   server to omit the already available information.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on April 20, 2014.
+
+Copyright Notice
+
+   Copyright (c) 2013 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 1]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Cached Information Extension  . . . . . . . . . . . . . . . .   3
+   4.  Exchange Specification  . . . . . . . . . . . . . . . . . . .   5
+     4.1.  Omitting the Certificate Chain  . . . . . . . . . . . . .   6
+     4.2.  Omitting Information about Trusted CAs  . . . . . . . . .   6
+     4.3.  Omitting the Certificate Status Information (OCSP
+           Stapling) . . . . . . . . . . . . . . . . . . . . . . . .   7
+     4.4.  Omitting the Status of Multiple Certificates (Multi-
+           Stapling) . . . . . . . . . . . . . . . . . . . . . . . .   7
+   5.  Example . . . . . . . . . . . . . . . . . . . . . . . . . . .   8
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+     7.1.  TLS ExtensionType Registry  . . . . . . . . . . . . . . .  10
+     7.2.  Cached Information Type Registry  . . . . . . . . . . . .  10
+   8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  11
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  11
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  11
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .  11
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  12
+
+1.  Introduction
+
+   Transport Layer Security (TLS) handshakes often include fairly static
+   information, such as the server certificate and a list of trusted
+   Certification Authorities (CAs).  This information can be of
+   considerable size, particularly if the server certificate is bundled
+   with a complete certificate path (including all intermediary
+   certificates up to the trust anchor public key).
+
+   Optimizing the exchange of information to a minimum helps to improve
+   performance in environments where devices are connected to a network
+   with characteristics like low bandwidth, high latency and high loss
+   rate.  These types of networks exist, for example, when smart objects
+   are connected using a low power IEEE 802.15.4 radio.  For more
+   information about the challenges with smart object deployments please
+   see [RFC6574].
+
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 2]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+   This specification defines a TLS extension that allows a client and a
+   server to exclude transmission of cached information from the TLS
+   handshake.
+
+   A typical example exchange may therefore look as follows.  First, the
+   client and the server executes the usual TLS handshake.  The client
+   may, for example, decide to cache the certificate provided by the
+   server.  When the TLS client connects to the TLS server some time in
+   the future, without using session resumption, it then attaches the
+   cached_information extension defined in this document to the client
+   hello message to indicate that it had cached the certificate, and it
+   provides the fingerprint of it.  If the server's certificate had not
+   changed then the TLS server does not need to send the full
+   certificate to the client again.  In case the information had
+   changed, the certificate payload is transmitted to the client to
+   allow the client to update it's state information.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "MUST", "MUST NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
+
+3.  Cached Information Extension
+
+   This document defines a new extension type, cached_information (TBD),
+   which is used in client hello and server hello messages.  The
+   extension type is specified as follows.
+
+
+         enum {
+              cached_information(TBD), (65535)
+         } ExtensionType;
+
+
+   The extension_data field of this extension, when included in the
+   client hello, MUST contain the CachedInformation structure.  This
+   document defines four Cached Information Types, as shown in the enum
+   of the CachedInformationType structure.
+
+
+         enum {
+              certificate_chain(1), trusted_cas(2),
+              cert_status (3), multiple_cert_status (4),
+              (255)
+         } CachedInformationType;
+
+         struct {
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 3]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+              CachedInformationType type;
+              HashAlgorithm hash;
+              opaque hash_value<1..255>;
+         } CachedObject;
+
+         struct {
+              CachedObject cached_info<0..2^16-1>;
+         } CachedInformation;
+
+
+   The calculation of the fingerprints depends on the Cached Information
+   Type:
+
+   Cached Information Type 'certificate_chain':
+
+      When the CachedInformationType identifies a certificate_chain,
+      then the hash_value field MUST include the hash calculated over
+      the certificate_list element of the Certificate message provided
+      by the TLS server in an earlier exchange, excluding the three
+      length bytes of the certificate_list vector.
+
+
+   Cached Information Type 'trusted_cas':
+
+      When the CachedInformationType identifies a trusted_cas, then the
+      hash_value MUST include a hash calculated over the
+      certificate_authorities element of the CertificateRequest message
+      provided by the TLS server in an earlier exchange, excluding the
+      two length bytes of the certificate_authorities vector.
+
+
+   Cached Information Type 'cert_status':
+
+      When the CachedInformationType identifies a cert_status, then the
+      hash_value MUST include a hash calculated over the
+      CertificateStatus message provided by the TLS server in an earlier
+      exchange.
+
+
+   Cached Information Type 'multiple_cert_status':
+
+      When the CachedInformationType identifies a cert_status, then the
+      hash_value MUST include a hash calculated over the
+      CertificateStatus message provided by the TLS server in an earlier
+      exchange.
+
+   The hash algorithm used to calculate hash values is conveyed in the
+   'hash' field of the CachedObject element.  The list of registered
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 4]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+   hash algorithms can be found in the TLS HashAlgorithm Registry, which
+   was created by RFC 5246 [RFC5246].  The value zero (0) for 'none' is
+   not an allowed choice for a hash algorithm and MUST NOT be used.
+
+   This document establishes a registry for Cached Information Types and
+   additional values can be added following the policy described in
+   Section 7.
+
+4.  Exchange Specification
+
+   Clients supporting this extension MAY include the
+   "cached_information" extension in the (extended) client hello, which
+   MAY contain zero or more CachedObject attributes.  When a client
+   sents a "cached_information" extension with zero CachedObject
+   attributes then this tells the server that the client supports the
+   extension but so far no objects have been cached.  This allows the
+   client to subsequently learn, via the server's response, what
+   extension the server is able to support.
+
+   A server supporting this extension MAY include the
+   "cached_information" extension in the (extended) server hello, which
+   MAY contain one or more CachedObject elements it supports.  By
+   returning the "cached_information" extension the server indicates
+   that it supports caching of each present Cached Object Type.  The
+   server MAY support other cached objects that are not present in the
+   extension.  When the server indicates support for a specific Cached
+   Information Type that has previously been indicated by the client
+   then it MUST transmit the cached version of the data.  For Cached
+   Information Types not listed in the client hello the server MUST NOT
+   transmit the cached representation since it may lead to a failed
+   protocol run.
+
+   Note: If clients make use of the Server Name Indication [RFC6066]
+   then clients may need to cache multiple data items for a single
+   server since servers may host multiple 'virtual' servers at a single
+   underlying network address.
+
+   Following a successful exchange of the "cached_information"
+   extensions in the client and server hello, the server omits sending
+   the corresponding handshake message.  How information is omitted from
+   the handshake message is defined per cached info type.  Section 4.1
+   and Section 4.2 defines the syntax of the fingerprinted information.
+
+   The handshake protocol MUST proceed using the information as if it
+   was provided in the handshake protocol.  The Finished message MUST be
+   calculated over the actual data exchanged in the handshake protocol.
+   That is, the Finished message will be calculated over the information
+   that was omitted from transmission by means of its present hash in
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 5]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+   the client hello and not through its presence in the handshake
+   exchange.
+
+   The server MUST NOT include more than one fingerprint for a single
+   information element, i.e., at maximum only one CachedObject structure
+   per replaced information is provided.
+
+4.1.  Omitting the Certificate Chain
+
+   When an object of type 'certificate_chain' is provided in the client
+   hello, the server MAY replace the sequence of certificates with an
+   empty sequence with an actual length field of zero (=empty vector).
+
+   The original handshake message syntax is defined in RFC 5246
+   [RFC5246] and has the following structure:
+
+
+         opaque ASN.1Cert<1..2^24-1>;
+
+         struct {
+             ASN.1Cert certificate_list<0..2^24-1>;
+         } Certificate;
+
+
+   Note that [I-D.ietf-tls-oob-pubkey] allows the certificate payload to
+   contain only the SubjectPublicKeyInfo instead of the full information
+   typically found in a certificate.  Hence, when this specification is
+   used in combination with [I-D.ietf-tls-oob-pubkey] and the negotiated
+   certificate type is a raw public key then the TLS server omits
+   sending a Certificate payload that contains an ASN.1Cert structure of
+   the SubjectPublicKeyInfo.
+
+4.2.  Omitting Information about Trusted CAs
+
+   When a fingerprint for an object of type 'trusted_cas' is provided in
+   the client hello, the server MAY send a DistinguishedName in the
+   Certificate Request message with an actual length field of zero
+   (=empty vector).
+
+   The original handshake message syntax is defined in RFC 5246
+   [RFC5246] and has the following structure:
+
+
+         opaque DistinguishedName<1..2^16-1>;
+
+         struct {
+             ClientCertificateType certificate_types<1..2^8-1>;
+             SignatureAndHashAlgorithm
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 6]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+               supported_signature_algorithms<2^16-1>;
+             DistinguishedName certificate_authorities<0..2^16-1>;
+         } CertificateRequest;
+
+
+4.3.  Omitting the Certificate Status Information (OCSP Stapling)
+
+   When a fingerprint for an object of type 'cert_status' is provided in
+   the client hello, the server MAY omit sending the CertificateStatus
+   message containing the OCSPResponse.
+
+   The original CertificateStatus message syntax is defined in RFC 6066
+   [RFC6066] and has the following structure:
+
+
+         struct {
+             CertificateStatusType status_type;
+             select (status_type) {
+                 case ocsp: OCSPResponse;
+             } response;
+         } CertificateStatus;
+
+         opaque CertificateStatus<1..2^24-1>;
+
+
+4.4.  Omitting the Status of Multiple Certificates (Multi-Stapling)
+
+   When a fingerprint for an object of type 'multiple_cert_status' is
+   provided in the client hello, the server MAY omit sending the
+   CertificateStatus message containing the OCSPResponseList.
+
+   The CertificateStatus message syntax, defined in
+   [I-D.ietf-tls-multiple-cert-status-extension], has the following
+   structure:
+
+
+        struct {
+          CertificateStatusType status_type;
+          select (status_type) {
+            case ocsp: OCSPResponse;
+            case ocsp_multi: OCSPResponseList;
+          } response;
+        } CertificateStatus;
+
+        opaque OCSPResponse<0..2^24-1>;
+
+        struct {
+          OCSPResponse ocsp_response_list<1..2^24-1>;
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 7]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+        } OCSPResponseList;
+
+
+5.  Example
+
+   The exchange in Figure 1 illustrates a client that contacts a server
+   for the first time.  The client indicates the support for the cached
+   info extension but it does not yet have any objects cached [1].  With
+   [2] the TLS server indicates that it also supports the extension
+   defined in this specification and informs the client that it also
+   supports three Cached Information Types, namely 'certificate_chain',
+   the 'trusted_cas', and 'foo-bar'.  The first two are defined in this
+   document and 'foo-bar' is an imaginary extension that yet needs to be
+   defined.  At this point in time the server does not omit anything
+   since the client's cache is empty.  When the client receives the
+   certificate message it puts it in the cache.
+
+
+   client_hello
+   cached_information=() // [1]
+                          ->
+                          <-  server_hello,
+                              cached_information= //[2]
+                              (certificate_chain, trusted_cas, foo-bar)
+                              certificate,
+                              server_key_exchange,
+                              server_hello_done
+
+   client_key_exchange,
+   change_cipher_spec,
+   finished                  ->
+
+                          <- change_cipher_spec,
+                             finished
+
+   Application Data        <------->     Application Data
+
+                Figure 1: Example: Client has empty cache.
+
+   After some time the TLS client again interacts with the same TLS
+   server and makes use of the TLS cached info extension, as shown in
+   Figure 2.  The TLS client again indicates support for this
+   specification via the cached_information extension, see [3], and
+   indicates that it has stored the certificate_chain from the earlier
+   exchange.  In [4] the server indicates that it has also indicates
+   that supports the extension and that it will omit sending the full
+   certificate chain (since the fingerprint provided by the client
+   matches the value that the server has computed, i.e., the information
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 8]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+   has not yet changed).  Note that the TLS server also indicates the
+   support for other Cached Information Types but since the client has
+   not indicated support for them they are only included for information
+   to the client.  In this example, the server only omits sending the
+   full certificate chain.  With [5] the TLS server omits sending the
+   certificate chain, as described in Section 4.1.
+
+
+
+   (B) TLS Cached Extension Usage
+
+   client_hello,
+   cached_information=(certificate_chain)   -> // [3]
+
+                          <-  server_hello,
+                              cached_information= // [4]
+                              (certificate_chain, trusted_cas, foo-bar)
+                              certificate, // [5]
+                              server_key_exchange,
+                              server_hello_done
+
+   client_key_exchange,
+   change_cipher_spec,
+   finished                  ->
+
+                          <- change_cipher_spec,
+                             finished
+
+   Application Data        <------->     Application Data
+
+            Figure 2: Example: Client indicates cached objects.
+
+6.  Security Considerations
+
+   This specification defines a mechanism to reference stored state
+   using a fingerprint.  Sending a fingerprint of cached information in
+   an unencrypted handshake, as the client and server hello is, may
+   allow an attacker or observer to correlate independent TLS exchanges.
+   While some information elements used in this specification, such as
+   server certificates, are public objects and usually not sensitive in
+   this regard, others may be.  Those who implement and deploy this
+   specification should therefore make an informed decision whether the
+   cached information aligns with the defined security and privacy
+   goals.  In case of concerns, it is advised to avoid sending the
+   fingerprint of the data objects in clear.
+
+   The hash algorithm used in this specification is required to have
+   reasonable random properties in order to provide reasonably unique
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                 [Page 9]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+   identifiers.  There is no requirement that this hash algorithm must
+   have strong collision resistance.
+
+   This extension is a performance optimization for the TLS handshake:
+   it allows to omit sending certain payloads.  Since the fingerprints
+   of these payloads are still exchanged in the client and server hello
+   messages at least the fingerprints are included in the keyed message
+   digest computation of the Finished message.
+
+   In case of omitting OCSP responses it is important to point out that
+   any time a new OCSP has to be generated the cache becomes invalid and
+   certain features of OCSP, such as the usage of the nonce, limits the
+   ability to cache values.  There is a tradeoff between frequently
+   sending fresh OCSP responses and optimizing the performance with the
+   help of caching and the inband delivery of these OCSP responses in
+   the TLS handshake.
+
+7.  IANA Considerations
+
+7.1.  TLS ExtensionType Registry
+
+   IANA is requested to add an entry to the existing TLS ExtensionType
+   registry, defined in RFC 5246 [RFC5246], for the cached_information
+   (TBD) extension defined in this document.
+
+7.2.  Cached Information Type Registry
+
+   IANA is requested to establish a new registry and to populate it with
+   the following initial values:
+
+
+   Symbolic Name              | Value | Specification
+   ---------------------------+-------+----------------
+   certificate_chain          |  1    | [This RFC]
+   trusted_cas                |  2    | [This RFC]
+   cert_status                |  3    | [This RFC]
+   multiple_cert_status       |  4    | [This RFC]
+
+
+   The policy for adding new values to this registry, following the
+   terminology defined in RFC 5226 [RFC5226], is as follows:
+
+   o  0-63 (decimal): Standards Action
+
+   o  64-223 (decimal): Specification Required
+
+   o  224-255 (decimal): Reserved for Private Use
+
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                [Page 10]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+8.  Acknowledgments
+
+   We would like to thank the following persons for your detailed
+   document reviews:
+
+   o  Paul Wouters and Nikos Mavrogiannopoulos (December 2011)
+
+   o  Rob Stradling (February 2012)
+
+   o  Ondrej Mikle (in March 2012)
+
+   We would also like to thank Martin Rex, Piyush Jain, Yngve N.
+   Pettersen, and Adam Langley for their feedback.  Rob Stradling also
+   suggested to enhance the specification to support caching of OCSP
+   responses, as defined in RFC 6066 [RFC6066] and
+   [I-D.ietf-tls-multiple-cert-status-extension].
+
+   Finally, we would like to thank the TLS working group chairs, Eric
+   Rescorla and Joe Salowey, as well as the security area directors,
+   Sean Turner and Stephen Farrell, for their feedback and support.
+
+9.  References
+
+9.1.  Normative References
+
+   [I-D.ietf-tls-multiple-cert-status-extension]
+              Pettersen, Y., "The TLS Multiple Certificate Status
+              Request Extension", draft-ietf-tls-multiple-cert-status-
+              extension-08 (work in progress), April 2013.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3874]  Housley, R., "A 224-bit One-way Hash Function: SHA-224",
+              RFC 3874, September 2004.
+
+   [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246, August 2008.
+
+   [RFC6066]  Eastlake, D., "Transport Layer Security (TLS) Extensions:
+              Extension Definitions", RFC 6066, January 2011.
+
+9.2.  Informative References
+
+   [I-D.ietf-tls-oob-pubkey]
+
+
+
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                [Page 11]
+
+Internet-Draft      TLS Cached Information Extension        October 2013
+
+
+              Wouters, P., Tschofenig, H., Gilmore, J., Weiler, S., and
+              T. Kivinen, "Out-of-Band Public Key Validation for
+              Transport Layer Security (TLS)", draft-ietf-tls-oob-
+              pubkey-09 (work in progress), July 2013.
+
+   [RFC5226]  Narten, T. and H. Alvestrand, "Guidelines for Writing an
+              IANA Considerations Section in RFCs", BCP 26, RFC 5226,
+              May 2008.
+
+   [RFC6574]  Tschofenig, H. and J. Arkko, "Report from the Smart Object
+              Workshop", RFC 6574, April 2012.
+
+Authors' Addresses
+
+   Stefan Santesson
+   3xA Security AB
+   Scheelev. 17
+   Lund  223 70
+   Sweden
+
+   Email: sts@aaa-sec.com
+
+
+   Hannes Tschofenig
+   Nokia Siemens Networks
+   Linnoitustie 6
+   Espoo  02600
+   Finland
+
+   Phone: +358 (50) 4871445
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Santesson & Tschofenig   Expires April 20, 2014                [Page 12]

@@ -1,0 +1,538 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+  <!ENTITY RFC2119 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+  <!ENTITY RFC5246 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml'>
+  <!ENTITY RFC5226 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml'>	
+  <!ENTITY RFC3874 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.3874.xml'>
+  <!ENTITY RFC1321 PUBLIC ''  
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.1321.xml'>
+  <!ENTITY RFC6066 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6066.xml'>
+  <!ENTITY RFC6574 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6574.xml'>
+  <!ENTITY RFC6066 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6066.xml'>
+  <!ENTITY I-D.ietf-tls-oob-pubkey PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-oob-pubkey.xml'>
+  <!ENTITY I-D.ietf-tls-multiple-cert-status-extension PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-multiple-cert-status-extension.xml'>
+	
+	]>
+	
+	<?rfc toc="yes" ?>
+	<?rfc symrefs="yes" ?>
+	<?rfc sortrefs="yes"?>
+	<?rfc iprnotified="no" ?>
+	<?rfc strict="yes" ?>
+
+<rfc ipr="trust200902" category="std" docName="draft-ietf-tls-cached-info-15.txt">
+    <front>
+        <title abbrev="TLS Cached Information Extension"> Transport Layer Security (TLS) Cached Information Extension </title>
+
+        <author initials="S." surname="Santesson" fullname="Stefan Santesson">
+            <organization>3xA Security AB</organization>
+            <address>
+                <postal>
+                    <street>Scheelev. 17</street>
+					<city>Lund</city>
+                    <code>223 70</code>
+                    <country>Sweden</country>
+                </postal>
+                <email>sts@aaa-sec.com</email>
+            </address>
+        </author>
+
+        <author fullname="Hannes Tschofenig" initials="H." surname="Tschofenig">
+            <organization>Nokia Siemens Networks</organization>
+            <address>
+                <postal>
+                    <street>Linnoitustie 6</street>
+                    <city>Espoo</city>
+                    <code>02600</code>
+                    <country>Finland</country>
+                </postal>
+                <phone>+358 (50) 4871445</phone>
+                <email>Hannes.Tschofenig@gmx.net</email>
+                <uri>http://www.tschofenig.priv.at</uri>
+            </address>
+        </author>
+
+        <date year="2013"/>
+        <area>Security</area>
+        <workgroup>TLS</workgroup>
+        <keyword>Internet-Draft</keyword>
+		
+        <abstract>
+		 <t>Transport Layer Security (TLS) handshakes often include fairly 
+		 static information, such as the server
+   certificate and a list of trusted Certification Authorities (CAs).
+   This information can be of considerable size, particularly if the server
+   certificate is bundled with a complete certificate path (including
+   all intermediary certificates up to the trust anchor public key).</t>
+   
+   <t>This document defines an extension that omits the exchange of already 
+   available information. The TLS client informs a server of cached information, 
+   for example from a previous TLS handshake, allowing the server to omit 
+   the already available information.</t>
+        </abstract>
+
+    </front>
+    <middle>
+
+        <section title="Introduction">
+
+   <t>Transport Layer Security (TLS) handshakes often include fairly 
+   static information, such as the server certificate and a list of 
+   trusted Certification Authorities (CAs). This information can be of 
+   considerable size, particularly if the server certificate is bundled 
+   with a complete certificate path (including all intermediary 
+   certificates up to the trust anchor public key).</t>
+
+   <t>Optimizing the exchange of information to a minimum helps to 
+   improve performance in environments where devices are connected to a 
+   network with characteristics like low bandwidth, high latency and high 
+   loss rate. These types of networks exist, for example, when smart objects 
+   are connected using a low power IEEE 802.15.4 radio. For more information 
+   about the challenges with smart object deployments please see 
+   <xref target="RFC6574"/>.</t>
+
+   <t>This specification defines a TLS extension that allows a client and a 
+   server to exclude transmission of cached information from the TLS handshake.
+   </t>
+   
+   <t>A typical example exchange may therefore look as follows. First, the client and the server executes the usual TLS handshake. The client may, for example, decide to cache the certificate provided by the server. When the TLS client connects to the TLS server some time in the future, without using session resumption, it then attaches the cached_information extension defined in this document to the client hello message to indicate that it had cached the certificate, and it provides the fingerprint of it. If the server's certificate had not changed then the TLS server does not need to send the full certificate to the client again. In case the information had changed, the certificate payload is transmitted to the client to allow the client to update it's state information.</t>
+
+   </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Terminology">
+
+		<t>The key words "MUST", "MUST NOT", "REQUIRED", "MUST", "MUST NOT",   
+		"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this 
+		document are to be interpreted as described in <xref target="RFC2119"/>.
+		</t>
+		   
+		</section>
+
+        <!-- ******************************************************************************** -->
+
+		<section anchor="cached-info" title="Cached Information Extension">
+<t>
+   This document defines a new extension type, cached_information (TBD), which is used in
+   client hello and server hello messages. The extension type
+   is specified as follows.
+</t>
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      enum {
+           cached_information(TBD), (65535)
+      } ExtensionType;
+]]></artwork>
+          </figure></t>
+
+<t>
+The extension_data field of this extension, when included in the
+client hello, MUST contain the CachedInformation structure. This document 
+defines four Cached Information Types, as shown in the enum of the CachedInformationType structure. 
+</t>
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      enum {
+           certificate_chain(1), trusted_cas(2),
+ 		   cert_status (3), multiple_cert_status (4),
+		   (255)
+      } CachedInformationType;
+
+      struct {
+           CachedInformationType type;
+           HashAlgorithm hash;
+           opaque hash_value<1..255>;
+      } CachedObject;
+
+      struct {
+           CachedObject cached_info<0..2^16-1>;
+      } CachedInformation;
+]]></artwork>
+          </figure></t>
+ 
+  <t>The calculation of the fingerprints depends on the Cached Information Type: 
+  <list style="hanging">
+  
+  <t hangText="Cached Information Type 'certificate_chain':"><vspace blankLines="1"/>
+   When the CachedInformationType identifies a certificate_chain, then
+   the hash_value field MUST include the hash calculated over the certificate_list
+   element of the Certificate message provided by the TLS server in an earlier exchange, excluding the three
+   length bytes of the certificate_list vector.<vspace blankLines="1"/></t>
+  
+  <t hangText="Cached Information Type 'trusted_cas':"><vspace blankLines="1"/>
+   When the CachedInformationType identifies a trusted_cas, then the hash_value
+   MUST include a hash calculated over the certificate_authorities
+   element of the CertificateRequest message provided by the TLS server in an earlier exchange, excluding the
+   two length bytes of the certificate_authorities vector.<vspace blankLines="1"/></t>
+  
+  <t hangText="Cached Information Type 'cert_status':"><vspace blankLines="1"/>
+  When the CachedInformationType identifies a cert_status, then the hash_value
+   MUST include a hash calculated over the CertificateStatus message provided by the TLS server in an earlier exchange.
+  <vspace blankLines="1"/></t>
+  
+  <t hangText="Cached Information Type 'multiple_cert_status':"><vspace blankLines="1"/>
+    When the CachedInformationType identifies a cert_status, then the hash_value
+   MUST include a hash calculated over the CertificateStatus message provided by the TLS server in an earlier exchange.</t>
+  </list> 
+  </t>
+<t>The hash algorithm used to calculate hash values is conveyed in the 'hash' field of the CachedObject element. The list of registered hash algorithms can be found in the TLS HashAlgorithm Registry, which was created by RFC 5246 <xref target="RFC5246"/>. The value zero (0) for 'none' is not an allowed choice for a hash algorithm and MUST NOT be used.</t>
+<t>This document establishes a registry for Cached Information Types and additional values can be added following the policy described in <xref target="IANA"/>.
+</t>
+
+   </section> 
+
+        <!-- ******************************************************************************** -->
+
+<section title="Exchange Specification">
+
+<t>Clients supporting this extension MAY include the "cached_information" extension in the
+   (extended) client hello, which MAY contain zero or more CachedObject attributes. 
+   When a client sents a "cached_information" extension with zero CachedObject attributes then 
+   this tells the server that the client supports the extension but so far no objects have been cached. 
+   This allows the client to subsequently learn, via the server's response, what extension the server is 
+   able to support.</t>
+<t>
+A server supporting this extension MAY include the "cached_information" extension 
+in the (extended) server hello, which MAY contain one or more CachedObject elements it supports.
+By returning the "cached_information" extension the server indicates that it
+supports caching of each present Cached Object Type. The server MAY support other cached objects that are not present in the extension.
+When the server indicates support for a specific Cached Information Type that has previously been indicated by the client  
+then it MUST transmit the cached version of the data. For Cached Information Types not listed in the client hello the server MUST NOT transmit the cached representation since it may lead to a failed protocol run. 
+</t>
+
+<t>Note: If clients make use of the Server Name Indication <xref target="RFC6066"/> then clients may need to cache 
+multiple data items for a single server since servers may host multiple 'virtual' servers at a single underlying
+network address.
+</t>
+
+<t>Following a successful exchange of the "cached_information" extensions in the client and server hello,
+   the server omits sending the corresponding handshake message. How information is omitted from the handshake message is defined per cached info type. <xref target="certificate_chain"/> and <xref target="trusted_cas"/> defines the syntax of the fingerprinted information.</t>
+
+   <!-- 
+<t>The handshake protocol MUST proceed using the information as
+   if it was provided in the handshake protocol. The Finished message
+   MUST be calculated over the actual data exchanged in the handshake
+   protocol. That is, the Finished message will not be calculated over the
+   information that was omitted from transmission.</t>
+--> 
+
+<t>The handshake protocol MUST proceed using the information as if it was
+provided in the handshake protocol. The Finished message MUST be
+calculated over the actual data exchanged in the handshake protocol. That
+is, the Finished message will be calculated over the information that was
+omitted from transmission by means of its present hash in the client hello
+and not through its presence in the handshake exchange.</t>
+
+<t>The server MUST NOT include more than one fingerprint for a single information element, i.e., at maximum only one CachedObject structure per replaced information is provided.</t>
+
+
+<section anchor="certificate_chain" title="Omitting the Certificate Chain">
+
+<t>When an object of type 'certificate_chain' is provided in the client hello, the server MAY replace the sequence of
+certificates with an empty sequence with an actual length field of zero (=empty vector).</t>
+
+<t>The original handshake message syntax is defined in RFC 5246 <xref target="RFC5246"/> and has the following 
+structure:</t>
+
+        <t><figure>
+            <artwork>
+              <![CDATA[
+      opaque ASN.1Cert<1..2^24-1>;
+
+      struct {
+          ASN.1Cert certificate_list<0..2^24-1>;
+      } Certificate;
+]]></artwork>
+          </figure>
+	</t>
+
+ <t>Note that <xref target="I-D.ietf-tls-oob-pubkey"/> allows the certificate payload to contain only the SubjectPublicKeyInfo instead of the full information typically found in a certificate. Hence, when this specification is used in combination with <xref target="I-D.ietf-tls-oob-pubkey"/> and the negotiated certificate type is a raw public key then the TLS server omits sending a Certificate payload that contains an ASN.1Cert structure of the SubjectPublicKeyInfo.</t>
+   
+   </section> 
+
+<section anchor="trusted_cas" title="Omitting Information about Trusted CAs ">
+
+<t>When a fingerprint for an object of type 'trusted_cas' is provided in the
+client hello, the server MAY send a DistinguishedName in the Certificate
+Request message with an actual length field of zero (=empty vector).</t>
+   
+<t>The original handshake message syntax is defined in RFC 5246 <xref target="RFC5246"/> and has the following 
+structure:</t>
+
+           <t><figure>
+            <artwork>
+              <![CDATA[
+      opaque DistinguishedName<1..2^16-1>;
+
+      struct {
+          ClientCertificateType certificate_types<1..2^8-1>;
+          SignatureAndHashAlgorithm
+            supported_signature_algorithms<2^16-1>;
+          DistinguishedName certificate_authorities<0..2^16-1>;
+      } CertificateRequest;
+]]></artwork>
+          </figure>
+		  </t>
+ </section>
+
+<section title="Omitting the Certificate Status Information (OCSP Stapling)">
+
+<t>When a fingerprint for an object of type 'cert_status' is provided in the
+client hello, the server MAY omit sending the CertificateStatus message containing the OCSPResponse.</t>
+   
+<t>The original CertificateStatus message syntax is defined in RFC 6066 <xref target="RFC6066"/> and has the following 
+structure:</t>
+
+           <t><figure>
+            <artwork>
+              <![CDATA[
+      struct {
+          CertificateStatusType status_type;
+          select (status_type) {
+              case ocsp: OCSPResponse;
+          } response;
+      } CertificateStatus;
+
+      opaque CertificateStatus<1..2^24-1>;
+]]></artwork>
+          </figure>
+		  </t>
+</section> 
+
+<section title="Omitting the Status of Multiple Certificates (Multi-Stapling)">
+
+<t>When a fingerprint for an object of type 'multiple_cert_status' is provided in the
+client hello, the server MAY omit sending the CertificateStatus message containing the OCSPResponseList.</t>
+   
+<t>The CertificateStatus message syntax, defined in <xref target="I-D.ietf-tls-multiple-cert-status-extension"/>, has the following 
+structure:</t>
+
+           <t><figure>
+            <artwork>
+              <![CDATA[
+     struct {
+       CertificateStatusType status_type;
+       select (status_type) {
+         case ocsp: OCSPResponse;
+         case ocsp_multi: OCSPResponseList;
+       } response;
+     } CertificateStatus;
+
+     opaque OCSPResponse<0..2^24-1>;
+
+     struct {
+       OCSPResponse ocsp_response_list<1..2^24-1>;
+     } OCSPResponseList;
+]]></artwork>
+          </figure>
+		  </t>
+</section>
+ 
+ </section>
+
+        <!-- ******************************************************************************** -->
+   
+        <section title="Example">
+
+<t>The exchange in <xref target="example1"/> illustrates a client that contacts a server for the first time. 
+The client indicates the support for the cached info extension but it does not yet have any objects cached [1]. 
+With [2] the TLS server indicates that it also supports the extension defined in this specification and informs the client that 
+it also supports three Cached Information Types, namely 'certificate_chain', the 'trusted_cas', and 'foo-bar'. The first two are defined in this document and 'foo-bar' is an imaginary extension that yet needs to be defined. At this point in time the server does not omit anything since the client's cache is empty. When the client receives the certificate message it puts it in the cache.</t>
+
+           <t><figure anchor="example1" title="Example: Client has empty cache.">
+            <artwork>
+              <![CDATA[
+client_hello
+cached_information=() // [1]
+                       ->
+                       <-  server_hello,
+                           cached_information= //[2]
+                           (certificate_chain, trusted_cas, foo-bar)
+                           certificate, 
+                           server_key_exchange,
+                           server_hello_done 
+
+client_key_exchange,
+change_cipher_spec,
+finished                  ->
+
+                       <- change_cipher_spec,
+                          finished
+
+Application Data        <------->     Application Data
+]]></artwork>
+          </figure></t>
+
+<t>After some time the TLS client again interacts with the same TLS server and makes use of the
+TLS cached info extension, as shown in <xref target="example2"/>. The TLS client again indicates 
+support for this specification via the cached_information extension, see [3], and indicates that 
+it has stored the certificate_chain from the earlier exchange. In [4] the server indicates that it 
+has also indicates that supports the extension and that it will omit sending the full certificate chain (since the 
+fingerprint provided by the client matches the value that the server has computed, i.e., the information has not yet changed).
+Note that the TLS server also indicates the support for other Cached Information Types but since the client has not indicated support 
+for them they are only included for information to the client. In this example, the server only omits sending the full certificate chain.
+With [5] the TLS server omits sending the certificate chain, as described in <xref target="certificate_chain"/>.
+</t>
+
+           <t><figure anchor="example2" title="Example: Client indicates cached objects.">
+            <artwork>
+              <![CDATA[
+			  
+(B) TLS Cached Extension Usage
+
+client_hello, 
+cached_information=(certificate_chain)   -> // [3]
+
+                       <-  server_hello,
+                           cached_information= // [4]
+                           (certificate_chain, trusted_cas, foo-bar)
+                           certificate, // [5]
+                           server_key_exchange,
+                           server_hello_done 
+
+client_key_exchange,
+change_cipher_spec,
+finished                  ->
+
+                       <- change_cipher_spec,
+                          finished
+
+Application Data        <------->     Application Data
+]]></artwork>
+          </figure></t>
+
+        </section> 
+		  
+        <!-- ******************************************************************************** -->
+   
+        <section title="Security Considerations">
+        <t>This specification defines a mechanism to reference stored state using a fingerprint.
+		Sending a fingerprint of cached information in an unencrypted handshake, as the client and 
+		server hello is, may allow an attacker or observer to correlate independent TLS exchanges. 
+		While some information elements used in this specification, such as server certificates, 
+		are public objects and usually not sensitive in this regard, others may be. Those who 
+		implement and deploy this specification should therefore make an informed decision whether 
+		the cached information aligns with the defined security and privacy goals. In case of 
+		concerns, it is advised to avoid sending the fingerprint of the data objects in clear.</t>
+
+        <t>The hash algorithm used in this specification is required to have reasonable random 
+		properties in order to provide reasonably unique identifiers. There is no requirement that 
+		this hash algorithm must have strong collision resistance.</t>
+		
+		<!-- However, since
+   the hash algorithm is used to represent data in the finished
+   calculation, the security properties of the finished calculation will
+   change if a weaker hash algorithm is used to represent cached
+   information compared with the hash algorithm used to calculate the
+   finished message.--> 
+
+        <t>This extension is a performance optimization for the TLS handshake: it allows to omit 
+		sending certain payloads. Since the fingerprints of these payloads are still exchanged 
+        in the client and server hello messages at least the fingerprints are included in the 
+        keyed message digest computation of the Finished message.</t>
+		
+		<t>In case of omitting OCSP responses it is important to point out that any time a new 
+        OCSP has to be generated the cache becomes invalid and certain features of OCSP, such as 
+		the usage of the nonce, limits the ability to cache values. There is a tradeoff between 
+		frequently sending fresh OCSP responses and optimizing the performance with the help of 
+		caching and the inband delivery of these OCSP responses in the TLS handshake.</t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+        <section anchor="IANA" title="IANA Considerations">
+
+<section title="TLS ExtensionType Registry"> 
+<t>IANA is requested to add an entry to the existing TLS ExtensionType registry, 
+defined in RFC 5246 <xref target="RFC5246"/>, for the cached_information (TBD) extension defined in this document.</t>
+</section> 
+
+<section title="Cached Information Type Registry">
+      <t>IANA is requested to establish a new registry and to populate it with the following initial values:
+	  <figure>
+            <artwork>
+              <![CDATA[
+Symbolic Name              | Value | Specification
+---------------------------+-------+----------------
+certificate_chain          |  1    | [This RFC]
+trusted_cas                |  2    | [This RFC] 
+cert_status                |  3    | [This RFC]
+multiple_cert_status       |  4    | [This RFC] 
+]]></artwork>
+          </figure></t>
+      
+      <t>The policy for adding new values to this registry, following the terminology defined in RFC 5226 <xref target="RFC5226"/>, is as follows:
+	  <list style="symbols"> 
+	    <t>0-63 (decimal): Standards Action</t>
+	    <t>64-223 (decimal): Specification Required</t>
+        <t>224-255 (decimal): Reserved for Private Use</t>
+	  </list> 
+	  </t>
+</section>
+
+</section> 
+
+        <!-- ******************************************************************************** -->
+
+        <section title="Acknowledgments">
+
+   <t>We would like to thank the following persons for your detailed document reviews:
+   <list style="symbols"> 
+   <t>Paul Wouters and Nikos Mavrogiannopoulos (December 2011)</t> 
+   <t>Rob Stradling (February 2012)</t> 
+   <t>Ondrej Mikle (in March 2012)</t>
+   </list> 
+   </t> 
+   
+   <t>We would also like to thank Martin Rex, Piyush Jain, Yngve N. Pettersen, and Adam Langley for their feedback. Rob Stradling 
+also suggested to enhance the specification to support caching of OCSP responses, as defined in RFC 6066 <xref target="RFC6066"/> and <xref target="I-D.ietf-tls-multiple-cert-status-extension"/>.</t>
+   
+   <t>Finally, we would like to thank the TLS working group chairs, Eric Rescorla and Joe Salowey, as well as the security area directors, Sean Turner and Stephen Farrell, for their feedback and support. </t>
+        </section>
+
+        <!-- ******************************************************************************** -->
+
+    </middle>
+    <back>
+
+
+
+        <references title="Normative References"> &RFC2119; &RFC5246; 
+
+<!-- 
+           <reference anchor="SHA">
+                <front>
+                    <title>Federal Information Processing Standards Publication (FIPS PUB) 180-3, Secure Hash Standard (SHS)</title>
+                    <author initials="" surname="" fullname="NIST">
+                        <organization/>
+                    </author>
+                    <date month="October" year="2008"/>
+                </front>
+            </reference>
+     --> 
+            
+			&RFC3874; 
+<!--			&RFC1321; --> 
+			
+			&RFC6066;
+			&I-D.ietf-tls-multiple-cert-status-extension; 
+			
+        </references>
+
+        <references title="Informative References"> &RFC5226; &RFC6574; &I-D.ietf-tls-oob-pubkey; </references>
+
+    </back>
+</rfc>
