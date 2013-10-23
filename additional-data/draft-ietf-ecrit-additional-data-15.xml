@@ -368,7 +368,8 @@ accept, and fetch or access only those types.</t>
 						    device.  If a telephone number is the contact
               address then it MUST be tel URI. If it is provided as a SIP URI 
               then it MUST be in the form of sip:telephonenumber@serviceprovider:user=phone. 
-               
+						    Note that this contact information is not used by PSAPs for callbacks using a SIP Priority header field with the value set to "psap-
+						    callback", as described in <xref target="I-D.ietf-ecrit-psap-callback"/>.
 							</t>
 							<t hangText="Reason for Need:">Additional data providers may need to be contacted for
               error or other unusual circumstances.
@@ -391,6 +392,9 @@ accept, and fetch or access only those types.</t>
               representation of names of languages -- Part 1: Alpha-2 code Multiple instances of
               this element may occur. Order is significant; preferred language should appear first.
               The content MUST reflect the languages supported at the contact URI.
+							<vspace blankLines="1"/>
+							  Note that the 'language' media feature tag, defined in RFC 3840 <xref target="RFC3840"/> and the more extensive language negotiation mechanism proposed with <xref target="I-D.gellens-negotiating-human-language"/> are independent 
+							  of this data provider language indication. 
 							</t>
 							<t hangText="Reason for Need:">Information needed to determine if emergency service authority can
               communicate with the service provider or if an interpreter will be needed.
@@ -1475,7 +1479,7 @@ If the 'handling' parameter has the value "optional", the UAS ignores the messag
       Content-Type: application/sdp
 
       ...Omit Content-Disposition here; defaults are ok
-      ...SDP goes here
+      ...SDP goes in here
 
       --boundary1
 
@@ -1483,7 +1487,7 @@ If the 'handling' parameter has the value "optional", the UAS ignores the messag
       Content-ID: <target123@atlanta.example.com>
       Content-Disposition: by-reference;handling=optional
 
-      ...PIDF-LO goes here
+      ...PIDF-LO goes in here
 
       --boundary1--
 
@@ -1491,7 +1495,7 @@ If the 'handling' parameter has the value "optional", the UAS ignores the messag
       Content-ID: <1234567890@atlanta.example.com>
       Content-Disposition: by-reference;handling=optional
 
-      ...Additional data goes here
+      ...Data provider information data goes in here
 
       --boundary1--
         ]]>
@@ -1504,29 +1508,81 @@ If the 'handling' parameter has the value "optional", the UAS ignores the messag
 		<!-- ******************************************************************************* -->
 		<section anchor="example" title="Examples"> 
 
-			<t>This section provides three examples of communicating additional data.
-		In <xref target="example1"/> additional data is communicated in a SIP INVITE per value. In <xref target="example2"/> we illustrate how additional data is added by a SIP proxy per reference. Finally, an example for including additional data in the &lt;Provided-By&gt; element of a PIDF-LO is illustrated.</t>
-
+		  <t>This section illustrates a longer and more complex example, as shown in <xref target="long-example"/>. In this example additional data is added by the end device, included by the VoIP provider, and provided by the access network provider. </t> 
 			<t>
-				<figure anchor="example1" title="Example: Attaching Additional Data via CID to a SIP INVITE.">
+				<figure anchor="long-example" title="Additional Data Example Flow.">
 					<artwork>
 						<![CDATA[
-   INVITE sips:bob@biloxi.example.com SIP/2.0
-   Via: SIPS/2.0/TLS pc33.atlanta.example.com;branch=z9hG4bK74bf9
+  O   +----+    Emergency Call
+ /|\  | UA |--+ +Device Info
+  |   +----+  | +Data Provider Info
+ / \          | +Location URI
+              | 
+              | (1)
+               \
+                \
+            ,-----------.      Location
+          ,'             `.    +Owner/Subscriber Info
+        /                  \   +Device Info
+        |     Access       |   +Data Provider Info #3
+        |     Network      |<..................+
+        |     Provider     |                   .
+         \                /                    . (4)
+          `.            ,'                     .
+            '----------'                       .
+                     |                         .
+                     |                         v
+                     |                   +----------+
+                  (2)|                   |          |
+                     |                   |   PSAP   |
+                     \                   |          |
+                      \                  +----------+
+  Emergency Call        \                      ^
+  +Device Info            \                    |
+  +Data Provider Info       ,-------.          | (3)
+  +Location URI           ,'         `.        -
+                         /   VoIP      \   ----
+                        (   Provider    )---
+                         \ example.org /   Emergency Call
+                          `.         ,'    +Device Info
+                            '-------'      +Owner/Subscriber Info
+                                           +Data Provider Info
+					                                 //////////////
+					                                 +Service Info
+					                                 +Location URI
+					                                 +Data Provider Info #2
+
+
+  Legend:
+
+      --- Emergency Call Setup Procedure
+      ... Location Retrieval/Response
+            ]]></artwork>
+				</figure>
+			</t>
+		  
+		  <t>The example scenario starts with the end device itself adding device information, owner/subscriber information, a location URI, and data provider information to the outgoing emergency call setup message (see step #1 in <xref target="long-example"/>). The SIP INVITE example is shown in <xref target="example1"/>.</t>
+		  
+			<t>
+				<figure anchor="example1" title="End Device sending SIP INVITE with Additional Data.">
+					<artwork>
+						<![CDATA[					  
+   INVITE urn:service:sos SIP/2.0
+   Via: SIPS/2.0/TLS server.example.com;branch=z9hG4bK74bf9
    Max-Forwards: 70
-   To: Bob <sips:bob@biloxi.example.com>
-   From: Alice <sips:alice@atlanta.example.com>;tag=9fxced76sl
-   Call-ID: 3848276298220188511@atlanta.example.com
-   Call-Info: <http://wwww.example.com/alice/photo.jpg> ;purpose=icon,
-     <http://www.example.com/alice/> ;purpose=info, 
-     <cid:1234567890@atlanta.example.com> 
+   To: <urn:service:sos>
+   From: Hannes Tschofenig <sips:hannes@example.com>;tag=9fxced76sl
+   Call-ID: 3848276298220188511@example.com
+   Call-Info: <http://wwww.example.com/hannes/photo.jpg> ;purpose=icon,
+     <http://www.example.com/hannes/> ;purpose=info, 
+     <cid:1234567890@example.com> 
          ;purpose=emergencyCallData.ProviderInfo
-   Geolocation: <cid:target123@atlanta.example.com>
-   Geolocation-Routing: no
+   Geolocation: <https://ls.example.net:9768/357yc6s64ceyoiuy5ax3o>
+   Geolocation-Routing: yes
    Accept: application/sdp, application/pidf+xml, 
       application/emergencyCallProviderinfo+xml
    CSeq: 31862 INVITE
-   Contact: <sips:alice@atlanta.example.com>
+   Contact: <sips:hannes@example.com>
    Content-Type: multipart/mixed; boundary=boundary1
 
    Content-Length: ...
@@ -1537,47 +1593,145 @@ If the 'handling' parameter has the value "optional", the UAS ignores the messag
 
    ...SDP goes here
 
-   --boundary1
+   --boundary1--
 
-   Content-Type: application/pidf+xml
-   Content-ID: <target123@atlanta.example.com>
+   Content-Type: application/emergencyCall.DevInfo+xml
+   Content-ID: <1234567890@atlanta.example.com>
    Content-Disposition: by-reference;handling=optional
-	  
-   ...PIDF-LO goes here
+<?xml version="1.0" encoding="UTF-8"?>
+				  
+<svc:emergencyCall.DevInfo 
+     xmlns:svc="urn:ietf:params:xml:ns:emergencyCall.DevInfo"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<svc:id>12345</svc:id>
+    <svc:DeviceClassification>SoftPhn</svc:DeviceClassification>
+    <svc:UniqueDeviceID>00-0d-4b-30-72-df</svc:UniqueDeviceID>
+    <svc:TypeOfDeviceID>MAC</svc:TypeOfDeviceID>
+</svc:emergencyCall.DevInfo>
 
+				  
    --boundary1--
 
    Content-Type: application/emergencyCall.ProviderInfo+xml
    Content-ID: <1234567890@atlanta.example.com>
    Content-Disposition: by-reference;handling=optional
-
-   ...Additional data goes here
-
+<?xml version="1.0" encoding="UTF-8"?>
+<ad:emergencyCall.ProviderInfo 
+    xmlns:ad="urn:ietf:params:xml:ns:emergencyCall.ProviderInfo"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<ad:id>12345</ad:id>
+	  <ad:DataProviderString>Hannes Tschofenig
+	  </ad:DataProviderString>
+    <ad:TypeOfProvider>Other</ad:TypeOfProvider>    
+    <ad:ContactURI>sip:hannes@example.com</ad:ContactURI>
+    <ad:Language>EN</ad:Language>
+    <xc:DataProviderContact  
+        xmlns:xc="urn:ietf:params:xml:ns:vcard-4.0">
+                <vcard>
+                    <fn><text>Hannes Tschofenig</text></fn>
+                    <n>
+                        <surname>Hannes</surname>
+                        <given>Tschofenig</given>
+                        <additional/>
+                        <prefix/>
+                        <suffix>Dipl. Ing.</suffix>
+                    </n>
+                    <bday><date>--0203</date></bday>
+                    <anniversary>
+                        <date-time>20090808T1430-0500</date-time>
+                    </anniversary>
+                    <gender><sex>M</sex></gender>
+                    <lang>
+                        <parameters><pref><integer>1</integer></pref>
+                        </parameters>
+                        <language-tag>de</language-tag>
+                    </lang>
+                    <lang>
+                        <parameters><pref><integer>2</integer></pref>
+                        </parameters>
+                        <language-tag>en</language-tag>
+                    </lang>
+                    <adr>
+                        <parameters>
+                            <type><text>work</text></type>
+                            <label><text>Hannes Tschofenig
+                                Linnoitustie 6
+                                Espoo, Finland
+                                02600</text></label>
+                        </parameters>
+                        <pobox/>
+                        <ext/>
+                        <street>Linnoitustie 6</street>
+                        <locality>Espoo</locality>
+                        <region>Uusimaa</region>
+                        <code>02600</code>
+                        <country>Finland</country>
+                    </adr>
+                    <tel>
+                        <parameters>
+                            <type>
+                                <text>work</text>
+                                <text>voice</text>
+                            </type>
+                        </parameters>
+                        <uri>tel:+358 50 4871445</uri>
+                    </tel>
+                    <email>
+                        <parameters><type><text>work</text></type>
+                        </parameters>
+                        <text>hannes.tschofenig@nsn.com</text>
+                    </email>
+                    <geo>
+                        <parameters><type><text>work</text></type>
+                        </parameters>
+                        <uri>geo:60.210796,24.812924</uri>
+                    </geo>
+                    <key>
+                        <parameters>
+				                   <type><text>home</text></type>
+                        </parameters>
+                        <uri>https://www.example.com/key.asc
+						            </uri>
+                    </key>
+                    <tz><text>Finland/Helsinki</text></tz>
+                    <url>
+                        <parameters><type><text>home</text></type>
+                        </parameters>
+                        <uri>http://example.com/hannes.tschofenig</uri>
+                    </url>
+                </vcard>
+    </xc:DataProviderContact>
+</ad:emergencyCall.ProviderInfo>
    --boundary1--
             ]]></artwork>
 				</figure>
-			</t>
-
-			<t>
-				<figure anchor="example2" title="Example: Attaching Additional Data per Reference in a SIP INVITE.">
-					<artwork>
-						<![CDATA[
-   INVITE sips:bob@biloxi.example.com SIP/2.0
-   Via: SIPS/2.0/TLS pc33.atlanta.example.com;branch=z9hG4bK74bf9
+				</t>
+		  
+     <t>In this example, information available to the access network operator is included in the call setup message only indirectly via the use of the location reference. The PSAP has to retrieve it via a separate look-up step. Since the access network provider and the VoIP service provider are two independent entities in this scenario the access network operator is not involved in the processing of application layer exchanges and forwards the SIP INVITE transparently, as illustrated in step #1. No change to the SIP INVITE is applied.</t>
+       
+		  <t>When the VoIP service provider receives the message and determines based on the Service URN that the incoming request is an emergency call. It performs the typical emergency services related tasks, including location-based routing, and adds additional data, namely service and subscriber information, to the outgoing message. For the example we assume a VoIP service provider that deploys a back-to-back user agent allowing additional data to be included in the body of the SIP message (rather than per reference in the header), which allows us to illustrate the use of multiple data provider info blocks. The resulting message is shown in <xref target="example2"/>. </t>
+		  
+		  
+		    <t>
+		      <figure anchor="example2" title="VoIP Provider sending SIP INVITE with Additional Data.">
+		        <artwork>
+		          <![CDATA[					  
+   INVITE sips:psap@example.org SIP/2.0
+   Via: SIPS/2.0/TLS server.example.com;branch=z9hG4bK74bf9
    Max-Forwards: 70
-   To: Bob <sips:bob@biloxi.example.com>
-   From: Alice <sips:alice@atlanta.example.com>;tag=9fxced76sl
-   Call-ID: 3848276298220188511@atlanta.example.com
-   Call-Info: <http://wwww.example.com/alice/photo.jpg> ;purpose=icon,
-     <http://www.example.com/alice/> ;purpose=info, 
-     <https://www.example.com/abc123456/> 
+   To: <urn:service:sos>
+   From: Hannes Tschofenig <sips:hannes@example.com>;tag=9fxced76sl
+   Call-ID: 3848276298220188511@example.com
+   Call-Info: <http://wwww.example.com/hannes/photo.jpg> ;purpose=icon,
+     <http://www.example.com/hannes/> ;purpose=info, 
+     <cid:1234567890@example.com> 
          ;purpose=emergencyCallData.ProviderInfo
-   Geolocation: <cid:target123@atlanta.example.com>
-   Geolocation-Routing: no
+   Geolocation: <https://ls.example.net:9768/357yc6s64ceyoiuy5ax3o>
+   Geolocation-Routing: yes
    Accept: application/sdp, application/pidf+xml, 
       application/emergencyCallProviderinfo+xml
    CSeq: 31862 INVITE
-   Contact: <sips:alice@atlanta.example.com>
+   Contact: <sips:hannes@example.com>
    Content-Type: multipart/mixed; boundary=boundary1
 
    Content-Length: ...
@@ -1588,20 +1742,225 @@ If the 'handling' parameter has the value "optional", the UAS ignores the messag
 
    ...SDP goes here
 
-   --boundary1
-
-   Content-Type: application/pidf+xml
-   Content-ID: <target123@atlanta.example.com>
-   Content-Disposition: by-reference;handling=optional
-	  
-   ...PIDF-LO goes here
-
    --boundary1--
-            ]]></artwork>
-				</figure>
-			</t>
+
+   Content-Type: application/emergencyCall.DevInfo+xml
+   Content-ID: <1234567890@atlanta.example.com>
+   Content-Disposition: by-reference;handling=optional
+<?xml version="1.0" encoding="UTF-8"?>
+				  
+<svc:emergencyCall.DevInfo 
+     xmlns:svc="urn:ietf:params:xml:ns:emergencyCall.DevInfo"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<svc:id>12345</svc:id>
+    <svc:DeviceClassification>SoftPhn</svc:DeviceClassification>
+    <svc:UniqueDeviceID>00-0d-4b-30-72-df</svc:UniqueDeviceID>
+    <svc:TypeOfDeviceID>MAC</svc:TypeOfDeviceID>
+</svc:emergencyCall.DevInfo>
+
+				  
+   --boundary1--
+
+   Content-Type: application/emergencyCall.ProviderInfo+xml
+   Content-ID: <1234567890@atlanta.example.com>
+   Content-Disposition: by-reference;handling=optional
+<?xml version="1.0" encoding="UTF-8"?>
+<ad:emergencyCall.ProviderInfo 
+    xmlns:ad="urn:ietf:params:xml:ns:emergencyCall.ProviderInfo"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<ad:id>12345</ad:id>
+	  <ad:DataProviderString>Hannes Tschofenig
+	  </ad:DataProviderString>
+    <ad:TypeOfProvider>Other</ad:TypeOfProvider>    
+    <ad:ContactURI>sip:hannes@example.com</ad:ContactURI>
+    <ad:Language>EN</ad:Language>
+    <xc:DataProviderContact  
+        xmlns:xc="urn:ietf:params:xml:ns:vcard-4.0">
+                <vcard>
+                    <fn><text>Hannes Tschofenig</text></fn>
+                    <n>
+                        <surname>Hannes</surname>
+                        <given>Tschofenig</given>
+                        <additional/>
+                        <prefix/>
+                        <suffix>Dipl. Ing.</suffix>
+                    </n>
+                    <bday><date>--0203</date></bday>
+                    <anniversary>
+                        <date-time>20090808T1430-0500</date-time>
+                    </anniversary>
+                    <gender><sex>M</sex></gender>
+                    <lang>
+                        <parameters><pref><integer>1</integer></pref>
+                        </parameters>
+                        <language-tag>de</language-tag>
+                    </lang>
+                    <lang>
+                        <parameters><pref><integer>2</integer></pref>
+                        </parameters>
+                        <language-tag>en</language-tag>
+                    </lang>
+                    <adr>
+                        <parameters>
+                            <type><text>work</text></type>
+                            <label><text>Hannes Tschofenig
+                                Linnoitustie 6
+                                Espoo, Finland
+                                02600</text></label>
+                        </parameters>
+                        <pobox/>
+                        <ext/>
+                        <street>Linnoitustie 6</street>
+                        <locality>Espoo</locality>
+                        <region>Uusimaa</region>
+                        <code>02600</code>
+                        <country>Finland</country>
+                    </adr>
+                    <tel>
+                        <parameters>
+                            <type>
+                                <text>work</text>
+                                <text>voice</text>
+                            </type>
+                        </parameters>
+                        <uri>tel:+358 50 4871445</uri>
+                    </tel>
+                    <email>
+                        <parameters><type><text>work</text></type>
+                        </parameters>
+                        <text>hannes.tschofenig@nsn.com</text>
+                    </email>
+                    <geo>
+                        <parameters><type><text>work</text></type>
+                        </parameters>
+                        <uri>geo:60.210796,24.812924</uri>
+                    </geo>
+                    <key>
+                        <parameters>
+				                   <type><text>home</text></type>
+                        </parameters>
+                        <uri>https://www.example.com/key.asc
+						            </uri>
+                    </key>
+                    <tz><text>Finland/Helsinki</text></tz>
+                    <url>
+                        <parameters><type><text>home</text></type>
+                        </parameters>
+                        <uri>http://example.com/hannes.tschofenig</uri>
+                    </url>
+                </vcard>
+    </xc:DataProviderContact>
+</ad:emergencyCall.ProviderInfo>
+		      
+   --boundary1--
+
+   Content-Type: application/emergencyCall.SvcInfo+xml
+   Content-ID: <1234567890@atlanta.example.com>
+   Content-Disposition: by-reference;handling=optional		          
+<?xml version="1.0" encoding="UTF-8"?>
+<svc:emergencyCall.SvcInfo 
+     xmlns:svc="urn:ietf:params:xml:ns:emergencyCall.SvcInfo"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<svc:id>abc123</svc:id>
+    <svc:SvcEnvironment>Residence</svc:SvcEnvironment>
+    <svc:SvcDelByProvider>VOIP</svc:SvcDelByProvider>
+    <svc:SvcMobility>Unknown</svc:SvcMobility>
+</svc:emergencyCall.SvcInfo>
+		      
+   --boundary1--
+
+   Content-Type: application/emergencyCall.ProviderInfo+xml
+   Content-ID: <1234567890@atlanta.example.com>
+   Content-Disposition: by-reference;handling=optional		     
+<?xml version="1.0" encoding="UTF-8"?>
+<ad:emergencyCall.ProviderInfo 
+    xmlns:ad="urn:ietf:params:xml:ns:emergencyCall.ProviderInfo"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<svc:id>abc123</svc:id>          
+    <ad:DataProviderString>Example VoIP Provider
+	  </ad:DataProviderString>
+    <ad:ProviderID>urn:nena:companyid:ID123</ad:ProviderID>
+    <ad:ProviderIDSeries>NENA</ad:ProviderIDSeries>
+    <ad:TypeOfProvider>Service Provider</ad:TypeOfProvider>    
+    <ad:ContactURI>sip:voip-provider@example.com</ad:ContactURI>
+    <ad:Language>EN</ad:Language>
+    <xc:DataProviderContact  
+        xmlns:xc="urn:ietf:params:xml:ns:vcard-4.0">
+                <vcard>
+                    <fn><text>John Doe</text></fn>
+                    <n>
+                        <surname>John</surname>
+                        <given>Doe</given>
+                        <additional/>
+                        <prefix/>
+                        <suffix/>
+                    </n>
+                    <bday><date>--0203</date></bday>
+                    <anniversary>
+                        <date-time>20090808T1430-0500</date-time>
+                    </anniversary>
+                    <gender><sex>M</sex></gender>                   
+                    <lang>
+                        <parameters><pref><integer>1</integer></pref>
+                        </parameters>
+                        <language-tag>en</language-tag>
+                    </lang>
+                    <org>
+                        <parameters><type><text>work</text></type>
+                        </parameters>
+                        <text>Example VoIP Provider</text>
+                    </org>
+                    <adr>
+                        <parameters>
+                            <type><text>work</text></type>
+                            <label><text>John Doe
+                                Downing Street 10
+                                London, UK</text></label>
+                        </parameters>
+                        <pobox/>
+                        <ext/>
+                        <street>Downing Street 10</street>
+                        <locality>London</locality>
+                        <region/>
+                        <code>SW1A 2AA</code>
+                        <country>UK</country>
+                    </adr>
+                    <tel>
+                        <parameters>
+                            <type>
+                                <text>work</text>
+                                <text>voice</text>
+                            </type>
+                        </parameters>
+                        <uri>sips:john.doe@example.com</uri>
+                    </tel>
+                    <email>
+                        <parameters><type><text>work</text></type>
+                        </parameters>
+                        <text>john.doe@example.com</text>
+                    </email>
+                    <geo>
+                        <parameters><type><text>work</text></type>
+                        </parameters>
+                        <uri>geo:51.503396, 0.127640</uri>
+                    </geo>
+                    <tz><text>Europe/London</text></tz>
+                    <url>
+                        <parameters><type><text>home</text></type>
+                        </parameters>
+                        <uri>http://www.example.com/john.doe</uri>
+                    </url>
+                </vcard>
+    </xc:DataProviderContact>
+</ad:emergencyCall.ProviderInfo>
+		          ]]></artwork>
+		      </figure>
+		    </t>
+		    
+		 <t>Finally, the PSAP requests location information from the access network operator. The response is shown in <xref target="example3"/>. Along with the location information additional data is provided in the &lt;Provided-By&gt; element of the PIDF-LO.</t>
+		  
 			<t>
-				<figure anchor="example3" title="Example: Including Additional Data via the Provided-By Element in a PIDF-LO.">
+			  <figure anchor="example3" title="Access Network Provider returning PIDF-LO with Additional Data.">
 					<artwork>
 						<![CDATA[
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1634,11 +1993,12 @@ entity="pres:alice@atlanta.example.com">
       <gp:usage-rules>
         <gbp:retransmission-allowed>true
         </gbp:retransmission-allowed>
-        <gbp:retention-expiry>2013-07-10T20:00:00Z
+        <gbp:retention-expiry>2013-12-10T20:00:00Z
         </gbp:retention-expiry>
       </gp:usage-rules>
       <gp:method>802.11</gp:method>
-      <provided-by 
+      
+		  <provided-by 
 	  xmlns="urn:ietf:params:xml:ns:pidf:geopriv10:emergencyCallData">
     
        <emergencyCallDataReference purpose="emergencyCallData.SvcInfo"
@@ -1664,12 +2024,11 @@ entity="pres:alice@atlanta.example.com">
        </emergencyCallDataValue>
       </provided-by>
     </gp:geopriv>
-    <dm:deviceID>mac:1234567890ab</dm:deviceID>
+    <dm:deviceID>mac:00-0d-4b-30-72-df</dm:deviceID>
     <dm:timestamp>2013-07-09T20:57:29Z</dm:timestamp>
   </dm:device>
 </presence>
             ]]>
-
 					</artwork>
 				</figure>
 			</t>	
@@ -2992,8 +3351,11 @@ entity="pres:alice@atlanta.example.com">
 			<?rfc include="reference.RFC.5139"?>
 			<?rfc include="reference.RFC.6848"?>
 			<?rfc include="reference.RFC.5491"?>
+		  <?rfc include="reference.RFC.3840"?>
 			<?rfc include="reference.RFC.5962"?>
 			<?rfc include="reference.I-D.ietf-geopriv-relative-location"?>      
+		  <?rfc include="reference.I-D.gellens-negotiating-human-language"?>
+		  <?rfc include="reference.I-D.ietf-ecrit-psap-callback"?>
 			<?rfc include="reference.RFC.6973"?>      
 		</references>
 
