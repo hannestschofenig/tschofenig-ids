@@ -370,7 +370,8 @@ Application Data        <------->     Application Data
      client hello message. The hello extension mechanism is described in Section 7.4.1.4 of TLS 1.2 <xref target="RFC5246"/>.
    </t>
  
-      <t>The 'client_certificate_type' sent in the client hello indicates the certificate types the client is able to provide to the server, when requested using a certificate_request message.</t>
+      <t>The 'client_certificate_type' in the client hello indicates the certificate types the client is able to provide to the server, when requested using a certificate_request message.</t>
+      
     <t>The 'server_certificate_type' in the client hello indicates the types of certificates the client is able to process when provided by the server in a subsequent certificate payload.</t>
     
       <t>The 'client_certificate_type' and 'server_certificate_type' sent in the client hello may carry a list of supported certificate types, sorted by client preference. It is a list in the case where the client supports multiple certificate types. It is an empty structure if the client does not support or possess any certificate types for client authentication.</t>
@@ -395,29 +396,16 @@ Application Data        <------->     Application Data
      </t>
    </list> 
    </t> 
-   <!-- 
-  <t>The 'client_certificate_type' in the server hello the TLS server indicates to the TLS client the type of certificate type that can be found in the attached certificate payload. Only a single value is permitted.</t>
-  --> 
-  <t>If the client hello indicates support of raw public keys in the
-    'server_certificate_type' extension and the
-    server chooses to use raw public keys then the TLS server
-    MUST place the SubjectPublicKeyInfo structure into the Certificate
-    payload.</t>
-  
-  <!-- 
-  <t>The 'server_certificate_type' in the server hello indicates the type of certificates the client is requested to provide in a subsequent certificate payload. The value conveyed in the 'server_certificate_type' MUST be selected from one of the values provided in the 'server_certificate_type' sent in the client hello.</t>
-  -->
-  
-  <t>If the TLS server also requests a certificate from the client (via the certificate_request message) it MUST include the 'client_certificate_type' extension with a value chosen from the list of client-supported certificates types (as provided 
-    in the 'client_certificate_type' of the client hello). 
-  </t>
-  
-  
-  <t>If the server does not send a certificate_request payload (for example, because client authentication happens at the application layer or no client authentication is required) or none of the certificates supported by the client (as indicated in the 'server_certificate_type' in the client hello) match the server-supported certificate types then the 'server_certificate_type' payload in the server hello is omitted.</t>
  
+  
+  <t>The 'client_certificate_type' in the client hello indicates the certificate types the client is able to provide to the server, when requested using a certificate_request message. If the TLS server wants to requests a certificate from the client (via the certificate_request message) it MUST include the 'client_certificate_type' extension in the server hello. The 'client_certificate_type' in the server hello indicates the type of certificates the client is requested to provide in a subsequent certificate payload. The value conveyed in the 'client_certificate_type' MUST be selected from one of the values provided in the 'client_certificate_type' extension sent in the client hello.</t>
 
-
-
+  <t>If the server does not send a certificate_request payload (for example, because client authentication happens at the application layer or no client authentication is required) or none of the certificates supported by the client (as indicated in the 'client_certificate_type' in the client hello) match the server-supported certificate types then the 'client_certificate_type' payload in the server hello is omitted.</t>
+  
+  <t>The 'server_certificate_type' in the client hello indicates the types of certificates the client is able to process when provided by the server in a subsequent certificate payload. If the client hello indicates support of raw public keys in the
+    'server_certificate_type' extension and the server chooses to use raw public keys then the TLS server
+    MUST place the SubjectPublicKeyInfo structure into the Certificate payload. With the 'server_certificate_type' in the server hello the TLS server indicates the certificate type carried in the Certificate payload. This additional indication allows to avoid parsing ambiguities since the certificate payload may contain either the X.509 certificate or a SubjectPublicKeyInfo structure. Note that only a single value is permitted in the 'server_certificate_type' extension when carried in the server hello.</t>
+    
 </section>
 
      <!-- 
@@ -546,14 +534,14 @@ Application Data        <------->     Application Data
      
 <section title="Combined Usage of Raw Public Keys and X.509 Certificate">
 <t>This section shows an example combining raw public keys and X.509 certificates. The client uses a raw public key 
-for client authentication but the server provides an X.509 certificate. This exchange starts with the client indicating its ability to process X.509 certificates provided by the server, and the ability to send raw public keys (see [1]). The server provides the X.509 certificate in [3] with the indication present in [2]. For client authentication the server indicates in [4] that it selected the raw public key format and requests a certificate from the client in [5]. The TLS client provides a raw public key in [6] after receiving and processing the TLS server hello message.</t>
+for client authentication but the server provides an X.509 certificate. This exchange starts with the client indicating its ability to process X.509 certificates and raw public keys, if provided by the server. Additionally, the client indicates that is has a raw public keys for client-side authentication (see [1]). The server provides the X.509 certificate in [3] with the indication present in [2]. For client authentication the server indicates in [4] that it selected the raw public key format and requests a certificate from the client in [5]. The TLS client provides a raw public key in [6] after receiving and processing the TLS server hello message.</t>
 
  <t>
 <figure anchor="flow3" title="Hybrid Certificate Example.">
 <artwork>
 <![CDATA[ 
 client_hello,
-server_certificate_type=(X.509)
+server_certificate_type=(X.509, RawPublicKey)
 client_certificate_type=(RawPublicKey) // [1] 
                          ->
                          <-  server_hello,
