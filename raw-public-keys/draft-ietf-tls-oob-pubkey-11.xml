@@ -122,10 +122,10 @@
          keywords will be used for the search engine. -->
 
     <abstract>
-      <t> This document specifies a new certificate type and two TLS extensions,
- one for the client and one for the server, for exchanging raw
- public keys in Transport Layer Security (TLS) and Datagram Transport
- Layer Security (DTLS) for use with out-of-band public key validation.</t>
+      <t> This document specifies a new certificate type and two TLS extensions for exchanging raw
+ public keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS). 
+ The new certificate type allows raw public keys to be used for authentication.  
+ </t>
     </abstract>
   </front>
 
@@ -281,7 +281,7 @@ Algorithm (ECDSA)      | Section 2 of RFC 5480      | 1.2.840.10045.2.1
 </figure>
 </t>
 
-      <t>The extension format for extended client hellos and extended server, via the "extension_data" field, is used to carry the ClientCertTypeExtension and the ServerCertTypeExtension structures. These two structures are shown in <xref target="types"/>. The CertificateType structure is an enum with values taken from the 'TLS Certificate Type' registry <xref target="TLS-Certificate-Types-Registry"/>. </t>
+      <t>The extension format for extended client and server hellos, which uses the "extension_data" field, is used to carry the ClientCertTypeExtension and the ServerCertTypeExtension structures. These two structures are shown in <xref target="types"/>. The CertificateType structure is an enum with values taken from the 'TLS Certificate Type' registry <xref target="TLS-Certificate-Types-Registry"/>. </t>
 
 <!-- 
 
@@ -374,23 +374,22 @@ Application Data        <------->     Application Data
       
     <t>The 'server_certificate_type' in the client hello indicates the types of certificates the client is able to process when provided by the server in a subsequent certificate payload.</t>
     
-      <t>The 'client_certificate_type' and 'server_certificate_type' sent in the client hello may carry a list of supported certificate types, sorted by client preference. It is a list in the case where the client supports multiple certificate types. It is an empty structure if the client does not support or possess any certificate types for client authentication.</t>
+      <t>The 'client_certificate_type' and 'server_certificate_type' sent in the client hello may carry a list of supported certificate types, sorted by client preference. It is a list in the case where the client supports multiple certificate types. <!-- It is an empty structure if the client does not support or possess any certificate types for client authentication.--> </t>
    
-    <t>The TLS client MUST omit the 'client_certificate_type' extension in the client hello if it does not possess a client certificate or is not configured to use one with the given TLS server. The TLS client MUST omit the 'server_certificate_type' extension in the client hello if it is unable to process certificates from the server.</t>
+    <t>The TLS client MUST omit the 'client_certificate_type' extension in the client hello if it does not possess a raw public key/certificate that it can provide to the server when requested using a certificate_request message or is not configured to use one with the given TLS server. The TLS client MUST omit the 'server_certificate_type' extension in the client hello if it is unable to process raw public keys or other certificate types introduced via this extension.</t>
     
    <!-- <t>The 'client_certificate_type' and 'server_certificate_type' extensions MUST be omitted if the client only supports X.509 certificates since no new functionality would be added by using this specification.</t> -->
 </section>
 
 <section title="Server Hello">
 
-<t>If the server receives a client hello that contains the 'client_certificate_type' and 'server_certificate_type' 
-   extensions and chooses a cipher suite then three outcomes are possible:
+<t>If the server receives a client hello that contains the 'client_certificate_type' extension and/or the 'server_certificate_type' 
+   extension then three outcomes are possible:
    
    <list style="numbers"> 
    <t>The server does not support the extension defined in this document. In this case the server returns the server hello 
    without the extensions defined in this document.</t>
-   <t>The server supports the extension defined in this document but it does not have a certificate type in common with the client. Then the server terminates the session with a
-     fatal alert of type "unsupported_certificate".</t>
+   <t>The server supports the extension defined in this document but it does not have any certificate type in common with the client. Then, the server terminates the session with a fatal alert of type "unsupported_certificate".</t>
      <t>The server supports the extensions defined in this document and has at least one certificate type in common with the client. 
        In this case the processing rules described below are followed. 
      </t>
@@ -398,13 +397,13 @@ Application Data        <------->     Application Data
    </t> 
  
   
-  <t>The 'client_certificate_type' in the client hello indicates the certificate types the client is able to provide to the server, when requested using a certificate_request message. If the TLS server wants to requests a certificate from the client (via the certificate_request message) it MUST include the 'client_certificate_type' extension in the server hello. The 'client_certificate_type' in the server hello indicates the type of certificates the client is requested to provide in a subsequent certificate payload. The value conveyed in the 'client_certificate_type' MUST be selected from one of the values provided in the 'client_certificate_type' extension sent in the client hello.</t>
+  <t>The 'client_certificate_type' in the client hello indicates the certificate types the client is able to provide to the server, when requested using a certificate_request message. If the TLS server wants to request a certificate from the client (via the certificate_request message) it MUST include the 'client_certificate_type' extension in the server hello. This 'client_certificate_type' in the server hello then indicates the type of certificates the client is requested to provide in a subsequent certificate payload. The value conveyed in the 'client_certificate_type' MUST be selected from one of the values provided in the 'client_certificate_type' extension sent in the client hello. The server MUST also include a certificate_request payload in the server hello message.</t>
 
-  <t>If the server does not send a certificate_request payload (for example, because client authentication happens at the application layer or no client authentication is required) or none of the certificates supported by the client (as indicated in the 'client_certificate_type' in the client hello) match the server-supported certificate types then the 'client_certificate_type' payload in the server hello is omitted.</t>
+  <t>If the server does not send a certificate_request payload (for example, because client authentication happens at the application layer or no client authentication is required) or none of the certificates supported by the client (as indicated in the 'client_certificate_type' in the client hello) match the server-supported certificate types then the 'client_certificate_type' payload in the server hello MUST be omitted.</t>
   
   <t>The 'server_certificate_type' in the client hello indicates the types of certificates the client is able to process when provided by the server in a subsequent certificate payload. If the client hello indicates support of raw public keys in the
     'server_certificate_type' extension and the server chooses to use raw public keys then the TLS server
-    MUST place the SubjectPublicKeyInfo structure into the Certificate payload. With the 'server_certificate_type' in the server hello the TLS server indicates the certificate type carried in the Certificate payload. This additional indication allows to avoid parsing ambiguities since the certificate payload may contain either the X.509 certificate or a SubjectPublicKeyInfo structure. Note that only a single value is permitted in the 'server_certificate_type' extension when carried in the server hello.</t>
+    MUST place the SubjectPublicKeyInfo structure into the Certificate payload. With the 'server_certificate_type' in the server hello the TLS server indicates the certificate type carried in the Certificate payload. This additional indication allows to avoid parsing ambiguities since the Certificate payload may contain either the X.509 certificate or a SubjectPublicKeyInfo structure. Note that only a single value is permitted in the 'server_certificate_type' extension when carried in the server hello.</t>
     
 </section>
 
@@ -440,7 +439,7 @@ Application Data        <------->     Application Data
 
 <section anchor="Examples" title="Examples">
 
-<t><xref target="flow1"/>, <xref target="flow2"/>, and <xref target="flow3"/> illustrate example exchanges. Note that TLS ciphersuites using a Diffie Hellman exchange offering forward secrecy can be used with raw public keys although we do not show information at that level with the subsequent message flows.</t> 
+<t><xref target="flow1"/>, <xref target="flow2"/>, and <xref target="flow3"/> illustrate example exchanges. Note that TLS ciphersuites using a Diffie-Hellman exchange offering forward secrecy can be used with raw public keys although we do not show the information exchange at that level with the subsequent message flows.</t> 
    
 <!--  <t> 
     The "RawPublicKey" value
@@ -456,7 +455,7 @@ Application Data        <------->     Application Data
   --> 
   <section title="TLS Server uses Raw Public Key">
   <t>This section shows an example where the TLS client indicates its ability to 
-    receive and validate raw public keys from the server. In our example the client is quite restricted since it is unable to process other certificate types sent by the server. It also does not have credentials (at the TLS layer) it could send to the server and therefore omits the 'client_certificate_type' extension. Hence, the client only populates the 'server_certificate_type' extension with the raw public key type, as shown in [1].</t>
+    receive and validate raw public keys from the server. In our example the client is quite restricted since it is unable to process other certificate types sent by the server. It also does not have credentials at the TLS layer it could send to the server and therefore omits the 'client_certificate_type' extension. Hence, the client only populates the 'server_certificate_type' extension with the raw public key type, as shown in [1].</t>
     <t>When the TLS server receives the client hello it 
     processes the extension. Since it has a raw public key it indicates 
   in [2] that it had chosen to place the SubjectPublicKeyInfo structure into the Certificate 
@@ -494,7 +493,7 @@ Application Data       <-------> Application Data
 </section>
      
      <section title="TLS Client and Server use Raw Public Keys">
- <t>This section shows an example where the TLS client as well as the TLS server use raw public keys. This is a use case envisioned for smart object networking. 
+ <t>This section shows an example where the TLS client as well as the TLS server use raw public keys. This is one of the use case envisioned for smart object networking. 
  The TLS client in this case is an embedded device that is configured with a raw public key for use with TLS and is also able to process raw public keys sent by the server.
   Therefore, it indicates these capabilities in [1]. As in the previously shown example the server fulfills the client's request,
    indicates this via the "RawPublicKey" value in the server_certificate_type payload [2], and provides a raw public key into the Certificate payload back to the client (see [3]). The TLS server, however, demands client authentication and therefore a certificate_request is added [4].
@@ -534,7 +533,7 @@ Application Data        <------->     Application Data
      
 <section title="Combined Usage of Raw Public Keys and X.509 Certificate">
 <t>This section shows an example combining raw public keys and X.509 certificates. The client uses a raw public key 
-for client authentication but the server provides an X.509 certificate. This exchange starts with the client indicating its ability to process X.509 certificates and raw public keys, if provided by the server. Additionally, the client indicates that is has a raw public keys for client-side authentication (see [1]). The server provides the X.509 certificate in [3] with the indication present in [2]. For client authentication the server indicates in [4] that it selected the raw public key format and requests a certificate from the client in [5]. The TLS client provides a raw public key in [6] after receiving and processing the TLS server hello message.</t>
+for client authentication and the server provides an X.509 certificate. This exchange starts with the client indicating its ability to process X.509 certificates and raw public keys, if provided by the server. Additionally, the client indicates that is has a raw public key for client-side authentication (see [1]). The server provides the X.509 certificate in [3] with the indication present in [2]. For client authentication the server indicates in [4] that it selected the raw public key format and requests a certificate from the client in [5]. The TLS client provides a raw public key in [6] after receiving and processing the TLS server hello message.</t>
 
  <t>
 <figure anchor="flow3" title="Hybrid Certificate Example.">
@@ -581,7 +580,7 @@ Application Data        <------->     Application Data
 	procedures.</t>
 
     <t>The main security challenge is, however, how to associate the public 
-    key with a specific entity. Without a secure binding between identifier and key, the protocol will be vulnerable to masquerade and man-in-the-middle attacks. This document assumes that such 
+    key with a specific entity. Without a secure binding between identifier and key, the protocol will be vulnerable to man-in-the-middle attacks. This document assumes that such 
 	binding can be made out-of-band and we list a few examples in <xref target="into"/>. 
 	DANE <xref target="RFC6698"/> offers one such approach. 
 	
@@ -590,7 +589,7 @@ Application Data        <------->     Application Data
 	</t> 
 	<t>
 	If public keys are obtained using DANE, these public keys are authenticated via DNSSEC.
-	Pre-configured keys is another out of band method for authenticating raw public keys.
+	Pre-configured keys is another out-of-band method for authenticating raw public keys.
 	 While pre-configured keys are not suitable for 
 	a generic Web-based e-commerce environment such keys are a reasonable approach
 	for many smart object deployments where there is a close relationship between 
@@ -763,12 +762,13 @@ Reference: [[THIS RFC]]
 </references>
 <section anchor="Example" title="Example Encoding"> 
 
-<t>For example, the following hex sequence describes a SubjectPublicKeyInfo structure inside the certificate payload:
+<t>For example, the hex sequence shown in <xref target="example1"/> describes a SubjectPublicKeyInfo structure inside the certificate payload.</t>
+<t>
 <figure anchor="example1" title="Example SubjectPublicKeyInfo Structure Byte Sequence.">
 <artwork>
 <![CDATA[
        0     1     2     3     4     5     6     7     8     9
----+------+-----+-----+-----+-----+-----+-----+-----+-----+-----
+   +------+-----+-----+-----+-----+-----+-----+-----+-----+-----
 1  | 0x30, 0x81, 0x9f, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 
 2  | 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x81, 
 3  | 0x8d, 0x00, 0x30, 0x81, 0x89, 0x02, 0x81, 0x81, 0x00, 0xcd, 
@@ -791,8 +791,8 @@ Reference: [[THIS RFC]]
 </figure>
 </t>
 
-<t>The decoded byte-sequence shown in <xref target="example1"/> (for example using Peter's ASN.1 decoder <xref target="ASN.1-Dump"/>) illustrates the structure, as shown in <xref target="example2"/>.
-
+<t>The decoded byte-sequence shown in <xref target="example1"/> (for example using Peter's ASN.1 decoder <xref target="ASN.1-Dump"/>) illustrates the structure, as shown in <xref target="example2"/>.</t>
+<t>
 <figure anchor="example2" title="Decoding of Example SubjectPublicKeyInfo Structure.">
 <artwork>
 <![CDATA[ 
