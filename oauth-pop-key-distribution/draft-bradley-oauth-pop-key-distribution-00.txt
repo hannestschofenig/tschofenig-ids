@@ -1,0 +1,840 @@
+
+
+
+
+Network Working Group                                         J. Bradley
+Internet-Draft                                             Ping Identity
+Intended status: Standards Track                                 P. Hunt
+Expires: October 7, 2014                              Oracle Corporation
+                                                                M. Jones
+                                                               Microsoft
+                                                           H. Tschofenig
+                                                             ARM Limited
+                                                           April 5, 2014
+
+
+   OAuth 2.0 Proof-of-Possession: Authorization Server to Client Key
+                              Distribution
+            draft-bradley-oauth-pop-key-distribution-00.txt
+
+Abstract
+
+   RFC 6750 specified the bearer token concept for securing access to
+   protected resources.  Bearer tokens need to be protected in transit
+   as well as at rest since the security model is based on proof-of-
+   possession.
+
+   The OAuth 2.0 Proof-of-Possession security concept extends bearer
+   token security and requires the client to demonstrate possession of a
+   key when accessing a protected resource.
+
+   This document describes how the client obtains this keying material
+   from the authorization server.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on October 7, 2014.
+
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 1]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+Copyright Notice
+
+   Copyright (c) 2014 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Audience  . . . . . . . . . . . . . . . . . . . . . . . . . .   4
+     3.1.  Audience Parameter  . . . . . . . . . . . . . . . . . . .   4
+     3.2.  Processing Instructions . . . . . . . . . . . . . . . . .   4
+   4.  Symmetric Key Transport . . . . . . . . . . . . . . . . . . .   5
+   5.  Asymmetric Key Transport  . . . . . . . . . . . . . . . . . .   7
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .  11
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  12
+     7.1.  OAuth Parameters Registration . . . . . . . . . . . . . .  12
+     7.2.  Profile Registry  . . . . . . . . . . . . . . . . . . . .  13
+   8.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  14
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  14
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  14
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .  15
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  15
+
+1.  Introduction
+
+   [9] motivates the work on additional security mechanisms beyond OAuth
+   2.0 bearer tokens [10] and outlines use cases, requirements and an
+   architecture.  This document defines the ability for the client to
+   obtain keying material from the authorization server.  This keying
+   material is linked to an access token.
+
+   To best describe the scope of this specification, the OAuth 2.0
+   protocol exchange sequence is shown in Figure 1.  The extension
+   defined in this document piggybacks on the message exchange marked
+   with (C) and (D).
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 2]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+        +--------+                               +---------------+
+        |        |--(A)- Authorization Request ->|   Resource    |
+        |        |                               |     Owner     |
+        |        |<-(B)-- Authorization Grant ---|               |
+        |        |                               +---------------+
+        |        |
+        |        |                               +---------------+
+        |        |--(C)-- Authorization Grant -->| Authorization |
+        | Client |                               |     Server    |
+        |        |<-(D)----- Access Token -------|               |
+        |        |                               +---------------+
+        |        |
+        |        |                               +---------------+
+        |        |--(E)----- Access Token ------>|    Resource   |
+        |        |                               |     Server    |
+        |        |<-(F)--- Protected Resource ---|               |
+        +--------+                               +---------------+
+
+                Figure 1: Abstract OAuth 2.0 Protocol Flow
+
+   OAuth 2.0 [2] offers different ways to obtain an access token, namely
+   using authorization grants and using a refresh token.  The core OAuth
+   specification defines four authorization grants, see Section 1.3 of
+   [2], and [11] adds an assertion-based authorization grant to that
+   list.
+
+   This document extends the communication with the token endpoint.  The
+   token endpoint, which is described in Section 3.2 of [2], is used
+   with every authorization grant except for the implicit grant type.
+   In the implicit grant type the access token is issued directly.
+
+   Two types of keying material can be bound to an access token, namely
+   symmetric keys and asymmetric keys.  Conveying symmetric keys from
+   the authorization server to the client is described in Section 4 and
+   the procedures for dealing with asymmetric keys are described in
+   Section 5.
+
+2.  Terminology
+
+   The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
+   'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
+   specification are to be interpreted as described in [1].
+
+   Session Key:
+
+      The term session key refers to fresh and unique keying material
+      established between the client and the resource server.  This
+      session key has a lifetime that corresponds to the lifetime of the
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 3]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+      access token, is generated by the authorization server and bound
+      to the access token.
+
+
+3.  Audience
+
+   When an authorization server creates an access token, according to
+   the PoP security architecture it has to know which resource server
+   will process it.  This section defines a new header that is used by
+   the client to indicate what protected resource at which resource
+   server it wants to access.  This information may subsequently also
+   communicated by the authorization server securely to the resource
+   server, for example within the audience field of the access token.
+
+3.1.  Audience Parameter
+
+   Before a client wants to interact with a resource server it needs to
+   obtain an access token.  It therefore constructs the access token
+   request to the token endpoint by adding the audience parameter using
+   the "application/x-www-form-urlencoded" format with a character
+   encoding of UTF-8 in the HTTP request entity-body.
+
+   The audience URI MUST be an absolute URI as defined by Section 4.3 of
+   [3].  It MAY include an "application/x-www-form-urlencoded" formatted
+   query component (Section 3.4 of [3] ).  The URI MUST NOT include a
+   fragment component.
+
+   The ABNF syntax is defined as follows where by the "URI-reference"
+   definition is taken from [3]:
+
+   audience = URI-reference
+
+3.2.  Processing Instructions
+
+      Step (0): As an initial step the client typically determines the
+      resource server it wants to interact with, for example, as part of
+      a discovery procedure.
+
+      Step (1): The client starts the OAuth 2.0 protocol interaction
+      based on the selected grant type.
+
+      Step (2): When the client interacts with the token endpoint to
+      obtain an access token it MUST populate the newly defined
+      'audience' parameter with the information obtained in step (0).
+
+      Step (2): The resource server who obtains the request needs to
+      parse it to determine whether the provided audience value matches
+      any of the resource servers it has a relationship with.  If the
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 4]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+      authorization server fails to parse the provided value it MUST
+      reject the request using an error response with the error code
+      "invalid_request".  If the authorization server does not consider
+      the resource server acceptable it MUST return an error response
+      with the error code "access_denied".  In both cases additional
+      error information may be provided via the error_description, and
+      the error_uri parameters.  If the request has, however, been
+      verified successfully then the authorization server MUST include
+      the audience claim into the access token with the value copied
+      from the audience field provided by the client.  In case the
+      access token is encoded using the JSON Web Token format [5] the
+      "aud" claim MUST be used.  The access token MUST be protected
+      against modification by either using a digital signature or a
+      keyed message digest.  The authorization server returns the access
+      token to the client, as specified in [2].
+
+   Subsequent steps for the interaction between the client and the
+   resource server are beyond the scope of this document.
+
+4.  Symmetric Key Transport
+
+   In case a symmetric key shall be bound to an access token the
+   following procedure is applicable.  In the request message from the
+   OAuth client to the authorization server the following parameters
+   MUST be included:
+
+   token_type:  REQUIRED.  For the symmetric key variant the value MUST
+         be set to "sk".
+
+   profile:  REQUIRED.  The profile parameter provides information about
+         what mechanisms the client supports to provide proof of
+         possession of the key towards a resource server.  The value
+         MUST be taken from the algorithm registry created in
+         Section 7.2.  Algorithm names are case-sensitive.  If the
+         client supports more than one algorithm profile then each
+         individual value MUST be separated by a comma.
+
+   For example, the client makes the following HTTP request using TLS
+   (extra line breaks are for display purposes only):
+
+
+
+
+
+
+
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 5]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+        POST /token HTTP/1.1
+        Host: server.example.com
+        Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+        Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+
+        grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA
+        &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
+        &token_type=sk
+        &profile=foo-bar
+
+
+                Example Request to the Authorization Server
+
+   If the access token request is valid and authorized, the
+   authorization server issues an access token and optionally a refresh
+   token.  If the request client authentication failed or is invalid,
+   the authorization server returns an error response as described in
+   Section 5.2 of [2].
+
+   The authorization server MUST include a JWK in a successful response,
+   if it supports any of the profiles listed by the client.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 6]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+   For example:
+
+
+     HTTP/1.1 200 OK
+     Content-Type: application/json
+     Cache-Control: no-store
+
+     {
+       "access_token":"SlAV32hkKG ...
+         ... (remainder of JWT omitted for brevity)",
+       "token_type":"sk",
+       "expires_in":3600,
+       "refresh_token":"8xLOxBtZp8",
+       "jwk":"eyJhbGciOiJSU0ExXzUi ...
+         ... (remainder of JWK omitted for brevity)"
+     }
+
+     The content of the 'access_token' contains
+     the key identifier value in the 'cnf' element,
+     as shown below.
+
+      {
+         "iss": "https://server.example.com",
+         "sub": "24400320",
+         "aud": "s6BhdRkqt3",
+         "nonce": "n-0S6_WzA2Mj",
+         "exp": 1311281970,
+         "iat": 1311280970,
+         "cnf":{
+           "jwk":
+             "JDLUhTMjU2IiwiY3R5Ijoi ...
+              ... (remainder of JWE omitted for brevity)"
+           }
+      }
+
+
+
+5.  Asymmetric Key Transport
+
+   In case an asymmetric key shall be bound to an access token then the
+   following procedure is applicable.  In the request message from the
+   OAuth client to the authorization server the following parameters
+   MUST be included:
+
+   token_type:  REQUIRED.  For the asymmetric key variant the value MUST
+         be set to "pk".
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 7]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+   pk_info:  OPTIONAL.  This field contains information about the public
+         key the client would like to bind to the access token in the
+         JSON Web Key format.  If the client does not provide a public
+         key then the authorization server MUST create an ephemeral key
+         pair (considering the profile information provided by the
+         client) or alternative respond with an error message.
+
+   profile:  REQUIRED.  The profile parameter provides information about
+         what mechanisms the client supports to provide proof of
+         possession of the key towards a resource server.  The value
+         MUST be taken from the algorithm registry created in
+         Section 7.2.  Algorithm names are case-sensitive.  If the
+         client supports more than one profile then each individual
+         value MUST be separated by a comma.
+
+   For example, the client makes the following HTTP request using TLS
+   (extra line breaks are for display purposes only):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 8]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+        POST /token HTTP/1.1
+        Host: server.example.com
+        Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+        Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+
+        grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA
+        &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
+        &token_type=pk
+        &pk_info:"eyJhbGciOiJSU0ExXzUi ...
+         ... (remainder of JWK omitted for brevity)"
+
+      whereby the content of the pk_info field represents the following
+      structure:
+
+     {"keys":
+        [
+          {"kty":"RSA",
+             "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+        4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+        tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+        QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+        SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+        w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+             "e":"AQAB",
+             "alg":"RS256",
+           "kid":"client@example.com"}
+        ]
+      }
+
+                Example Request to the Authorization Server
+
+   If the access token request is valid and authorized, the
+   authorization server issues an access token and optionally a refresh
+   token.  If the request client authentication failed or is invalid,
+   the authorization server returns an error response as described in
+   Section 5.2 of [2].
+
+   The authorization server also places information about the public key
+   used by the client into the access token to create the binding
+   between the two.  The new token type, called 'pk', is placed into the
+   'token_type' parameter.
+
+   An example of a successful response is shown below:
+
+
+
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014                [Page 9]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+        HTTP/1.1 200 OK
+        Content-Type: application/json;charset=UTF-8
+        Cache-Control: no-store
+        Pragma: no-cache
+
+        {
+          "access_token":"2YotnFZFE....jr1zCsicMWpAA",
+          "token_type":"pk",
+          "expires_in":3600,
+          "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA"
+        }
+
+       whereby the content of the 'access_token' field, for example,
+       contains an encoded JWT with the following structure:
+
+       HEADER:
+
+       {"typ":"JWT",
+        "alg":"HS256"}
+
+       BODY:
+
+       {
+         "iss":"xas.example.com",
+         "aud":"http://auth.example.com",
+         "exp":"1361398824",
+         "nbf":"1360189224",
+         "cnf":{
+           "jwk":{"kty":"RSA",
+             "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+        4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+        tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+        QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+        SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+        w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+             "e":"AQAB",
+             "alg":"RS256",
+           "kid":"client@example.com"}
+          }
+        }
+      INTEGRITY PROTECTION:
+        ... not shown ...
+
+              Example Response from the Authorization Server
+
+
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014               [Page 10]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+6.  Security Considerations
+
+   [9] describes the architecture for the OAuth 2.0 proof-of-possession
+   security architecture, including use cases, threats, and
+   requirements.  This requirements describes one solution component of
+   that architecture, namely the mechanism for the client to interact
+   with the authorization server to either obtain a symmetric key from
+   the authorization server, to obtain an asymmetric key pair, or to
+   offer a public key to the authorization.  In any case, these keys are
+   then bound to the access token by the authorization server.
+
+   To summarize the main security recommendations: A large range of
+   threats can be mitigated by protecting the contents of the access
+   token by using a digital signature or a keyed message digest.
+   Consequently, the token integrity protection MUST be applied to
+   prevent the token from being modified, particularly since it contains
+   a reference to the symmetric key or the asymmetric key.  If the
+   access token contains the symmetric key (see Section 2.2 of [7] for a
+   description about how symmetric keys can be securely conveyed within
+   the access token) this symmetric key MUST be encrypted by the
+   authorization server with a long-term key shared with the resource
+   server.
+
+   To deal with token redirect, it is important for the authorization
+   server to include the identity of the intended recipient (the
+   audience), typically a single resource server (or a list of resource
+   servers), in the token.  Using a single shared secret with multiple
+   authorization server to simplify key management is NOT RECOMMENDED
+   since the benefit from using the proof-of-possession concept is
+   significantly reduced.
+
+   Token replay is also not possible since an eavesdropper will also
+   have to obtain the corresponding private key or shared secret that is
+   bound to the access token.  Nevertheless, it is good practice to
+   limit the lifetime of the access token and therefore the lifetime of
+   associated key.
+
+   The authorization server MUST offer confidentiality protection for
+   any interactions with the client.  This step is extremely important
+   since the client will obtain the session key from the authorization
+   server for use with a specific access token.  Not using
+   confidentiality protection exposes this secret (and the access token)
+   to an eavesdropper thereby making the OAuth 2.0 proof-of-possession
+   security model completely insecure.  OAuth 2.0 [2] relies on TLS to
+   offer confidentiality protection and additional protection can be
+   applied using the JSON Web Key (JWK) [4] offered security mechanism,
+   which would add an additional layer of protection on top of TLS for
+   cases where the keying material is conveyed, for example, to a
+
+
+
+Bradley, et al.          Expires October 7, 2014               [Page 11]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+   hardware security module.  Which version(s) of TLS ought to be
+   implemented will vary over time, and depend on the widespread
+   deployment and known security vulnerabilities at the time of
+   implementation.  At the time of this writing, TLS version 1.2 [8] is
+   the most recent version.  The client MUST validate the TLS
+   certificate chain when making requests to protected resources,
+   including checking the validity of the certificate.
+
+   Similarly to the security recommendations for the bearer token
+   specification [10] developers MUST ensure that the ephemeral
+   credentials (i.e., the private key or the session key) is not leaked
+   to third parties.  An adversary in possession of the ephemeral
+   credentials bound to the access token will be able to impersonate the
+   client.  Be aware that this is a real risk with many smart phone app
+   and Web development environments.
+
+   Clients can at any time request a new proof-of-possession capable
+   access token.  Using a refresh token to regularly request new access
+   tokens that are bound to fresh and unique keys is important.  Keeping
+   the lifetime of the access token short allows the authorization
+   server to use shorter key sizes, which translate to a performance
+   benefit for the client and for the resource server.  Shorter keys
+   also lead to shorter messages (particularly with asymmetric keying
+   material).
+
+   When authorization servers bind access tokens to symmetric keys then
+   they MUST scope these access tokens to a specific resource server.
+
+7.  IANA Considerations
+
+   This document requires IANA to take the following actions.
+
+7.1.  OAuth Parameters Registration
+
+   This specification registers the following parameters in the OAuth
+   Parameters Registry established by [2].
+
+   Parameter name:  pk_info
+
+   Parameter usage location:  token request
+
+   Change controller:  IETF
+
+   Specification document(s):  [[ this document ]]
+
+   Related information:  None
+
+   Parameter name:  token_type
+
+
+
+Bradley, et al.          Expires October 7, 2014               [Page 12]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+   Parameter usage location:  token request, token response,
+      authorization response
+
+   Change controller:  IETF
+
+   Specification document(s):  [[ this document ]]
+
+   Related information:  None
+
+   Parameter name:  profile
+
+   Parameter usage location:  token request, token response,
+      authorization response
+
+   Change controller:  IETF
+
+   Specification document(s):  [[ this document ]]
+
+   Related information:  None
+
+   Parameter name:  jwk
+
+   Parameter usage location:  token response, authorization response
+
+   Change controller:  IETF
+
+   Specification document(s):  [[ this document ]]
+
+   Related information:  None
+
+   Parameter name:  audience
+
+   Parameter usage location:  token request
+
+   Change controller:  IETF
+
+   Specification document(s):  [[This document.]
+
+   Related information:  None
+
+7.2.  Profile Registry
+
+   This document asks IANA to create a registry for proof-of-possession
+   mechanisms for use with OAuth 2.0.  The policy for adding new entries
+   to the registry is "Specification Required".  IANA is asked to
+   populate the registry with the following values:
+
+   o  Profile name: jws
+
+
+
+Bradley, et al.          Expires October 7, 2014               [Page 13]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+   o  Change controller: IETF
+
+   o  Specification document(s): [[ this document ]]
+
+   o  Profile name: mac
+
+   o  Change controller: IETF
+
+   o  Specification document(s): [[ this document ]]
+
+8.  Acknowledgements
+
+   TBD.
+
+9.  References
+
+9.1.  Normative References
+
+   [1]        Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [2]        Hardt, D., "The OAuth 2.0 Authorization Framework", RFC
+              6749, October 2012.
+
+   [3]        Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+              Resource Identifier (URI): Generic Syntax", STD 66, RFC
+              3986, January 2005.
+
+   [4]        Jones, M., "JSON Web Key (JWK)", draft-ietf-jose-json-web-
+              key-25 (work in progress), March 2014.
+
+   [5]        Jones, M., Bradley, J., and N. Sakimura, "JSON Web Token
+              (JWT)", draft-ietf-oauth-json-web-token-19 (work in
+              progress), March 2014.
+
+   [6]        Jones, M., Bradley, J., and N. Sakimura, "JSON Web
+              Signature (JWS)", draft-ietf-jose-json-web-signature-25
+              (work in progress), March 2014.
+
+   [7]        Jones, M., Bradley, J., and H. Tschofenig, "Proof-Of-
+              Possession Semantics for JSON Web Tokens (JWTs)", draft-
+              jones-oauth-proof-of-possession-00 (work in progress),
+              April 2014.
+
+   [8]        Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246, August 2008.
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014               [Page 14]
+
+Internet-Draft  OAuth 2.0 PoP: AS-Client Key Distribution     April 2014
+
+
+9.2.  Informative References
+
+   [9]        Hunt, P., Richer, J., Mills, W., Mishra, P., and H.
+              Tschofenig, "OAuth 2.0 Proof-of-Possession (PoP) Security
+              Architecture", draft-hunt-oauth-pop-architecture-00 (work
+              in progress), April 2014.
+
+   [10]       Jones, M. and D. Hardt, "The OAuth 2.0 Authorization
+              Framework: Bearer Token Usage", RFC 6750, October 2012.
+
+   [11]       Campbell, B., Mortimore, C., Jones, M., and Y. Goland,
+              "Assertion Framework for OAuth 2.0 Client Authentication
+              and Authorization Grants", draft-ietf-oauth-assertions-15
+              (work in progress), March 2014.
+
+Authors' Addresses
+
+   John Bradley
+   Ping Identity
+
+   Email: ve7jtb@ve7jtb.com
+
+
+   Phil Hunt
+   Oracle Corporation
+
+   Email: phil.hunt@yahoo.com
+
+
+   Michael B. Jones
+   Microsoft
+
+   Email: mbj@microsoft.com
+
+
+   Hannes Tschofenig
+   ARM Limited
+   Austria
+
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+Bradley, et al.          Expires October 7, 2014               [Page 15]
