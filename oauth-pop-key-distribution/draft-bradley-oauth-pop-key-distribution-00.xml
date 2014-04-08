@@ -193,10 +193,10 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
         <t>
           <list style='hanging' hangIndent='6'>
             <t hangText='token_type:'>
-              REQUIRED. For the symmetric key variant the value MUST be set to "sk". 
+              REQUIRED. For the symmetric key variant the value MUST be set to "symmetric_key". 
             </t>
-            <t hangText='profile:'>
-              REQUIRED. The profile parameter provides information about what mechanisms the client supports to provide proof of possession of the key towards a resource server. The value MUST be taken from the algorithm registry created in <xref target='profile-registry' />. Algorithm names are case-sensitive. If the client supports more than one algorithm profile then each individual value MUST be separated by a comma.
+            <t hangText='pop_profile:'>
+              REQUIRED. The pop_profile parameter provides information about what mechanisms the client supports to provide proof of possession of the key towards a resource server. The value MUST be taken from the algorithm registry created in <xref target='profile-registry' />. Algorithm names are case-sensitive. If the client supports more than one algorithm profile then each individual value MUST be separated by a space.
             </t>
               
           </list>
@@ -213,10 +213,11 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
      Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
      Content-Type: application/x-www-form-urlencoded;charset=UTF-8
 
-     grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA
+     grant_type=authorization_code
+     &code=SplxlOBeZQQYbYS6WxSbIA
      &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
-     &token_type=sk
-     &profile=foo-bar
+     &token_type=symmetric_key
+     &pop_profile=foo-bar
 ]]>
           </artwork>
         </figure>
@@ -227,14 +228,11 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
    token. If the request client authentication failed or is invalid, the authorization server returns
    an error response as described in Section 5.2 of <xref target="RFC6749"/>.</t>
 
-         <t>The authorization server MUST include a JWK in a successful response, if it supports any of the profiles listed by the client. 
+         <t>The authorization server MUST include an access token and a key container (in the JWK format) in a successful response, if it supports any of the profiles listed by the client. Note that there are potentially two JSON-encoded structures in the response, namely the access token that may utilize the JWT format and the actual key transport mechanism itself. As defined in this document, the key transport mechanism from the authorization server to the client uses the JWK format (instead of defining a custom format). <xref target="symmetric-response"/> illustrates an example response.
         </t>
        
         <t>
-        <figure>
-          <preamble>
-            For example:
-          </preamble>
+        <figure title="Example: Response from the Authorization Server (Symmetric Variant)" anchor="symmetric-response">
           <artwork>
             <![CDATA[
   HTTP/1.1 200 OK
@@ -244,7 +242,7 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
   {
     "access_token":"SlAV32hkKG ... 
       ... (remainder of JWT omitted for brevity)",
-    "token_type":"sk",
+    "token_type":"secret_key",
     "expires_in":3600,
     "refresh_token":"8xLOxBtZp8",
     "jwk":"eyJhbGciOiJSU0ExXzUi ...
@@ -253,7 +251,9 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
   
   The content of the 'access_token' contains 
   the key identifier value in the 'cnf' element, 
-  as shown below. 
+  as shown below. The digital signature or the 
+  keyed message digest offering integrity protection
+  is not shown (but must be present). 
    
    {
       "iss": "https://server.example.com",
@@ -268,7 +268,28 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
            ... (remainder of JWE omitted for brevity)"
         }
    }
-    
+  
+  The content of the jwk element, which appears twice, 
+  is shown below: 
+   
+  {
+   "kty":"oct",
+   "alg":"HS256",
+   "k":"ZoRSOrFzN_FzUA5XKMYoVHyzff5oRJxl-IXRtztJ6uE"
+  }
+  
+  Note: The JWK content inside the access token is 
+  meant for consumption by the resource server. Hence, it 
+  is encrypted. The JWK in the outmost structure contains 
+  the same values but is, in this example, protected 
+  by TLS and transmitted from the authorization server 
+  to the client (for processing by the client).
+  
+  Note: There is no requirement that the access token 
+  is in a JSON format, or that it uses a JWT structure. 
+  In fact, the access token might only be a handle to the 
+  access token itself that requires a further look-up by 
+  the resource server. 
 ]]>
           </artwork>
         </figure>
@@ -285,15 +306,15 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
         <t>
           <list style='hanging' hangIndent='6'>
             <t hangText='token_type:'>
-              REQUIRED. For the asymmetric key variant the value MUST be set to "pk". 
+              REQUIRED. For the asymmetric key variant the value MUST be set to "public_key". 
             </t>
-            <t hangText='pk_info:'>
+            <t hangText='jwk:'>
               OPTIONAL. This field contains information about the public key the client would like to bind to the access token in the JSON Web Key format. If the client does not provide a public key then the authorization server MUST create an ephemeral key pair (considering the profile information provided by the client) or alternative respond with an error message. 
             </t>
 <!--             <t hangText='algorithms:'>TBD.</t> --> 
             
-            <t hangText='profile:'>
-              REQUIRED. The profile parameter provides information about what mechanisms the client supports to provide proof of possession of the key towards a resource server. The value MUST be taken from the algorithm registry created in <xref target='profile-registry' />. Algorithm names are case-sensitive. If the client supports more than one profile then each individual value MUST be separated by a comma. 
+            <t hangText='pop_profile:'>
+              REQUIRED. The pop_profile parameter provides information about what mechanisms the client supports to provide proof of possession of the key towards a resource server. The value MUST be taken from the algorithm registry created in <xref target='profile-registry' />. Algorithm names are case-sensitive. If the client supports more than one profile then each individual value MUST be separated by a space. 
             </t>
                
           </list>
@@ -310,18 +331,18 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
      Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
      Content-Type: application/x-www-form-urlencoded;charset=UTF-8
 
-     grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA
+     grant_type=authorization_code
+     &code=SplxlOBeZQQYbYS6WxSbIA
      &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
-     &token_type=pk
-     &pk_info:"eyJhbGciOiJSU0ExXzUi ...
-      ... (remainder of JWK omitted for brevity)"
+     &token_type=public_key
+     &pop_profile=foo-bar
+     &jwk=eyJhbGciOiJSU0ExXzUi ...
+      ... (remainder of JWK omitted for brevity)
 
-   whereby the content of the pk_info field represents the following
-   structure:
-
-  {"keys":
-     [
-       {"kty":"RSA",
+   whereby the content of the jwk field contains the RSA public key 
+   the client would like to associate with the access token. 
+    
+   {"kty":"RSA",
           "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
      4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
      tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
@@ -331,8 +352,6 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
           "e":"AQAB",
           "alg":"RS256",
         "kid":"client@example.com"}
-     ]
-   }
    ]]></artwork>
    </figure>
    </t>
@@ -344,11 +363,12 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
    
    <t>The authorization server also places information 
    about the public key used by the client into the access token to create the 
-   binding between the two. The new token type, called 'pk', is placed into the 'token_type' parameter. </t>
+   binding between the two. The new token type "public_key" is placed into the 'token_type' parameter. </t>
 
-   <t>An example of a successful response is shown below:
-
-          <figure title="Example Response from the Authorization Server">
+   <t>An example of a successful response is shown in <xref target="asymmetric-response"/>.</t>
+   
+   <t>
+   <figure title="Example: Response from the Authorization Server (Asymmetric Variant)" anchor="asymmetric-response">
             <artwork>
               <![CDATA[
      HTTP/1.1 200 OK
@@ -358,21 +378,16 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
 
      {
        "access_token":"2YotnFZFE....jr1zCsicMWpAA",
-       "token_type":"pk",
+       "token_type":"public_key",
        "expires_in":3600,
        "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA"
      }   
 
-    whereby the content of the 'access_token' field, for example, 
-    contains an encoded JWT with the following structure:
+    whereby the content of the 'access_token' field contains an encoded
+    JWT with the following structure, as shown below. The digital 
+    signature or the keyed message digest offering integrity protection
+    is not shown (but must be present).
    
-    HEADER: 
-    
-    {"typ":"JWT",
-     "alg":"HS256"}
-     
-    BODY:
-    
     {
       "iss":"xas.example.com",
       "aud":"http://auth.example.com",
@@ -391,8 +406,9 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
         "kid":"client@example.com"}
        }
      }
-   INTEGRITY PROTECTION:
-     ... not shown ... 
+     
+    Note: In this example there is no need for the authorization server
+    to convey further keying material to the client.  
     ]]></artwork>
    </figure>
    </t>
@@ -466,14 +482,16 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
 
 <t>This specification registers the following parameters in the OAuth Parameters Registry established by <xref target="RFC6749"/>.</t>
 
+<!--  INITIALLY WE USED DIFFERENT PARAMETERS FOR THE REQUEST AND THE RESPONSE
 <t><list style="hanging"> 
-<t hangText="Parameter name:"> pk_info</t>
+<t hangText="Parameter name:">jwk</t>
 <t hangText="Parameter usage location:"> token request</t>
 <t hangText="Change controller:"> IETF</t>
 <t hangText="Specification document(s):">  [[ this document ]]</t>
 <t hangText="Related information:">  None</t>
 </list> 
 </t> 
+--> 
 
 <t><list style="hanging"> 
 <t hangText="Parameter name:"> token_type</t>
@@ -485,7 +503,7 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
 </t> 
 
 <t><list style="hanging"> 
-<t hangText="Parameter name:"> profile</t>
+<t hangText="Parameter name:">pop_profile</t>
 <t hangText="Parameter usage location:"> token request, token response, authorization response</t>
 <t hangText="Change controller:"> IETF</t>
 <t hangText="Specification document(s):">  [[ this document ]]</t>
@@ -497,7 +515,7 @@ docName="draft-bradley-oauth-pop-key-distribution-00.txt">
 
 <t><list style="hanging"> 
 <t hangText="Parameter name:"> jwk</t>
-<t hangText="Parameter usage location:"> token response, authorization response</t>
+<t hangText="Parameter usage location:"> token request, token response, authorization response</t>
 <t hangText="Change controller:"> IETF</t>
 <t hangText="Specification document(s):">  [[ this document ]]</t>
 <t hangText="Related information:">  None</t>
