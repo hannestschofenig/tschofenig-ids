@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<?xml-stylesheet type='text/xsl' href='http://xml.resource.org/authoring/rfc2629.xslt' ?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="4"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+
+<rfc category="std" docName="draft-jones-oauth-proof-of-possession-01.txt"
+     ipr="trust200902">
+  <front>
+    <title abbrev="proof-of-possession for JWTs">Proof-Of-Possession Semantics for JSON Web Tokens (JWTs)</title>
+
+    <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+      <organization>Microsoft</organization>
+      <address>
+        <email>mbj@microsoft.com</email>
+        <uri>http://self-issued.info/</uri>
+      </address>
+    </author>
+
+    <author fullname="John Bradley" initials="J." surname="Bradley">
+      <organization abbrev="Ping Identity">Ping Identity</organization>
+      <address>
+	<email>ve7jtb@ve7jtb.com</email>
+	<uri>http://www.thread-safe.com/</uri>
+      </address>
+    </author>
+
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+			<organization>ARM Limited</organization>
+			<address>
+				<postal>
+					<street></street>
+					<city></city>
+					<code></code>
+					<country>Austria</country>
+				</postal>
+				<phone></phone>
+				<email>Hannes.Tschofenig@gmx.net</email>
+				<uri>http://www.tschofenig.priv.at</uri>
+			</address>
+		</author>
+
+
+    <date year="2014" />
+
+    <area>Security</area>
+    <workgroup>OAuth Working Group</workgroup>
+
+    <keyword>RFC</keyword>
+    <keyword>Request for Comments</keyword>
+    <keyword>I-D</keyword>
+    <keyword>Internet-Draft</keyword>
+    <keyword>JSON Web Token</keyword>
+    <keyword>JWT</keyword>
+    <keyword>Proof of Possession</keyword>
+    <keyword>Holder of Key</keyword>
+
+    <abstract>
+      <t>
+        This specification defines how to express a declaration in a
+	JSON Web Token (JWT)
+	that the presenter of the JWT possesses a particular key
+	and that the recipient can cryptographically confirm
+	proof-of-possession of the key by the presenter.
+	This property is also sometimes described as
+	the presenter being a holder-of-key.
+      </t>
+    </abstract>
+
+  </front>
+
+  <middle>
+    <section title="Introduction">
+      <t>
+        This specification defines how to express a declaration in a
+	JSON Web Token (JWT) <xref target="JWT"/>
+	that the presenter of the JWT possesses a particular key
+	and that the recipient can cryptographically confirm
+	proof-of-possession of the key by the presenter.
+	This property is also sometimes described as
+	the presenter being a holder-of-key.
+     </t>
+  </section>
+  
+      <section title="Terminology">
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+          "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+          document are to be interpreted as described in RFC 2119 <xref target="RFC2119"/>.
+        </t>
+        <t>
+          Unless otherwise noted, all the protocol parameter names and values are case sensitive.
+        </t>
+        <t>
+	  This specification uses terms defined in
+	  the JSON Web Token (JWT) <xref target="JWT"/>,
+	  JSON Web Key (JWK) <xref target="JWK"/>, and
+	  JSON Web Encryption (JWE) <xref target="JWE"/> specifications.
+        </t>
+
+	<t>
+	  Additionally, the following terms are used by this specification:
+	</t>
+
+	<t>
+	  <list style="hanging">
+
+	    <t hangText="Presenter">
+	      <vspace/>
+	      Party that possesses the key identified by the JWT.
+	    </t>
+
+	  </list>
+	</t>
+      </section>
+    </section>
+
+    <section title='Proof-Of-Possession Representation' anchor="PoP">
+      <t>
+	The presenter of a JWT declares that it possesses a particular key
+	and that the recipient can cryptographically confirm
+	proof-of-possession of the key by the issuer by including a
+	<spanx style="verb">cnf</spanx> (confirmation) claim in the JWT
+	whose value is a JSON object, with the JSON object containing a
+	<spanx style="verb">jwk</spanx> (JSON Web Key) member
+	identifying the key.
+      </t>
+      <t>
+	The presenter can be identified in one of two ways by the JWT,
+	depending upon the application requirements.
+	If the JWT contains a <spanx style="verb">sub</spanx> (subject) claim,
+	the presenter is the subject identified by the JWT.
+	(In some applications, the subject identifier will be relative to
+	the issuer identified by the <spanx style="verb">iss</spanx> (issuer) claim.)
+	If the JWT contains no <spanx style="verb">sub</spanx> (subject) claim,
+	the presenter is the issuer identified by the JWT
+	using the <spanx style="verb">iss</spanx> (issuer) claim.
+	The case in which the presenter is the subject of the JWT is analogous to
+	SAML 2.0 <xref target="OASIS.saml-core-2.0-os"/> SubjectConfirmation usage.
+	At least one of the <spanx style="verb">sub</spanx> and <spanx style="verb">iss</spanx>
+	claims MUST be present in the JWT and in some use cases both MUST be present.
+	In cases where the presenter shall be anonymous only the <spanx style="verb">iss</spanx> (issuer) claim may be present identifying the party that issued the JWT. 
+      </t>
+
+      <section title="Proof-of-Possession of a Private Key" anchor="PrivatePOP">
+
+	<t>
+	  When the key held by the issuer is a private key,
+	  the value of the <spanx style="verb">jwk</spanx> member
+	  is a JSON Web Key (JWK) <xref target="JWK"/>
+	  representing the corresponding public key.
+	  The following example demonstrates such a declaration
+	  in the JWT Claims Set of a JWT:
+	</t>
+	<figure>
+	  <artwork><![CDATA[
+  {
+   "iss":"xas.xboxlive.com",
+   "aud":"http://auth.xboxlive.com",
+   "exp":"1361398824",
+   "nbf":"1360189224",
+   "cnf":{
+     "jwk":{
+       "kty":"EC",
+       "use":"sig",
+       "crv":"P-256",
+       "x":"18wHLeIgW9wVN6VD1Txgpqy2LszYkMf6J8njVAibvhM",
+       "y":"-V4dS4UaLMgP_4fY4j8ir7cl1TXlFdAgcx55o7TkcSA"
+      }
+    }
+  }
+]]></artwork>
+	</figure>
+
+	<t>
+	  The JWK MUST contain the REQUIRED key elements for a JWK of that key type
+	  and MAY contain other JWK elements,
+	  including the <spanx style="verb">kid</spanx> (key ID) element.
+	</t>
+
+      </section>
+
+      <section title="Proof-of-Possession of a Symmetric Key" anchor="SymmetricPOP">
+
+	<t>
+	  When the key held by the issuer is a symmetric key,
+	  the value of the <spanx style="verb">jwk</spanx> member
+	  is an encrypted JSON Web Key (JWK) <xref target="JWK"/>
+	  encrypted to the recipient
+	  using the JWE Compact Serialization
+	  containing the symmetric key.
+	  The rules for encrypting a JWK are found in
+	  Section 6 of the JSON Web Key <xref target="JWK"/> specification.
+	</t>
+	<t>
+	  The following is an example symmetric key that could
+	  be encrypted for use in the <spanx style="verb">jwk</spanx> member:
+	</t>
+	<figure>
+	  <artwork><![CDATA[
+  {
+   "kty":"oct",
+   "alg":"HS256",
+   "k":"ZoRSOrFzN_FzUA5XKMYoVHyzff5oRJxl-IXRtztJ6uE"
+  }
+]]></artwork>
+	</figure>
+	<t>
+	  The UTF-8 <xref target="RFC3629"/> encoding of this JWK
+	  would be used as the JWE Plaintext.
+	</t>
+	<t>
+	  The following is an example JWE Header could be used
+	  when encrypting this key:
+	</t>
+	<figure>
+	  <artwork><![CDATA[
+  {
+   "alg":"RSA1_5",
+   "enc":"A128CBC-HS256",
+   "cty":"jwk+json"
+  }
+]]></artwork>
+	</figure>
+	<t>
+	  The following example JWT Claims Set of a JWT illustrates
+	  the use of an encrypted symmetric key as the
+	  <spanx style="verb">jwk</spanx> claim value:
+	</t>
+	<figure>
+	  <artwork><![CDATA[
+  {
+   "iss": "https://server.example.com",
+   "sub": "24400320",
+   "aud": "s6BhdRkqt3",
+   "nonce": "n-0S6_WzA2Mj",
+   "exp": 1311281970,
+   "iat": 1311280970,
+   "cnf":{
+     "jwk":
+       "eyJhbGciOiJSU0ExXzUiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiY3R5Ijoi
+        andrK2pzb24ifQ. ... (remainder of JWE omitted for brevity)"
+     }
+  }
+]]></artwork>
+	</figure>
+	<t>
+	  Note that the case in which the <spanx style="verb">jwk</spanx> claim
+	  contains an unencoded JWK value and the case in which it contains
+	  an encrypted JWK value can be distinguished by the type of the member value.
+	  In the first case, the value is a JSON object containing the JWK and
+	  in the second case, the value is a string containing the JWE JSON Serialization
+	  of the encrypted JWK representation.
+	</t>
+
+      </section>
+
+      <section title="Confirmation" anchor="Confirmation">
+	<t>
+	  The <spanx style="verb">cnf</spanx> (confirmation) claim is used in the JWT
+	  to contain the <spanx style="verb">jwk</spanx> member because
+	  a proof-of-possession key may not be the only means of confirming
+	  the authenticity of the token.
+	  This is analogous to the SAML 2.0 <xref target="OASIS.saml-core-2.0-os"/>
+	  SubjectConfirmation element, in which a number of different
+	  subject confirmation methods can be included,
+	  including proof-of-possession key information.
+	  When a recipient receives a <spanx style="verb">cnf</spanx> claim
+	  with a member that it does not understand, it MUST ignore that member.
+	</t>
+	<t>
+	  This specification defines a registry for these elements
+	  in <xref target="CnfReg"/> and registers the <spanx style="verb">jwk</spanx>
+	  member within the registry.
+	</t>
+      </section>
+
+      <section title="Specifics Intentionally Not Specified" anchor="NotSpecified">
+	<t>
+	  Proof-of-possession is typically demonstrated by having the issuer sign
+	  a value determined by the recipient using the key possessed by the issuer.
+	  This value is sometimes called a "nonce" or a "challenge".
+	</t>
+	<t>
+	  The means of communicating the nonce and the nature of its contents
+	  are intentionally not described in this specification,
+	  as different protocols will communicate this information in different ways.
+	  Likewise, the means of communicating the signed nonce is also not specified,
+	  as this is also protocol-specific.
+	</t>
+	<t>
+	  Note that another means of proving possession of the key
+	  when it is a symmetric key is to encrypt the key to the recipient.
+	  The means of obtaining a key for the recipient is likewise protocol-specific.
+	</t>
+      </section>
+
+    </section>
+
+    <section anchor="Security" title="Security Considerations">
+      <t>
+        All of the normal security issues, especially in relationship
+        to comparing URIs and dealing with unrecognized values, that
+        are discussed in <xref target="JWT">JWT</xref> also apply
+        here.
+      </t>
+      <t>
+        In addition, proof-of-possession introduces its own unique security issues.
+	Possessing the key is only valuable if it is kept secret.
+	Appropriate means must be used to ensure that unintended parties
+	do not learn the secret or symmetric key value.
+      </t>
+      <t>
+	Proof-of-possession via encrypted symmetric secrets is subject to replay attacks.
+	This attack can be avoided when a signed nonce or challenge is used,
+	since the recipient can use a distinct nonce or challenged for each interaction.
+      </t>
+    </section>
+
+    <section anchor="IANA" title="IANA Considerations">
+
+      <t>
+	The following registration procedure is used for all the
+	registries established by this specification.
+      </t>
+      <t>
+	Values are registered with a Specification Required
+	<xref target="RFC5226"/> after a two-week review period on the [TBD]@ietf.org mailing
+	list, on the advice of one or more Designated Experts. However, to allow for the
+	allocation of values prior to publication, the Designated Expert(s) may approve
+	registration once they are satisfied that such a specification will be published.
+      </t>
+      <t>
+	Registration requests must be sent to the [TBD]@ietf.org mailing list for review and
+	comment, with an appropriate subject (e.g., "Request for access token type: example").
+	[[ Note to the RFC Editor:
+	The name of the mailing list should be determined in consultation
+	with the IESG and IANA. Suggested name: jwt-reg-review. ]]
+      </t>
+      <t>
+	Within the review period, the Designated Expert(s) will either approve or
+	deny the registration request, communicating this decision to the review list and IANA.
+	Denials should include an explanation and, if applicable, suggestions as to how to make
+	the request successful.
+	Registration requests that are undetermined for
+	a period longer than 21 days can be brought to the IESG's attention
+	(using the iesg@iesg.org mailing list) for resolution.
+      </t>
+      <t>
+	Criteria that should be applied by the Designated Expert(s) includes
+	determining whether the proposed registration duplicates existing functionality,
+	determining whether it is likely to be of general applicability
+	or whether it is useful only for a single application,
+	and whether the registration makes sense.
+      </t>
+      <t>
+	IANA must only accept registry updates from the Designated Expert(s) and should direct
+	all requests for registration to the review mailing list.
+      </t>
+      <t>
+	It is suggested that multiple Designated Experts be appointed who are able to
+	represent the perspectives of different applications using this specification,
+	in order to enable broadly-informed review of registration decisions.
+	In cases where a registration decision could be perceived as
+	creating a conflict of interest for a particular Expert,
+	that Expert should defer to the judgment of the other Expert(s).
+      </t>
+
+      <section anchor="ClaimsRegistry" title="JSON Web Token Claims Registration">
+	<t>
+	  This specification registers the  <spanx style="verb">cnf</spanx> claim in the IANA
+	  JSON Web Token Claims registry
+	  defined in <xref target="JWT"/>.
+	</t>
+
+	<section anchor='ClaimsContents' title='Registry Contents'>
+	  <t> <?rfc subcompact="yes"?>
+	  <list style='symbols'>
+	    <t>
+	      Claim Name: <spanx style="verb">cnf</spanx>
+	    </t>
+	    <t>
+	      Claim Description: Confirmation
+	    </t>
+	    <t>
+	      Change Controller: IESG
+	    </t>
+	    <t>
+	      Specification Document(s): <xref target="Confirmation"/> of this document
+	    </t>
+	  </list>
+	  </t>
+	</section>
+	<?rfc subcompact="no"?>
+      </section>
+
+      <section title="JWT Confirmation Methods Registry" anchor="CnfReg">
+	<t>
+	  This specification establishes the
+	  IANA JWT Confirmation Methods registry
+	  for JWT <spanx style="verb">cnf</spanx> member values.
+	  The registry records the confirmation method member
+	  and a reference to the specification that defines it.
+	</t>
+
+        <section title="Registration Template" anchor="CnfTemplate">
+          <t>
+            <list style='hanging'>
+              <t hangText='Confirmation Method Value:'>
+                <vspace/>
+                The name requested (e.g., "example").
+		Because a core goal of this specification is for the resulting
+		representations to be compact, it is RECOMMENDED that the name be short
+		-- not to exceed 8 characters without a compelling reason to do so.
+		This name is case-sensitive.
+		Names may not match other registered names in a case-insensitive manner
+		unless the Designated Expert(s) state that there is a compelling reason
+		to allow an exception in this particular case.
+              </t>
+              <t hangText='Confirmation Method Description:'>
+                <vspace/>
+                Brief description of the confirmation method (e.g., "Example description").
+              </t>
+              <t hangText='Change Controller:'>
+                <vspace/>
+                For Standards Track RFCs, state "IESG". For others, give the name of the
+                responsible party. Other details (e.g., postal address, email address, home page
+                URI) may also be included.
+              </t>
+              <t hangText='Specification Document(s):'>
+                <vspace/>
+                Reference to the document(s) that specify the parameter, preferably including URI(s) that
+                can be used to retrieve copies of the document(s). An indication of the relevant
+                sections may also be included but is not required.
+              </t>
+            </list>
+          </t>
+        </section>
+
+        <section title="Initial Registry Contents" anchor="CnfContents">
+          <t> <?rfc subcompact="yes"?>
+            <list style='symbols'>
+              <t>
+                Confirmation Method Value: <spanx style="verb">jwk</spanx>
+              </t>
+              <t>
+                Confirmation Method Description: JSON Web Key or Encrypted JSON Web Key
+              </t>
+              <t>
+                Change Controller: IESG
+              </t>
+              <t>
+                Specification Document(s): <xref target="PoP"/> of [[ this document ]]
+              </t>
+            </list>
+          </t>
+	</section>
+	<?rfc subcompact="no"?>
+      </section>
+
+    </section>
+
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.3629.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml' ?>
+
+      <reference anchor="JWT">
+	<front>
+	  <title>JSON Web Token (JWT)</title>
+
+	  <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+	    <organization>Microsoft</organization>
+	    <address>
+	      <email>mbj@microsoft.com</email>
+	      <uri>http://self-issued.info/</uri>
+	    </address>
+	  </author>
+
+	  <author fullname="John Bradley" initials="J." surname="Bradley">
+	    <organization abbrev="Ping Identity">Ping Identity</organization>
+	    <address>
+	      <email>ve7jtb@ve7jtb.com</email>
+	      <uri>http://www.thread-safe.com/</uri>
+	    </address>
+	  </author>
+
+	  <author fullname="Nat Sakimura" initials="N." surname="Sakimura">
+	    <organization abbrev="NRI">Nomura Research Institute</organization>
+	    <address>
+	      <email>n-sakimura@nri.co.jp</email>
+	      <uri>http://nat.sakimura.org/</uri>
+	    </address>
+	  </author>
+
+	  <date day="18" month="March" year="2014" />
+
+	</front>
+	<seriesInfo value="draft-ietf-oauth-json-web-token" name="Internet-Draft"/>
+	<format target="http://tools.ietf.org/html/draft-ietf-oauth-json-web-token" type="HTML" />
+      </reference>
+
+      <reference anchor="JWK">
+        <front>
+	  <title>JSON Web Key (JWK)</title>
+
+	  <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+	    <organization>Microsoft</organization>
+	    <address>
+	      <email>mbj@microsoft.com</email>
+	      <uri>http://self-issued.info/</uri>
+	    </address>
+	  </author>
+
+	  <date day="31" month="March" year="2014"/>
+        </front>
+        <seriesInfo value="draft-ietf-jose-json-web-key" name="Internet-Draft"/>
+	<format target="http://tools.ietf.org/html/draft-ietf-jose-json-web-key" type="HTML" />
+      </reference>
+
+      <reference anchor="JWE">
+        <front>
+          <title>JSON Web Encryption (JWE)</title>
+
+	  <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+	    <organization>Microsoft</organization>
+	    <address>
+	      <email>mbj@microsoft.com</email>
+	      <uri>http://self-issued.info/</uri>
+	    </address>
+	  </author>
+
+	  <author fullname="Joe Hildebrand" initials="J." surname="Hildebrand">
+	    <organization abbrev="Cisco">Cisco Systems, Inc.</organization>
+	    <address>
+	      <email>jhildebr@cisco.com</email>
+	    </address>
+	  </author>
+
+	  <date day="31" month="March" year="2014"/>
+        </front>
+	<seriesInfo value="draft-ietf-jose-json-web-encryption" name="Internet-Draft"/>
+	<format target="http://tools.ietf.org/html/draft-ietf-jose-json-web-encryption" type="HTML" />
+      </reference>
+
+    </references>
+
+    <references title="Informative References">
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml2/reference.OASIS.saml-core-2.0-os.xml' ?>
+
+    </references>
+
+    <section title="Open Issues" anchor="TBD">
+      <t>
+	In some conversations,
+	we have said that it is the issuer of the JWT that possesses the key,
+	and in some conversations,
+	we have said that it is the presenter of the JWT that possesses the key.
+	Which description should we use?
+      </t>
+    </section>
+
+    <section title="Document History" anchor="History">
+      <t>
+	[[ to be removed by the RFC Editor before publication as an RFC ]]
+      </t>
+
+      <t>
+        -00
+        <list style='symbols'>
+          <t>
+            Wrote the first draft.
+	  </t>
+        </list>
+      </t>
+    </section>     
+
+  </back>
+</rfc>
