@@ -82,15 +82,28 @@
     <section title="Introduction">
       <t>
         This specification defines how to express a declaration in a
-	JSON Web Token (JWT) <xref target="JWT"/>
+	JSON Web Token (JWT) <xref target="I-D.ietf-oauth-json-web-token"/>
 	that the presenter of the JWT possesses a particular key
 	and that the recipient can cryptographically confirm
 	proof-of-possession of the key by the presenter.
 	This property is also sometimes described as
 	the presenter being a holder-of-key.
      </t>
+	 
+	 <t>Envision the following use case. An OAuth 2.0 authorization server 
+generates a JWT and places a symmetric key inside the newly introduced confirmation claim. This symmetric 
+key is encrypted with a key known only to the authorization server and the recipient. The JWT is then sent 
+to the presenter. Since the presenter is unable to obtain the encrypted symmetric key the authorization server 
+conveys that symmetric key separately to the presenter. Now, the presenter is in possession of the symmetric key as
+well as the JWT (which includes the confirmation claim element). When the presenter needs to utilize the JWT to a recipient 
+it also needs to demonstrate possession of the symmetric key; the presenter, for example, uses the symmetric key in a challenge / response protocol with the recipient. 
+The recipient is able to verify that it indeed interacts with the genuine presenter by decrypting the JWK contained inside the confirmation claim of the JWT. 
+By doing this the recipient obtains the symmetric key, which it then uses to verify a cryptographically protected messages exchanged with the presenter. 
+</t>
   </section>
   
+  <!-- ====================================================================== -->
+
       <section title="Terminology">
         <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
           "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -101,27 +114,14 @@
         </t>
         <t>
 	  This specification uses terms defined in
-	  the JSON Web Token (JWT) <xref target="JWT"/>,
-	  JSON Web Key (JWK) <xref target="JWK"/>, and
-	  JSON Web Encryption (JWE) <xref target="JWE"/> specifications.
+	  the JSON Web Token (JWT) <xref target="I-D.ietf-oauth-json-web-token"/>,
+	  JSON Web Key (JWK) <xref target="I-D.ietf-jose-json-web-key"/>, and
+	  JSON Web Encryption (JWE) <xref target="I-D.ietf-jose-json-web-encryption"/> specifications.
         </t>
-
-	<t>
-	  Additionally, the following terms are used by this specification:
-	</t>
-
-	<t>
-	  <list style="hanging">
-
-	    <t hangText="Presenter">
-	      <vspace/>
-	      Party that possesses the key identified by the JWT.
-	    </t>
-
-	  </list>
-	</t>
-      </section>
+	 
     </section>
+
+	<!-- ====================================================================== -->
 
     <section title='Proof-Of-Possession Representation' anchor="PoP">
       <t>
@@ -150,25 +150,26 @@
 	In cases where the presenter shall be anonymous only the <spanx style="verb">iss</spanx> (issuer) claim may be present identifying the party that issued the JWT. 
       </t>
 
-      <section title="Proof-of-Possession of a Private Key" anchor="PrivatePOP">
+      <section title="Proof-of-Possession of an Asymmetric Key" anchor="PrivatePOP">
 
 	<t>
-	  When the key held by the issuer is a private key,
+	  When the key held by the issuer is an asymmetric key pair,
 	  the value of the <spanx style="verb">jwk</spanx> member
-	  is a JSON Web Key (JWK) <xref target="JWK"/>
-	  representing the corresponding public key.
-	  The following example demonstrates such a declaration
+	  is a JSON Web Key (JWK) <xref target="I-D.ietf-jose-json-web-key"/>
+	  representing the public key.
+	  The example shown in <xref target="JWT-AsymmetricKey"/> demonstrates such a declaration
 	  in the JWT Claims Set of a JWT:
 	</t>
-	<figure>
+	<figure title="JWT with a Confirmation Claim containing a Public Key" anchor="JWT-AsymmetricKey">
 	  <artwork><![CDATA[
   {
-   "iss":"xas.xboxlive.com",
-   "aud":"http://auth.xboxlive.com",
+   "iss":"xas.example.com",
+   "aud":"http://auth.example.com",
    "exp":"1361398824",
    "nbf":"1360189224",
    "cnf":{
      "jwk":{
+       "kid":"pk1"
        "kty":"EC",
        "use":"sig",
        "crv":"P-256",
@@ -181,9 +182,9 @@
 	</figure>
 
 	<t>
-	  The JWK MUST contain the REQUIRED key elements for a JWK of that key type
-	  and MAY contain other JWK elements,
-	  including the <spanx style="verb">kid</spanx> (key ID) element.
+	  The JWK MUST contain the required elements of a JWK (as needed for the particular type)
+	  and MAY contain other JWK elements. It is highly recommended to include the <spanx style="verb">kid</spanx> (key ID) element 
+	  in the JWK as well since it allows the presenter and the recipient to later use this key id to refer to the exchanged key.
 	</t>
 
       </section>
@@ -193,20 +194,20 @@
 	<t>
 	  When the key held by the issuer is a symmetric key,
 	  the value of the <spanx style="verb">jwk</spanx> member
-	  is an encrypted JSON Web Key (JWK) <xref target="JWK"/>
-	  encrypted to the recipient
-	  using the JWE Compact Serialization
-	  containing the symmetric key.
+	  is an encrypted JSON Web Key (JWK) <xref target="I-D.ietf-jose-json-web-key"/>
+	  encrypted with a key known to the recipient.
 	  The rules for encrypting a JWK are found in
-	  Section 6 of the JSON Web Key <xref target="JWK"/> specification.
+	  Section 6 of the JSON Web Key <xref target="I-D.ietf-jose-json-web-key"/> specification. 
+	  Note that the JWE compact serialization is used. 
 	</t>
 	<t>
-	  The following is an example symmetric key that could
-	  be encrypted for use in the <spanx style="verb">jwk</spanx> member:
+	  The example shown in <xref target="JWK-symmetricKey"/> illustrates a symmetric key that is subsequently
+	  encrypted for use in the <spanx style="verb">jwk</spanx> member:
 	</t>
-	<figure>
+	<figure anchor="JWK-symmetricKey" title="JWK with a Symmetric Key">
 	  <artwork><![CDATA[
   {
+   "kid":"sessionkey-1" 
    "kty":"oct",
    "alg":"HS256",
    "k":"ZoRSOrFzN_FzUA5XKMYoVHyzff5oRJxl-IXRtztJ6uE"
@@ -214,28 +215,28 @@
 ]]></artwork>
 	</figure>
 	<t>
-	  The UTF-8 <xref target="RFC3629"/> encoding of this JWK
-	  would be used as the JWE Plaintext.
+	  The UTF-8 <xref target="RFC3629"/> encoding of the JWK
+	  shown in <xref target="JWK-symmetricKey"/> would be used as the JWE Plaintext.
 	</t>
 	<t>
-	  The following is an example JWE Header could be used
-	  when encrypting this key:
+	  An example JWE header is shown in <xref target="JWE-header"/>. It provides the necessary information 
+for encrypting the JWK.
 	</t>
-	<figure>
+	<figure anchor="JWE-header" title="Header of the JWE with Information about the Encryption of the Symmetric Key">
 	  <artwork><![CDATA[
   {
+   "kid":"longterm-12345"
    "alg":"RSA1_5",
    "enc":"A128CBC-HS256",
-   "cty":"jwk+json"
+   "cty":"jwk+json",
   }
 ]]></artwork>
 	</figure>
 	<t>
-	  The following example JWT Claims Set of a JWT illustrates
-	  the use of an encrypted symmetric key as the
+	  The example in <xref target="JWT-SymmetricKey"/> illustrates a JWT with the encrypted symmetric key as the
 	  <spanx style="verb">jwk</spanx> claim value:
 	</t>
-	<figure>
+	<figure title="JWT with a Confirmation Claim containing the Encrypted Symmetric Key" anchor="JWT-SymmetricKey">
 	  <artwork><![CDATA[
   {
    "iss": "https://server.example.com",
@@ -266,7 +267,7 @@
       <section title="Confirmation" anchor="Confirmation">
 	<t>
 	  The <spanx style="verb">cnf</spanx> (confirmation) claim is used in the JWT
-	  to contain the <spanx style="verb">jwk</spanx> member because
+	  to contain the <spanx style="verb">jwk</spanx> element because
 	  a proof-of-possession key may not be the only means of confirming
 	  the authenticity of the token.
 	  This is analogous to the SAML 2.0 <xref target="OASIS.saml-core-2.0-os"/>
@@ -296,34 +297,36 @@
 	  Likewise, the means of communicating the signed nonce is also not specified,
 	  as this is also protocol-specific.
 	</t>
-	<t>
-	  Note that another means of proving possession of the key
+	<t>For a protocol that applies the mechanisms described in this document to the OAuth 2.0 context please take a look at <xref target="I-D.hunt-oauth-pop-architecture"/>.</t>
+<!--	<t>
+	  Note that there are another means of proving possession of the key
 	  when it is a symmetric key is to encrypt the key to the recipient.
 	  The means of obtaining a key for the recipient is likewise protocol-specific.
 	</t>
-      </section>
+-->       </section>
 
     </section>
+
+	<!-- ====================================================================== -->
 
     <section anchor="Security" title="Security Considerations">
       <t>
         All of the normal security issues, especially in relationship
         to comparing URIs and dealing with unrecognized values, that
-        are discussed in <xref target="JWT">JWT</xref> also apply
+        are discussed in <xref target="I-D.ietf-oauth-json-web-token">JWT</xref> also apply
         here.
       </t>
+	  <t>Similarly to other information included in a JWT it is necessary to apply data origin authentication and integrity protection (via a keyed message digest or a digital signature). Data origin authentication ensures that the recipient of the JWT learns about the entity that created the JWT since this will be important for any policy decisions. Integrity protection prevents an adversary from changing any elements conveyed within the JWT payload. Special care has to be applied when carrying symmetric keys inside the JWT since those do not only require integrity protection but also confidentiality protection. </t>
       <t>
         In addition, proof-of-possession introduces its own unique security issues.
 	Possessing the key is only valuable if it is kept secret.
 	Appropriate means must be used to ensure that unintended parties
-	do not learn the secret or symmetric key value.
+	do not learn the symmetric key or the private key (in case of an asymmetric crypto-system).
       </t>
-      <t>
-	Proof-of-possession via encrypted symmetric secrets is subject to replay attacks.
-	This attack can be avoided when a signed nonce or challenge is used,
-	since the recipient can use a distinct nonce or challenged for each interaction.
-      </t>
+	  <t>A recipient may not understand the newly introduced "cnf" claim and may consequently treat it as a bearer token. While this is a legitimate concern it is outside the scope of this specification since demonstration the possession of the key associated with the "cnf" claim is not covered by this specification. For more details please consult <xref target="I-D.hunt-oauth-pop-architecture"/>. </t>
     </section>
+
+	<!-- ====================================================================== -->
 
     <section anchor="IANA" title="IANA Considerations">
 
@@ -371,17 +374,17 @@
 	in order to enable broadly-informed review of registration decisions.
 	In cases where a registration decision could be perceived as
 	creating a conflict of interest for a particular Expert,
-	that Expert should defer to the judgment of the other Expert(s).
+	that Expert should defer to the judgement of the other Expert(s).
       </t>
 
-      <section anchor="ClaimsRegistry" title="JSON Web Token Claims Registration">
+    <section anchor="ClaimsRegistry" title="JSON Web Token Claims Registration">
 	<t>
 	  This specification registers the  <spanx style="verb">cnf</spanx> claim in the IANA
 	  JSON Web Token Claims registry
-	  defined in <xref target="JWT"/>.
+	  defined in <xref target="I-D.ietf-oauth-json-web-token"/>.
 	</t>
 
-	<section anchor='ClaimsContents' title='Registry Contents'>
+	   <section anchor='ClaimsContents' title='Registry Contents'>
 	  <t> <?rfc subcompact="yes"?>
 	  <list style='symbols'>
 	    <t>
@@ -398,11 +401,10 @@
 	    </t>
 	  </list>
 	  </t>
+	    </section>
 	</section>
-	<?rfc subcompact="no"?>
-      </section>
 
-      <section title="JWT Confirmation Methods Registry" anchor="CnfReg">
+    <section title="JWT Confirmation Methods Registry" anchor="CnfReg">
 	<t>
 	  This specification establishes the
 	  IANA JWT Confirmation Methods registry
@@ -462,11 +464,18 @@
               </t>
             </list>
           </t>
-	</section>
-	<?rfc subcompact="no"?>
-      </section>
-
+	    </section>
+	
     </section>
+
+ </section>
+
+	<!-- ====================================================================== -->
+
+    <section title="Acknowledgements">
+       <t>We would like to thanks James Manger for his review feedback. </t>
+    </section>
+<!-- ====================================================================== -->
 
   </middle>
 
@@ -476,92 +485,18 @@
       <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.3629.xml' ?>
       <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml' ?>
 
-      <reference anchor="JWT">
-	<front>
-	  <title>JSON Web Token (JWT)</title>
-
-	  <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
-	    <organization>Microsoft</organization>
-	    <address>
-	      <email>mbj@microsoft.com</email>
-	      <uri>http://self-issued.info/</uri>
-	    </address>
-	  </author>
-
-	  <author fullname="John Bradley" initials="J." surname="Bradley">
-	    <organization abbrev="Ping Identity">Ping Identity</organization>
-	    <address>
-	      <email>ve7jtb@ve7jtb.com</email>
-	      <uri>http://www.thread-safe.com/</uri>
-	    </address>
-	  </author>
-
-	  <author fullname="Nat Sakimura" initials="N." surname="Sakimura">
-	    <organization abbrev="NRI">Nomura Research Institute</organization>
-	    <address>
-	      <email>n-sakimura@nri.co.jp</email>
-	      <uri>http://nat.sakimura.org/</uri>
-	    </address>
-	  </author>
-
-	  <date day="18" month="March" year="2014" />
-
-	</front>
-	<seriesInfo value="draft-ietf-oauth-json-web-token" name="Internet-Draft"/>
-	<format target="http://tools.ietf.org/html/draft-ietf-oauth-json-web-token" type="HTML" />
-      </reference>
-
-      <reference anchor="JWK">
-        <front>
-	  <title>JSON Web Key (JWK)</title>
-
-	  <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
-	    <organization>Microsoft</organization>
-	    <address>
-	      <email>mbj@microsoft.com</email>
-	      <uri>http://self-issued.info/</uri>
-	    </address>
-	  </author>
-
-	  <date day="31" month="March" year="2014"/>
-        </front>
-        <seriesInfo value="draft-ietf-jose-json-web-key" name="Internet-Draft"/>
-	<format target="http://tools.ietf.org/html/draft-ietf-jose-json-web-key" type="HTML" />
-      </reference>
-
-      <reference anchor="JWE">
-        <front>
-          <title>JSON Web Encryption (JWE)</title>
-
-	  <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
-	    <organization>Microsoft</organization>
-	    <address>
-	      <email>mbj@microsoft.com</email>
-	      <uri>http://self-issued.info/</uri>
-	    </address>
-	  </author>
-
-	  <author fullname="Joe Hildebrand" initials="J." surname="Hildebrand">
-	    <organization abbrev="Cisco">Cisco Systems, Inc.</organization>
-	    <address>
-	      <email>jhildebr@cisco.com</email>
-	    </address>
-	  </author>
-
-	  <date day="31" month="March" year="2014"/>
-        </front>
-	<seriesInfo value="draft-ietf-jose-json-web-encryption" name="Internet-Draft"/>
-	<format target="http://tools.ietf.org/html/draft-ietf-jose-json-web-encryption" type="HTML" />
-      </reference>
-
+	  <?rfc include="reference.I-D.ietf-jose-json-web-key"?>
+	  <?rfc include="reference.I-D.ietf-jose-json-web-encryption"?>
+	  <?rfc include="reference.I-D.ietf-oauth-json-web-token"?>
+	  
     </references>
 
     <references title="Informative References">
-
+	  <?rfc include="reference.I-D.hunt-oauth-pop-architecture"?>
       <?rfc include='http://xml.resource.org/public/rfc/bibxml2/reference.OASIS.saml-core-2.0-os.xml' ?>
-
     </references>
 
+	<!--
     <section title="Open Issues" anchor="TBD">
       <t>
 	In some conversations,
@@ -571,18 +506,29 @@
 	Which description should we use?
       </t>
     </section>
-
+    --> 
+	
     <section title="Document History" anchor="History">
       <t>
 	[[ to be removed by the RFC Editor before publication as an RFC ]]
       </t>
 
+	  <t>
+        -01
+        <list style='symbols'>
+          <t>Updated affiliation.</t>
+		  <t>Various editorial changes.</t>
+          <t>Updates to the security consideration section based on review feedback by James Manager.</t>
+		  <t>Included the kid element in the examples (as requested by James Manger).</t>
+		  <t>Expanded the introduction section.</t>
+		  <t>Moved the terminology/RFC2119 boilerplate text from the introduction to a separate terminology section.</t>
+        </list>
+      </t>
+	  
       <t>
         -00
         <list style='symbols'>
-          <t>
-            Wrote the first draft.
-	  </t>
+          <t>Wrote the first draft.</t>
         </list>
       </t>
     </section>     
