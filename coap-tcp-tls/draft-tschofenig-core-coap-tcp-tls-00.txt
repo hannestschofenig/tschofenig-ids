@@ -2,11 +2,12 @@
 
 
 
-core                                                      Add. Your Name
-Internet-Draft
-Intended status: Standards Track                      H. Tschofenig, Ed.
-Expires: March 5, 2015                                          ARM Ltd.
-                                                       September 1, 2014
+core                                                            S. Simon
+Internet-Draft                                                  V. Valik
+Intended status: Standards Track                      Zebra Technologies
+Expires: March 7, 2015                                H. Tschofenig, Ed.
+                                                                ARM Ltd.
+                                                       September 3, 2014
 
 
 A TCP and TLS Transport for the Constrained Application Protocol (CoAP)
@@ -25,7 +26,8 @@ Abstract
    deep packet inspection.  These environments make the use of CoAP
    brittle.
 
-   This document defines the use of CoAP over TCP as well as over TLS.
+   This document defines the use of CoAP over TCP as well as CoAP over
+   TLS.
 
 Status of This Memo
 
@@ -42,21 +44,24 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on March 5, 2015.
+   This Internet-Draft will expire on March 7, 2015.
+
+
+
+
+
+
+
+
+Simon, et al.             Expires March 7, 2015                 [Page 1]
+
+Internet-Draft         TCP/TLS Transport for CoAP         September 2014
+
 
 Copyright Notice
 
    Copyright (c) 2014 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
-
-
-
-
-
-Your Name & Tschofenig    Expires March 5, 2015                 [Page 1]
-
-Internet-Draft         TCP/TLS Transport for CoAP         September 2014
-
 
    This document is subject to BCP 78 and the IETF Trust's Legal
    Provisions Relating to IETF Documents
@@ -72,13 +77,13 @@ Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
-   3.  Length Shim Header  . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Shim Header . . . . . . . . . . . . . . . . . . . . . . . . .   3
    4.  Developer Considerations  . . . . . . . . . . . . . . . . . .   3
-   5.  Security Considerations . . . . . . . . . . . . . . . . . . .   3
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
    6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   4
    7.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   4
    8.  Normative References  . . . . . . . . . . . . . . . . . . . .   4
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   4
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   5
 
 1.  Introduction
 
@@ -101,18 +106,18 @@ Table of Contents
    Unfortunately, deployments departed from this ideal architecture.
    When the Constrained Application Protocol (CoAP) [RFC7252] was
    designed it was assumed that many Internet of Things deployments
+
+
+
+Simon, et al.             Expires March 7, 2015                 [Page 2]
+
+Internet-Draft         TCP/TLS Transport for CoAP         September 2014
+
+
    would be clean-slate.  Today, we know that some deployments have to
    integrate well with existing enterprise infrastructure, where the use
    of UDP-based protocols is not well-received and firewalling use is
    very common.
-
-
-
-
-Your Name & Tschofenig    Expires March 5, 2015                 [Page 2]
-
-Internet-Draft         TCP/TLS Transport for CoAP         September 2014
-
 
    To make IoT devices work smoothly in these demanding environments
    CoAP has to make use of a different transport protocol, namely TCP
@@ -127,7 +132,11 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
    "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
    document are to be interpreted as described in [RFC2119].
 
-3.  Length Shim Header
+3.  Shim Header
+
+   This specification defines a simple layer necessary to convey length
+   information about the exchange payloads in a 32-bit length field
+   indicating the number of bytes in the payload following that header.
 
 
        0                   1                   2                   3
@@ -144,7 +153,7 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
    The use of CoAP over a transport protocol offering reliable
    transmission already offers functionality that could be offered by
    CoAP itself.  While a developer can re-use an already existing CoAP
-   protocol stack the use of TCP makes some CoAP features redundant.
+   protocol stack, the use of TCP makes some CoAP features redundant.
 
    Section 4.2 of [RFC7252] discusses the ability to convey messages in
    CoAP reliably as a "confirmable message", which always generates a
@@ -153,6 +162,14 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
    the features offered by TCP.  A developer writing an application that
    runs CoAP over TCP or CoAP over TLS needs to be mindful about the
    changed semantic of CoAP.  For example, the marking the message as
+
+
+
+Simon, et al.             Expires March 7, 2015                 [Page 3]
+
+Internet-Draft         TCP/TLS Transport for CoAP         September 2014
+
+
    non-confirmable (see Section 4.3 of [RFC7252]) does not make the
    transmission unreliable but it instead saves the transmission of one
    CoAP message.
@@ -163,16 +180,19 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
    not introduce new vulnerabilities beyond those described already in
    the CoAP specification.
 
-
-
-Your Name & Tschofenig    Expires March 5, 2015                 [Page 3]
-
-Internet-Draft         TCP/TLS Transport for CoAP         September 2014
-
-
    When CoAP is exchanged over TLS port 443 then the "TLS Application
    Layer Protocol Negotiation Extension" [I-D.ietf-tls-applayerprotoneg]
-   MUST be used to allow demultiplexing at the server-side.
+   MUST be used to allow demultiplexing at the server-side unless out-
+   of-band information ensures that the client only interacts with a
+   server that is able to demultiplex CoAP messages over port 443.  This
+   would, for example, be true for many Internet of Things deployments
+   where clients are pre-configured to only ever talk with specific
+   servers.
+
+   When CoAP over TLS is used then the use of the shim header that
+   includes the length information is redundant since the TLS protocol
+   headers already include length information.  As such, the length
+   header MUST be omitted when CoAP is exchanged over TLS.
 
 6.  IANA Considerations
 
@@ -188,7 +208,8 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
 
 7.  Acknowledgements
 
-   We would like to thank X, Y, and Z for their feedback.
+   We would like to thank Michael Koster, Zach Shelby, and Szymon Sasin
+   for their feedback.
 
 8.  Normative References
 
@@ -197,6 +218,13 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
               "Transport Layer Security (TLS) Application Layer Protocol
               Negotiation Extension", draft-ietf-tls-applayerprotoneg-05
               (work in progress), March 2014.
+
+
+
+Simon, et al.             Expires March 7, 2015                 [Page 4]
+
+Internet-Draft         TCP/TLS Transport for CoAP         September 2014
+
 
    [RFC0793]  Postel, J., "Transmission Control Protocol", STD 7, RFC
               793, September 1981.
@@ -212,18 +240,24 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
 
 Authors' Addresses
 
-   Add your name
+   Lemay
+   Zebra Technologies
+   820 W. Jackson Blvd.suite 700
+   Chicago  60607
+   United States of America
+
+   Phone: +1-847-634-6700
+   Email: slemay@zebra.com
 
 
+   Solorzano Barboza
+   Zebra Technologies
+   820 W. Jackson Blvd. suite 700
+   Chicago  60607
+   United States of America
 
-
-
-
-
-
-Your Name & Tschofenig    Expires March 5, 2015                 [Page 4]
-
-Internet-Draft         TCP/TLS Transport for CoAP         September 2014
+   Phone: +1-847-634-6700
+   Email: vsolorzanobarboza@zebra.com
 
 
    Hannes Tschofenig  (editor)
@@ -243,38 +277,4 @@ Internet-Draft         TCP/TLS Transport for CoAP         September 2014
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Your Name & Tschofenig    Expires March 5, 2015                 [Page 5]
+Simon, et al.             Expires March 7, 2015                 [Page 5]
