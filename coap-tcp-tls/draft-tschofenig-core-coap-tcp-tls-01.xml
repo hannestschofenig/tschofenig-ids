@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="us-ascii"?>
+
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+  <!ENTITY RFC2119 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+  <!ENTITY RFC7258 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7258.xml">
+  <!ENTITY RFC5246 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml">
+  <!ENTITY RFC0793 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.0793.xml">
+  <!ENTITY RFC7252 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7252.xml">
+  <!ENTITY I-D.ietf-tls-applayerprotoneg SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-applayerprotoneg.xml">
+]>
+
+<?xml-stylesheet type="text/xsl" href="rfc2629.xslt"?>
+
+<?rfc strict="yes"?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="2"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+
+<rfc category="std" docName="draft-tschofenig-core-coap-tcp-tls-01.txt" ipr="trust200902">
+
+  <front>
+    <title abbrev="TCP/TLS Transport for CoAP">A TCP and TLS Transport for the Constrained Application Protocol (CoAP)</title>
+
+<author initials="S.L." surname="Lemay" fullname="Simon Lemay">
+  <organization>Zebra Technologies</organization>
+  <address>
+    <postal>
+      <street>820 W. Jackson Blvd.suite 700</street>
+      <city>Chicago</city>
+      <code>60607</code>
+      <country>United States of America</country>
+    </postal>
+    <phone>+1-847-634-6700</phone>
+    <email>slemay@zebra.com</email>
+  </address>
+</author>
+
+<author initials="V.S.B." surname="Solorzano Barboza" fullname="Valik Solorzano Barboza">
+  <organization>Zebra Technologies</organization>
+  <address>
+    <postal>
+      <street>820 W. Jackson Blvd. suite 700</street>
+      <city>Chicago</city>
+      <code>60607</code>
+      <country>United States of America</country>
+    </postal>
+    <phone>+1-847-634-6700</phone>
+    <email>vsolorzanobarboza@zebra.com</email>
+ </address>
+</author>
+
+    <author role="editor" initials="H.T." surname="Tschofenig" fullname="Hannes Tschofenig ">
+      <organization>ARM Ltd.</organization>
+      <address>
+        <postal>
+          <street>110 Fulbourn Rd</street>
+          <city>Cambridge</city>
+          <code>CB1 9NJ</code>
+          <country>Great Britain</country>
+        </postal>
+        <email>Hannes.tschofenig@gmx.net </email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+
+    <date/>
+
+    <area>Applications Area (app)</area>
+
+    <workgroup>CORE</workgroup>
+      
+    <abstract>
+
+      <t>The Hypertext Transfer Protocol (HTTP) has been designed with TCP as an underlying transport protocol. The Constrained Application Protocol (CoAP), which has been inspired by HTTP, has on the other hand been defined to make use of UDP. Reliable delivery, a simple congestion control mechanism, and flow control had been added to the CoAP protocol. UDP is a good choice for networks that do not perform any form of filtering and firewalling. There are, however, many deployment environments where UDP is either firewalled or subject to deep packet inspection. These environments make the use of CoAP brittle.</t>
+
+      <t>This document defines the use of CoAP over TCP as well as CoAP over TLS.</t>
+    </abstract>
+
+  </front>
+
+  <middle>
+
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    
+    <section title="Introduction" anchor="introduction">
+
+   <t>The Internet protocol stack is organized in layers, namely data 
+   link layer, network layer, transport layer, and the application layer.</t>
+
+   <t>IP emerged as the waist of the hour glass and 
+   supports a variety of link layers and new link layer technologies can
+   be added in the future, without affecting IP.</t>
+ 
+   <t>Combined with the end-to-end principle the hour glass indicates the
+   level of protocol understanding intermediaries need to have in order
+   to exchange forward IP packets between a sender and a receiver
+   (absent any specific application layer entities, like proxies or
+   caches).  Having IP as the waist meant that anyone could extend the
+   layers above the network layer in the way they wanted to communicate
+   end-to-end, including defining new transport layer protocols (as it
+   was done with SCTP, and DCCP).</t>
+
+   <t>Unfortunately, deployments departed from this ideal architecture. 
+   When the <xref target="RFC7252">Constrained Application Protocol (CoAP)</xref> 
+   was designed it was assumed that many Internet of Things deployments 
+   would be clean-slate. Today, we know that some deployments have to 
+   integrate well with existing enterprise infrastructure, where the use of UDP-based 
+   protocols is not well-received and firewalling use is very common.</t>
+   
+   <t>To make IoT devices work smoothly in these demanding environments CoAP has to make 
+   use of a different transport protocol, namely TCP <xref target="RFC0793"/> and in some situations even TLS <xref target="RFC5246"/>. 
+   This document describes a shim header that conveys length information about the included payload.
+   Modifications to CoAP are intentially avoided (e.g, to introduce optimizations).</t>
+
+</section> 
+
+
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+
+
+    <section title="Terminology">
+
+		<t>The key words "MUST", "MUST NOT", "REQUIRED", "MUST", "MUST NOT",   
+		"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this 
+		document are to be interpreted as described in <xref target="RFC2119"/>.
+		</t>
+
+    </section> 
+    
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+
+
+<section title="Shim Header"> 
+<t>This specification defines a simple layer necessary to convey length information 
+about the exchange payloads in a 32-bit length field indicating the number of bytes in the payload following that header.
+<figure title="Shim Header." anchor="shim">
+<artwork>
+<![CDATA[
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Length                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]>
+</artwork>
+</figure>
+</t>
+</section> 
+
+
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    
+
+<section title="Developer Considerations"> 
+
+<t>The use of CoAP over a transport protocol offering reliable transmission
+already offers functionality that could be offered by CoAP itself. While a developer can re-use an already existing CoAP protocol stack, the use of TCP makes some CoAP features redundant.</t> 
+
+<t>Section 4.2 of <xref target="RFC7252"/> discusses the ability to convey 
+       messages in CoAP reliably as a "confirmable message", which always generates a response. 
+       It can be used without harm but does not add 
+       any value since all messages would be transmitted reliably already 
+       thanks to the features offered by TCP. A developer writing an application that runs 
+       CoAP over TCP or CoAP over TLS needs to be mindful about the changed semantic of CoAP. 
+       For example, the marking the message as non-confirmable (see Section 4.3 of <xref target="RFC7252"/>) does 
+       not make the transmission unreliable but it instead saves the transmission of one CoAP message.        
+</t>  
+      
+</section> 
+
+
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    
+    <section title="Security Considerations" anchor="security">
+ 
+ <t>This document defines how to convey CoAP over TCP and TLS. It does 
+       not introduce new vulnerabilities beyond those described already in the 
+       CoAP specification.</t>
+
+<t>When CoAP is exchanged over TLS port 443 then the "TLS Application Layer Protocol Negotiation Extension" <xref target="I-D.ietf-tls-applayerprotoneg"/> MUST be used to allow demultiplexing at the server-side unless out-of-band information ensures that the client only interacts with a server that is able to demultiplex CoAP messages over port 443. This would, for example, be true for many Internet of Things deployments where clients are pre-configured to only ever talk with specific servers.</t>
+
+<t>When CoAP over TLS is used then the use of the shim header that includes the length information is redundant since the TLS protocol headers already include length information. As such, the length header MUST be omitted when CoAP is exchanged over TLS.</t>
+
+    </section>
+    
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    
+    <section title="IANA Considerations" anchor="iana">
+      
+      <t>This document requests a value from the "Application Layer Protocol Negotiation (ALPN) Protocol IDs" created by <xref target="I-D.ietf-tls-applayerprotoneg"/>:
+    
+    <list style="hanging">       
+      <t hangText="Protocol:"> CoAP</t>
+      <t hangText="Identification Sequence:">0x63 0x6f 0x61 0x70 ("coap")</t>
+      <t hangText="Specification:"> This document.</t> 
+    </list> 
+    </t>
+      
+    </section>
+    
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+
+    <section title="Acknowledgements" anchor="acknowledgements">
+      <t>We would like to thank Michael Koster, Zach Shelby, and Szymon Sasin for their feedback.</t>
+    </section>
+
+  </middle>
+
+  <back>
+
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+
+    <references title="Normative References">
+      &RFC5246; <!-- TLS 1.2 -->       
+      &RFC7252; <!-- CoAP --> 
+      &RFC2119; 
+      &RFC0793; <!-- TCP --> 
+      &I-D.ietf-tls-applayerprotoneg; 
+      
+    </references>
+
+<!-- 
+    <references title="Informative References">
+        
+ 
+    </references>
+--> 
+
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    <!-- **************************************************************** -->
+    
+  </back>
+
+</rfc>
