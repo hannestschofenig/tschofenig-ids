@@ -1,0 +1,1400 @@
+
+
+
+
+dice                                                  H. Tschofenig, Ed.
+Internet-Draft                                                  ARM Ltd.
+Intended status: Standards Track                        October 24, 2014
+Expires: April 27, 2015
+
+
+A Datagram Transport Layer Security (DTLS) 1.2 Profile for the Internet
+                               of Things
+                     draft-ietf-dice-profile-05.txt
+
+Abstract
+
+   This document defines a DTLS 1.2 profile that is suitable for
+   Internet of Things applications and is reasonably implementable on
+   many constrained devices.
+
+   A common design pattern in IoT deployments is the use of a
+   constrained device (typically providing sensor data) that interacts
+   with the web infrastructure.  This document focuses on this
+   particular pattern.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on April 27, 2015.
+
+Copyright Notice
+
+   Copyright (c) 2014 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 1]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   3.  The Communication Model . . . . . . . . . . . . . . . . . . .   5
+   4.  The Ciphersuite Concept . . . . . . . . . . . . . . . . . . .   6
+   5.  Credential Types  . . . . . . . . . . . . . . . . . . . . . .   8
+     5.1.  Pre-Shared Secret . . . . . . . . . . . . . . . . . . . .   8
+     5.2.  Raw Public Key  . . . . . . . . . . . . . . . . . . . . .  10
+     5.3.  Certificates  . . . . . . . . . . . . . . . . . . . . . .  12
+   6.  Error Handling  . . . . . . . . . . . . . . . . . . . . . . .  14
+   7.  Session Resumption  . . . . . . . . . . . . . . . . . . . . .  15
+   8.  Compression . . . . . . . . . . . . . . . . . . . . . . . . .  15
+   9.  Perfect Forward Secrecy . . . . . . . . . . . . . . . . . . .  16
+   10. Keep-Alive  . . . . . . . . . . . . . . . . . . . . . . . . .  16
+   11. Random Number Generation  . . . . . . . . . . . . . . . . . .  17
+   12. Client Certificate URLs . . . . . . . . . . . . . . . . . . .  18
+   13. Trusted CA Indication . . . . . . . . . . . . . . . . . . . .  18
+   14. Truncated MAC Extension . . . . . . . . . . . . . . . . . . .  19
+   15. Server Name Indication (SNI)  . . . . . . . . . . . . . . . .  19
+   16. Maximum Fragment Length Negotiation . . . . . . . . . . . . .  20
+   17. TLS Session Hash  . . . . . . . . . . . . . . . . . . . . . .  20
+   18. Negotiation and Downgrading Attacks . . . . . . . . . . . . .  20
+   19. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  21
+   20. Security Considerations . . . . . . . . . . . . . . . . . . .  21
+   21. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  22
+   22. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  22
+   23. References  . . . . . . . . . . . . . . . . . . . . . . . . .  22
+     23.1.  Normative References . . . . . . . . . . . . . . . . . .  22
+     23.2.  Informative References . . . . . . . . . . . . . . . . .  23
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  25
+
+1.  Introduction
+
+   This document defines a DTLS 1.2 [RFC6347] profile that offers
+   communication security for Internet of Things (IoT) applications and
+   is reasonably implementable on many constrained devices.  The DTLS
+   1.2 protocol is based on Transport Layer Security (TLS) 1.2 [RFC5246]
+   and provides equivalent security guarantees.  This document aims to
+   meet the following goals:
+
+   o  Serves as a one-stop shop for implementers to know which pieces of
+      the specification jungle contain relevant details.
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 2]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   o  Does not alter the TLS/DTLS specifications.
+
+   o  Does not introduce any new extensions.
+
+   o  Aligns with the DTLS security modes of the Constrained Application
+      Protocol (CoAP) [RFC7252].
+
+   DTLS is used to secure a number of applications run over an
+   unreliable datagram transport.  CoAP [RFC7252] is one such protocol
+   and has been designed specifically for use in IoT environments.  CoAP
+   can be secured a number of different ways, also called security
+   modes.  These security modes are as follows, see Section 5.1,
+   Section 5.2, Section 5.3 for additional details:
+
+   No Security Protection at the Transport Layer:  No DTLS is used but
+      instead application layer security functionality is assumed.
+
+   Shared Secret-based DTLS Authentication:  DTLS supports the use of
+      shared secrets [RFC4279].  This mode is useful if the number of
+      communication relationships between the IoT device and servers is
+      small and for very constrained devices.  Shared secret-based
+      authentication mechanisms offer good performance and require a
+      minimum of data to be exchanged.
+
+   DTLS Authentication using Asymmetric Cryptography:  TLS supports
+      client and server authentication using asymmetric cryptography.
+      Two approaches for validating these public keys are available.
+      First, [RFC7250] allows raw public keys to be used in TLS without
+      the overhead of certificates.  This approach requires out-of-band
+      validation of the public key.  Second, the use of X.509
+      certificates [RFC5280] with TLS is common on the Web today (at
+      least for server-side authentication) and certain IoT environments
+      may also re-use those capabilities.  Certificates bind an
+      identifier to the public key signed by a certification authority
+      (CA).  A trust anchor store has to be provisioned on the device to
+      indicate what CAs are trusted.  Furthermore, the certificate may
+      contain a wealth of other information used to make authorization
+      decisions.
+
+   As described in [I-D.ietf-lwig-tls-minimal], an application designer
+   developing an IoT device needs to consider the security threats and
+   the security services that can be used to mitigate the threats.
+   Enabling devices to upload data and retrieve configuration
+   information, inevitably requires that Internet-connected devices be
+   able to authenticate themselves to servers and vice versa as well as
+   to ensure that the data and information exchanged is integrity and
+   confidentiality protected.  While these security services can be
+   provided at different layers in the protocol stack the use of
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 3]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   communication security, as offered by DTLS, has been very popular on
+   the Internet and it is likely to be useful for IoT scenarios as well.
+   In case the communication security features offered by DTLS meet the
+   security requirements of your application the remainder of the
+   document might offer useful guidance.
+
+   Not every IoT deployment will use CoAP but the discussion regarding
+   choice of credentials and cryptographic algorithms will be very
+   similar.  As such, the discussions in this document are applicable
+   beyond the use of the CoAP protocol.
+
+   The design of DTLS is intentionally very similar to TLS.  Since DTLS
+   operates on top of an unreliable datagram transport a few
+   enhancements to the TLS structure are, however necessary.  RFC 6347
+   explains these differences in great detail.  As a short summary, for
+   those not familiar with DTLS the differences are:
+
+   o  An explicit sequence number and an epoch field is included in the
+      TLS Record Layer.  Section 4.1 of RFC 6347 explains the processing
+      rules for these two new fields.  The value used to compute the MAC
+      is the 64-bit value formed by concatenating the epoch and the
+      sequence number.
+
+   o  Stream ciphers must not be used with DTLS.  The only stream cipher
+      defined for TLS 1.2 is RC4 and due to cryptographic weaknesses it
+      is not recommended anymore even for use with TLS.
+
+   o  The TLS Handshake Protocol has been enhanced to include a
+      stateless cookie exchange for Denial of Service (DoS) resistance.
+      Furthermore, the header has been extended to deal with message
+      loss, reordering, and fragmentation.  Retransmission timers have
+      been included to deal with message loss.  For DoS protection a new
+      handshake message, the HelloVerifyRequest, was added to DTLS.
+      This handshake message is sent by the server and includes a
+      stateless cookie, which is returned in a ClientHello message back
+      to the server.  This type of DoS protection mechanism has also
+      been incorporated into the design of IKEv2.  Although the exchange
+      is optional for the server to execute, a client implementation has
+      to be prepared to respond to it.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "MUST", "MUST NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
+
+   Note that "Client" and "Server" in this document refer to TLS roles,
+   where the Client initiates the TLS handshake.  This does not restrict
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 4]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   the interaction pattern of the protocols carried inside TLS as the
+   record layer allows bi-directional communication.  In the case of
+   CoAP the "Client" can act as a CoAP Server or Client.
+
+   RFC 7228 [RFC7228] introduces the notion of constrained-node
+   networks, which are small devices with severe constraints on power,
+   memory, and processing resources.  The terms constrained devices, and
+   Internet of Things (IoT) devices are used interchangeably.
+
+3.  The Communication Model
+
+   This document describes a profile of DTLS 1.2 and, to be useful, it
+   has to make assumptions about the envisioned communication
+   architecture.
+
+   The communication architecture shown in Figure 1 assumes a unicast
+   communication interaction with an IoT device utilizing a DTLS client
+   and that client interacts with one or multiple DTLS servers.
+
+   Clients are provisioned with information about the servers they need
+   to initiate their DTLS exchange with and with credentials.  This
+   information may be conveyed to clients as part of a firmware/software
+   package or via a configuration protocol.  The following credential
+   types are supported by this profile:
+
+   o  For PSK-based authentication (see Section 5.1), this includes the
+      paired "PSK identity" and shared secret to be used with each
+      server.
+
+   o  For raw public key-based authentication (see Section 5.2), this
+      includes either the server's public key or the hash of the
+      server's public key.
+
+   o  For certificate-based authentication (see Section 5.3), this
+      includes a pre-populated trust anchor store that allows the DTLS
+      stack to perform path validation for the certificate obtained
+      during the handshake with the server.
+
+   This document focuses on the description of the DTLS client-side
+   functionality but, quite naturally, the equivalent server-side
+   support has to be available.
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 5]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+              +////////////////////////////////////+
+              |          Configuration             |
+              |////////////////////////////////////|
+              | Server A --> PSK Identity, PSK     |
+              | Server B --> Public Key (Server B),|
+              |              Public Key (Client)   |
+              | Server C --> Public Key (Client),  |
+              |              Trust Anchor Store    |
+              +------------------------------------+
+                oo
+          oooooo
+         o
+      +------+
+      |Client|---
+      +------+   \
+                  \  ,-------.
+                   ,'         `.            +------+
+                  /  IP-based   \           |Server|
+                 (    Network    )          |  A   |
+                  \             /           +------+
+                   `.         ,'
+                     '---+---'                  +------+
+                         |                      |Server|
+                         |                      |  B   |
+                         |                      +------+
+                         |
+                         |                  +------+
+                         +----------------->|Server|
+                                            |  C   |
+                                            +------+
+
+
+                Figure 1: Constrained DTLS Client Profile.
+
+4.  The Ciphersuite Concept
+
+   TLS (and consequently DTLS) has the concept of ciphersuites and an
+   IANA registry [IANA-TLS] was created to register the suites.  A
+   ciphersuite (and the specification that defines it) contains the
+   following information:
+
+   o  Authentication and Key Exchange Algorithm (e.g., PSK)
+
+   o  Cipher and Key Length (e.g., AES with 128 bit keys)
+
+   o  Mode of operation (e.g., CBC)
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 6]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   o  Hash Algorithm for Integrity Protection (e.g., SHA in combination
+      with HMAC)
+
+   o  Hash Algorithm for use with the Pseudorandom Function (e.g.  HMAC
+      with the SHA-256)
+
+   o  Misc information (e.g., length of authentication tags)
+
+   o  Information whether the ciphersuite is suitable for DTLS or only
+      for TLS
+
+   The TLS ciphersuite TLS_PSK_WITH_AES_128_CCM_8, for example, uses a
+   pre-shared authentication and key exchange algorithm.  RFC 6655
+   [RFC6655] defines this ciphersuite.  It uses the Advanced Encryption
+   Standard (AES) encryption algorithm, which is a block cipher.  Since
+   the AES algorithm supports different key lengths (such as 128, 192
+   and 256 bits) this information has to be specified as well and the
+   selected ciphersuite supports 128 bit keys.  A block cipher encrypts
+   plaintext in fixed-size blocks and AES operates on fixed block size
+   of 128 bits.  For messages exceeding 128 bits, the message is
+   partitioned into 128-bit blocks and the AES cipher is applied to
+   these input blocks with appropriate chaining, which is called mode of
+   operation.
+
+   TLS 1.2 introduced Authenticated Encryption with Associated Data
+   (AEAD) ciphersuites [RFC5116].  AEAD is a class of block cipher modes
+   which encrypt (parts of) the message and authenticate the message
+   simultaneously.  Examples of such modes include the Counter with CBC-
+   MAC (CCM) mode, and the Galois/Counter Mode (GCM).
+
+   Some AEAD ciphersuites have shorter authentication tags and are
+   therefore more suitable for networks with low bandwidth where small
+   message size matters.  The TLS_PSK_WITH_AES_128_CCM_8 ciphersuite
+   that ends in "_8" has an 8-octet authentication tag, while the
+   regular CCM ciphersuites have 16-octet authentication tags.
+
+   TLS 1.2 also replaced the combination of MD5/SHA-1 hash functions in
+   the TLS pseudo random function (PRF) with cipher-suite-specified
+   PRFs.  For this reason authors of more recent TLS 1.2 ciphersuite
+   specifications explicitly indicate the MAC algorithm and the hash
+   functions used with the TLS PRF.
+
+   This document references the CoAP recommended ciphersuite choices,
+   which have been selected based on implementation and deployment
+   experience from the IoT community.  Over time the preference for
+   certain algorithms will, however, change.  Not all components of a
+   ciphersuite change at the same speed.  Changes are more likely to
+   expect for ciphers, the mode of operation, and the hash algorithms.
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 7]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   Some deployment environments will also be impacted by local
+   regulation, which might dictate a certain and less likely for public
+   key algorithms (such as RSA vs. ECC).
+
+5.  Credential Types
+
+5.1.  Pre-Shared Secret
+
+   The use of pre-shared secret credentials is one of the most basic
+   techniques for DTLS since it is both computational efficient and
+   bandwidth conserving.  Pre-shared secret based authentication was
+   introduced to TLS with RFC 4279 [RFC4279].  The exchange shown in
+   Figure 2 illustrates the DTLS exchange including the cookie exchange.
+   While the server is not required to initiate a cookie exchange with
+   every handshake, the client is required to implement and to react on
+   it when challenged.  The cookie exchange allows the server to react
+   to flooding attacks.
+
+
+         Client                                               Server
+         ------                                               ------
+         ClientHello                 -------->
+
+                                     <--------    HelloVerifyRequest
+                                                   (contains cookie)
+
+         ClientHello                  -------->
+         (with cookie)
+                                                         ServerHello
+                                                  *ServerKeyExchange
+                                      <--------      ServerHelloDone
+         ClientKeyExchange
+         ChangeCipherSpec
+         Finished                     -------->
+                                                    ChangeCipherSpec
+                                      <--------             Finished
+
+         Application Data             <------->     Application Data
+
+   Legend:
+
+   * indicates an optional message payload
+
+
+     Figure 2: DTLS PSK Authentication including the Cookie Exchange.
+
+   [RFC4279] does not mandate the use of any particular type of
+   identity.  Hence, the TLS client and server clearly have to agree on
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 8]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   the identities and keys to be used.  The mandated encoding of
+   identities in Section 5.1 of RFC 4279 aims to improve
+   interoperability for those cases where the identity is configured by
+   a person using some management interface.  Many IoT devices do,
+   however, not have a user interface and most of their credentials are
+   bound to the device rather than the user.  Furthermore, credentials
+   are provisioned into trusted hardware modules or in the firmware by
+   the developers.  As such, the encoding considerations are not
+   applicable to this usage environment.  For use with this profile the
+   PSK identities SHOULD NOT assume a structured format (as domain
+   names, Distinguished Names, or IP addresses have) and a bit-by-bit
+   comparison operation can then be used by the server-side
+   infrastructure.
+
+   The client indicates which key it uses by including a "PSK identity"
+   in the ClientKeyExchange message.  As described in Section 3 clients
+   may have multiple pre-shared keys with a single server and to help
+   the client in selecting which PSK identity / PSK pair to use, the
+   server can provide a "PSK identity hint" in the ServerKeyExchange
+   message.  If the hint for PSK key selection is based on the domain
+   name of the server then servers SHOULD NOT send the "PSK identity
+   hint" in the ServerKeyExchange message.  Hence, servers SHOULD NOT
+   send the "PSK identity hint" in the ServerKeyExchange message and
+   client MUST ignore the message.  This approach is inline with RFC
+   4279 [RFC4279].  Note: The TLS Server Name Indication (SNI) extension
+   allows the client to tell a server the name of the server it is
+   contacting, which is relevant for hosting environments.  A server
+   using the identity hint needs to guide the selection based on a
+   received SNI value from the client.
+
+   RFC 4279 requires TLS implementations supporting PSK ciphersuites to
+   support arbitrary PSK identities up to 128 octets in length, and
+   arbitrary PSKs up to 64 octets in length.  This is a useful
+   assumption for TLS stacks used in the desktop and mobile environment
+   where management interfaces are used to provision identities and
+   keys.  For the IoT environment, however, many devices are not
+   equipped with displays and input devices (e.g., keyboards).  Hence,
+   keys are distributed as part of hardware modules or are embedded into
+   the firmware.  As such, these restrictions are not applicable to this
+   profile.
+
+   Constrained Application Protocol (CoAP) [RFC7252] currently specifies
+   TLS_PSK_WITH_AES_128_CCM_8 as the mandatory to implement ciphersuite
+   for use with shared secrets.  This ciphersuite uses the AES algorithm
+   with 128 bit keys and CCM as the mode of operation.  The label "_8"
+   indicates that an 8-octet authentication tag is used.  This
+   ciphersuite makes use of the default TLS 1.2 Pseudorandom Function
+   (PRF), which uses an HMAC with the SHA-256 hash function.  (Note that
+
+
+
+Tschofenig               Expires April 27, 2015                 [Page 9]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   all IoT implementations will need a SHA-256 implementation due to the
+   construction of the pseudo-random number function in TLS 1.2.)
+
+   A device compliant with this protocol MUST implement
+   TLS_PSK_WITH_AES_128_CCM_8 and follow the guidance from this section.
+
+5.2.  Raw Public Key
+
+   The use of raw public keys with DTLS, as defined in [RFC7250], is the
+   first entry point into public key cryptography without having to pay
+   the price of certificates and a PKI.  The specification re-uses the
+   existing Certificate message to convey the raw public key encoded in
+   the SubjectPublicKeyInfo structure.  To indicate support two new TLS
+   extensions had been defined, as shown in Figure 3, namely the
+   server_certificate_type and the client_certificate_type.  To operate
+   this mechanism securely it is necessary to authenticate and authorize
+   the public keys out-of-band.  This document therefore assumes that a
+   client implementation comes with one or multiple raw public keys of
+   servers, it has to communicate with, pre-provisioned.  Additionally,
+   a device will have its own raw public key.  To replace, delete, or
+   add raw public key to this list requires a software update, for
+   example using a firmware update mechanism.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 10]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+    Client                                          Server
+    ------                                          ------
+
+    ClientHello             -------->
+    client_certificate_type
+    server_certificate_type
+
+                            <-------    HelloVerifyRequest
+
+    ClientHello             -------->
+    client_certificate_type
+    server_certificate_type
+
+                                               ServerHello
+                                   client_certificate_type
+                                   server_certificate_type
+                                               Certificate
+                                         ServerKeyExchange
+                                        CertificateRequest
+                            <--------      ServerHelloDone
+
+    Certificate
+    ClientKeyExchange
+    CertificateVerify
+    [ChangeCipherSpec]
+    Finished                -------->
+
+                                        [ChangeCipherSpec]
+                            <--------             Finished
+
+
+   Figure 3: DTLS Raw Public Key Exchange including the Cookie Exchange.
+
+   The CoAP recommended ciphersuite for use with this credential type is
+   TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8 [RFC7251].  This elliptic curve
+   cryptography (ECC) based AES-CCM TLS ciphersuite uses the Ephemeral
+   Elliptic Curve Diffie-Hellman (ECDHE) as the key establishment
+   mechanism and an Elliptic Curve Digital Signature Algorithm (ECDSA)
+   for authentication.  Due to the use of Ephemeral Elliptic Curve
+   Diffie-Hellman (ECDHE) the recently introduced named Diffie-Hellman
+   groups [I-D.ietf-tls-negotiated-dl-dhe] are not applicable to this
+   profile.  This ciphersuite make use of the AEAD capability in DTLS
+   1.2 and utilizes an eight-octet authentication tag.  The use of a
+   Diffie-Hellman key exchange adds perfect forward secrecy (PFS).  More
+   details about PFS can be found in Section 9.
+
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 11]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   RFC 6090 [RFC6090] provides valuable information for implementing
+   Elliptic Curve Cryptography algorithms, particularly for choosing
+   methods that have been published more than 20 years ago.
+
+   Since many IoT devices will either have limited ways to log error or
+   no ability at all, any error will lead to implementations attempting
+   to re-try the exchange.  Implementers have to carefully evaluate the
+   impact of errors and ways to remedy the situation since a commonly
+   used approach for delegating decision making to users is difficult in
+   a timely fashion (or impossible).
+
+   A device compliant with this protocol MUST implement
+   TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8 and follow the guidance from this
+   section.
+
+5.3.  Certificates
+
+   The use of mutual certificate-based authentication is shown in
+   Figure 4, which makes use of the cached info extension
+   [I-D.ietf-tls-cached-info].  Support of the cached info extension is
+   required.  Caching certificate chains allows the client to reduce the
+   communication overhead significantly since otherwise the server would
+   provide the end entity certificate, and the certificate chain.
+   Because certificate validation requires that root keys be distributed
+   independently, the self-signed certificate that specifies the root
+   certificate authority is omitted from the chain.  Client
+   implementations MUST be provisioned with a trust anchor store that
+   contains the root certificates.  The use of the Trust Anchor
+   Management Protocol (TAMP) [RFC5934] is, however, not envisioned.
+   Instead IoT devices using this profile MUST rely a software update
+   mechanism to provision these trust anchors.
+
+   When DTLS is used to secure CoAP messages then the server provided
+   certificates MUST contain the fully qualified DNS domain name or
+   "FQDN".  The coaps URI scheme is described in Section 6.2 of
+   [RFC7252].  This FQDN is stored in the SubjectAltName or in the CN,
+   as explained in Section 9.1.3.3 of [RFC7252], and used by the client
+   to match it against the FQDN used during the look-up process, as
+   described in RFC 6125 [RFC6125].  For the profile in this
+   specification does not assume dynamic discovery of local servers.
+
+   For client certificates the identifier used in the SubjectAltName or
+   in the CN MUST be an EUI-64 [EUI64], as mandated in Section 9.1.3.3
+   of [RFC7252].
+
+   For certificate revocation neither the Online Certificate Status
+   Protocol (OCSP) nor Certificate Revocation Lists (CRLs) are used.
+   Instead, this profile relies on a software update mechanism.  While
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 12]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   multiple OCSP stapling [RFC6961] has recently been introduced as a
+   mechanism to piggyback OCSP request/responses inside the DTLS/TLS
+   handshake to avoid the cost of a separate protocol handshake further
+   investigations are needed to determine its suitability for the IoT
+   environment.
+
+
+    Client                                          Server
+    ------                                          ------
+
+    ClientHello             -------->
+    cached_information
+
+                            <-------    HelloVerifyRequest
+
+    ClientHello             -------->
+    cached_information
+                                               ServerHello
+                                        cached_information
+                                               Certificate
+                                         ServerKeyExchange
+                                        CertificateRequest
+                            <--------      ServerHelloDone
+
+    Certificate
+    ClientKeyExchange
+    CertificateVerify
+    [ChangeCipherSpec]
+    Finished                -------->
+
+                                        [ChangeCipherSpec]
+                            <--------             Finished
+
+
+          Figure 4: DTLS Mutual Certificate-based Authentication.
+
+   Regarding the ciphersuite choice the discussion in Section 5.2
+   applies.  Further details about X.509 certificates can be found in
+   Section 9.1.3.3 of [RFC7252].  The TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8
+   ciphersuite description in Section 5.2 is also applicable to this
+   section.
+
+   IoT devices MUST provide support for a server certificate chain of at
+   least 3 not including the trust anchor and MAY reject connections
+   from servers offering chains longer than 3.  IoT devices MAY have
+   client certificate chains of any length.  Obviously, longer chains
+   require more resources to process, transmit or receive.
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 13]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   A device compliant with this protocol MUST implement
+   TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8 and follow the guidance from this
+   section.
+
+6.  Error Handling
+
+   DTLS uses the Alert protocol to convey error messages and specifies a
+   longer list of errors.  However, not all error messages defined in
+   the TLS specification are applicable to this profile.  All error
+   messages marked as RESERVED are only supported for backwards
+   compatibility with SSL and are therefore not applicable to this
+   profile.  Those include decryption_failed_RESERVED,
+   no_certificate_RESERVE, and export_restriction_RESERVED.
+
+   A number of the error messages are applicable only for certificate-
+   based authentication ciphersuites.  Hence, for PSK and raw public key
+   use the following error messages are not applicable:
+
+   o  bad_certificate,
+
+   o  unsupported_certificate,
+
+   o  certificate_revoked,
+
+   o  certificate_expired,
+
+   o  certificate_unknown,
+
+   o  unknown_ca, and
+
+   o  access_denied.
+
+   Since this profile does not make use of compression at the TLS layer
+   the decompression_failure error message is not applicable either.
+
+   RFC 4279 introduced a new alert message unknown_psk_identity for PSK
+   ciphersuites.  As stated in Section 2 of RFC 4279 the
+   decryption_error error message may also be used instead.  For this
+   profile the TLS server MUST return the decryption_error error message
+   instead of the unknown_psk_identity.
+
+   Furthermore, the following errors should not occur based on the
+   description in this specification:
+
+   protocol_version:  This document only focuses on one version of the
+      DTLS protocol.
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 14]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   insufficient_security:  This error message indicates that the server
+      requires ciphers to be more secure.  This document does, however,
+      specify the only acceptable ciphersuites and client
+      implementations must support them.
+
+   user_canceled:  The IoT devices in focus of this specification are
+      assumed to be unattended.
+
+7.  Session Resumption
+
+   Session resumption is a feature of DTLS that allows a client to
+   continue with an earlier established session state.  The resulting
+   exchange is shown in Figure 5.  In addition, the server may choose
+   not to do a cookie exchange when a session is resumed.  Still,
+   clients have to be prepared to do a cookie exchange with every
+   handshake.
+
+
+         Client                                               Server
+         ------                                               ------
+
+         ClientHello                   -------->
+                                                          ServerHello
+                                                   [ChangeCipherSpec]
+                                       <--------             Finished
+         [ChangeCipherSpec]
+         Finished                      -------->
+         Application Data              <------->     Application Data
+
+
+                    Figure 5: DTLS Session Resumption.
+
+   Clients MUST implement session resumption to improve the performance
+   of the handshake (in terms of reduced number of message exchanges,
+   lower computational overhead, and less bandwidth conserved).
+
+   Since the communication model described in Section 3 does not assume
+   that the server is constrained.  RFC 5077 [RFC5077] describing TLS
+   session resumption without server-side state is not utilized by this
+   profile.
+
+8.  Compression
+
+   [I-D.ietf-uta-tls-bcp] recommends to always disable DTLS-level
+   compression due to attacks.  For IoT applications compression at the
+   DTLS is not needed since application layer protocols are highly
+   optimized and the compression algorithms at the DTLS layer increase
+   code size and complexity.
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 15]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   This DTLS client profile does not include DTLS layer compression.
+
+9.  Perfect Forward Secrecy
+
+   Perfect forward secrecy (PFS) is designed to prevent the compromise
+   of a long-term secret key from affecting the confidentiality of past
+   conversations.  The PSK ciphersuite recommended in the CoAP
+   specification [RFC7252] does not offer this property since it does
+   not utilize a Diffie-Hellman exchange.  [I-D.ietf-uta-tls-bcp] on the
+   other hand recommends using ciphersuites offering this security
+   property and so do the public key-based ciphersuites recommended by
+   the CoAP specification.
+
+   The use of PFS is certainly a trade-off decision since on one hand
+   the compromise of long-term secrets of embedded devices is more
+   likely than with many other Internet hosts but on the other hand a
+   Diffie-Hellman exchange requires ephemeral key pairs to be generated,
+   which can be demanding from a performance point of view.  Finally,
+   the impact of the disclosure of past conversations and the desire to
+   increase the cost for pervasive monitoring (see [RFC7258]) has to be
+   taken into account.
+
+   Our recommendation is to stick with the ciphersuite suggested in the
+   CoAP specification.  New ciphersuites support PFS for pre-shared
+   secret-based authentication, such as
+   [I-D.schmertmann-dice-ccm-psk-pfs], and might be available as a
+   standardized ciphersuite in the future.
+
+10.  Keep-Alive
+
+   RFC 6520 [RFC6520] defines a heartbeat mechanism to test whether the
+   other peer is still alive.  The same mechanism can also be used to
+   perform Path Maximum Transmission Unit (MTU) Discovery.
+
+   A recommendation about the use of RFC 6520 depends on the type of
+   message exchange an IoT device performs.  There are three types of
+   exchanges that need to be analysed:
+
+   Client-Initiated, One-Shot Messages
+
+      This is a common communication pattern where IoT devices upload
+      data to a server on the Internet on an irregular basis.  The
+      communication may be triggered by specific events, such as opening
+      a door.
+
+      Since the upload happens on an irregular and unpredictable basis
+      and due to renumbering and Network Address Translation (NAT) a new
+      DTLS session or DTLS session resumption can be used.
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 16]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+      In this case there is no use for a keep-alive extension for this
+      scenario.
+
+   Client-Initiated, Regular Data Uploads
+
+      This is a variation of the previous case whereby data gets
+      uploaded on a regular basis, for example, based on frequent
+      temperature readings.  With such regular exchange it can be
+      assumed that the DTLS context is still in kept at the IoT device.
+      If neither NAT bindings nor IP address changes occurred then the
+      DTLS record layer will not notice any changes.  For the case where
+      IP and port changes happened it is necessary to re-create the DTLS
+      record layer using session resumption.
+
+      In this scenario there is no use for a keep-alive extension.  It
+      is also very likely that the device will enter a sleep cycle in
+      between data transmissions to keep power consumption low.
+
+   Server-Initiated Messages
+
+      In the two previous scenarios the client initiated the protocol
+      interaction.  In this case, we consider server-initiated messages.
+      Since messages to the client may get blocked by intermediaries,
+      such as NATs and stateful packet filtering firewalls, the initial
+      connection setup is triggered by the client and then kept alive.
+      Since state expires fairly quickly at middleboxes regular
+      heartbeats are necessary whereby these keep-alive messages may be
+      exchanged at the application layer or within DTLS itself.
+
+      For this message exchange pattern the use of DTLS heartbeat
+      messages is quite useful.  The MTU discovery mechanism, on the
+      other hand, is less likely to be relevant since for many IoT
+      deployments the must constrained link is the wireless interface at
+      the IoT device itself rather than somewhere in the network.  Only
+      in more complex network topologies the situation might be
+      different.
+
+   For server-initiated messages the heartbeat extension can be
+   recommended.
+
+11.  Random Number Generation
+
+   The DTLS protocol requires random numbers to be available during the
+   protocol run.  For example, during the ClientHello and the
+   ServerHello exchange the client and the server exchange random
+   numbers.  Also, the use of the Diffie-Hellman exchange requires
+   random numbers during the key pair generation.  Special care has to
+   be paid when generating random numbers in embedded systems as many
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 17]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   entropy sources available on desktop operating systems or mobile
+   devices might be missing, as described in [Heninger].  Consequently,
+   if not enough time is given during system start time to fill the
+   entropy pool then the output might be predictable and repeatable, for
+   example leading to the same keys generated again and again.
+
+   Recommendation: IoT devices using DTLS MUST offer ways to generate
+   quality random numbers.  Guidelines and requirements for random
+   number generation can be found in RFC 4086 [RFC4086].
+
+   It is important to note that sources contributing to the randomness
+   pool on laptops, or desktop PCs are not available on many IoT device,
+   such as mouse movement, timing of keystrokes, air turbulence on the
+   movement of hard drive heads, etc.  Other sources have to be found or
+   dedicated hardware has to be added.
+
+   The ClientHello and the ServerHello message contains the 'Random'
+   structure, which has two components: gmt_unix_time and a random
+   sequence of 28 random bytes.  gmt_unix_time holds the current time
+   and date in standard UNIX 32-bit format (seconds since the midnight
+   starting Jan 1, 1970, GMT).  [I-D.mathewson-no-gmtunixtime] argues
+   that the entire value the ClientHello.Random and ServerHello.Random
+   fields, including gmt_unix_time, should be set to a cryptographically
+   random sequence because of privacy concerns (fingerprinting).  Since
+   many IoT devices do not have access to a real-time clock this
+   recommendation is even more relevant in the embedded systems
+   environment.
+
+12.  Client Certificate URLs
+
+   This RFC 6066 [RFC6066] extension allows to avoid sending client-side
+   certificates and URLs instead.  This reduces the over-the-air
+   transmission.
+
+   This is certainly a useful extension when a certificate-based mode
+   for DTLS is used since the TLS cached info extension does not provide
+   any help with caching information on the server side.
+
+   Recommendation: Add support for client certificate URLs for those
+   environments where client-side certificates are used.
+
+13.  Trusted CA Indication
+
+   This RFC 6066 extension allows clients to indicate what trust anchor
+   they support.  With certificate-based authentication a DTLS server
+   conveys its end entity certificate to the client during the DTLS
+   exchange provides.  Since the server does not necessarily know what
+   trust anchors the client has stored it includes intermediate CA certs
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 18]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   in the certificate payload as well to facilitate with certification
+   path construction and path validation.
+
+   Today, in most IoT deployments there is a fairly static relationship
+   between the IoT device (and the software running on them) and the
+   server- side infrastructure and no such dynamic indication of trust
+   anchors is needed.
+
+   Recommendation: For IoT deployments where clients talk to a fixed,
+   pre-configured set of servers and where a software update mechanism
+   is available this extension is not recommended.  Environments where
+   the client needs to interact with dynamically discovered DTLS servers
+   this extension may be useful to reduce the communication overhead.
+   Note, however, in that case the TLS cached info extension may help to
+   reduce the communication overhead for everything but the first
+   protocol interaction.
+
+14.  Truncated MAC Extension
+
+   The truncated MAC extension was introduced with RFC 6066 with the
+   goal to reduces the size of the MAC used at the Record Layer.  This
+   extension was developed for TLS ciphersuites that used older modes of
+   operation where the MAC and the encryption operation was performed
+   independently.
+
+   For CoAP, however, the recommended ciphersuites use the newer
+   Authenticated Encryption with Associated Data (AEAD) construct,
+   namely the CBC-MAC mode (CCM) with eight-octet authentication tags.
+   Furthermore, the extension [RFC7366] introducing the encrypt-then-MAC
+   security mechanism (instead of the MAC-then-encrypt) is also not
+   applicable for this profile.
+
+   Recommendation: Since this profile only supports AEAD ciphersuites
+   this extension is not applicable.
+
+15.  Server Name Indication (SNI)
+
+   This RFC 6066 extension defines a mechanism for a client to tell a
+   TLS server the name of the server it wants to contact.  This is a
+   useful extension for many hosting environments where multiple virtual
+   servers are run on single IP address.
+
+   Recommendation: Unless it is known that a DTLS client does not
+   interact with a server in a hosting environment that requires such an
+   extension we advice to offer support for the SNI extension in this
+   profile.
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 19]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+16.  Maximum Fragment Length Negotiation
+
+   This RFC 6066 extension lowers the maximum fragment length support
+   needed for the Record Layer from 2^14 bytes to 2^9 bytes.
+
+   This is a very useful extension that allows the client to indicate to
+   the server how much maximum memory buffers it uses for incoming
+   messages.  Ultimately, the main benefit of this extension is it to
+   allows client implementations to lower their RAM requirements since
+   the client does not need to accept packets of large size (such as 16k
+   packets as required by plain TLS/DTLS).
+
+   Recommendation: Client implementations MUST support this extension.
+
+17.  TLS Session Hash
+
+   The TLS master secret is not cryptographically bound to important
+   session parameters such as the client and server identities.  This
+   can be utilized by an attacker to mount a man-in-the-middle attack
+   since the master secret is not guaranteed to be unique across
+   sessions.
+
+   [I-D.ietf-tls-session-hash] defines a TLS extension that binds the
+   master secret to a log of the full handshake that computes it, thus
+   preventing such attacks.
+
+   Recommendation: Client implementations SHOULD implement this
+   extension support this extension even though the ciphersuites
+   recommended by this profile are not vulnerable this attack.  For
+   Diffie-Hellman-based ciphersuites the keying material is contributed
+   by both parties and in case of the pre-shared secret key ciphersuite
+   both parties need to be in possession of the shared secret to ensure
+   that the handshake completes successfully.  It is, however, possible
+   that some application layer protocols will tunnel other
+   authentication protocols on top of DTLS making this attack relevant
+   again.
+
+18.  Negotiation and Downgrading Attacks
+
+   CoAP demands version 1.2 of DTLS to be used and the earlier version
+   of DTLS is not supported.  As such, there is no risk of downgrading
+   to an older version of DTLS.  The work described in
+   [I-D.bmoeller-tls-downgrade-scsv] is therefore also not applicable to
+   this environment since there is no legacy server infrastructure to
+   worry about.
+
+   To prevent the TLS renegotiation attack [RFC5746] clients MUST
+   respond to server-initiated renegotiation attempts with an Alert
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 20]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   message (no_renegotiation) and clients MUST NOT initiate them.  TLS
+   and DTLS allows a client and a server who already have a TLS
+   connection to negotiate new parameters, generate new keys, etc by
+   initiating a TLS handshake using a ClientHello message.
+   Renegotiation happens in the existing TLS connection, with the new
+   handshake packets being encrypted along with application data.
+
+19.  Privacy Considerations
+
+   The DTLS handshake exchange conveys various identifiers, which can be
+   observed by an on-path eavesdropper.  For example, the DTLS PSK
+   exchange reveals the PSK identity, the supported extensions, the
+   session id, algorithm parameters, etc.  When session resumption is
+   used then individual TLS sessions can be correlated by an on-path
+   adversary.  With many IoT deployments it is likely that keying
+   material and their identifiers are persistent over a longer period of
+   time due to the cost of updating software on these devices.
+
+   User participation with many IoT deployments poses a challenge since
+   many of the IoT devices operate unattended, even though they will
+   initially be provisioned by a human.  The ability to control data
+   sharing and to configure preference will have to be provided at a
+   system level rather than at the level of the DTLS exchange itself,
+   which is the scope of this document.  Quite naturally, the use of
+   DTLS with mutual authentication will allow a TLS server to collect
+   authentication information about the IoT device (likely over a long
+   period of time).  While this strong form of authentication will
+   prevent mis-attribution it also allows strong identification.
+   Device-related data collection (e.g., sensor recordings) will be
+   associated with other data to be truly useful and this extra data
+   might include personal data about the owner of the device or data
+   about the environment it senses.  Consequently, the data stored on
+   the server-side will be vulnerable to stored data compromise.  For
+   the communication between the client and the server this
+   specification prevents eavesdroppers to gain access to the
+   communication content.  While the PSK-based ciphersuite does not
+   provide PFS the asymmetric versions do.  This prevents an adversary
+   from obtaining past communication content when access to a long-term
+   secret has been gained.  Note that no extra effort to make traffic
+   analysis more difficult is provided by the recommendations made in
+   this document.
+
+20.  Security Considerations
+
+   This entire document is about security.
+
+   We would also like to point out that designing a software update
+   mechanism into an IoT system is crucial to ensure that both
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 21]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   functionality can be enhanced and that potential vulnerabilities can
+   be fixed.  This software update mechanism is also useful for changing
+   configuration information, for example, trust anchors and other
+   keying related information.
+
+21.  IANA Considerations
+
+   This document includes no request to IANA.
+
+22.  Acknowledgements
+
+   Thanks to Robert Cragie, Russ Housley, Rene Hummen, Sandeep Kumar,
+   Sye Loong Keoh, Mike St. Jones, Eric Rescorla, Michael Richardson,
+   Zach Shelby, and Sean Turner for their helpful comments and
+   discussions that have shaped the document.
+
+   Big thanks also to Klaus Hartke, who wrote the initial version of
+   this document.
+
+23.  References
+
+23.1.  Normative References
+
+   [EUI64]    "GUIDELINES FOR 64-BIT GLOBAL IDENTIFIER (EUI-64)
+              REGISTRATION AUTHORITY", April 2010,
+              <http://standards.ieee.org/regauth/oui/tutorials/
+              EUI64.html>.
+
+   [I-D.ietf-tls-cached-info]
+              Santesson, S. and H. Tschofenig, "Transport Layer Security
+              (TLS) Cached Information Extension", draft-ietf-tls-
+              cached-info-16 (work in progress), February 2014.
+
+   [I-D.ietf-tls-session-hash]
+              Bhargavan, K., Delignat-Lavaud, A., Pironti, A., Langley,
+              A., and M. Ray, "Transport Layer Security (TLS) Session
+              Hash and Extended Master Secret Extension", draft-ietf-
+              tls-session-hash-02 (work in progress), October 2014.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC4279]  Eronen, P. and H. Tschofenig, "Pre-Shared Key Ciphersuites
+              for Transport Layer Security (TLS)", RFC 4279, December
+              2005.
+
+   [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246, August 2008.
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 22]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   [RFC5746]  Rescorla, E., Ray, M., Dispensa, S., and N. Oskov,
+              "Transport Layer Security (TLS) Renegotiation Indication
+              Extension", RFC 5746, February 2010.
+
+   [RFC6066]  Eastlake, D., "Transport Layer Security (TLS) Extensions:
+              Extension Definitions", RFC 6066, January 2011.
+
+   [RFC6125]  Saint-Andre, P. and J. Hodges, "Representation and
+              Verification of Domain-Based Application Service Identity
+              within Internet Public Key Infrastructure Using X.509
+              (PKIX) Certificates in the Context of Transport Layer
+              Security (TLS)", RFC 6125, March 2011.
+
+   [RFC6347]  Rescorla, E. and N. Modadugu, "Datagram Transport Layer
+              Security Version 1.2", RFC 6347, January 2012.
+
+   [RFC6520]  Seggelmann, R., Tuexen, M., and M. Williams, "Transport
+              Layer Security (TLS) and Datagram Transport Layer Security
+              (DTLS) Heartbeat Extension", RFC 6520, February 2012.
+
+   [RFC7250]  Wouters, P., Tschofenig, H., Gilmore, J., Weiler, S., and
+              T. Kivinen, "Using Raw Public Keys in Transport Layer
+              Security (TLS) and Datagram Transport Layer Security
+              (DTLS)", RFC 7250, June 2014.
+
+   [RFC7251]  McGrew, D., Bailey, D., Campagna, M., and R. Dugal, "AES-
+              CCM Elliptic Curve Cryptography (ECC) Cipher Suites for
+              TLS", RFC 7251, June 2014.
+
+23.2.  Informative References
+
+   [Heninger]
+              Heninger, N., Durumeric, Z., Wustrow, E., and A.
+              Halderman, "Mining Your Ps and Qs: Detection of Widespread
+              Weak Keys in Network Devices", 21st USENIX Security
+              Symposium,
+              https://www.usenix.org/conference/usenixsecurity12/
+              technical-sessions/presentation/heninger, 2012.
+
+   [I-D.bmoeller-tls-downgrade-scsv]
+              Moeller, B. and A. Langley, "TLS Fallback Signaling Cipher
+              Suite Value (SCSV) for Preventing Protocol Downgrade
+              Attacks", draft-bmoeller-tls-downgrade-scsv-02 (work in
+              progress), May 2014.
+
+
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 23]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   [I-D.ietf-lwig-tls-minimal]
+              Kumar, S., Keoh, S., and H. Tschofenig, "A Hitchhiker's
+              Guide to the (Datagram) Transport Layer Security Protocol
+              for Smart Objects and Constrained Node Networks", draft-
+              ietf-lwig-tls-minimal-01 (work in progress), March 2014.
+
+   [I-D.ietf-tls-negotiated-dl-dhe]
+              Gillmor, D., "Negotiated Discrete Log Diffie-Hellman
+              Ephemeral Parameters for TLS", draft-ietf-tls-negotiated-
+              dl-dhe-00 (work in progress), July 2014.
+
+   [I-D.ietf-uta-tls-bcp]
+              Sheffer, Y., Holz, R., and P. Saint-Andre,
+              "Recommendations for Secure Use of TLS and DTLS", draft-
+              ietf-uta-tls-bcp-06 (work in progress), October 2014.
+
+   [I-D.mathewson-no-gmtunixtime]
+              Mathewson, N. and B. Laurie, "Deprecating gmt_unix_time in
+              TLS", draft-mathewson-no-gmtunixtime-00 (work in
+              progress), December 2013.
+
+   [I-D.schmertmann-dice-ccm-psk-pfs]
+              Schmertmann, L. and C. Bormann, "ECDHE-PSK AES-CCM Cipher
+              Suites with Forward Secrecy for Transport Layer Security
+              (TLS)", draft-schmertmann-dice-ccm-psk-pfs-01 (work in
+              progress), August 2014.
+
+   [IANA-TLS]
+              IANA, "TLS Cipher Suite Registry",
+              http://www.iana.org/assignments/tls-parameters/
+              tls-parameters.xhtml#tls-parameters-4, 2014.
+
+   [RFC4086]  Eastlake, D., Schiller, J., and S. Crocker, "Randomness
+              Requirements for Security", BCP 106, RFC 4086, June 2005.
+
+   [RFC5077]  Salowey, J., Zhou, H., Eronen, P., and H. Tschofenig,
+              "Transport Layer Security (TLS) Session Resumption without
+              Server-Side State", RFC 5077, January 2008.
+
+   [RFC5116]  McGrew, D., "An Interface and Algorithms for Authenticated
+              Encryption", RFC 5116, January 2008.
+
+   [RFC5280]  Cooper, D., Santesson, S., Farrell, S., Boeyen, S.,
+              Housley, R., and W. Polk, "Internet X.509 Public Key
+              Infrastructure Certificate and Certificate Revocation List
+              (CRL) Profile", RFC 5280, May 2008.
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 24]
+
+Internet-Draft          DTLS 1.2 Profile for IoT            October 2014
+
+
+   [RFC5934]  Housley, R., Ashmore, S., and C. Wallace, "Trust Anchor
+              Management Protocol (TAMP)", RFC 5934, August 2010.
+
+   [RFC6090]  McGrew, D., Igoe, K., and M. Salter, "Fundamental Elliptic
+              Curve Cryptography Algorithms", RFC 6090, February 2011.
+
+   [RFC6655]  McGrew, D. and D. Bailey, "AES-CCM Cipher Suites for
+              Transport Layer Security (TLS)", RFC 6655, July 2012.
+
+   [RFC6961]  Pettersen, Y., "The Transport Layer Security (TLS)
+              Multiple Certificate Status Request Extension", RFC 6961,
+              June 2013.
+
+   [RFC7228]  Bormann, C., Ersue, M., and A. Keranen, "Terminology for
+              Constrained-Node Networks", RFC 7228, May 2014.
+
+   [RFC7252]  Shelby, Z., Hartke, K., and C. Bormann, "The Constrained
+              Application Protocol (CoAP)", RFC 7252, June 2014.
+
+   [RFC7258]  Farrell, S. and H. Tschofenig, "Pervasive Monitoring Is an
+              Attack", BCP 188, RFC 7258, May 2014.
+
+   [RFC7366]  Gutmann, P., "Encrypt-then-MAC for Transport Layer
+              Security (TLS) and Datagram Transport Layer Security
+              (DTLS)", RFC 7366, September 2014.
+
+Author's Address
+
+   Hannes Tschofenig  (editor)
+   ARM Ltd.
+   110 Fulbourn Rd
+   Cambridge  CB1 9NJ
+   Great Britain
+
+   Email: Hannes.tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig               Expires April 27, 2015                [Page 25]
