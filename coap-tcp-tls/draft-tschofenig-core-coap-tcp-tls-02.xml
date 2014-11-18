@@ -4,9 +4,13 @@
   <!ENTITY RFC2119 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
   <!ENTITY RFC7258 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7258.xml">
   <!ENTITY RFC5246 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml">
+  <!ENTITY RFC6347 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6347.xml">
   <!ENTITY RFC0793 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.0793.xml">
+  <!ENTITY RFC4395 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4395.xml">
   <!ENTITY RFC7252 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7252.xml">
   <!ENTITY I-D.ietf-tls-applayerprotoneg SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-applayerprotoneg.xml">
+  <!ENTITY I-D.ietf-dice-profile SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dice-profile.xml">
+
 ]>
 
 <?xml-stylesheet type="text/xsl" href="rfc2629.xslt"?>
@@ -16,7 +20,7 @@
 <?rfc tocdepth="2"?>
 <?rfc symrefs="yes"?>
 <?rfc sortrefs="yes"?>
-<?rfc compact="yes"?>
+<?rfc compact="no"?>
 <?rfc subcompact="no"?>
 
 <rfc category="std" docName="draft-tschofenig-core-coap-tcp-tls-02.txt" ipr="trust200902">
@@ -52,7 +56,7 @@
  </address>
 </author>
 
-    <author role="editor" initials="H.T." surname="Tschofenig" fullname="Hannes Tschofenig ">
+    <author initials="H.T." surname="Tschofenig" fullname="Hannes Tschofenig">
       <organization>ARM Ltd.</organization>
       <address>
         <postal>
@@ -65,6 +69,21 @@
         <uri>http://www.tschofenig.priv.at</uri>
       </address>
     </author>
+
+    <author initials="C.B." surname="Bormann" fullname="Carsten Bormann">
+      <organization>Universitaet Bremen TZI</organization>
+      <address>
+        <postal>
+          <street>Postfach 330440</street>
+          <city>Bremen</city>
+          <code>D-28359</code>
+          <country>Germany</country>
+        </postal>
+        <phone>+49-421-218-63921</phone>
+        <email>cabo@tzi.org</email>
+      </address>
+    </author>
+
 
     <date/>
 
@@ -108,7 +127,7 @@
 
    <t>Unfortunately, deployments departed from this ideal architecture. 
    When the <xref target="RFC7252">Constrained Application Protocol (CoAP)</xref> 
-   was designed it was assumed that many Internet of Things deployments 
+   was designed it was assumed that many Internet of Things (IoT) deployments 
    would be clean-slate. Today, we know that some deployments have to 
    integrate well with existing enterprise infrastructure, where the use of UDP-based 
    protocols is not well-received and firewalling use is very common.</t>
@@ -144,10 +163,10 @@
 
     <section title="Constrained Application Protocol">
 
-    <t>The interaction model of CoAP on TCP is very similar to the one on UDP with key diffrences that it 
-    is operated on TCP.
+    <t>The interaction model of CoAP over TCP is very similar to the one for CoAP over UDP with the key difference that TCP voids the need to replicate certain transport layer protocol features, such as reliable delivery, fragmentation and reassemply, as well as congestion control, at the CoAP level. The protocol stack is shown in <xref target="stack"/>.</t>
 
-    <figure title="Abstract Layering of CoAP over TCP." anchor="">
+    <t>
+    <figure title="The CoAP over TLS/TCP Protocol Stack" anchor="stack">
     <artwork>
     <![CDATA[
         +----------------------+
@@ -158,6 +177,9 @@
         |----------------------|  | CoAP
         |       Messages       |  |
         +----------------------+  /
+        +-----------+    ^    
+        |    TLS    |    |
+        +-----------+    v
         +----------------------+
         |          TCP         |
         +----------------------+
@@ -166,15 +188,17 @@
     </figure>
     </t>
 
-    <section title="Messaging model">
-    <t>Becasue the TCP framing offers features that where not available in UDP and consequenlty 
-    where implemented in CoAP, the need to keep the interaction indentical is not needed. The first
-    paradigm that can be omitted is the concept of ACK at the applicaiton level.  Since TCP offers 
-    reliability by nature, there is not need to offer a seconde degree of acknolegement.
+
+    <t>TCP offers features that are not available in UDP and consequently 
+    got added to CoAP. The first
+    paradigm that can be omitted is the concept of ACKs in CoAP.  Since TCP offers 
+    reliabile delivery, there is not need to offer a redundant acknowledgement at the CoAP messaging layer.
     </t>
-    <t>Hence the only message model supported when using CoAP over TCP is the NON message Model.  By nature, 
-    A NON over TCP is still relaibale becasue of its transport Framing.
-    <figure title="Message transmission over TCP" anchor="">
+    <t>Hence, the only message model supported when using CoAP over TCP is the NON message model.  By nature, 
+    a NON over TCP is still transmitted reliably. <xref target="NON"/> shows this message exchange graphically.</t> 
+
+    <t>
+    <figure title="NON Message Transmission over TCP." anchor="NON">
     <artwork>
     <![CDATA[
         Client              Server
@@ -186,11 +210,11 @@
     </artwork>
     </figure>
     </t>
-    </section>
-    <section title=Request/Response Model>
-    <t>Becaue of TCP implies NON message, the only supported request/response is of NON type.  The 
-      Request is sent and a response is sent back only if needed
-    <figure title="Message transmission over TCP" anchor="">
+
+    <t>Because of the NON message model, the only supported request/response in CoAP is the NON type. A response is sent back only if needed, as shown in <xref target="NON2"/>.</t>
+
+    <t>
+    <figure title="NON Request/Response." anchor="NON2">
     <artwork>
     <![CDATA[
         Client              Server
@@ -210,8 +234,6 @@
     </artwork>
     </figure> 
     </t>
-    </section>
-
     </section> 
     
     <!-- **************************************************************** -->
@@ -223,54 +245,51 @@
 <section title="Message Format"> 
 <t>While CoAP was originaly design for UDP and encasulate features to add robostness and 
 flexibility to the transaction, these features are not needed anymore due to the nature 
-of TCP.  Furthermore, the lenght is needed in order parse the the payload payload.  The 
-CoAP header MUST follow this new format is used ofer TCP.  Notice that the Messsage ID was
-deleted as the Transport framing can take care of duplicaiton and response request matching.
-<figure title="TCP CoAP header" anchor="CoAP">
+of TCP. A delimiter is nevertheless needed to separate different payloads in a stream oriented transport protocol like TCP. For this purpose, the length field is used as a delimiter. 
+</t> 
+
+<t><xref target="CoAP-Header"/> shows the CoAP message format as defined in RFC 7252. <xref target="Shim"/> shows the 2-byte shim header carring length information prepending the CoAP message header.</t>
+
+<t>
+<figure title="RFC 7252 defined CoAP Message Format." anchor="CoAP-Header">
 <artwork>
 <![CDATA[
-     0                   1                   2                   3
+    0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |        Message Length        | Ver| T |  TKL  |      Code     |
+   |Ver| T |  TKL  |      Code     |          Message ID           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Token (if any, TKL bytes) ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Options (if any) ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 1 1 1 1 1 1 1|    Payload (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]>
 </artwork>
 </figure>
 </t>
-<t>The fields in the header are defined as follows:
+
+<t>
+<figure title="CoAP Header with Prepending Shim Header." anchor="Shim">
+<artwork>
+<![CDATA[
+     0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |        Message Length         |Ver| T |  TKL  |      Code     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Remaining CoAP Message Header ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]>
+</artwork>
+</figure>
 </t>
-<t>Message Length :  16-bit unsigned integer in network byte order.  Used
-  to predict the complet length of the CoAP header and playlod.
-</t>
-<t>Version (Ver):  2-bit unsigned integer.  Indicates the CoAP version
-number.  Implementations of this specification MUST set this field
-to 1 (01 binary).  Other values are reserved for future versions.
-Messages with unknown version numbers MUST be silently ignored.
-</t>
-<t>Type (T):  2-bit unsigned integer.  Indicates if this message is of
-      type Confirmable (0), Non-confirmable (1), Acknowledgement (2), or
-      Reset (3).  The semantics of these message types are defined in
-      Section 4.
-</t>
-<t>Token Length (TKL):  4-bit unsigned integer.  Indicates the length of
-      the variable-length Token field (0-8 bytes).  Lengths 9-15 are
-      reserved, MUST NOT be sent, and MUST be processed as a message
-      format error.
-</t>
-<t>Code:  8-bit unsigned integer, split into a 3-bit class (most
-      significant bits) and a 5-bit detail (least significant bits),
-      documented as "c.dd" where "c" is a digit from 0 to 7 for the
-      3-bit subfield and "dd" are two digits from 00 to 31 for the 5-bit
-      subfield.  The class can indicate a request (0), a success
-      response (2), a client error response (4), or a server error
-      response (5).  (All other class values are reserved.)  As a
-      special case, Code 0.00 indicates an Empty message.  In case of a
-      request, the Code field indicates the Request Method; in case of a
-      response, a Response Code.  Possible values are maintained in the
-      CoAP Code Registries (Section 12.1).  The semantics of requests
-      and responses are defined in Section 5.
-</t>
+
+<t>The 'Message Length' field is 16-bit unsigned integer in network byte order used as delimiter and to denote the length of the subsequent CoAP message (including the CoAP header but excluding this message length field) in bytes. The semantic of the CoAP header fields is left unchanged. </t>
+
+
+
 </section> 
 
 
@@ -280,20 +299,23 @@ Messages with unknown version numbers MUST be silently ignored.
     <!-- **************************************************************** -->
     
 
-<section title="CoAP URI"> 
+<section anchor="URI" title="CoAP URI"> 
 
-<t>CoAP over TCP will use two new URI scheme to define there transport layer; coap+tcp and coaps+tcp.  The same rules from Section 6 of <xref target="RFC7252"/> 
-apply to these two new URI </t> 
+   <t>CoAP <xref target="RFC7252"/> defined the "coap" and "coaps" URI schemes for identifying CoAP
+   resources and providing a means of locating the resource. RFC 7252 defined these 
+resources for use with CoAP over UDP.</t>
+
+<t>This specification introduces two new URI schemes, namely "coap+tcp" and "coaps+tcp".  The rules from Section 6 of <xref target="RFC7252"/> 
+apply to these two new URI. </t> 
 
 <section title="coap+tcp URI scheme"> 
 <t>coap-URI = "coap+tcp:" "//" host [ ":" port ] path-abempty [ "?" query ]</t>
-<t>The same principle mentioned in section 6.1 from <xref target="RFC7252"/>applys to this scheme.
-</t>  
+<t>The semantic defined in Section 6.1 from <xref target="RFC7252"/> applies to this URI scheme.</t>  
 </section>
+
 <section title="coaps+tcp URI scheme"> 
 <t>coap-URI = "coaps+tcp:" "//" host [ ":" port ] path-abempty [ "?" query ]</t>
-<t>The same principle mentioned in section 6.2 from <xref target="RFC7252"/>applys to this scheme.
-</t>  
+<t>The semantic defined in Section 6.2 from <xref target="RFC7252"/> applies to this URI scheme.</t>  
 </section>
       
 </section> 
@@ -308,11 +330,11 @@ apply to these two new URI </t>
  
  <t>This document defines how to convey CoAP over TCP and TLS. It does 
        not introduce new vulnerabilities beyond those described already in the 
-       CoAP specification.</t>
+       CoAP specification. CoAP <xref target="RFC7252"/> makes use of DTLS 1.2 and this specification consequently uses TLS 1.2 <xref target="RFC5246"/>. CoAP MUST NOT be used with older versions of TLS. Guidelines for use of ciphersuites and TLS extensions can be found in <xref target="I-D.ietf-dice-profile"/>. </t>
 
 <t>When CoAP is exchanged over TLS port 443 then the "TLS Application Layer Protocol Negotiation Extension" <xref target="I-D.ietf-tls-applayerprotoneg"/> MUST be used to allow demultiplexing at the server-side unless out-of-band information ensures that the client only interacts with a server that is able to demultiplex CoAP messages over port 443. This would, for example, be true for many Internet of Things deployments where clients are pre-configured to only ever talk with specific servers.</t>
 
-<t>When CoAP over TLS is used then the use of the shim header that includes the length information is redundant since the TLS protocol headers already include length information. As such, the length header MUST be omitted when CoAP is exchanged over TLS.</t>
+<t>When CoAP over TLS is used then the shim header that includes the length information is redundant since the TLS protocol headers already include length information. As such, the shim header MUST be omitted when CoAP messages are carried over TLS.</t>
 
     </section>
     
@@ -322,7 +344,24 @@ apply to these two new URI </t>
     <!-- **************************************************************** -->
     
     <section title="IANA Considerations" anchor="iana">
+
+<section title="URI Schemes"> 
+
+
+<t>This document registers two new URI schemes, namely "coap+tcp" and "coaps+tcp", for the use of 
+   CoAP over TCP and for CoAP over TLS over TCP, respectively. The
+   "coap+tcp" and "coaps+tcp" URI schemes can thus be compared to the "http" and
+   "https" URI schemes.</t>
+
+<t>The syntax of the "coap" and "coaps" URI schemes is specified in Section 6 of <xref target="RFC7252"/> and 
+this document re-uses their semantics with the sole exception that TCP is used as a transport protocol.</t>
+
+<t>IANA is requested to add these new URI schemes to the registry established with <xref target="RFC4395"/>.</t>
+
+</section> 
       
+<section title="ALPN Protocol ID">
+
       <t>This document requests a value from the "Application Layer Protocol Negotiation (ALPN) Protocol IDs" created by <xref target="I-D.ietf-tls-applayerprotoneg"/>:
     
     <list style="hanging">       
@@ -331,7 +370,9 @@ apply to these two new URI </t>
       <t hangText="Specification:"> This document.</t> 
     </list> 
     </t>
-      
+
+</section>
+
     </section>
     
     <!-- **************************************************************** -->
@@ -340,7 +381,7 @@ apply to these two new URI </t>
     <!-- **************************************************************** -->
 
     <section title="Acknowledgements" anchor="acknowledgements">
-      <t>We would like to thank Michael Koster, Zach Shelby, and Szymon Sasin for their feedback.</t>
+      <t>We would like to thank Michael Koster, Zach Shelby, Matthias Kovatsch, and Szymon Sasin for their feedback.</t>
     </section>
 
   </middle>
@@ -356,17 +397,19 @@ apply to these two new URI </t>
       &RFC5246; <!-- TLS 1.2 -->       
       &RFC7252; <!-- CoAP --> 
       &RFC2119; 
+      &RFC4395; 
       &RFC0793; <!-- TCP --> 
       &I-D.ietf-tls-applayerprotoneg; 
+      &I-D.ietf-dice-profile;
       
     </references>
 
-<!-- 
+
     <references title="Informative References">
-        
+      
+    &RFC6347; 
  
     </references>
---> 
 
     <!-- **************************************************************** -->
     <!-- **************************************************************** -->
