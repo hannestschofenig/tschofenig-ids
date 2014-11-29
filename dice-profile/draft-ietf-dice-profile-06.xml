@@ -684,9 +684,9 @@ For this profile the TLS server MUST return the decryption_error error message i
 <t>To connect to the Internet a variety of wired and wireless technologies are available. Many of the low power radio technologies, such as IEEE 802.15.4 or Bluetooth Smart, only support small frame sizes (e.g., 127 bytes in case of IEEE 802.15.4 as explained in RFC 4919 <xref target="RFC4919"/>). Other radio technologies, such as the Global System for Mobile Communications (GSM) using the short messaging service (SMS) have similar constraints in terms of payload sizes, such as 140 bytes without the optional segmentation and reassembly scheme known as Concatenated SMS, but show higher latency. 
 </t>
 
-<t>DTLS added a fragmentation and reassembly mechanism to TLS since each DTLS message must fit within a single transport layer datagram, as described in Section 4.2.3 of <xref target="RFC6347"/>, and the underlying transport protocol does not provide such capabilities. Since handshake messages are potentially bigger than the maximum record size the mechanism for fragmenting a handshake message over a number of records, each of which can be transmitted separately, avoids IP fragmentation.</t>
+<t>The DTLS handshake protocol adds a fragmentation and reassembly mechanism to the TLS handshake protocol since each DTLS record must fit within a single transport layer datagram, as described in Section 4.2.3 of <xref target="RFC6347"/>. Since handshake messages are potentially bigger than the maximum record size, the mechanism fragments a handshake message over a number of DTLS records, each of which can be transmitted separately.</t>
 
-<t>To deal with the unreliable message delivery provided by UDP DTLS added timeouts and re-transmissions, as described in Section 4.2.4 of [RFC6347]. Although the timeout values are implementation specific recommendations are provided in Section 4.2.4.1 of <xref target="RFC6347"/> with an initial timer value of 1 second and twice the value at each retransmission, up to no less than 60 seconds. Due to the nature of some radio technologies these values are too aggressive and lead to spurious timeouts when messages in flight need longer.</t>
+<t>To deal with the unreliable message delivery provided by UDP, DTLS adds timeouts and re-transmissions, as described in Section 4.2.4 of <xref target="RFC6347"/>. Although the timeout values are implementation specific, recommendations are provided in Section 4.2.4.1 of <xref target="RFC6347"/>, with an initial timer value of 1 second and twice the value at each retransmission up to no less than 60 seconds. Due to the nature of some radio technologies, these values are too aggressive and lead to spurious failures when messages in flight need longer.</t>
 
 <t>Choosing appropriate timeout values is difficult with infrequent data transmissions, changing network conditions, and large variance in latency. This specification therefore RECOMMENDS an initial timer value of 10 seconds with exponential back off up to no less then 60 seconds.</t>
 
@@ -1239,17 +1239,13 @@ Sean Turner
 <t>DTLS adds an additional roundtrip to the TLS <xref target="RFC5246"/> handshake to
    serve as a return-routability test for protection against certain
    types of DoS attacks.  Thus a full blown DTLS handshake comprises up
-   to 6 "flights" (i.e., logical message exchanges), each of which is
-   then mapped on to one or more lower layer PDUs using the segmentation
-   and reassembly (SaR) scheme described in Section 4.2.3 of <xref target="RFC6347"/>.
-   The overhead for said scheme is 6 bytes per Handshake message which,
+   to 6 "flights" (i.e., logical message exchanges), each of which is then mapped on to one or more DTLS records using the segmentation and reassembly (SaR) scheme described in Section 4.2.3 of <xref target="RFC6347"/>. The overhead for said scheme is 6 bytes per Handshake message which,
    given a realistic 10+ messages handshake, would amount around 60
    bytes across the whole handshake sequence.</t>
 
-<t>(Note that the DTLS SaR scheme is defined for handshake messages
-   only.  In fact, Record Layer messages are never fragmented and MUST
-   fit within a single transport layer datagram, whatever be the limit
-   imposed by the underlying transport.)</t>
+<t>Note that the DTLS SaR scheme is defined for handshake messages
+   only. In fact, DTLS records are never fragmented and MUST fit within a single transport layer datagram.</t>
+
 
 <t>SMS provides an optional segmentation and reassembly scheme as well,
    known as Concatenated short messages (see Section 9.2.3.24.1 of
@@ -1266,7 +1262,6 @@ Sean Turner
    longest possible period (possibly until a Closure Alert message is
    received, or after a very long inactivity timeout) to avoid the
    expensive re-establishment of the security association.</t>
-
 </section> 
 
 
@@ -1282,28 +1277,13 @@ Sean Turner
    reducing the space available for the actual content of the SMS
    message to 133-134 bytes per TPDU.</t>
 
-<t>Though in principle a PMTU value higher than 140 bytes could be used
-   (which may look like an appealing option given its more efficient use
-   of the transport) there is a significant number of disadvantages to
-   consider (apart from the fixed tax of 7 bytes per TPDU to be paid to
-   the SaR function):</t>
-
-<t>
-<list style="numbers">
-
-  <t>high sensitivity to packet loss -- since there is no automatic
-       recovery mechanism in case one TPDU in the chain is lost, and
-       since the SaR function is transparent to the application layer,
-       then a PMTU worth of data may be discarded even if just 1/255th
-       of the data were lost;</t>
-
-  <t>some networks may support the Concatenated SMS function partially, if at all;</t>
-
-  <t>TPDU reordering may delay data delivery to the application;</t>
-
-  <t>high buffering requirement on both ends of the communication path.</t>
-</list> 
-</t> 
+<t>Though in principle a PMTU value higher than 140 bytes could be used,
+   which may look like an appealing option given its more efficient use
+   of the transport, there are disadvantages to
+   consider. First, there is an additional overhead of 7 bytes per TPDU to be paid to
+   the SaR function (which is in addition to the overhead introduced by the DTLS
+SaR mechanism. Second, some networks only partially support the Concatenated SMS function and 
+others do not support it at all.</t>
 
 <t>For these reasons, the Concatenated short messages mechanism SHOULD
    NOT be used, and it is RECOMMENDED to leave the same PMTU settings
