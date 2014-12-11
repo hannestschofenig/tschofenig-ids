@@ -68,12 +68,10 @@ informative:
 The Hypertext Transfer Protocol (HTTP) has been designed with TCP as an underlying
 transport protocol. The Constrained Application Protocol (CoAP), which has
 been inspired by HTTP, has on the other hand been defined to make use of
-UDP. Reliable delivery, a simple congestion control mechanism, and flow control
-had been added to the CoAP protocol. UDP is a good choice for networks that
-do not perform any form of filtering and firewalling. There are, however,
-many deployment environments where UDP is either firewalled or subject to
-deep packet inspection. These environments make the use of CoAP brittle.
-
+UDP. Therefore, reliable delivery and a simple congestion control and flow control mechanism
+are provided by the message layer of the CoAP protocol.
+A number of environments benefit from the use of CoAP directly over a
+reliable byte stream that already provides these services.
 This document defines the use of CoAP over TCP as well as CoAP over TLS.
 
 --- middle
@@ -87,8 +85,8 @@ IP emerged as the waist of the hour glass and supports a variety of
 link layers and new link layer technologies can be added in the
 future, without affecting IP.
 
-Combined with the end-to-end principle the hour glass indicates the
-level of protocol understanding intermediaries need to have in order
+Combined with the end-to-end principle, the hour glass indicates the
+level of protocol understanding that intermediaries need to have in order
 to exchange forward IP packets between a sender and a receiver (absent
 any specific application layer entities, like proxies or caches).
 Having IP as the waist meant that anyone could extend the layers above
@@ -103,13 +101,23 @@ would be clean-slate. Today, we know that some deployments have to
 integrate well with existing enterprise infrastructure, where the use
 of UDP-based protocols is not well-received and firewalling use is
 very common.
+UDP is a good choice for networks that
+do not perform any form of filtering and firewalling. There are, however,
+many deployment environments where UDP is either firewalled or subject to
+deep packet inspection. These environments make the use of UDP brittle.
+
+Also, some environments benefit from the more advanced congestion
+control and flow control capabilities provided by TCP.  For instance,
+CoAP back-end processors in a cloud environment may want to connect
+via TCP instead of UDP.
 
 To make IoT devices work smoothly in these demanding environments CoAP
 has to make use of a different transport protocol, namely TCP
 {{RFC0793}} and in some situations even TLS {{RFC5246}}.  This
 document describes a shim header that conveys length information about
-the included payload.  Modifications to CoAP
-(e.g., to introduce optimizations) are intentionally avoided.
+the included payload.  Modifications to CoAP beyond the replacement of
+the message layer
+(e.g., to introduce further optimizations) are intentionally avoided.
 
 
 # Terminology
@@ -133,11 +141,11 @@ at the CoAP level. The protocol stack is shown in {{stack}}.
         +----------------------+
         |      Application     |
         +----------------------+
-        +----------------------+  \
-        |  Requests/Responses  |  |
-        |----------------------|  | CoAP
-        |       Messages       |  |
-        +----------------------+  /
+        +----------------------+
+        |  Requests/Responses  |  CoAP (RFC7252)
+        |----------------------|
+        |    Message adapter   |  this document
+        +----------------------+
         +-----------+    ^
         |    TLS    |    |
         +-----------+    v
@@ -148,12 +156,13 @@ at the CoAP level. The protocol stack is shown in {{stack}}.
 {: #stack title='The CoAP over TLS/TCP Protocol Stack'}
 
 
-TCP offers features that are not available in UDP and consequently got
-added to CoAP. The first paradigm that can be omitted is the concept
-of ACKs in CoAP.  Since TCP offers reliable delivery, there is not
-need to offer a redundant acknowledgement at the CoAP messaging layer.
+TCP offers features that are not available in UDP and consequently
+have been provided in CoAP's message layer. The first paradigm that
+can be omitted is the concept of ACKs in CoAP.  Since TCP offers
+reliable delivery, there is no need to offer a redundant
+acknowledgement at the CoAP messaging layer.
 
-Hence, the only message model supported when using CoAP over TCP is
+Hence, the only message type supported when using CoAP over TCP is
 the NON message model.  By nature, a NON over TCP is still transmitted
 reliably. {{NON}} shows this message exchange graphically.
 
@@ -233,16 +242,22 @@ information prepending the CoAP message header.
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |        Message Length         |Ver| T |  TKL  |      Code     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Remaining CoAP Message Header ...
+   |   Token (if any, TKL bytes) ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Options (if any) ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 1 1 1 1 1 1 1|    Payload (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ~~~~
-{: #Shim title='CoAP Header with Prepending Shim Header.'}
+{: #Shim title='CoAP Header with prepended Shim Header.'}
 
 
 The 'Message Length' field is 16-bit unsigned integer in network byte
 order used as delimiter and to denote the length of the subsequent
 CoAP message (including the CoAP header but excluding this message
-length field) in bytes.  The semantic of the CoAP header fields is
+length field) in bytes.  T is always the code for NON (1).
+The Message ID is meaningless and thus elided.
+The semantics of the other CoAP header fields is
 left unchanged.
 
 
@@ -297,6 +312,16 @@ when CoAP messages are carried over TLS.
 
 # IANA Considerations {#iana}
 
+## Service Name and Port Number Registration
+
+IANA is requested to extend the registration of the service name
+"coap" and the port number 5683 to the transport protocol TCP.
+
+Similarly, IANA is requested to extend the registration of the service name
+"coaps" to the transport protocol TCP.  However, no separate port
+number is used for coaps over TCP; instead, the ALPN protocol ID
+defined in {{alpnpid}} is used over port 443.
+
 ## URI Schemes
 
 This document registers two new URI schemes, namely "coap+tcp" and
@@ -312,7 +337,7 @@ IANA is requested to add these new URI schemes to the registry
 established with {{RFC4395}}.
 
 
-## ALPN Protocol ID
+## ALPN Protocol ID {#alpnpid}
 
 This document requests a value from the "Application Layer Protocol
 Negotiation (ALPN) Protocol IDs" created by {{-alpn}}:
