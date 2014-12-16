@@ -64,6 +64,7 @@ normative:
   I-D.ietf-dice-profile: 
 informative:
   RFC0768: udp
+  RFC1122: std3
   RFC6347: dtls
   RFC6335: portreg
 
@@ -82,8 +83,9 @@ This document defines the use of CoAP over TCP as well as CoAP over TLS.
 
 # Introduction {#introduction}
 
-The Internet protocol stack is organized in layers, namely data
-link layer, network layer, transport layer, and the application layer.
+The Internet protocol stack is organized in layers, namely link layer,
+internet layer, transport layer, and the application layer
+({{RFC1122}}).
 
 IP emerged as the waist of the hour glass and supports a variety of
 link layers and new link layer technologies can be added in the
@@ -91,21 +93,21 @@ future, without affecting IP.
 
 Combined with the end-to-end principle, the hour glass indicates the
 level of protocol understanding that intermediaries need to have in order
-to exchange forward IP packets between a sender and a receiver (absent
-any specific application layer entities, like proxies or caches).
-Having IP as the waist meant that anyone could extend the layers above
-the network layer in the way they wanted to communicate end-to-end,
+to forward IP packets between a sender and a receiver (absent
+any specific application layer entities, such as proxies or caches).
+Having IP as the waist means that anyone can extend the layers above
+the network layer in the way they want to communicate end-to-end,
 including defining new transport layer protocols (as it was done with
 SCTP, and DCCP).
+<!-- Need references for those?  Why all this verbiage anyway? -->
 
-UDP {{RFC0768}} or DTLS {{RFC6347}} over UDP is a good choice for
-transferring small amounts of data in networks that follow the IP
-architecture.
-Unfortunately, some deployment depart from this ideal architecture.
+Unfortunately, some network deployments depart from this architecture.
 The [Constrained Application Protocol (CoAP)](#RFC7252) was designed
 for Internet of Things (IoT) deployments, assuming that UDP can be
-used freely.
-Some deployments, however, may have to integrate well with
+used freely -- UDP {{RFC0768}}, or DTLS {{RFC6347}} over UDP, is a good choice for
+transferring small amounts of data in networks that follow the IP
+architecture.
+Some CoAP deployments, however, may have to integrate well with
 existing enterprise infrastructure, where the use of UDP-based
 protocols may not be well-received or even supported by firewalls.
 Middleboxes that are unaware of the IoT can make the use of UDP
@@ -117,11 +119,13 @@ CoAP back-end processors in a cloud environment may want to connect
 between each other via TCP instead of UDP.
 
 To make both IoT devices and their associated back-end processors work
-smoothly in these demanding environments, CoAP
-has to make use of a different transport protocol, namely TCP
-{{RFC0793}} and in some situations even TLS {{RFC5246}}.  This
+smoothly in these demanding environments, CoAP needs
+to make use of a different transport protocol, namely TCP
+{{RFC0793}} and in some situations even TLS {{RFC5246}}.
+
+The present document
 document describes a shim header that conveys length information about
-the included payload.  Modifications to CoAP beyond the replacement of
+each CoAP message included.  Modifications to CoAP beyond the replacement of
 the message layer
 (e.g., to introduce further optimizations) are intentionally avoided.
 
@@ -137,9 +141,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 
 The interaction model of CoAP over TCP is very similar to the one for
 CoAP over UDP with the key difference that TCP voids the need to
-replicate certain transport layer protocol features, such as reliable
+provide certain transport layer protocol features, such as reliable
 delivery, fragmentation and reassembly, as well as congestion control,
-at the CoAP level. The protocol stack is shown in {{stack}} (derived
+at the CoAP level. The protocol stack is illustrated in {{stack}} (derived
 from {{RFC7252}}, Figure 1).
 
 ~~~~
@@ -162,17 +166,21 @@ from {{RFC7252}}, Figure 1).
 
 
 TCP offers features that are not available in UDP and consequently
-have been provided in CoAP's message layer. The first paradigm that
+have been provided in CoAP's message layer. The first mechanism that
 can be omitted is the concept of ACKs in CoAP.  Since TCP offers
 reliable delivery, there is no need to offer a redundant
 acknowledgement at the CoAP messaging layer.
 
 Hence, the only message type supported when using CoAP over TCP is
-the NON message model.  By nature, a NON over TCP is still transmitted
+the Non-confirmable message (NON).  By nature of TCP, a NON over TCP is still transmitted
 reliably. {{NON}} (derived from {{RFC7252}}, Figure 3) shows this
 message exchange graphically.
-Since the Message ID is not meaningful, it is elided (indicated by the
-dashes).
+
+Similarly, there is no need to detect duplicate delivery of a message.
+In UDP CoAP, the Message ID is used for relating acknowledgements to
+Confirmable messages as well as for duplicate detection.
+Since the Message ID thus is not meaningful over TCP, it is elided (as indicated by the
+dashes in {{NON}}).
 
 ~~~~
 
@@ -185,9 +193,10 @@ dashes).
 {: #NON title='NON Message Transmission over TCP.'}
 
 
-Because of the NON message model, the only supported request/response
-in CoAP is the NON type. A response is sent back only if needed, as
-shown in {{NON2}} (derived from {{RFC7252}}, Figure 6).
+As a result, the only supported message type
+in CoAP over UDP is the NON type. A response is sent back as defined
+in {{RFC7252}}, as
+illustrated in {{NON2}} (derived from {{RFC7252}}, Figure 6).
 
 
 ~~~~
@@ -212,20 +221,11 @@ shown in {{NON2}} (derived from {{RFC7252}}, Figure 6).
 
 # Message Format
 
-While CoAP was originally designed for UDP and encapsulate features to add
-robustness and flexibility to the transaction, these features are not
-needed anymore due to the nature of TCP. A delimiter is nevertheless
-needed to separate different payloads in a stream oriented transport
-protocol like TCP. For this purpose, the length field is used as a
-delimiter.
-
-{{CoAP-Header}} shows the CoAP message format as defined in
-RFC 7252. {{Shim}} shows the 2-byte shim header carrying length
-information prepending the CoAP message header.
-
+The CoAP message format defined in {{RFC7252}}, as shown in
+{{CoAP-Header}}, relies on the datagram transport (UDP, or DTLS over
+UDP) for keeping the individual messages separate.
 
 ~~~~
-
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -241,9 +241,12 @@ information prepending the CoAP message header.
 {: #CoAP-Header title='RFC 7252 defined CoAP Message Format.'}
 
 
+In a stream oriented transport protocol such as TCP, some other form
+of delimiting messages is needed.  For this purpose, CoAP over TCP
+introduces a length field.  {{Shim}} shows the 2-byte shim header
+carrying length information prepending the CoAP message header.
 
 ~~~~
-
      0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -259,14 +262,26 @@ information prepending the CoAP message header.
 {: #Shim title='CoAP Header with prepended Shim Header.'}
 
 
-The 'Message Length' field is 16-bit unsigned integer in network byte
-order used as delimiter and to denote the length of the subsequent
-CoAP message (including the CoAP header but excluding this message
-length field) in bytes.  T is always the code for NON (1).
-The Message ID is meaningless and thus elided.
-The semantics of the other CoAP header fields is
-left unchanged.
+The 'Message Length' field is a 16-bit unsigned integer in network
+byte order. It provides the length of the subsequent CoAP message
+(including the CoAP header but excluding this message length field) in
+bytes.  T is always the code for NON (1).  The Message ID is
+meaningless and thus elided.  The semantics of the other CoAP header
+fields is left unchanged.
 
+When CoAP is used over TLS then each CoAP message is transported in a
+separate TLS record layer message, making the shim header that includes the
+length information redundant.  As such, the two-byte shim header MUST be omitted
+when CoAP messages are carried over TLS.[^2]
+
+[^2]: Hmm, how does that work in real-life implementations.
+    RFC 5246 says: »Client
+   message boundaries are not preserved in the record layer (i.e.,
+   multiple client messages of the same ContentType MAY be coalesced
+   into a single TLSPlaintext record, or a single message MAY be
+   fragmented across several records).«
+    Also, is this really efficient?  This means we get a MAC per CoAP message.
+{:cabo}
 
 # CoAP URI {#URI}
 
@@ -281,11 +296,12 @@ these two new URI schemes.
 {{RFC7252}}, Section 8 (Multicast CoAP), does not apply to the URI
 schemes defined in the present specification.
 
-   Resources made available via the "coap+tcp" or "coaps+tcp" schemes
-   have no shared identity with each other or with the "coap" or
+   Resources made available via one of the "coap+tcp" or "coaps+tcp" schemes
+   have no shared identity with the other scheme or with the "coap" or
    "coaps" scheme, even if their resource identifiers indicate the
    same authority (the same host listening to the same port).
-   They are distinct namespaces and are considered to be distinct
+   The schemes constiture distinct namespaces and, in combination with
+   the authority, are considered to be distinct
    origin servers.
 
 
@@ -317,10 +333,20 @@ URI scheme, with the following changes:
    at which the TLS server for the CoAP server is located.  If it is empty or not given,
    then the default port 443 is assumed (this is different from the
    default port for "coaps", i.e., CoAP over DTLS over UDP).
-   [^cabo1]
 
-[^cabo1]: How exactly does the port number thing work here?
-          We don't have HTTP/2's upgrade spiel...
+* When CoAP is exchanged over TLS port 443 then the "TLS Application
+Layer Protocol Negotiation Extension"
+{{-alpn}} MUST be used to allow demultiplexing
+at the server-side unless out-of-band information ensures that the
+client only interacts with a server that is able to demultiplex CoAP
+messages over port 443. This would, for example, be true for many
+Internet of Things deployments where clients are pre-configured to
+only ever talk with specific servers.[^1]{:cabo}
+
+[^1]: Shouldn't we simply always require ALPN?  As the text stands, it
+      is not clear for a client when it has to send ALPN and when not.
+
+{:cabo: source="cabo"}
 
 # Security Considerations {#security}
 
@@ -331,19 +357,6 @@ specification consequently uses TLS 1.2 {{RFC5246}}. CoAP MUST NOT be
 used with older versions of TLS. Guidelines for use of cipher suites
 and TLS extensions can be found in {{I-D.ietf-dice-profile}}.
 
-When CoAP is exchanged over TLS port 443 then the "TLS Application
-Layer Protocol Negotiation Extension"
-{{-alpn}} MUST be used to allow demultiplexing
-at the server-side unless out-of-band information ensures that the
-client only interacts with a server that is able to demultiplex CoAP
-messages over port 443. This would, for example, be true for many
-Internet of Things deployments where clients are pre-configured to
-only ever talk with specific servers.
-
-When CoAP over TLS is used then the shim header that includes the
-length information is redundant since the TLS protocol headers already
-include length information. As such, the shim header MUST be omitted
-when CoAP messages are carried over TLS.
 
 
 # IANA Considerations {#iana}

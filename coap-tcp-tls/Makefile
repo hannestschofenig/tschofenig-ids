@@ -14,4 +14,4 @@ diff: all
 	kramdown-rfc2629 $< >$@.new
 	-diff $@ $@.new
 	mv $@.new $@
-#	open -a Safari $@
+	$(OPEN) $@
