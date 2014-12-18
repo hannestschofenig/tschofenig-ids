@@ -32,6 +32,10 @@
   <!ENTITY RFC4919 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4919.xml">
   <!ENTITY RFC5247 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5247.xml">
   <!ENTITY RFC5216 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5216.xml">
+  <!ENTITY RFC7397 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7397.xml">
+  <!ENTITY RFC7390 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7390.xml">
+  <!ENTITY RFC6690 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6690.xml">
+  <!ENTITY I-D.iab-smart-object-architecture SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.iab-smart-object-architecture.xml">
   <!ENTITY I-D.ietf-core-resource-directory SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-core-resource-directory.xml">
   <!ENTITY I-D.ietf-tls-sslv3-diediedie SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-tls-sslv3-diediedie.xml">
   <!ENTITY I-D.bormann-core-cocoa SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.bormann-core-cocoa.xml">
@@ -220,7 +224,7 @@ devices are used interchangeably.</t>
 
 <t>Two communication architectures (and consequently two profiles) are described in this document.</t>
 
-<section title="Constrained TLS/DTLS Clients">
+<section anchor="c-clients" title="Constrained TLS/DTLS Clients">
  
 <t>The communication architecture shown in <xref target="model"/> assumes a unicast communication interaction with an IoT device utilizing a constrained TLS/DTLS client interacting with one or multiple TLS/DTLS servers. <!-- Which server to contact is based on pre-configuration onto the client (e.g., as part of the firmware). This configuration information also includes information about the PSK identity and the corresponding secret to be used with that specific server. For asymmetric cryptography mutual authentication is assumed in this profile. For raw public keys the public key or the hash of the public key is assumed to be available to both parties. For certificate-based authentication the client may have a trust anchor store pre-populated, which allows the client to perform path validation for the certificate obtained during the handshake with the server. The client also needs to know which certificate or raw public key it has to use with a specific server.--> </t> 
 
@@ -392,11 +396,13 @@ the equivalent server-side support has to be available. </t>
 
 <section title="CoAP-based Data Exchange Example">
 
-<t>When a constrained client uploads sensor data to a server infrastructure it may use CoAP by pushing the data via a POST to a pre-configured endpoint on the server. In certain circumstances this might be too limiting and additional functionality is needed, as shown in <xref target="coap-rd"/>, where the IoT device itself runs a CoAP server hosting the resource that is made accessible to other entities. Despite running a CoaP server on the IoT device it is still the DTLS client on the IoT device that initiates the interaction with the non-constrained resource server in our scenario. </t>
+<t>When a constrained client uploads sensor data to a server infrastructure it may use CoAP by pushing the data via a POST message to a pre-configured endpoint on the server. In certain circumstances this might be too limiting and additional functionality is needed, as shown in <xref target="coap-rd"/>, where the IoT device itself runs a CoAP server hosting the resource that is made accessible to other entities. Despite running a CoaP server on the IoT device it is still the DTLS client on the IoT device that initiates the interaction with the non-constrained resource server in our scenario. </t>
 
-<t><xref target="coap-rd"/> shows a sensor starting with a DTLS exchange with a resource server to register available resources. The initial DTLS interaction between the sensor, acting as a DTLS client, and the resource server, acting as a DTLS server, will be a full DTLS handshake. Once this handshake is complete both parties have established the DTLS record layer, which can subsequently be used to secure the CoAP message exchange, which starts with a the resource registration. Details about the resource registry capabilities can be found in <xref target="I-D.ietf-core-resource-directory"/>.</t>
+<t><xref target="coap-rd"/> shows a sensor starting with a DTLS exchange with a resource directory to register available resources. <xref target="I-D.ietf-core-resource-directory"/> defines the resource directory as a web entity that stores information about web resources and implements the REST interfaces defined in <xref target="I-D.ietf-core-resource-directory"/> for registration and lookup of those resources.</t>
 
-<t>After some time (assuming that the client regularly refreshes its registration) the resource server receives a request (not shown) from an application to retrieve the temperature information from the sensor. This request is relayed by the resource directory to the sensor using a GET message exchange. The already established DTLS record layer can be used to secure the message exchange.</t>
+<t>The initial DTLS interaction between the sensor, acting as a DTLS client, and the resource directory, acting as a DTLS server, will be a full DTLS handshake. Once this handshake is complete both parties have established the DTLS record layer. Subsequently, the CoAP client can securely register at the resource directory. Details about the capabilities of the resource directory can be found in <xref target="I-D.ietf-core-resource-directory"/>.</t>
+
+<t>After some time (assuming that the client regularly refreshes its registration) the resource directory receives a request (not shown in the figure) from an application to retrieve the temperature information from the sensor. This request is relayed by the resource directory to the sensor using a GET message exchange. The already established DTLS record layer can be used to secure the message exchange.</t>
  
 <t><figure title="DTLS/CoAP exchange using Resource Directory." anchor="coap-rd">
             <artwork>
@@ -475,9 +481,41 @@ the equivalent server-side support has to be available. </t>
   
 </section> <!-- Constrained Clients --> 
 
-
 <section title="Constrained TLS/DTLS Servers"> 
-<t>TEXT TO BE DONE</t>
+
+<t><xref target="c-clients"/> illustrates deployment models where the TLS/DTLS client is constrained and efforts need to be taken to improve memory utilization, bandwidth consumption, reduce performance impacts, etc. In this section we look at cases where constrained devices run TLS/DTLS servers to secure access to an application layer protocol server, like a CoAP or HTTP server. Running server functionality on a constrained node is typically more demanding since servers have to listen and wait for incoming requests. Therefore, they will have fewer possibilities to enter sleeping cycles. Nevertheless, there are legitimate reasons to deploy servers as constrained devices.</t> 
+
+<t>A deployment with constrained servers has to overcome several challenges. Later we will explain how these challenges has been solved using CoAP as an example. Other protocols may offer similar capabilities. 
+While the requirements for the TLS/DTLS protocol profile change only slightly when run on a constrained server (in comparison to running it on a constrained client) several other eco-system factor will impact deployment.</t>
+
+<t>The challenges are: 
+
+<list style="hanging"> 
+
+<t hangText="Discovery and Reachability:">
+<vspace blankLines="1"/>
+Before initiating a connection to a constrained server a client first needs to discover that server and, once discovered, it needs to maintain reachability with that device.
+<vspace blankLines="1"/>
+In CoAP the discovery of resources offered by servers is accomplished by sending a unicast or multicast CoAP GET to a well-known URI. The CORE Link format specification <xref target="RFC6690"/> describes the use case (see Section 1.2.1), and reserves the URI (see Section 7.1). Section 7 of the CoAP specification <xref target="RFC7252"/> describes the discovery procedure. RFC 7390 <xref target="RFC7390"/> describes  use case for discovering CoAP servers using multicast (see Section 3.3), and specifies the protocol processing rules for CoAP group communications (see Section 2.7).</t> 
+
+<t hangText="Authentication:">
+<vspace blankLines="1"/>
+The next challenge concerns the provisioning of authentication credentials to the clients as well as servers. In <xref target="c-clients"/> we assumed that credentials (and other configuration information) are provisioned to the device and that those can be used with the authorization servers. Of course, this leads to a very static relationship between the clients and their server-side infrastructure but poses fewer challenges from a deployment point of view, as described in Section 2 of <xref target="I-D.iab-smart-object-architecture"/> these different communication patterns. In any case, engineers and product designers have to determine how the relevant credentials are distributed to the respective parties. For example, shared secrets may need to be provisioned to clients and the constrained servers for subsequent use of TLS/DTLS PSK. In other deployments, certificates, private keys, and trust anchors for use with certificate-based authentication may need to be utilized.
+<vspace blankLines="1"/>
+Practical solutions either use pairing (also called imprinting) or a trusted third party. With pairing two devices execute a special protocol exchange that is unauthenticated to establish an shared key (for example using an unauthenticated Diffie-Hellman exchange) key. To avoid man-in-the-middle attacks an out-of-band channel is used to verify that nobody has tampered with the exchanged protocol messages.   This out-of-band channel can come in many forms, including:
+<list style="symbols"> 
+<t>Human involvement by comparing hashed keys, entering passkeys, scanning QR codes</t>
+<t>The use of alternative wireless communication channels (e.g., infra-red communication in addition to WiFi)</t>
+<t>Proximity-based information</t>
+</list>
+More details about these different pairing/imprinting techniques can be found in the smart object security workshop report <xref target="RFC7397"/> and various position papers submitted to that topic, such as <xref target="ImprintingSurvey"/>. The use of a trusted third party follows a different approach and is subject to ongoing standardization efforts in the 'Authentication and Authorization for Constrained Environments (ACE)' working group. 
+</t>
+
+<t hangText="Authorization">
+<vspace blankLines="1"/>
+The last challenge is the ability for the constrained server to make an authorization decision when clients access protected resources. Pre-provisioning access control information to constrained servers may be one option but works only in a small scale, less dynamic environment. For a more fine-grained and dynamic access control the reader is referred to the ongoing work in the ACE working group.</t> 
+</list> 
+</t> 
 
 </section> <!-- Constrained TLS/DTLS Servers --> 
 
@@ -1306,6 +1344,7 @@ Sean Turner
       &I-D.ietf-tls-downgrade-scsv;
       &I-D.ietf-tls-prohibiting-rc4;
       &I-D.mathewson-no-gmtunixtime;
+      &I-D.iab-smart-object-architecture; 
       &I-D.bmoeller-tls-falsestart; 
       &RFC7366; <!--  Encrypt-then-MAC --> 
       &RFC7228; <!-- Terminology for Constrained-Node Networks --> 
@@ -1318,7 +1357,11 @@ Sean Turner
       &RFC7400; <!-- Generic Header Compression -->
       &RFC5247; <!-- EAP Keying Framework --> 
       &RFC5216; <!-- EAP TLS --> 
+      &RFC7397; <!-- Report from the Smart Object Security Workshop --> 
+      &RFC7390; <!-- Group Communication for the Constrained Application Protocol (CoAP) --> 
+      &RFC6690; <!-- Constrained RESTful Environments (CoRE) Link Format --> 
       &I-D.ietf-core-resource-directory; 
+
 
   <reference anchor="AES">
         <front>
@@ -1397,6 +1440,23 @@ Sean Turner
 <seriesInfo name="" value="IEEE Symposium on Security and Privacy, pages 98-113"/>
   
 </reference>
+
+
+   <reference anchor="ImprintingSurvey">
+        <front>
+          <title>A Brief Survey of Imprinting Options for Constrained Devices</title>
+          <author fullname="Eric Rescorla" initials="E" surname="Chilton">
+          </author>
+          <date month="March" year="2012"/>
+        </front>
+        <seriesInfo name=""
+          value="URL: http://www.lix.polytechnique.fr/hipercom/SmartObjectSecurity/papers/EricRescorla.pdf" />
+        
+        <format target="http://www.lix.polytechnique.fr/hipercom/SmartObjectSecurity/papers/EricRescorla.pdf"
+          type="HTML" />
+      </reference>
+      
+	  
 
 
 <reference anchor="Heninger">
