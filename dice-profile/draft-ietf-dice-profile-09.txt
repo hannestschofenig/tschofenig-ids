@@ -102,7 +102,7 @@ Table of Contents
      28.1.  Normative References . . . . . . . . . . . . . . . . . .  38
      28.2.  Informative References . . . . . . . . . . . . . . . . .  39
    Appendix A.  Conveying DTLS over SMS  . . . . . . . . . . . . . .  44
-     A.1.  Overview  . . . . . . . . . . . . . . . . . . . . . . . .  44
+     A.1.  Overview  . . . . . . . . . . . . . . . . . . . . . . . .  45
      A.2.  Message Segmentation and Re-Assembly  . . . . . . . . . .  45
      A.3.  Multiplexing Security Associations  . . . . . . . . . . .  46
      A.4.  Timeout . . . . . . . . . . . . . . . . . . . . . . . . .  46
@@ -716,8 +716,8 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
                         Figure 5: Local Discovery.
 
    A deployment with constrained servers has to overcome several
-   challenges.  Later we will explain how these challenges has been
-   solved using CoAP as an example.  Other protocols may offer similar
+   challenges.  Below we explain how these challenges have been solved
+   with CoAP, as an example.  Other protocols may offer similar
    capabilities.  While the requirements for the TLS/DTLS protocol
    profile change only slightly when run on a constrained server (in
    comparison to running it on a constrained client) several other eco-
@@ -1150,26 +1150,26 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
           Figure 8: DTLS Mutual Certificate-based Authentication.
 
-   When DTLS is used to secure CoAP messages then the server provided
-   certificates MUST contain the fully qualified DNS domain name or
-   "FQDN" as dNSName.  The coaps URI scheme is described in Section 6.2
-   of [RFC7252].  This FQDN is stored in the SubjectAltName or in the
-   leftmost CN component of subject name, as explained in
+   Server certificates MUST contain the fully qualified DNS domain name
+   or "FQDN" as dNSName.  For CoAP, the coaps URI scheme is described in
+   Section 6.2 of [RFC7252].  This FQDN is stored in the SubjectAltName
+   or in the leftmost CN component of subject name, as explained in
    Section 9.1.3.3 of [RFC7252], and used by the client to match it
    against the FQDN used during the look-up process, as described in RFC
-   6125 [RFC6125].
+   6125 [RFC6125].  For other protocols, the appropriate URI scheme
+   specification has to be consulted.
+
+   When constrained servers are used, for example in context of locally
+   discoverable services as shown in Figure 5, then the rules of client
+   certificates are applicable since these constrained servers are less
+   likely to have an FQDN configured.  Note that the Service Name
+   Indication (SNI) extension cannot be used in this case since SNI does
+   not offer the ability to convey EUI-64 identifiers.
 
    For client certificates the identifier used in the SubjectAltName or
    in the leftmost CN component of subject name MUST be an EUI-64
-   [EUI64], as mandated in Section 9.1.3.3 of [RFC7252].  When
-   constrained servers are used in context of locally discoverable
-   services then the rules of client certificates are applicable since
-   these devices are less likely to have an FQDN configured.
+   [EUI64], as mandated in Section 9.1.3.3 of [RFC7252].
 
-   For certificate revocation neither the Online Certificate Status
-   Protocol (OCSP) nor Certificate Revocation Lists (CRLs) are used.
-   Instead, this profile relies on a software update mechanism.  While
-   multiple OCSP stapling [RFC6961] has recently been introduced as a
 
 
 
@@ -1178,6 +1178,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 21]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   For certificate revocation neither the Online Certificate Status
+   Protocol (OCSP) nor Certificate Revocation Lists (CRLs) are used.
+   Instead, this profile relies on a software update mechanism.  While
+   multiple OCSP stapling [RFC6961] has recently been introduced as a
    mechanism to piggyback OCSP request/responses inside the DTLS/TLS
    handshake to avoid the cost of a separate protocol handshake further
    investigations are needed to determine its suitability for the IoT
@@ -1222,10 +1226,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    |    Subject    |        See rules outlined in this section.        |
    | Distinguished |                                                   |
    |      Name     |                                                   |
-   |               |                                                   |
-   |    Subject    |     This element contains the ECDSA signature     |
-   |   Public Key  |      certificate. The algorithm field in the      |
-   |  Information  |    SubjectPublicKeyInfo structure indicates the   |
 
 
 
@@ -1234,6 +1234,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 22]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   |               |                                                   |
+   |    Subject    |     This element contains the ECDSA signature     |
+   |   Public Key  |      certificate. The algorithm field in the      |
+   |  Information  |    SubjectPublicKeyInfo structure indicates the   |
    |               |  algorithm and any associated parameters for the  |
    |               |     ECC public key. This profile uses the id-     |
    |               |         ecPublicKey algorithm identifier.         |
@@ -1251,21 +1255,21 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    |  Constraints  | and then the value is set to TRUE. The default is |
    |               |                       FALSE.                      |
    |               |                                                   |
+   |   Extension:  | digitalSignature or keyAgreement, keyCertSign for |
+   |   Key Usage   |  verifying signatures on public key certificates. |
+   |               |                                                   |
    |   Extension:  |  id-kp-serverAuth for server authentication, id-  |
    |  Extended Key |  kp-clientAuth for client authentication, id-kp-  |
    |     Usage     | codeSigning for code signing (for software update |
    |               |   mechanism), id-kp-OCSPSigning for future OCSP   |
-   |               |     usage in TLS. The use of this extension is    |
-   |               |                     optional.                     |
-   |               |                                                   |
-   |   Extension:  | digitalSignature or keyAgreement, keyCertSign for |
-   |  Extended Key |  verifying signatures on public key certificates. |
-   |     Usage     |       The use of this extension is optional.      |
+   |               |                   usage in TLS.                   |
    +---------------+---------------------------------------------------+
 
                        Table 1: Certificate Content.
 
-   No other certificate elements are used by this specification.
+   All certificate elements listed in Table 1 are mandatory-to-
+   implement.  No other certificate elements are used by this
+   specification.
 
    A device compliant with the profile in this section MUST implement
    TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8 and follow the guidance from this
@@ -1278,10 +1282,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    Note that the TLS cached info extension does not provide any help
    with caching client certificates.
 
-   TLS/DTLS clients MUST implement support for client certificate URLs
-   for those environments where client-side certificates are used and
-   the server-side is not constrained.  For constrained servers this
-   functionality is NOT RECOMMENDED since it forces the server to
 
 
 
@@ -1290,6 +1290,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 23]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   TLS/DTLS clients MUST implement support for client certificate URLs
+   for those environments where client-side certificates are used and
+   the server-side is not constrained.  For constrained servers this
+   functionality is NOT RECOMMENDED since it forces the server to
    execute an additional protocol exchange, potentially using a protocol
    it does not even support.  The use of this extension also increases
    the risk of a denial of service attack against the constrained server
@@ -1334,10 +1338,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    defined in the TLS/DTLS specification are applicable to this profile.
    In general, there are two categories of errors (as defined in
    Section 7.2 of RFC 5246), namely fatal errors and warnings.  Alert
-   messages with a level of fatal result in the immediate termination of
-   the connection.  If possible, developers should try to develop
-   strategies to react to those fatal errors, such as re-starting the
-   handshake or informing the user using the (often limited) user
 
 
 
@@ -1346,6 +1346,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 24]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   messages with a level of fatal result in the immediate termination of
+   the connection.  If possible, developers should try to develop
+   strategies to react to those fatal errors, such as re-starting the
+   handshake or informing the user using the (often limited) user
    interface.  Warnings may be ignored by the application since many IoT
    devices will either have limited ways to log errors or no ability at
    all.  In any case, implementers have to carefully evaluate the impact
@@ -1391,16 +1395,16 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    prepared to process these errors to deal with servers that are not
    compliant to the profiles in this document:
 
-   protocol_version:  While this document focuses only on one version of
-      the TLS/DTLS protocol, namely version 1.2, ongoing work on TLS/
-      DTLS 1.3 is in progress at the time of writing.
-
 
 
 Tschofenig & Fossati      Expires July 23, 2015                [Page 25]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   protocol_version:  While this document focuses only on one version of
+      the TLS/DTLS protocol, namely version 1.2, ongoing work on TLS/
+      DTLS 1.3 is in progress at the time of writing.
 
    insufficient_security:  This error message indicates that the server
       requires ciphers to be more secure.  This document specifies only
@@ -1447,16 +1451,16 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    session state information to be maintained by the constrained server.
    This is accomplished by using a ticket-based approach.
 
-   If both the client and the server are constrained devices both
-   devices SHOULD implement RFC 5077 and MUST implement basic session
-   resumption.
-
 
 
 Tschofenig & Fossati      Expires July 23, 2015                [Page 26]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   If both the client and the server are constrained devices both
+   devices SHOULD implement RFC 5077 and MUST implement basic session
+   resumption.
 
 10.  Compression
 
@@ -1502,10 +1506,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    increase the cost for pervasive monitoring (as demanded by [RFC7258])
    has to be taken into account when making a deployment decision.
 
-   Client implementations claiming support of this profile MUST
-   implement the ciphersuites listed in Section 6 according to the
-   selected credential type.
-
 
 
 
@@ -1513,6 +1513,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 27]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   Client implementations claiming support of this profile MUST
+   implement the ciphersuites listed in Section 6 according to the
+   selected credential type.
 
 12.  Keep-Alive
 
@@ -1558,10 +1562,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
       In the two previous scenarios the client initiated the protocol
       interaction but in this case we consider server-initiated
       messages.  Since messages to the client may get blocked by
-      intermediaries, such as NATs (including IPv4/IPv6 protocol
-      translators) and stateful packet filtering firewalls, the initial
-      connection setup is triggered by the client and then kept alive.
-      Since state at middleboxes expires fairly quickly (according to
 
 
 
@@ -1570,6 +1570,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 28]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+      intermediaries, such as NATs (including IPv4/IPv6 protocol
+      translators) and stateful packet filtering firewalls, the initial
+      connection setup is triggered by the client and then kept alive.
+      Since state at middleboxes expires fairly quickly (according to
       measurements described in [HomeGateway]), regular heartbeats are
       necessary whereby these keep-alive messages may be exchanged at
       the application layer or within DTLS itself.
@@ -1614,10 +1618,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    adds timeouts and re-transmissions, as described in Section 4.2.4 of
    [RFC6347].  Although the timeout values are implementation specific,
    recommendations are provided in Section 4.2.4.1 of [RFC6347], with an
-   initial timer value of 1 second and twice the value at each
-   retransmission up to no less than 60 seconds.  Due to the nature of
-   some radio technologies, these values are too aggressive and lead to
-   spurious failures when messages in flight need longer.
 
 
 
@@ -1625,6 +1625,11 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 29]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   initial timer value of 1 second and twice the value at each
+   retransmission up to no less than 60 seconds.  Due to the nature of
+   some radio technologies, these values are too aggressive and lead to
+   spurious failures when messages in flight need longer.
 
    Note: If a round-trip time estimator (such as proposed in
    [I-D.bormann-core-cocoa]) is available in the protocol stack of the
@@ -1669,11 +1674,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    devices do not have access to a real-time clock this recommendation
    it is RECOMMENDED to follow the guidance outlined in
    [I-D.mathewson-no-gmtunixtime] regarding the content of the
-   ClientHello.Random field.  However, for the ServerHello.Random
-   structure it is RECOMMENDED to maintain the existing structure with
-   gmt_unix_time followed by a random sequence of 28 random bytes since
-   the client can use the received time information to securely obtain
-   time information.  For constrained servers it cannot be assumed that
 
 
 
@@ -1682,6 +1682,11 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 30]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   ClientHello.Random field.  However, for the ServerHello.Random
+   structure it is RECOMMENDED to maintain the existing structure with
+   gmt_unix_time followed by a random sequence of 28 random bytes since
+   the client can use the received time information to securely obtain
+   time information.  For constrained servers it cannot be assumed that
    they maintain accurate time information; these devices MUST include
    time information in the Server.Random structure when they actually
    obtain accurate time information that can be utilized by clients.
@@ -1725,11 +1730,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    vulnerabilities.  RFC 7366 is, however, also not applicable to the
    AEAD ciphers recommended in this document.
 
-   Implementations conformant to this specification MUST use AEAD
-   ciphers and RFC 7366 and RFC 6066 MUST NOT be implemented.
-
-
-
 
 
 
@@ -1737,6 +1737,9 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 31]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   Implementations conformant to this specification MUST use AEAD
+   ciphers and RFC 7366 and RFC 6066 MUST NOT be implemented.
 
 16.  Server Name Indication (SNI)
 
@@ -1783,9 +1786,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
    Client implementations SHOULD implement this extension even though
    the ciphersuites recommended by this profile are not vulnerable to
-   this attack.  For Diffie-Hellman-based ciphersuites the keying
-   material is contributed by both parties and in case of the pre-shared
-   secret key ciphersuite both parties need to be in possession of the
 
 
 
@@ -1794,6 +1794,9 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 32]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   this attack.  For Diffie-Hellman-based ciphersuites the keying
+   material is contributed by both parties and in case of the pre-shared
+   secret key ciphersuite both parties need to be in possession of the
    shared secret to ensure that the handshake completes successfully.
    It is, however, possible that some application layer protocols will
    tunnel other authentication protocols on top of DTLS making this
@@ -1839,9 +1842,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    Fallback Signaling Cipher Suite Value (SCSV)
    [I-D.ietf-tls-downgrade-scsv] extension.  However, the solution is
    not appliable to implementations conforming to this profile since the
-   version negotiation MUST use TLS/DTLS version 1.2 (or higher).  More
-   specifically, this implies:
-
 
 
 
@@ -1849,6 +1849,9 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 33]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   version negotiation MUST use TLS/DTLS version 1.2 (or higher).  More
+   specifically, this implies:
 
    o  Clients MUST NOT send a TLS/DTLS version lower than version 1.2 in
       the ClientHello.
@@ -1895,9 +1898,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
       between an AES-CCM implementations.  AES-CCM in IEEE 802.15.4 and
       Bluetooth Smart uses a nonce length of 13-octets while DTLS uses a
       nonce length of 12-octets.  Hardware implementations of AES-CCM
-      for IEEE 802.15.4 and Bluetooth Smart are therefore not re-usable
-      by a DTLS stack.
-
 
 
 
@@ -1905,6 +1905,9 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 34]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+      for IEEE 802.15.4 and Bluetooth Smart are therefore not re-usable
+      by a DTLS stack.
 
    o  Offer access to building blocks in addition (or as an alternative)
       to the complete functionality.  For example, a chip manufacturer
@@ -1946,9 +1949,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    The use 80-bit encryption for transactional data may be acceptable
    for the near future while one has to insist on 128-bit encryption for
    long lived data.
-
-
-
 
 
 
@@ -2057,13 +2057,13 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    functionality can be enhanced and that potential vulnerabilities can
    be fixed.  This software update mechanism is important for changing
    configuration information, for example, trust anchors and other
-   keying related information.
+   keying related information.  Such a suitable software update
+   mechanism is available with the Lightweight Machine-to-Machine
+   (LWM2M) protocol published by the Open Mobile Alliance (OMA) [LWM2M].
 
 26.  IANA Considerations
 
    This document includes no request to IANA.
-
-
 
 
 
@@ -2260,12 +2260,12 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    [I-D.ietf-uta-tls-bcp]
               Sheffer, Y., Holz, R., and P. Saint-Andre,
               "Recommendations for Secure Use of TLS and DTLS", draft-
-              ietf-uta-tls-bcp-07 (work in progress), November 2014.
+              ietf-uta-tls-bcp-08 (work in progress), December 2014.
 
    [I-D.irtf-cfrg-chacha20-poly1305]
               Nir, Y. and A. Langley, "ChaCha20 and Poly1305 for IETF
-              protocols", draft-irtf-cfrg-chacha20-poly1305-03 (work in
-              progress), November 2014.
+              protocols", draft-irtf-cfrg-chacha20-poly1305-07 (work in
+              progress), January 2015.
 
    [I-D.mathewson-no-gmtunixtime]
               Mathewson, N. and B. Laurie, "Deprecating gmt_unix_time in
@@ -2301,6 +2301,10 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    [Keylength]
               Giry, D., "Cryptographic Key Length Recommendations",
               http://www.keylength.com, November 2014.
+
+   [LWM2M]    Open Mobile Alliance, "Lightweight Machine-to-Machine,
+              Technical Specification, Candidate Version 1.0", December
+              2013.
 
    [RFC1191]  Mogul, J. and S. Deering, "Path MTU discovery", RFC 1191,
               November 1990.
@@ -2340,10 +2344,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    [RFC5216]  Simon, D., Aboba, B., and R. Hurst, "The EAP-TLS
               Authentication Protocol", RFC 5216, March 2008.
 
-   [RFC5247]  Aboba, B., Simon, D., and P. Eronen, "Extensible
-              Authentication Protocol (EAP) Key Management Framework",
-              RFC 5247, August 2008.
-
 
 
 
@@ -2353,6 +2353,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 42]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   [RFC5247]  Aboba, B., Simon, D., and P. Eronen, "Extensible
+              Authentication Protocol (EAP) Key Management Framework",
+              RFC 5247, August 2008.
 
    [RFC5280]  Cooper, D., Santesson, S., Farrell, S., Boeyen, S.,
               Housley, R., and W. Polk, "Internet X.509 Public Key
@@ -2397,10 +2401,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
               Security (TLS) and Datagram Transport Layer Security
               (DTLS)", RFC 7366, September 2014.
 
-   [RFC7390]  Rahman, A. and E. Dijk, "Group Communication for the
-              Constrained Application Protocol (CoAP)", RFC 7390,
-              October 2014.
-
 
 
 
@@ -2409,6 +2409,10 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 43]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   [RFC7390]  Rahman, A. and E. Dijk, "Group Communication for the
+              Constrained Application Protocol (CoAP)", RFC 7390,
+              October 2014.
 
    [RFC7397]  Gilger, J. and H. Tschofenig, "Report from the Smart
               Object Security Workshop", RFC 7397, December 2014.
@@ -2450,14 +2454,10 @@ Appendix A.  Conveying DTLS over SMS
    producing and consuming 8-bit binary data encoded Transport Protocol
    Data Units (TPDU).
 
-A.1.  Overview
 
-   DTLS adds an additional roundtrip to the TLS [RFC5246] handshake to
-   serve as a return-routability test for protection against certain
-   types of DoS attacks.  Thus a full blown DTLS handshake comprises up
-   to 6 "flights" (i.e., logical message exchanges), each of which is
-   then mapped on to one or more DTLS records using the segmentation and
-   reassembly (SaR) scheme described in Section 4.2.3 of [RFC6347].  The
+
+
+
 
 
 
@@ -2466,6 +2466,14 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 44]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+A.1.  Overview
+
+   DTLS adds an additional roundtrip to the TLS [RFC5246] handshake to
+   serve as a return-routability test for protection against certain
+   types of DoS attacks.  Thus a full blown DTLS handshake comprises up
+   to 6 "flights" (i.e., logical message exchanges), each of which is
+   then mapped on to one or more DTLS records using the segmentation and
+   reassembly (SaR) scheme described in Section 4.2.3 of [RFC6347].  The
    overhead for said scheme is 6 bytes per Handshake message which,
    given a realistic 10+ messages handshake, would amount around 60
    bytes across the whole handshake sequence.
@@ -2506,6 +2514,14 @@ A.2.  Message Segmentation and Re-Assembly
    which may look like an appealing option given its more efficient use
    of the transport, there are disadvantages to consider.  First, there
    is an additional overhead of 7 bytes per TPDU to be paid to the SaR
+
+
+
+Tschofenig & Fossati      Expires July 23, 2015                [Page 45]
+
+Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
+
+
    function (which is in addition to the overhead introduced by the DTLS
    SaR mechanism.  Second, some networks only partially support the
    Concatenated SMS function and others do not support it at all.
@@ -2514,13 +2530,6 @@ A.2.  Message Segmentation and Re-Assembly
    NOT be used, and it is RECOMMENDED to leave the same PMTU settings
    used during the handshake phase, i.e., 133 bytes if WDP- based
    multiplexing is enabled, 140 bytes otherwise.
-
-
-
-Tschofenig & Fossati      Expires July 23, 2015                [Page 45]
-
-Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
-
 
    Note that, after DTLS handshake has completed, any fragmentation and
    reassembly logic that pertains the application layer (e.g.,
@@ -2560,15 +2569,6 @@ A.4.  Timeout
    been acted upon by the receiving party.  Therefore, it MUST NOT be
    taken into account by the DTLS timeout and retransmission function.
 
-   Handshake messages MUST carry a validity period (TP-VP parameter in a
-   SMS-SUBMIT TPDU) that is not less than the current value of the
-   retransmission timeout.  In order to avoid persisting messages in the
-   network that will be discarded by the receiving party, handshake
-   messages SHOULD carry a validity period that is the same as, or just
-   slightly higher than, the current value of the retransmission
-   timeout.
-
-
 
 
 
@@ -2577,6 +2577,14 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 46]
 
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
+
+   Handshake messages MUST carry a validity period (TP-VP parameter in a
+   SMS-SUBMIT TPDU) that is not less than the current value of the
+   retransmission timeout.  In order to avoid persisting messages in the
+   network that will be discarded by the receiving party, handshake
+   messages SHOULD carry a validity period that is the same as, or just
+   slightly higher than, the current value of the retransmission
+   timeout.
 
 Appendix B.  DTLS Record Layer Per-Packet Overhead
 
@@ -2618,14 +2626,6 @@ Appendix B.  DTLS Record Layer Per-Packet Overhead
    or something else.  This document makes this use more restrictive for
    use with DTLS: the 64-bit none_explicit MUST be the 16-bit epoch
    concatenated with the 48-bit seq_num.  The sequence number component
-   of the nonce_explicit field at the AES-CCM layer is an exact copy of
-   the sequence number in the record layer header field.  This leads to
-   a duplication of 8-bytes per record.
-
-   To avoid this 8-byte duplication RFC 7400 [RFC7400] provides help
-   with the use of the generic header compression technique for IPv6
-   over Low-Power Wireless Personal Area Networks (6LoWPANs).  Note that
-   this header compression technique is not available when DTLS is
 
 
 
@@ -2634,6 +2634,14 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 47]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   of the nonce_explicit field at the AES-CCM layer is an exact copy of
+   the sequence number in the record layer header field.  This leads to
+   a duplication of 8-bytes per record.
+
+   To avoid this 8-byte duplication RFC 7400 [RFC7400] provides help
+   with the use of the generic header compression technique for IPv6
+   over Low-Power Wireless Personal Area Networks (6LoWPANs).  Note that
+   this header compression technique is not available when DTLS is
    exchanged over transports that do not use IPv6 or 6LoWPAN, such as
    the SMS transport described in Appendix A.
 
@@ -2669,14 +2677,6 @@ Appendix C.  DTLS Fragmentation
 
 Authors' Addresses
 
-   Hannes Tschofenig  (editor)
-   ARM Ltd.
-   110 Fulbourn Rd
-   Cambridge  CB1 9NJ
-   Great Britain
-
-   Email: Hannes.tschofenig@gmx.net
-   URI:   http://www.tschofenig.priv.at
 
 
 
@@ -2690,6 +2690,16 @@ Tschofenig & Fossati      Expires July 23, 2015                [Page 48]
 Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
 
 
+   Hannes Tschofenig  (editor)
+   ARM Ltd.
+   110 Fulbourn Rd
+   Cambridge  CB1 9NJ
+   Great Britain
+
+   Email: Hannes.tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
    Thomas Fossati
    Alcatel-Lucent
    3 Ely Road
@@ -2697,16 +2707,6 @@ Internet-Draft          TLS/DTLS 1.2 IoT Profile            January 2015
    UK
 
    Email: thomas.fossati@alcatel-lucent.com
-
-
-
-
-
-
-
-
-
-
 
 
 
