@@ -17,6 +17,10 @@
     'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6574.xml'>
   <!ENTITY RFC7250 PUBLIC ''
     'http://xml.resource.org/public/rfc/bibxml/reference.RFC.7250.xml'>
+  <!ENTITY RFC4634 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.4634.xml'>
+  <!ENTITY RFC6961 PUBLIC ''
+    'http://xml.resource.org/public/rfc/bibxml/reference.RFC.6961.xml'>
 	]>
 	
 	<?rfc toc="yes" ?>
@@ -150,13 +154,12 @@ MUST NOT send multiple CachedObjects of the same CachedInformationType.
           </figure></t>
 
 <t>This document defines the following types: 
-
 <list style="hanging">
 <t hangText="Omitting the Server Certificate Message:"><vspace blankLines="1"/> 
 With the type field set to 'cert', the client MUST include the message digest of the Certificate message in the hash_value field. For this type the message digest MUST be calculated using SHA-256 <xref target="RFC4634"/>.</t>
 <t hangText="Omitting the CertificateRequest Message"><vspace blankLines="1"/> 
 With the type set to 'cert_req', the client MUST include the message digest of the CertificateRequest message in the hash_value field. For this type the message digest MUST be calculated using SHA-256 <xref target="RFC4634"/>.</t>
-<t hangText="Omitting the Certificate Status Information (OCSP Stapling and Multiple OCSP Stapling) Message">
+<t hangText="Omitting the Certificate Status Information (OCSP Stapling and Multiple OCSP Stapling) Message"><vspace blankLines="1"/>
 With the type set to 'cert_status', the client MUST include the message digest of the CertificateStatus message in the hash_value field. For this type the message digest MUST be calculated using SHA-256 <xref target="RFC4634"/>.</t>
 </list> 
 </t>
@@ -248,7 +251,7 @@ structure:</t>
 
 
 
-<section title="Omitting the Certificate Status Information (OCSP Stapling and Multi OCSP Stapling)">
+<section anchor="cert_status" title="Omitting the Certificate Status Information (OCSP Stapling and Multi OCSP Stapling)">
 
 <t>When a fingerprint for an object of type 'cert_status' is provided in the client hello, the server MAY omit the CertificateStatus message under the following conditions:
 
@@ -256,11 +259,11 @@ structure:</t>
 <t>The server software implements the "cert_status" extension defined in this specification.</t>
 <t>The 'cert_status' cached info extension is enabled (for example, a policy allows the use of this extension).</t>
 <t>The server compared the value in the hash_value field of the client-provided "cached_info" extension with the fingerprint of the CertificateStatus message it normally sends to clients. This check ensures that the information cached by the client is current.</t>
-<t>Both client and server support the use of OCSP Stapling and/or Multiple OCSP Stapling, as defined in RFC 6066 <xref target="RFC6066"/>  and in <xref target="I-D.ietf-tls-multiple-cert-status-extension"/>.</t> 
+<t>Both client and server support the use of OCSP Stapling and/or Multiple OCSP Stapling, as defined in RFC 6066 <xref target="RFC6066"/>  and in <xref target="RFC6961"/>.</t> 
 </list> 
 </t>
    
-<t>The CertificateStatus message syntax, defined in <xref target="I-D.ietf-tls-multiple-cert-status-extension"/>, has the following 
+<t>The CertificateStatus message syntax, defined in <xref target="RFC6961"/>, has the following 
 structure:</t>
 
  <t><figure>
@@ -285,7 +288,7 @@ structure:</t>
 <t>The fingerprint MUST be computed as follows: hash_value:=SHA-256(CertificateStatus)</t>
 </section>
  
-
+</section> 
         <!-- ******************************************************************************** -->
    
         <section title="Example">
@@ -417,7 +420,7 @@ defined in RFC 5246 <xref target="RFC5246"/>, for cached_info(TBD) defined in th
 
 
 
-        <references title="Normative References"> &RFC2119; &RFC5246; &RFC6066;  
+        <references title="Normative References"> &RFC2119; &RFC5246; &RFC6066;  &RFC6961; 
 
 <!-- 
            <reference anchor="SHA">
@@ -432,6 +435,8 @@ defined in RFC 5246 <xref target="RFC5246"/>, for cached_info(TBD) defined in th
      --> 
             
 			&RFC3874; 
+&RFC4634; 
+
 <!--			&RFC1321; --> 
 			
         </references>
@@ -440,9 +445,9 @@ defined in RFC 5246 <xref target="RFC5246"/>, for cached_info(TBD) defined in th
 
 <section title="Example"> 
 
-<t>The example TLS exchange shown in <xref target="example-TLS-exchange2"/> illustrates the use of a ECC ciphersuite with a 256 bit key. The use of ECC already ensures a small certificate size compared to RSA with equivalent security strength. The Certificate message provided by the server is with 550 bytes one of the largest message even though it only contains a single certificate (i.e., no intermediate CA certificates). The DistinguishedName field in the Certificate Request sent by the server has a length of 66 bytes. The client-provided Certificate message has a length of 566 bytes.</t>
+<t>The Wireshark trace of an example TLS exchange shown in <xref target="example-TLS-exchange2"/> illustrates the use of an ECC-based ciphersuite with a 256 bit key. ECC allows for a small certificate size compared to RSA with equivalent security strength. The Certificate message provided by the server is with 557 bytes (including the record layer header) one of the largest message even though it only contains a single certificate (i.e., no intermediate CA certificates). The client-provided Certificate message has a length of 570 bytes (also including the record layer header).</t>
 
-       <t><figure anchor="example-TLS-exchange2" title="Example TLS Exchange">
+       <t><figure anchor="example-TLS-exchange2" title="Example TLS Exchange (without Cached Info Extension).">
             <artwork>
               <![CDATA[
 Client --> Server: 
@@ -602,9 +607,9 @@ Client <-- Server:
 ]]></artwork>
           </figure></t>
 
-<t>The TLS cached extension defined in this document allows the server to send an empty Certificate message and an empty CertificateRequest message. To accomplish further on-the-wire handshake size message reductions the Certificate message sent by the client can be reduced in size by using the Client Certificate URL extension. The resulting message exchange is shown in <xref target="example-TLS-exchange-optimized"/>. As it can be seen, this extension leads to an on-the-wire improvement of 635 bytes.</t> 
+<t>The total size of the TLS exchange shown in <xref target="example-TLS-exchange2"/> is 1932 bytes whereas the exchange shown in <xref target="example-TLS-exchange-optimized"/> reduces the size to 1323 bytes by omitting the Certificate and the CertificateRequest messages. As it can be seen, the use of the cached info extension leads to an on-the-wire improvement of more than 600 bytes.</t> 
 
-       <t><figure anchor="example-TLS-exchange-optimized" title="Example TLS Exchange with TLS Cached Info Extension">
+       <t><figure anchor="example-TLS-exchange-optimized" title="Example TLS Exchange (with Cached Info Extension).">
             <artwork>
               <![CDATA[
 Client --> Server: 
@@ -612,10 +617,10 @@ Client --> Server:
     TLSv1.2 Record Layer: Handshake Protocol: Client Hello
         Content Type: Handshake (22)
         Version: TLS 1.2 (0x0303)
-        Length: 121 + 23
+        Length: 121 + 21
         Handshake Protocol: Client Hello
             Handshake Type: Client Hello (1)
-            Length: 117 + 23
+            Length: 117 + 21
             Version: TLS 1.2 (0x0303)
             Random
                 gmt_unix_time: Jan 14, 2015 12:43:58.000000000 CET
@@ -654,14 +659,6 @@ Client <-- Server:
             Extension: ec_point_formats
             Extension: cached_info
 
-    TLSv1.2 Record Layer: Handshake Protocol: Certificate
-        Content Type: Handshake (22)
-        Version: TLS 1.2 (0x0303)
-        Length: 4
-        Handshake Protocol: Certificate
-            Handshake Type: Certificate (11)
-            Length: 0
- 
     TLSv1.2 Record Layer: Handshake Protocol: Server Key Exchange
         Content Type: Handshake (22)
         Version: TLS 1.2 (0x0303)
@@ -670,13 +667,6 @@ Client <-- Server:
             Handshake Type: Server Key Exchange (12)
             Length: 211
 
-    TLSv1.2 Record Layer: Handshake Protocol: Certificate Request
-        Content Type: Handshake (22)
-        Version: TLS 1.2 (0x0303)
-        Length: 4
-        Handshake Protocol: Certificate Request
-            Handshake Type: Certificate Request (13)
-            Length: 0
 
     TLSv1.2 Record Layer: Handshake Protocol: Server Hello Done
         Content Type: Handshake (22)
@@ -751,6 +741,7 @@ Client <-- Server:
 ]]></artwork>
           </figure></t>
 
+<t>Note: To accomplish further on-the-wire handshake size message reductions the Certificate message sent by the client can be reduced in size by using the Client Certificate URL extension.</t>
 
 </section> 
 
