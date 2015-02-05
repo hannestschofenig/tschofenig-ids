@@ -1,0 +1,316 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="rfc2629.xslt" ?>
+
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY RFC2119   PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY I-D.ietf-aaa-diameter-cms-sec PUBLIC "" "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-aaa-diameter-cms-sec.xml">
+<!ENTITY RFC6733 PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6733.xml">
+<!ENTITY RFC4072 PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4072.xml">
+]>
+
+<?rfc inline="yes"?>
+<?rfc toc="yes" ?>
+<?rfc tocdepth="2" ?> 
+<?rfc symrefs="no" ?>
+<?rfc iprnotified="no" ?>
+<?rfc strict="no" ?>
+<?rfc compact="no" ?>
+<?rfc sortrefs="yes" ?>
+<?rfc colonspace='yes' ?>
+
+
+<rfc category='info' ipr='trust200902' docName='draft-ietf-dime-e2e-sec-req-02.txt'>
+
+  <front>
+    <title abbrev="Diameter End-to-End Security">Diameter AVP Level Security End-to-End Security: Scenarios and Requirements</title>
+
+       <author initials="H.T." surname="Tschofenig" fullname="Hannes Tschofenig ">
+        <organization></organization>
+      <address>
+        <postal>
+          <street></street>
+          <city>Hall in Tirol</city>
+          <code> 6060 </code>
+          <country>Austria</country>
+        </postal>
+        <email>Hannes.tschofenig@gmx.net </email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+ 
+    <author initials='J.' surname="Korhonen" fullname='Jouni Korhonen'>
+           <organization>Broadcom</organization>
+            <address>
+                <postal>
+                    <street> Porkkalankatu 24</street>
+					<city>Helsinki</city>
+                    <code>00180</code>
+                    <country>Finland</country>
+                </postal>
+                <email>jouni.nospam@gmail.com</email>
+             </address>
+        </author>
+		
+	<author initials='G.' surname="Zorn" fullname='Glen Zorn'>
+           <organization abbrev="Network Zen">Network Zen</organization>
+            <address>
+                <postal>
+                    <street>227/358 Thanon Sanphawut</street>
+					<city> Bang Na</city>
+                    <code>Bangkok 10260</code>
+                    <country>Thailand</country>
+                </postal>
+                <email>glenzorn@gmail.com</email>
+             </address>
+    </author>
+		
+	<author initials='K.' surname="Pillay" fullname='Kervin Pillay'>
+           <organization>Oracle Communications</organization>
+            <address>
+                <postal>
+                    <street>100 Crosby Drive</street>
+					<city>Bedford, Massachusettes</city>
+                    <code>01730</code>
+                    <country>USA</country>
+                </postal>
+                <email>kervin.pillay@oracle.com</email>
+             </address>
+    </author>
+
+	
+    <date year='2015'/>
+    <area>OPS</area>
+    <workgroup>DIME</workgroup>
+    <keyword>I-D</keyword>
+    <keyword>Internet-Draft</keyword>
+    <keyword>Diameter</keyword>
+    <keyword>End-to-End Security</keyword>
+
+    <abstract>
+      <t>This specification discusses requirements for providing Diameter security at the level of individual Attribute Value Pairs.</t>
+  </abstract>
+  </front>
+  <middle>
+    
+  
+ 
+    <section title='Introduction'>
+    
+	<t>The Diameter Base specification <xref target="RFC6733"/> offers security protection between neighboring Diameter peers and mandates that either TLS (for TCP), DTLS (for SCTP), or IPsec is used. These security protocols offer a wide range of security properties, including entity authentication, data-origin authentication, integrity, confidentiality protection and replay protection. They also support a large number of cryptographic algorithms, algorithm negotiation, and different types of credentials.</t>
+
+<t>The need to also offer additional security protection of AVPs between non-neighboring Diameter nodes was recognized very early in the work on Diameter. This lead to work on Diameter security using the Cryptographic Message Syntax (CMS) <xref target="I-D.ietf-aaa-diameter-cms-sec"/>. Due to lack of deployment interest at that time (and the complexity of the developed solution) the specification was, however, never completed.</t>
+
+<t>In the meanwhile Diameter had received a lot of deployment interest from the cellular operator community and because of the sophistication of those deployments the need for protecting Diameter AVPs between non-neighboring nodes re-surfaced. Since early 2000 (when the work on <xref target="I-D.ietf-aaa-diameter-cms-sec"/> was discontinued) the Internet community had seen advances in cryptographic algorithms (for example, authenticated encryption algorithms) and new security building blocks were developed.</t>
+
+<t>This document collects requirements for developing a solution to protect Diameter AVPs.</t>
+
+  </section>
+	  
+      <section title='Terminology'>
+        <t>
+          The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT', 'SHOULD',
+          'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this specification are to be
+          interpreted as described in <xref target='RFC2119' />.
+        </t>
+		<t>This document re-uses terminology from the Diameter base specification <xref target="RFC6733"/>.</t>
+        
+        <t>In the figures below we use the symbols 'AVP' and '{AVP}k'. AVP refers to an unprotected AVP and {AVP}k refers to an AVP that experiences security protection (using key "k") without further distinguishing between integrity and confidentiality protection.</t>
+        
+      </section>
+
+    
+    <section title="Security Threats">
+
+	  <t>The follow description aims to illustrate various security threats that raise the need for protecting Diameter Attribute Value Pairs (AVPs). <xref target="example"/> illustrates an example Diameter topology where a Diameter clients want to interact with the example.com home domain. To interconnect the two visited networks a AAA interconnection provider, labeled as AAA Broker, is used. </t>
+	    
+	    <t>
+<figure title="Example Diameter Deployment." anchor="example">
+            <artwork>
+              <![CDATA[
+   +oooooooooooooooooo+              +====================+
+   |   Example.net    |              |                    |
+   |                  |              |                    |
++--------+      +--------+        +--------+        +--------+
+|Diameter|      |Diameter+--------+Diameter|        |Diameter|
+|Client 1+------+Proxy A1| +------+Proxy B +--------+Proxy C |----+
++--------+      +--------+ |      +--------+        +--------+    |
+   |                  |    |         |                    |       |
+   | Visited Domain 1 |    |         |      AAA Broker    |       |
+   +oooooooooooooooooo+    |         +====================+       |
+                           |                                      |
+                           |                                      |
+                           |                                      |
+                           |            +\\\\\\\\\\\\\\\\\\\\+    |
+                           |     +--------+  Example.com     |    |
+                           |     |Diameter|                  |    |
+   +oooooooooooooooooo+    |     |Server X+--+         +--------+ |
+   |   Example.org    |    |     +--------+  |         |Diameter| |
+   |                  |    |     +--------+  +---------+Proxy D |-+
++--------+      +--------+ |     |Diameter|  |         +--------+
+|Diameter|      |Diameter| |     |Server Y+--+               |
+|Client 2+------+Proxy A2+-+     +--------+    Home Domain   |
++--------+      +--------+              +////////////////////+
+   |                  |
+   | Visited Domain 2 |
+   +oooooooooooooooooo+
+]]>
+            </artwork>
+          </figure>
+	    </t>
+	          
+      <t><list style="hanging">
+        <t hangText="Eavesdropping:">Some Diameter applications carry information that is only intended for consumption by end points, either by the Diameter client or by the Diameter server but not by intermediaries. As an example, consider the Diameter EAP application <xref target="RFC4072"/> that allows keying material for the protection of air interface between the end device and the network access server to be carried from the Diameter server to the Diameter client (using the EAP-Master-Session-Key AVP). The content of the EAP-Master-Session-Key AVP would benefit from protection against eavesdropping by intermediaries. Other AVPs might also carry sensitive personal data that, when collected by intermediaries, allow for traffic analysis.<vspace blankLines="1"/>In context of the deployment shown in <xref target="example"/> the adversary could, for example, be in the AAA broker network. </t>
+        <t hangText="Injection and Manipulation:">The Diameter base specification mandates security protection between neighboring nodes but Diameter agents may be compromised or misconfigured and inject/manipulate AVPs. To detect such actions additional security protection needs to be applied at the Diameter layer.<vspace blankLines="1"/>Nodes that could launch such an attack are any Diameter agents along the end-to-end communication path.</t>
+        <t hangText="Impersonation:">Imagine a case where a Diameter message from Example.net contains information claiming to be from Example.org. This would either require strict verification at the edge of the AAA broker network or cryptographic assurance at the Diameter layer to provent a successful impersonation attack.<vspace blankLines="1"/>Any Diameter realm could launch such an attack aiming for financial benefits or to disrupt service availability.</t>
+      </list></t>      
+    </section>
+    
+    <section anchor="use-case" title="Scenarios for Diameter AVP-Level Protection">
+		<t>This scenario outlines a number of cases for deploying security protection of individual Diameter AVPs. 
+		  </t>
+		
+        <t>In the first scenario, shown in <xref target="e2e-usecase"/>, end-to-end security protection is provided between the Diameter client and the Diameter server. Diameter AVPs exchanged between these two Diameter nodes are protected.</t>
+	    <t>
+        <figure title="End-to-End Diameter AVP Security Protection." anchor="e2e-usecase">
+            <artwork>
+              <![CDATA[
++--------+                                                +--------+
+|Diameter| AVP, {AVP}k                                    |Diameter|
+|Client  +-----------------........... -------------------+Server  |
++--------+                                                +--------+
+]]>
+        </artwork>
+        </figure>
+        </t>
+		
+		<t>In the second scenario, shown in <xref target="m2e-usecase"/>, a Diameter proxy acts on behalf of the Diameter client with regard to security protection. It applies security protection to outgoing Diameter AVPs and verifies incoming AVPs.</t>
+	    <t>
+        <figure title="Middle-to-End Diameter AVP Security Protection." anchor="m2e-usecase">
+            <artwork>
+              <![CDATA[
++--------+     +--------+                                 +--------+
+|Diameter| AVP |Diameter|   AVP, {AVP}k                   |Diameter|
+|Client  +-----+Proxy A +---------- .......... -----------+Server  |
++--------+     +--------+                                 +--------+
+]]>
+        </artwork>
+        </figure>
+        </t>
+		
+		<t>In the third scenario shown in <xref target="e2m-usecase"/> a Diameter proxy acts on behalf of the Diameter server.</t>
+	    <t>
+        <figure title="End-to-Middle Diameter AVP Security Protection." anchor="e2m-usecase">
+            <artwork>
+              <![CDATA[
++--------+                                 +--------+     +--------+
+|Diameter| AVP, {AVP}k                     |Diameter| AVP |Diameter|
+|Client  +-----------------........... ----+Proxy D +-----+Server  |
++--------+                                 +--------+     +--------+
+]]>
+        </artwork>
+        </figure>
+        </t>
+		<t>The fourth and the final scenario (see <xref target="m2m-usecase"/>) is a combination of the end-to-middle and the middle-to-end scenario shown in <xref target="e2m-usecase"/> and in <xref target="m2e-usecase"/>. From a deployment point of view this scenario is easier to accomplish for two reasons: First, Diameter clients and Diameter servers remain unmodified. This ensures that no modifications are needed to the installed Diameter infrastructure. Second, key management is also simplified since fewer number of key pairs need to be negotiated and provisioned.</t>
+	    <t>
+        <figure title="Middle-to-Middle Diameter AVP Security Protection." anchor="m2m-usecase">
+            <artwork>
+              <![CDATA[
++--------+     +--------+                  +--------+     +--------+
+|Diameter| AVP |Diameter|   AVP, {AVP}k    |Diameter| AVP |Diameter|
+|Client  +-----+Proxy A +-- .......... ----+Proxy D +-----+Server  |
++--------+     +--------+                  +--------+     +--------+			  
+]]>
+        </artwork>
+        </figure>
+        </t>
+		<t>Various security threats are mitigated by selectively applying security protection for individual Diameter AVPs. Without protection there is the possibility for password sniffing, confidentiality violation, AVP insertion, deletion or modification. Additionally, applying digital signature offers non-repudiation capabilities; a feature not yet available in today's Diameter deployment. Modification of certain Diameter AVPs may not necessarily be the act of malicious behavior but could also be the result of misconfiguration. An over-aggressively configured firewalling Diameter proxy may also remove certain AVPs. In most cases data origin authentication and integrity protection of AVPs will provide most benefits for existing deployments with minimal overhead and (potentially) operating in a full-backwards compatible manner.</t>
+	  </section> 
+	  
+      <section title='Requirements'>
+	 
+	 <t><list style="hanging"> 
+<t hangText="Requirement #1:">Solutions MUST support an extensible set of cryptographic algorithms.
+<list style="empty">
+<t>Motivation: Crypto-agility is the ability of a protocol to adapt to evolving cryptographic algorithms and security requirements. This may include the provision of a modular mechanism to allow cryptographic algorithms to be updated without substantial disruption to deployed implementations.</t>
+</list>
+</t>
+
+
+<t  hangText="Requirement #2:">Solutions MUST support confidentiality, integrity, and data-origin authentication. Solutions for integrity protection MUST work in a backwards-compatible way with existing Diameter applications.</t>
+
+<t  hangText="Requirement #3:">Solutions MUST support replay protection. Any Diameter node has an access to network time and thus can synchronise their clocks.</t>
+
+<t  hangText="Requirement #4:">Solutions MUST support the ability to delegate security functionality to another entity<list style="empty">
+<t>Motivation: As described in <xref target="use-case"/> the ability to let a Diameter proxy to perform security services on behalf of all clients within the same administrative domain is important for incremental deployability. The same applies to the other communication side where a load balancer terminates security services for the servers it interfaces.</t>
+</list>
+</t>
+
+
+<t  hangText="Requirement #5:">Solutions MUST be able to selectively apply their cryptographic protection to certain Diameter AVPs.
+<list style="empty">
+<t>Motivation: Some Diameter applications assume that certain AVPs are added, removed, or modified by intermediaries. As such, it MUST be possible to apply security protection selectively.</t>
+</list>
+</t>
+
+<t hangText="Requirement #6:">Solutions MUST recommend a mandatory-to-implement cryptographic algorithm. <list style="empty">
+<t>Motivation: For interoperability purposes it is beneficial to have a mandatory-to-implement cryptographic algorithm specified (unless profiles for specific usage environments specify otherwise).</t>
+</list>
+</t>
+
+<t hangText="Requirement #7:">Solutions MUST support symmetric keys and asymmetric keys.
+<list style="empty">
+<t>Motivation: Symmetric and asymmetric cryptographic algorithms provide different security services. Asymmetric algorithms, for example, allow non-repudiation services to be offered.</t>
+</list>
+</t>
+
+<t hangText="Requirement #8:">A solution for dynamic key management MUST be included in the overall solution framework. However, it is assumed that no "new" key management protocol needs to be developed; instead existing ones are re-used, if at all possible. Rekeying could be triggered by (a) management actions and (b) expiring keying material.</t>
+
+<!-- 
+<t hangText="Requirement #9:">The ability to statically provisioned keys (such as raw public keys, symmetric keys, and ) has to be supported to simplify management for small-scale deployments that typically do not have a back-end network management infrastructure.</t>
+--> 
+ </list> 
+ </t>
+        
+    </section>
+<!-- 
+    <section title='Open Issues'>
+    
+      <t><list style="hanging">
+    <t hangText="Open Issue #1:">Capability/Policy Discovery: This document talks about selectively protecting Diameter AVPs between different Diameter nodes. A Diameter node has to be configured such that it applies security protection to a certain number of AVPs. A number of policy related questions arise: What keying material should be used so that the intended recipient is also able to verify it? What AVPs shall be protected so that the result is not rejected by the recipient? In case of confidentiality protection the Diameter node encrypting AVPs needs to know ahead of time what other node is intended to decrypt them. Should the list of integrity protected AVP be indicated in the protected payload itself (or is it known based on out-of-band information)? Is this policy / capability information assumed to be established out-of-band (manually) or is there a protocol mechanism to distribute this information? </t>
+    
+    <t hangText="Open Issue #2:">Command-Line Support: Should solutions allow the provisioning of long-term shared symmetric credentials via a command-line interface / text file? This allows easier management for small-scale deployments. </t>
+      </list></t>
+      
+    </section>
+    --> 
+
+
+    <section title='Security Considerations' anchor='Security'>
+  <t>This entire document focused on the discussion of new functionality for securing Diameter AVPs selectively between non-neighboring nodes.</t> 
+    </section>
+
+    <section title='IANA Considerations' anchor='IANA'>
+	 <t>This document does not require actions by IANA.</t>
+    </section>
+
+    <section title='Acknowledgments'>
+	     <t>We would like to thank Guenther Horn, Martin Dolly,  for his review comments.</t>
+    </section>
+
+  </middle>
+
+  <back>
+
+    <references title='Normative References'>
+   &RFC2119; 
+   &RFC6733;
+   
+    </references>
+
+    <references title='Informative References'>
+   &I-D.ietf-aaa-diameter-cms-sec;  
+      &RFC4072; 
+    </references>
+  </back>
+
+</rfc>
