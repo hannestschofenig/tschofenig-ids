@@ -73,7 +73,7 @@
       </address>
     </author>
 
-    <date year="2014" month="December" day="11"/>
+    <date year="2014" month="December" day="12"/>
 
     <area>Applications Area (app)</area>
     <workgroup>CORE</workgroup>
@@ -103,8 +103,9 @@ This document defines the use of CoAP over TCP as well as CoAP over TLS.</t>
 
 <section anchor="introduction" title="Introduction">
 
-<t>The Internet protocol stack is organized in layers, namely data
-link layer, network layer, transport layer, and the application layer.</t>
+<t>The Internet protocol stack is organized in layers, namely link layer,
+internet layer, transport layer, and the application layer
+(<xref target="RFC1122"/>).</t>
 
 <t>IP emerged as the waist of the hour glass and supports a variety of
 link layers and new link layer technologies can be added in the
@@ -112,21 +113,21 @@ future, without affecting IP.</t>
 
 <t>Combined with the end-to-end principle, the hour glass indicates the
 level of protocol understanding that intermediaries need to have in order
-to exchange forward IP packets between a sender and a receiver (absent
-any specific application layer entities, like proxies or caches).
-Having IP as the waist meant that anyone could extend the layers above
-the network layer in the way they wanted to communicate end-to-end,
+to forward IP packets between a sender and a receiver (absent
+any specific application layer entities, such as proxies or caches).
+Having IP as the waist means that anyone can extend the layers above
+the network layer in the way they want to communicate end-to-end,
 including defining new transport layer protocols (as it was done with
-SCTP, and DCCP).</t>
+SCTP, and DCCP).
+<!-- Need references for those?  Why all this verbiage anyway? --></t>
 
-<t>UDP <xref target="RFC0768"/> or DTLS <xref target="RFC6347"/> over UDP is a good choice for
-transferring small amounts of data in networks that follow the IP
-architecture.
-Unfortunately, some deployment depart from this ideal architecture.
+<t>Unfortunately, some network deployments depart from this architecture.
 The <xref target="RFC7252">Constrained Application Protocol (CoAP)</xref> was designed
 for Internet of Things (IoT) deployments, assuming that UDP can be
-used freely.
-Some deployments, however, may have to integrate well with
+used freely – UDP <xref target="RFC0768"/>, or DTLS <xref target="RFC6347"/> over UDP, is a good choice for
+transferring small amounts of data in networks that follow the IP
+architecture.
+Some CoAP deployments, however, may have to integrate well with
 existing enterprise infrastructure, where the use of UDP-based
 protocols may not be well-received or even supported by firewalls.
 Middleboxes that are unaware of the IoT can make the use of UDP
@@ -138,11 +139,13 @@ CoAP back-end processors in a cloud environment may want to connect
 between each other via TCP instead of UDP.</t>
 
 <t>To make both IoT devices and their associated back-end processors work
-smoothly in these demanding environments, CoAP
-has to make use of a different transport protocol, namely TCP
-<xref target="RFC0793"/> and in some situations even TLS <xref target="RFC5246"/>.  This
+smoothly in these demanding environments, CoAP needs
+to make use of a different transport protocol, namely TCP
+<xref target="RFC0793"/> and in some situations even TLS <xref target="RFC5246"/>.</t>
+
+<t>The present document
 document describes a shim header that conveys length information about
-the included payload.  Modifications to CoAP beyond the replacement of
+each CoAP message included.  Modifications to CoAP beyond the replacement of
 the message layer
 (e.g., to introduce further optimizations) are intentionally avoided.</t>
 
@@ -158,9 +161,9 @@ the message layer
 
 <t>The interaction model of CoAP over TCP is very similar to the one for
 CoAP over UDP with the key difference that TCP voids the need to
-replicate certain transport layer protocol features, such as reliable
+provide certain transport layer protocol features, such as reliable
 delivery, fragmentation and reassembly, as well as congestion control,
-at the CoAP level. The protocol stack is shown in <xref target="stack"/> (derived
+at the CoAP level. The protocol stack is illustrated in <xref target="stack"/> (derived
 from <xref target="RFC7252"/>, Figure 1).</t>
 
 <figure title="The CoAP over TLS/TCP Protocol Stack" anchor="stack"><artwork><![CDATA[
@@ -181,17 +184,21 @@ from <xref target="RFC7252"/>, Figure 1).</t>
 ]]></artwork></figure>
 
 <t>TCP offers features that are not available in UDP and consequently
-have been provided in CoAP’s message layer. The first paradigm that
+have been provided in CoAP’s message layer. The first mechanism that
 can be omitted is the concept of ACKs in CoAP.  Since TCP offers
 reliable delivery, there is no need to offer a redundant
 acknowledgement at the CoAP messaging layer.</t>
 
 <t>Hence, the only message type supported when using CoAP over TCP is
-the NON message model.  By nature, a NON over TCP is still transmitted
+the Non-confirmable message (NON).  By nature of TCP, a NON over TCP is still transmitted
 reliably. <xref target="NON"/> (derived from <xref target="RFC7252"/>, Figure 3) shows this
-message exchange graphically.
-Since the Message ID is not meaningful, it is elided (indicated by the
-dashes).</t>
+message exchange graphically.</t>
+
+<t>Similarly, there is no need to detect duplicate delivery of a message.
+In UDP CoAP, the Message ID is used for relating acknowledgements to
+Confirmable messages as well as for duplicate detection.
+Since the Message ID thus is not meaningful over TCP, it is elided (as indicated by the
+dashes in <xref target="NON"/>).</t>
 
 <figure title="NON Message Transmission over TCP." anchor="NON"><artwork><![CDATA[
         Client              Server
@@ -201,9 +208,10 @@ dashes).</t>
            |                  |
 ]]></artwork></figure>
 
-<t>Because of the NON message model, the only supported request/response
-in CoAP is the NON type. A response is sent back only if needed, as
-shown in <xref target="NON2"/> (derived from <xref target="RFC7252"/>, Figure 6).</t>
+<t>As a result, the only supported message type
+in CoAP over UDP is the NON type. A response is sent back as defined
+in <xref target="RFC7252"/>, as
+illustrated in <xref target="NON2"/> (derived from <xref target="RFC7252"/>, Figure 6).</t>
 
 <figure title="NON Request/Response." anchor="NON2"><artwork><![CDATA[
         Client              Server
@@ -224,16 +232,9 @@ shown in <xref target="NON2"/> (derived from <xref target="RFC7252"/>, Figure 6)
 </section>
 <section anchor="message-format" title="Message Format">
 
-<t>While CoAP was originally designed for UDP and encapsulate features to add
-robustness and flexibility to the transaction, these features are not
-needed anymore due to the nature of TCP. A delimiter is nevertheless
-needed to separate different payloads in a stream oriented transport
-protocol like TCP. For this purpose, the length field is used as a
-delimiter.</t>
-
-<t><xref target="CoAP-Header"/> shows the CoAP message format as defined in
-RFC 7252. <xref target="Shim"/> shows the 2-byte shim header carrying length
-information prepending the CoAP message header.</t>
+<t>The CoAP message format defined in <xref target="RFC7252"/>, as shown in
+<xref target="CoAP-Header"/>, relies on the datagram transport (UDP, or DTLS over
+UDP) for keeping the individual messages separate.</t>
 
 <figure title="RFC 7252 defined CoAP Message Format." anchor="CoAP-Header"><artwork><![CDATA[
     0                   1                   2                   3
@@ -249,6 +250,11 @@ information prepending the CoAP message header.</t>
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork></figure>
 
+<t>In a stream oriented transport protocol such as TCP, some other form
+of delimiting messages is needed.  For this purpose, CoAP over TCP
+introduces a length field.  <xref target="Shim"/> shows the 2-byte shim header
+carrying length information prepending the CoAP message header.</t>
+
 <figure title="CoAP Header with prepended Shim Header." anchor="Shim"><artwork><![CDATA[
      0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -263,13 +269,24 @@ information prepending the CoAP message header.</t>
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork></figure>
 
-<t>The ‘Message Length’ field is 16-bit unsigned integer in network byte
-order used as delimiter and to denote the length of the subsequent
-CoAP message (including the CoAP header but excluding this message
-length field) in bytes.  T is always the code for NON (1).
-The Message ID is meaningless and thus elided.
-The semantics of the other CoAP header fields is
-left unchanged.</t>
+<t>The ‘Message Length’ field is a 16-bit unsigned integer in network
+byte order. It provides the length of the subsequent CoAP message
+(including the CoAP header but excluding this message length field) in
+bytes.  T is always the code for NON (1).  The Message ID is
+meaningless and thus elided.  The semantics of the other CoAP header
+fields is left unchanged.</t>
+
+<t>When CoAP is used over TLS then each CoAP message is transported in a
+separate TLS record layer message, making the shim header that includes the
+length information redundant.  As such, the two-byte shim header MUST be omitted
+when CoAP messages are carried over TLS.
+  <cref anchor="_2">Hmm, how does that work in real-life implementations.
+RFC 5246 says: »Client
+   message boundaries are not preserved in the record layer (i.e.,
+   multiple client messages of the same ContentType MAY be coalesced
+   into a single TLSPlaintext record, or a single message MAY be
+   fragmented across several records).«
+Also, is this really efficient?  This means we get a MAC per CoAP message.</cref></t>
 
 </section>
 <section anchor="URI" title="CoAP URI">
@@ -285,11 +302,12 @@ these two new URI schemes.</t>
 <t><xref target="RFC7252"/>, Section 8 (Multicast CoAP), does not apply to the URI
 schemes defined in the present specification.</t>
 
-<t>Resources made available via the “coap+tcp” or “coaps+tcp” schemes
-   have no shared identity with each other or with the “coap” or
+<t>Resources made available via one of the “coap+tcp” or “coaps+tcp” schemes
+   have no shared identity with the other scheme or with the “coap” or
    “coaps” scheme, even if their resource identifiers indicate the
    same authority (the same host listening to the same port).
-   They are distinct namespaces and are considered to be distinct
+   The schemes constiture distinct namespaces and, in combination with
+   the authority, are considered to be distinct
    origin servers.</t>
 
 <section anchor="coaptcp-uri-scheme" title="coap+tcp URI scheme">
@@ -323,10 +341,17 @@ URI scheme, with the following changes:</t>
   <t>The port subcomponent indicates the TCP port
  at which the TLS server for the CoAP server is located.  If it is empty or not given,
  then the default port 443 is assumed (this is different from the
- default port for “coaps”, i.e., CoAP over DTLS over UDP).
- 
-      <cref anchor="cabo1">How exactly does the port number thing work here?
-      We don’t have HTTP/2’s upgrade spiel…</cref></t>
+ default port for “coaps”, i.e., CoAP over DTLS over UDP).</t>
+  <t>When CoAP is exchanged over TLS port 443 then the “TLS Application
+Layer Protocol Negotiation Extension”
+<xref target="RFC7301"/> MUST be used to allow demultiplexing
+at the server-side unless out-of-band information ensures that the
+client only interacts with a server that is able to demultiplex CoAP
+messages over port 443. This would, for example, be true for many
+Internet of Things deployments where clients are pre-configured to
+only ever talk with specific servers.
+      <cref anchor="_1" source="cabo">Shouldn’t we simply always require ALPN?  As the text stands, it
+  is not clear for a client when it has to send ALPN and when not.</cref></t>
 </list></t>
 
 </section>
@@ -339,20 +364,6 @@ CoAP specification. CoAP <xref target="RFC7252"/> makes use of DTLS 1.2 and this
 specification consequently uses TLS 1.2 <xref target="RFC5246"/>. CoAP MUST NOT be
 used with older versions of TLS. Guidelines for use of cipher suites
 and TLS extensions can be found in <xref target="I-D.ietf-dice-profile"/>.</t>
-
-<t>When CoAP is exchanged over TLS port 443 then the “TLS Application
-Layer Protocol Negotiation Extension”
-<xref target="RFC7301"/> MUST be used to allow demultiplexing
-at the server-side unless out-of-band information ensures that the
-client only interacts with a server that is able to demultiplex CoAP
-messages over port 443. This would, for example, be true for many
-Internet of Things deployments where clients are pre-configured to
-only ever talk with specific servers.</t>
-
-<t>When CoAP over TLS is used then the shim header that includes the
-length information is redundant since the TLS protocol headers already
-include length information. As such, the shim header MUST be omitted
-when CoAP messages are carried over TLS.</t>
 
 </section>
 <section anchor="iana" title="IANA Considerations">
@@ -653,6 +664,30 @@ Szymon Sasin for their feedback.</t>
 <seriesInfo name='STD' value='6' />
 <seriesInfo name='RFC' value='768' />
 <format type='TXT' octets='5896' target='http://www.rfc-editor.org/rfc/rfc768.txt' />
+</reference>
+
+
+
+<reference anchor='RFC1122'>
+
+<front>
+<title>Requirements for Internet Hosts - Communication Layers</title>
+<author initials='R.' surname='Braden' fullname='Robert Braden'>
+<organization>University of Southern California (USC)/ Information Sciences Institute (ISI)</organization>
+<address>
+<postal>
+<street>4676 Admiralty Way</street>
+<city>Marina del Rey</city>
+<region>CA</region>
+<code>90292-6695</code>
+<country>US</country></postal>
+<phone>+1 213 822 1511</phone>
+<email>Braden@ISI.EDU</email></address></author>
+<date year='1989' month='October' /></front>
+
+<seriesInfo name='STD' value='3' />
+<seriesInfo name='RFC' value='1122' />
+<format type='TXT' octets='295992' target='http://www.rfc-editor.org/rfc/rfc1122.txt' />
 </reference>
 
 
