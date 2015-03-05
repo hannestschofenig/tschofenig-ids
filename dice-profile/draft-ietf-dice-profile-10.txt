@@ -78,7 +78,7 @@ Table of Contents
      6.2.  Raw Public Key  . . . . . . . . . . . . . . . . . . . . .  20
      6.3.  Certificates  . . . . . . . . . . . . . . . . . . . . . .  22
    7.  Signature Algorithm Extension . . . . . . . . . . . . . . . .  26
-   8.  Error Handling  . . . . . . . . . . . . . . . . . . . . . . .  26
+   8.  Error Handling  . . . . . . . . . . . . . . . . . . . . . . .  27
    9.  Session Resumption  . . . . . . . . . . . . . . . . . . . . .  28
    10. Compression . . . . . . . . . . . . . . . . . . . . . . . . .  29
    11. Perfect Forward Secrecy . . . . . . . . . . . . . . . . . . .  29
@@ -1316,28 +1316,28 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    Table 1 provides a summary of the elements in a certificate for use
    with this profile.
 
-   +---------------+---------------------------------------------------+
-   |    Element    |                       Notes                       |
-   +---------------+---------------------------------------------------+
-   |    Version    |    This profile uses the  X.509 v3 certificate    |
-   |               |                     [RFC5280].                    |
-   |               |                                                   |
-   | Serial Number |      Positive integer unique per certificate.     |
-   |               |                                                   |
-   |     Issuer    |  This profile uses ecdsa-with-SHA256 or stronger  |
-   |   Signature   |                     [RFC5758].                    |
-   |   Algorithms  |                                                   |
-   |               |                                                   |
-   |     Issuer    |         Contains the DN of the issuing CA.        |
-   | Distinguished |                                                   |
-   |      Name     |                                                   |
-   |               |                                                   |
-   |    Validity   |  Values expressed as UTC time. No validity period |
-   |     Period    |                     mandated.                     |
-   |               |                                                   |
-   |    Subject    |        See rules outlined in this section.        |
-   | Distinguished |                                                   |
-   |      Name     |                                                   |
+   +----------------------+--------------------------------------------+
+   |       Element        |                   Notes                    |
+   +----------------------+--------------------------------------------+
+   |       version        |  This profile uses X.509 v3 certificates   |
+   |                      |                 [RFC5280].                 |
+   |                      |                                            |
+   |     serialNumber     |  Positive integer unique per certificate.  |
+   |                      |                                            |
+   |      signature       |     This field contains the signature      |
+   |                      |   algorithm and this profile uses ecdsa-   |
+   |                      |     with-SHA256 or stronger [RFC5758].     |
+   |                      |                                            |
+   |        issuer        |     Contains the DN of the issuing CA.     |
+   |                      |                                            |
+   |       validity       | Values expressed as UTC time in notBefore  |
+   |                      |  and notAfter fields. No validity period   |
+   |                      |                 mandated.                  |
+   |                      |                                            |
+   |       subject        |    See rules outlined in this section.     |
+   |                      |                                            |
+   | subjectPublicKeyInfo |     The SubjectPublicKeyInfo structure     |
+   |                      | indicates the algorithm and any associated |
 
 
 
@@ -1346,36 +1346,44 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 24]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
-   |               |                                                   |
-   |    Subject    |     This element contains the ECDSA signature     |
-   |   Public Key  |      certificate. The algorithm field in the      |
-   |  Information  |    SubjectPublicKeyInfo structure indicates the   |
-   |               |  algorithm and any associated parameters for the  |
-   |               |     ECC public key. This profile uses the id-     |
-   |               |         ecPublicKey algorithm identifier.         |
-   |               |                                                   |
-   |    Issuer's   |   Includes the ECDSA signature with ecdsa-with-   |
-   |   Signature   |                SHA256 or stronger.                |
-   |               |                                                   |
-   |   Extension:  |        See rules outlined in this section.        |
-   |    Subject    |                                                   |
-   |  Alternative  |                                                   |
-   |      Name     |                                                   |
-   |               |                                                   |
-   |   Extension:  |  Indicates whether the subject of the certificate |
-   |     Basic     | is a CA. This extension is used for CA certs only |
-   |  Constraints  | and then the value is set to TRUE. The default is |
-   |               |                       FALSE.                      |
-   |               |                                                   |
-   |   Extension:  | digitalSignature or keyAgreement, keyCertSign for |
-   |   Key Usage   |  verifying signatures on public key certificates. |
-   |               |                                                   |
-   |   Extension:  |  id-kp-serverAuth for server authentication, id-  |
-   |  Extended Key |  kp-clientAuth for client authentication, id-kp-  |
-   |     Usage     | codeSigning for code signing (for software update |
-   |               |   mechanism), id-kp-OCSPSigning for future OCSP   |
-   |               |                   usage in TLS.                   |
-   +---------------+---------------------------------------------------+
+   |                      |   parameters for the ECC public key.This   |
+   |                      | profile uses the id-ecPublicKey algorithm  |
+   |                      |  identifier for ECDSA signature keys, as   |
+   |                      |     defined in specified in [RFC5480].     |
+   |                      |                                            |
+   |  signatureAlgorithm  | The ECDSA signature algorithm with ecdsa-  |
+   |                      |          with-SHA256 or stronger.          |
+   |                      |                                            |
+   |    signatureValue    |     Bit string containing the digital      |
+   |                      |                 signature.                 |
+   |                      |                                            |
+   |      Extension:      |    See rules outlined in this section.     |
+   |    subjectAltName    |                                            |
+   |                      |                                            |
+   |      Extension:      |    Indicates whether the subject of the    |
+   |   BasicConstraints   |  certificate is a Certification Authority  |
+   |                      |    (CA) and the maximum depth of valid     |
+   |                      |   certification paths that include this    |
+   |                      | certificate. This extension is used for CA |
+   |                      | certs only and then the value of the 'cA'  |
+   |                      |    field is set to TRUE. The default is    |
+   |                      |                   FALSE.                   |
+   |                      |                                            |
+   | Extension: Key Usage | The KeyUsage field MAY have the following  |
+   |                      |   values in the context of this profile:   |
+   |                      |     digitalSignature or keyAgreement,      |
+   |                      |  keyCertSign for verifying signatures on   |
+   |                      |          public key certificates.          |
+   |                      |                                            |
+   | Extension: Extended  |  The ExtKeyUsageSyntax field MAY have the  |
+   |      Key Usage       |    following values in context of this     |
+   |                      |    profile: id-kp-serverAuth for server    |
+   |                      |    authentication, id-kp-clientAuth for    |
+   |                      |  client authentication, id-kp-codeSigning  |
+   |                      |   for code signing (for software update    |
+   |                      |  mechanism), id-kp-OCSPSigning for future  |
+   |                      |             OCSP usage in TLS.             |
+   +----------------------+--------------------------------------------+
 
                        Table 1: Certificate Content.
 
@@ -1387,20 +1395,19 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8 and follow the guidance from this
    section.
 
-6.3.1.  Client Certificate URLs
-
-   RFC 6066 [RFC6066] allows to avoid sending client-side certificates
-   and uses URLs instead.  This reduces the over-the-air transmission.
-   Note that the TLS cached info extension does not provide any help
-   with caching client certificates.
-
-
 
 
 Tschofenig & Fossati    Expires September 6, 2015              [Page 25]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+6.3.1.  Client Certificate URLs
+
+   RFC 6066 [RFC6066] allows to avoid sending client-side certificates
+   and uses URLs instead.  This reduces the over-the-air transmission.
+   Note that the TLS cached info extension does not provide any help
+   with caching client certificates.
 
    TLS/DTLS clients MUST implement support for client certificate URLs
    for those environments where client-side certificates are used and
@@ -1443,13 +1450,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    The "signature_algorithms" extension is not applicable to the PSK-
    based ciphersuite described in Section 6.1.
 
-8.  Error Handling
-
-   TLS/DTLS uses the Alert protocol to convey error messages and
-   specifies a longer list of errors.  However, not all error messages
-   defined in the TLS/DTLS specification are applicable to this profile.
-   In general, there are two categories of errors (as defined in
-   Section 7.2 of RFC 5246), namely fatal errors and warnings.  Alert
 
 
 
@@ -1458,6 +1458,13 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 26]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+8.  Error Handling
+
+   TLS/DTLS uses the Alert protocol to convey error messages and
+   specifies a longer list of errors.  However, not all error messages
+   defined in the TLS/DTLS specification are applicable to this profile.
+   In general, there are two categories of errors (as defined in
+   Section 7.2 of RFC 5246), namely fatal errors and warnings.  Alert
    messages with a level of fatal result in the immediate termination of
    the connection.  If possible, developers should try to develop
    strategies to react to those fatal errors, such as re-starting the
@@ -1499,13 +1506,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    ciphersuites.  As stated in Section 2 of RFC 4279 the
    decryption_error error message may also be used instead.  For this
    profile the TLS server MUST return the decryption_error error message
-   instead of the unknown_psk_identity since the two mechanisms exist
-   and provide the same functionality.
-
-   Furthermore, the following errors should not occur with devices and
-   servers supporting this specification but implementations MUST be
-   prepared to process these errors to deal with servers that are not
-   compliant to the profiles in this document:
 
 
 
@@ -1513,6 +1513,14 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 27]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   instead of the unknown_psk_identity since the two mechanisms exist
+   and provide the same functionality.
+
+   Furthermore, the following errors should not occur with devices and
+   servers supporting this specification but implementations MUST be
+   prepared to process these errors to deal with servers that are not
+   compliant to the profiles in this document:
 
    protocol_version:  While this document focuses only on one version of
       the TLS/DTLS protocol, namely version 1.2, ongoing work on TLS/
@@ -1554,6 +1562,14 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    Constrained clients MUST implement session resumption to improve the
    performance of the handshake.  This will lead to a reduced number of
    message exchanges, lower computational overhead (since only symmetric
+
+
+
+Tschofenig & Fossati    Expires September 6, 2015              [Page 28]
+
+Internet-Draft            TLS/DTLS IoT Profile                March 2015
+
+
    cryptography is used during a session resumption exchange), and
    session resumption requires less bandwidth.
 
@@ -1562,13 +1578,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    version of TLS/DTLS session resumption that does not require per-
    session state information to be maintained by the constrained server.
    This is accomplished by using a ticket-based approach.
-
-
-
-Tschofenig & Fossati    Expires September 6, 2015              [Page 28]
-
-Internet-Draft            TLS/DTLS IoT Profile                March 2015
-
 
    If both the client and the server are constrained devices both
    devices SHOULD implement RFC 5077 and MUST implement basic session
@@ -1609,15 +1618,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    compromise of long-term secrets of embedded devices is more likely
    than with many other Internet hosts but on the other hand a Diffie-
    Hellman exchange requires ephemeral key pairs to be generated, which
-   is demanding from a performance point of view.  For obvious
-   performance improvement, some implementations re-use key pairs over
-   multiple exchanges (rather than generating new keys for each
-   exchange).  However, note that such key re-use over long periods
-   voids the benefits of forward secrecy when an attack gains access to
-   this DH key pair.
-
-
-
 
 
 
@@ -1625,6 +1625,13 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 29]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   is demanding from a performance point of view.  For obvious
+   performance improvement, some implementations re-use key pairs over
+   multiple exchanges (rather than generating new keys for each
+   exchange).  However, note that such key re-use over long periods
+   voids the benefits of forward secrecy when an attack gains access to
+   this DH key pair.
 
    The impact of the disclosure of past conversations and the desire to
    increase the cost for pervasive monitoring (as demanded by [RFC7258])
@@ -1666,6 +1673,15 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
       temperature readings.  If neither NAT bindings nor IP address
       changes occurred then the record layer will not notice any
       changes.  For the case where the IP address and port number
+
+
+
+
+Tschofenig & Fossati    Expires September 6, 2015              [Page 30]
+
+Internet-Draft            TLS/DTLS IoT Profile                March 2015
+
+
       changes, it is necessary to re-create the record layer using
       session resumption.
 
@@ -1674,13 +1690,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
       between data transmissions to keep power consumption low.
 
    Server-Initiated Messages
-
-
-
-Tschofenig & Fossati    Expires September 6, 2015              [Page 30]
-
-Internet-Draft            TLS/DTLS IoT Profile                March 2015
-
 
       In the two previous scenarios the client initiated the protocol
       interaction but in this case we consider server-initiated
@@ -1721,15 +1730,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    sizes, such as 140 bytes without the optional segmentation and
    reassembly scheme known as Concatenated SMS, but show higher latency.
 
-   The DTLS handshake protocol adds a fragmentation and reassembly
-   mechanism to the TLS handshake protocol since each DTLS record must
-   fit within a single transport layer datagram, as described in
-   Section 4.2.3 of [RFC6347].  Since handshake messages are potentially
-   bigger than the maximum record size, the mechanism fragments a
-   handshake message over a number of DTLS records, each of which can be
-   transmitted separately.
-
-
 
 
 
@@ -1737,6 +1737,14 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 31]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   The DTLS handshake protocol adds a fragmentation and reassembly
+   mechanism to the TLS handshake protocol since each DTLS record must
+   fit within a single transport layer datagram, as described in
+   Section 4.2.3 of [RFC6347].  Since handshake messages are potentially
+   bigger than the maximum record size, the mechanism fragments a
+   handshake message over a number of DTLS records, each of which can be
+   transmitted separately.
 
    To deal with the unreliable message delivery provided by UDP, DTLS
    adds timeouts and re-transmissions, as described in Section 4.2.4 of
@@ -1779,14 +1787,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    movement of hard drive heads, etc.  Other sources have to be found or
    dedicated hardware has to be added.
 
-   The ClientHello and the ServerHello messages contains the 'Random'
-   structure, which has two components: gmt_unix_time and a random
-   sequence of 28 random bytes. gmt_unix_time holds the current time and
-   date in standard UNIX 32-bit format (seconds since the midnight
-   starting Jan 1, 1970, GMT).  [I-D.mathewson-no-gmtunixtime] argues
-   that the entire ClientHello.Random value (including gmt_unix_time)
-   should be set to a cryptographically random sequence because of
-
 
 
 Tschofenig & Fossati    Expires September 6, 2015              [Page 32]
@@ -1794,6 +1794,13 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 32]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+   The ClientHello and the ServerHello messages contains the 'Random'
+   structure, which has two components: gmt_unix_time and a random
+   sequence of 28 random bytes. gmt_unix_time holds the current time and
+   date in standard UNIX 32-bit format (seconds since the midnight
+   starting Jan 1, 1970, GMT).  [I-D.mathewson-no-gmtunixtime] argues
+   that the entire ClientHello.Random value (including gmt_unix_time)
+   should be set to a cryptographically random sequence because of
    privacy concerns regarding device fingerprinting.  Since many IoT
    devices do not have access to an accurate clock, it is RECOMMENDED to
    follow the guidance outlined in [I-D.mathewson-no-gmtunixtime]
@@ -1835,13 +1842,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    modes of operation where the MAC and the encryption operation was
    performed independently.
 
-   The recommended ciphersuites in this document use the newer
-   Authenticated Encryption with Associated Data (AEAD) construct,
-   namely the CBC-MAC mode (CCM) with eight-octet authentication tags,
-   and are therefore not appliable to the truncated MAC extension.
-
-   RFC 7366 [RFC7366] introduced the encrypt-then-MAC extension (instead
-   of the previously used MAC-then-encrypt) since the MAC-then-encrypt
 
 
 
@@ -1850,6 +1850,13 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 33]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+   The recommended ciphersuites in this document use the newer
+   Authenticated Encryption with Associated Data (AEAD) construct,
+   namely the CBC-MAC mode (CCM) with eight-octet authentication tags,
+   and are therefore not appliable to the truncated MAC extension.
+
+   RFC 7366 [RFC7366] introduced the encrypt-then-MAC extension (instead
+   of the previously used MAC-then-encrypt) since the MAC-then-encrypt
    mechanism has been the subject of a number of security
    vulnerabilities.  RFC 7366 is, however, also not applicable to the
    AEAD ciphers recommended in this document.
@@ -1891,13 +1898,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    client and server random values.  The algorithm for computing the
    master secret is defined in Section 8.1 of RFC 5246 but only includes
    a small number of parameters exchanged during the handshake and does
-   not include parameters like the client and server identities.  This
-   can be utilized by an attacker to mount a man-in-the-middle attack
-   since the master secret is not guaranteed to be unique across
-   sessions, as discovered in the 'Triple Handshake' attack [Triple-HS].
-
-
-
 
 
 
@@ -1905,6 +1905,11 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 34]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   not include parameters like the client and server identities.  This
+   can be utilized by an attacker to mount a man-in-the-middle attack
+   since the master secret is not guaranteed to be unique across
+   sessions, as discovered in the 'Triple Handshake' attack [Triple-HS].
 
    [I-D.ietf-tls-session-hash] defines a TLS extension that binds the
    master secret to a log of the full handshake that computes it, thus
@@ -1949,11 +1954,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    middlebox) breaks the handshake when it sees a ClientHello.version
    higher than what it knows about.  This is the behaviour that leads
    some clients to re-run the handshake with lower version.  As a
-   result, a potential security vulnerability is introduced when a
-   system is running an old TLS/SSL version (e.g., because of the need
-   to integrate with legacy systems).  In the worst case, this allows an
-   attacker to downgrade the protocol handshake to SSL 3.0.  SSL 3.0 is
-
 
 
 
@@ -1962,6 +1962,10 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 35]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+   result, a potential security vulnerability is introduced when a
+   system is running an old TLS/SSL version (e.g., because of the need
+   to integrate with legacy systems).  In the worst case, this allows an
+   attacker to downgrade the protocol handshake to SSL 3.0.  SSL 3.0 is
    so broken that there is no secure cipher available for it (see
    [I-D.ietf-tls-sslv3-diediedie]).
 
@@ -2006,10 +2010,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
    o  Make any AES hardware-based crypto implementation accessible to
       developers working on security implementations at higher layers.
-      Sometimes hardware implementatios are added to microcontrollers to
-      offer support for functionality needed at the link layer and are
-      only available to the on-chip link layer protocol implementation.
-
 
 
 
@@ -2017,6 +2017,10 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 36]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+      Sometimes hardware implementatios are added to microcontrollers to
+      offer support for functionality needed at the link layer and are
+      only available to the on-chip link layer protocol implementation.
 
    o  Provide flexibility for the use of the crypto function with future
       extensibility in mind.  For example, making an AES-CCM
@@ -2062,10 +2066,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    Information Security Agency (ENISA).  The authors of
    [ENISA-Report2013] add that a 80-bit symmetric key is sufficient for
    legacy applications for the coming years, but a 128-bit symmetric key
-   is the minimum requirement for new systems being deployed.  The
-   authors further note that one needs to also take into account the
-   length of time data needs to be kept secure for.  The use of 80-bit
-   symmetric keys for transactional data may be acceptable for the near
 
 
 
@@ -2074,6 +2074,10 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 37]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+   is the minimum requirement for new systems being deployed.  The
+   authors further note that one needs to also take into account the
+   length of time data needs to be kept secure for.  The use of 80-bit
+   symmetric keys for transactional data may be acceptable for the near
    future while one has to insist on 128-bit symmetric keys for long
    lived data.
 
@@ -2117,10 +2121,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
    o  Key exchange methods, such as ECDHE_ECDSA
 
-   Based on the improvement over a full roundtrip for the full TLS/DTLS
-   exchange this specification RECOMMENDS the use of the False Start
-   mechanism when clients send application data first.
-
 
 
 
@@ -2129,6 +2129,10 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 38]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   Based on the improvement over a full roundtrip for the full TLS/DTLS
+   exchange this specification RECOMMENDS the use of the False Start
+   mechanism when clients send application data first.
 
 24.  Privacy Considerations
 
@@ -2174,10 +2178,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    functionality can be enhanced and that potential vulnerabilities can
    be fixed.  This software update mechanism is important for changing
    configuration information, for example, trust anchors and other
-   keying related information.  Such a suitable software update
-   mechanism is available with the Lightweight Machine-to-Machine
-   (LWM2M) protocol published by the Open Mobile Alliance (OMA) [LWM2M].
-
 
 
 
@@ -2185,6 +2185,10 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 39]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   keying related information.  Such a suitable software update
+   mechanism is available with the Lightweight Machine-to-Machine
+   (LWM2M) protocol published by the Open Mobile Alliance (OMA) [LWM2M].
 
 26.  IANA Considerations
 
@@ -2195,9 +2199,9 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    Thanks to Olaf Bergmann, Paul Bakker, Robert Cragie, Russ Housley,
    Rene Hummen, Matthias Kovatsch, Sandeep Kumar, Sye Loong Keoh, Alexey
    Melnikov, Manuel Pegourie-Gonnard, Akbar Rahman, Eric Rescorla,
-   Michael Richardson, Zach Shelby, Michael StJohns, Rene Struik, and
-   Sean Turner for their helpful comments and discussions that have
-   shaped the document.
+   Michael Richardson, Ludwig Seitz, Zach Shelby, Michael StJohns, Rene
+   Struik, and Sean Turner for their helpful comments and discussions
+   that have shaped the document.
 
    Big thanks also to Klaus Hartke, who wrote the initial version of
    this document.
@@ -2231,16 +2235,15 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
               Hash and Extended Master Secret Extension", draft-ietf-
               tls-session-hash-03 (work in progress), November 2014.
 
-   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", BCP 14, RFC 2119, March 1997.
-
-
 
 
 Tschofenig & Fossati    Expires September 6, 2015              [Page 40]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
 
    [RFC4279]  Eronen, P. and H. Tschofenig, "Pre-Shared Key Ciphersuites
               for Transport Layer Security (TLS)", RFC 4279, December
@@ -2286,9 +2289,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    [ACE-WG]   IETF, "Authentication and Authorization for Constrained
               Environments (ace) Working Group", URL:
               https://datatracker.ietf.org/wg/ace/charter/, Jan 2015.
-
-
-
 
 
 
@@ -2501,6 +2501,10 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
               Counter Mode (GCM) Cipher Suites for TLS", RFC 5288,
               August 2008.
 
+   [RFC5480]  Turner, S., Brown, D., Yiu, K., Housley, R., and T. Polk,
+              "Elliptic Curve Cryptography Subject Public Key
+              Information", RFC 5480, March 2009.
+
    [RFC5758]  Dang, Q., Santesson, S., Moriarty, K., Brown, D., and T.
               Polk, "Internet X.509 Public Key Infrastructure:
               Additional Algorithms and Identifiers for DSA and ECDSA",
@@ -2509,11 +2513,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    [RFC5934]  Housley, R., Ashmore, S., and C. Wallace, "Trust Anchor
               Management Protocol (TAMP)", RFC 5934, August 2010.
 
-   [RFC6090]  McGrew, D., Igoe, K., and M. Salter, "Fundamental Elliptic
-              Curve Cryptography Algorithms", RFC 6090, February 2011.
 
-   [RFC6655]  McGrew, D. and D. Bailey, "AES-CCM Cipher Suites for
-              Transport Layer Security (TLS)", RFC 6655, July 2012.
 
 
 
@@ -2521,6 +2521,12 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 45]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   [RFC6090]  McGrew, D., Igoe, K., and M. Salter, "Fundamental Elliptic
+              Curve Cryptography Algorithms", RFC 6090, February 2011.
+
+   [RFC6655]  McGrew, D. and D. Bailey, "AES-CCM Cipher Suites for
+              Transport Layer Security (TLS)", RFC 6655, July 2012.
 
    [RFC6690]  Shelby, Z., "Constrained RESTful Environments (CoRE) Link
               Format", RFC 6690, August 2012.
@@ -2564,12 +2570,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
               http://csrc.nist.gov/publications/nistpubs/800-22-rev1a/
               SP800-22rev1a.pdf, April 2010.
 
-   [SP800-90A]
-              NIST, "DRAFT Special Publication 800-90a, Revision 1,
-              Recommendation for Random Number Generation Using
-              Deterministic Random Bit Generators",
-              http://csrc.nist.gov/publications/drafts/800-90/
-              sp800-90a_r1_draft_november2014_ver.pdf, November 2014.
 
 
 
@@ -2577,6 +2577,13 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 46]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   [SP800-90A]
+              NIST, "DRAFT Special Publication 800-90a, Revision 1,
+              Recommendation for Random Number Generation Using
+              Deterministic Random Bit Generators",
+              http://csrc.nist.gov/publications/drafts/800-90/
+              sp800-90a_r1_draft_november2014_ver.pdf, November 2014.
 
    [Triple-HS]
               Bhargavan, K., Delignat-Lavaud, C., Pironti, A., and P.
@@ -2619,13 +2626,6 @@ A.1.  Overview
    circumvented, the Concatenated short messages mechanism SHOULD NOT be
    used during handshake to avoid redundant overhead.  Before starting
    the handshake phase (either actively or passively), the DTLS
-   implementation MUST be explicitly configured with the PMTU of the SMS
-   transport in order to correctly instrument its SaR function.  The
-   PMTU SHALL be 133 bytes if WDP-based multiplexing is used (see
-   Appendix A.3), 140 bytes otherwise.
-
-   It is RECOMMENDED to use the established security context over the
-   longest possible period (possibly until a Closure Alert message is
 
 
 
@@ -2634,6 +2634,13 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 47]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+   implementation MUST be explicitly configured with the PMTU of the SMS
+   transport in order to correctly instrument its SaR function.  The
+   PMTU SHALL be 133 bytes if WDP-based multiplexing is used (see
+   Appendix A.3), 140 bytes otherwise.
+
+   It is RECOMMENDED to use the established security context over the
+   longest possible period (possibly until a Closure Alert message is
    received, or after a very long inactivity timeout) to avoid the
    expensive re-establishment of the security association.
 
@@ -2676,19 +2683,19 @@ A.3.  Multiplexing Security Associations
    associations on the same endpoint which, when using UDP/IP, is
    usually done with the host/port number.
 
-   If the DTLS server allows more than one client to be active at any
-   given time, then the WAP User Datagram Protocol [WAP-WDP] can be used
-   to achieve multiplexing of the different security associations.  (The
-   use of WDP provides the additional benefit that upper layer protocols
-   can operate independently of the underlying wireless network, hence
-   achieving application-agnostic transport handover.)
-
 
 
 Tschofenig & Fossati    Expires September 6, 2015              [Page 48]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   If the DTLS server allows more than one client to be active at any
+   given time, then the WAP User Datagram Protocol [WAP-WDP] can be used
+   to achieve multiplexing of the different security associations.  (The
+   use of WDP provides the additional benefit that upper layer protocols
+   can operate independently of the underlying wireless network, hence
+   achieving application-agnostic transport handover.)
 
    The total overhead cost for encoding the WDP source and destination
    ports is 7 bytes out of the total available for the SMS content.
@@ -2732,19 +2739,18 @@ Appendix B.  DTLS Record Layer Per-Packet Overhead
 
       Figure 12: AES-128-CCM-8 DTLS Record Layer Per-Packet Overhead.
 
-   The DTLS record layer header has 13 octets and consists of
-
-   o  1 octet content type field,
-
-   o  2 octet version field,
-
-
 
 
 Tschofenig & Fossati    Expires September 6, 2015              [Page 49]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   The DTLS record layer header has 13 octets and consists of
+
+   o  1 octet content type field,
+
+   o  2 octet version field,
 
    o  2 octet epoch field,
 
@@ -2788,12 +2794,6 @@ Appendix C.  DTLS Fragmentation
    is carried over a narrow-band radio technology, such as IEEE 802.15.4
    or GSM-SMS, and the client is lacking reliable PMTU data to inform
    fragmentation (e.g., using [RFC1981] or [RFC1191]) can put a cost on
-   the constrained implementation in terms of memory (due to re-
-   buffering) and latency (due to re-transmission) much higher than the
-   benefit that it would get from a shorter handshake.
-
-
-
 
 
 
@@ -2801,6 +2801,10 @@ Tschofenig & Fossati    Expires September 6, 2015              [Page 50]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+   the constrained implementation in terms of memory (due to re-
+   buffering) and latency (due to re-transmission) much higher than the
+   benefit that it would get from a shorter handshake.
 
    In order to reduce the likelihood of producing different fragment
    sizes (and consequent overlaps) within the same handshake, this
@@ -2833,10 +2837,6 @@ Authors' Addresses
    UK
 
    Email: thomas.fossati@alcatel-lucent.com
-
-
-
-
 
 
 
