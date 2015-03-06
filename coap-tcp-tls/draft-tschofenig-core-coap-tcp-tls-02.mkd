@@ -67,6 +67,7 @@ informative:
   RFC1122: std3
   RFC6347: dtls
   RFC6335: portreg
+  I-D.ietf-core-block: block
 
 --- abstract
 
@@ -75,6 +76,7 @@ transport protocol. The Constrained Application Protocol (CoAP), which has
 been inspired by HTTP, has on the other hand been defined to make use of
 UDP. Therefore, reliable delivery and a simple congestion control and flow control mechanism
 are provided by the message layer of the CoAP protocol.
+
 A number of environments benefit from the use of CoAP directly over a
 reliable byte stream that already provides these services.
 This document defines the use of CoAP over TCP as well as CoAP over TLS.
@@ -98,8 +100,10 @@ any specific application layer entities, such as proxies or caches).
 Having IP as the waist means that anyone can extend the layers above
 the network layer in the way they want to communicate end-to-end,
 including defining new transport layer protocols (as it was done with
-SCTP, and DCCP).
-<!-- Need references for those?  Why all this verbiage anyway? -->
+SCTP {{?RFC4960}}, and DCCP {{?RFC4340}})[^3].
+
+[^3]: Do we really need all this verbiage?
+{: source="cabo"}
 
 Unfortunately, some network deployments depart from this architecture.
 The [Constrained Application Protocol (CoAP)](#RFC7252) was designed
@@ -113,10 +117,11 @@ protocols may not be well-received or even supported by firewalls.
 Middleboxes that are unaware of the IoT can make the use of UDP
 brittle.
 
-Also, some environments benefit from the more advanced congestion
+As a separate consideration, some environments benefit from the more advanced congestion
 control and flow control capabilities provided by TCP.  For instance,
 CoAP back-end processors in a cloud environment may want to connect
-between each other via TCP instead of UDP.
+between each other via TCP instead of UDP; a TCP-to-UDP gateway can be
+used at the cloud boundary to talk to the UDP-based IoT.
 
 To make both IoT devices and their associated back-end processors work
 smoothly in these demanding environments, CoAP needs
@@ -174,7 +179,11 @@ acknowledgement at the CoAP messaging layer.
 Hence, the only message type supported when using CoAP over TCP is
 the Non-confirmable message (NON).  By nature of TCP, a NON over TCP is still transmitted
 reliably. {{NON}} (derived from {{RFC7252}}, Figure 3) shows this
-message exchange graphically.
+message exchange graphically.  A UDP-to-TCP gateway will therefore discard all
+empty messages such as empty ACKs (after operating on them at the
+message layer) and re-pack the contents of all non-empty CON, NON, or
+ACK messages (i.e., those ACK messages that have a piggy-backed
+response) into NON messages.
 
 Similarly, there is no need to detect duplicate delivery of a message.
 In UDP CoAP, the Message ID is used for relating acknowledgements to
@@ -269,19 +278,45 @@ bytes.  T is always the code for NON (1).  The Message ID is
 meaningless and thus elided.  The semantics of the other CoAP header
 fields is left unchanged.
 
-When CoAP is used over TLS then each CoAP message is transported in a
-separate TLS record layer message, making the shim header that includes the
-length information redundant.  As such, the two-byte shim header MUST be omitted
-when CoAP messages are carried over TLS.[^2]
+## Discussion
 
-[^2]: Hmm, how does that work in real-life implementations.
+One might wish that,
+when CoAP is used over TLS, then the TLS record layer length field
+could be used in place of the shim header length.  Each CoAP message would be transported in a
+separate TLS record layer message, making the shim header that includes the
+length information redundant.
+
+However,
     RFC 5246 says: »Client
    message boundaries are not preserved in the record layer (i.e.,
    multiple client messages of the same ContentType MAY be coalesced
    into a single TLSPlaintext record, or a single message MAY be
-   fragmented across several records).«
-    Also, is this really efficient?  This means we get a MAC per CoAP message.
-{:cabo}
+   fragmented across several records).«, and TLS implementations
+   typically do not support an interface that would provide access to
+   the record layer delimiting information.
+An additional problem with this approach is that this approach would remove the
+potential optimization of packing several CoAP messages into one
+record layer message, which is normally a way to amortize the record layer and MAC overhead
+over all these messages.
+
+In summary, we are not pursuing this idea for an optimization.
+
+One other observation is that the message size limitations defined in
+Section 4.6 of {{RFC7252}} are no longer strictly necessary.
+Consenting [how?] implementations may want to interchange messages
+with payload sizes than 1024 bytes, potentially also obviating the
+need for the Block protocol {{-block}}.  It must be noted that
+entirely getting rid of the block protocol is
+not a generally applicable solution, as:
+
+* a UDP-to-TCP gateway may simply not have the context to convert a
+  message with a Block option into the equivalent exchange without any
+  use of a Block option.
+* large messages might also cause undesired head-of-line blocking.
+
+The general assumption is therefore that the block protocol will
+continue to be used over TCP, even if applications occasionally do
+exchange messages with payload sizes larger than desirable in UDP.
 
 # CoAP URI {#URI}
 
@@ -300,7 +335,7 @@ schemes defined in the present specification.
    have no shared identity with the other scheme or with the "coap" or
    "coaps" scheme, even if their resource identifiers indicate the
    same authority (the same host listening to the same port).
-   The schemes constiture distinct namespaces and, in combination with
+   The schemes constitute distinct namespaces and, in combination with
    the authority, are considered to be distinct
    origin servers.
 
