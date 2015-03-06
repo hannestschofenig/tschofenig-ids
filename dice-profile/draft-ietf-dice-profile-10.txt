@@ -15,14 +15,17 @@ Expires: September 7, 2015                                Alcatel-Lucent
 Abstract
 
    A common design pattern in Internet of Things (IoT) deployments is
-   the use of a constrained device (typically providing sensor data)
-   that makes data available for home automation, industrial control
+   the use of a constrained device that collects data via sensor or
+   controls actuators for use in home automation, industrial control
    systems, smart cities and other IoT deployments.
 
    This document defines a Transport Layer Security (TLS) and Datagram
-   TLS 1.2 profile that offers communications security for this data
-   exchange thereby preventing eavesdropping, tampering, and message
-   forgery.
+   TLS (DTLS) 1.2 profile that offers communications security for this
+   data exchange thereby preventing eavesdropping, tampering, and
+   message forgery.  The lack of communication security is a common
+   vulnerability in Internet of Things products that can easily be
+   solved by using these well-researched and widely deployed Internet
+   security protocols.
 
 Status of This Memo
 
@@ -46,10 +49,7 @@ Copyright Notice
    Copyright (c) 2015 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
-   This document is subject to BCP 78 and the IETF Trust's Legal
-   Provisions Relating to IETF Documents
-   (http://trustee.ietf.org/license-info) in effect on the date of
-   publication of this document.  Please review these documents
+
 
 
 
@@ -58,6 +58,10 @@ Tschofenig & Fossati    Expires September 7, 2015               [Page 1]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
    carefully, as they describe your rights and restrictions with respect
    to this document.  Code Components extracted from this document must
    include Simplified BSD License text as described in Section 4.e of
@@ -67,10 +71,10 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
 Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
-   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
    3.  TLS/DTLS Protocol Overview  . . . . . . . . . . . . . . . . .   4
    4.  Communication Models  . . . . . . . . . . . . . . . . . . . .   5
-     4.1.  Constrained TLS/DTLS Clients  . . . . . . . . . . . . . .   5
+     4.1.  Constrained TLS/DTLS Clients  . . . . . . . . . . . . . .   6
      4.2.  Constrained TLS/DTLS Servers  . . . . . . . . . . . . . .  13
    5.  The Ciphersuite Concept . . . . . . . . . . . . . . . . . . .  18
    6.  Credential Types  . . . . . . . . . . . . . . . . . . . . . .  19
@@ -102,10 +106,6 @@ Table of Contents
      28.1.  Normative References . . . . . . . . . . . . . . . . . .  42
      28.2.  Informative References . . . . . . . . . . . . . . . . .  43
    Appendix A.  Conveying DTLS over SMS  . . . . . . . . . . . . . .  48
-     A.1.  Overview  . . . . . . . . . . . . . . . . . . . . . . . .  49
-     A.2.  Message Segmentation and Re-Assembly  . . . . . . . . . .  49
-     A.3.  Multiplexing Security Associations  . . . . . . . . . . .  50
-     A.4.  Timeout . . . . . . . . . . . . . . . . . . . . . . . . .  50
 
 
 
@@ -114,6 +114,10 @@ Tschofenig & Fossati    Expires September 7, 2015               [Page 2]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+     A.1.  Overview  . . . . . . . . . . . . . . . . . . . . . . . .  49
+     A.2.  Message Segmentation and Re-Assembly  . . . . . . . . . .  49
+     A.3.  Multiplexing Security Associations  . . . . . . . . . . .  50
+     A.4.  Timeout . . . . . . . . . . . . . . . . . . . . . . . . .  50
    Appendix B.  DTLS Record Layer Per-Packet Overhead  . . . . . . .  51
    Appendix C.  DTLS Fragmentation . . . . . . . . . . . . . . . . .  52
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  52
@@ -155,11 +159,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    however, also help those developing or selecting a suitable TLS/DTLS
    stack for an Internet of Things product development.
 
-2.  Terminology
 
-   The key words "MUST", "MUST NOT", "REQUIRED", "MUST", "MUST NOT",
-   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-   document are to be interpreted as described in [RFC2119].
 
 
 
@@ -169,6 +169,12 @@ Tschofenig & Fossati    Expires September 7, 2015               [Page 3]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "MUST", "MUST NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
 
    This specification refers to TLS as well as DTLS and particularly to
    version 1.2, which is the most recent version at the time of writing.
@@ -205,19 +211,13 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    The TLS protocol [RFC5246] provides authenticated, confidentiality-
    and integrity-protected communication between two endpoints.  The
    protocol is composed of two layers: the Record Protocol and the
-   Handshake Protocol.  At the lowest level, layered on top of a
+   Handshaking Protocols.  At the lowest level, layered on top of a
    reliable transport protocol (e.g., TCP), is the Record Protocol.  It
    provides connection security by using symmetric cryptography for
    confidentiality, data origin authentication, and integrity
    protection.  The Record Protocol is used for encapsulation of various
-   higher-level protocols.  One such encapsulated protocol, the
-   Handshake Protocol, allows the server and client to authenticate each
-   other and to negotiate an encryption algorithm and cryptographic keys
-   before the application protocol transmits or receives data.
-
-   The design of DTLS [RFC6347] is intentionally very similar to TLS.
-   Since DTLS operates on top of an unreliable datagram transport a few
-   enhancements to the TLS structure are, however necessary.  RFC 6347
+   higher-level protocols.  The handshaking protocols consist of three
+   sub-protocols, namely the handshake protocol, the change cipher spec
 
 
 
@@ -226,6 +226,14 @@ Tschofenig & Fossati    Expires September 7, 2015               [Page 4]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
+   protocol and the alert protocol.  The handshake protocol allows the
+   server and client to authenticate each other and to negotiate an
+   encryption algorithm and cryptographic keys before the application
+   protocol transmits or receives data.
+
+   The design of DTLS [RFC6347] is intentionally very similar to TLS.
+   Since DTLS operates on top of an unreliable datagram transport a few
+   enhancements to the TLS structure are, however necessary.  RFC 6347
    explains these differences in great detail.  As a short summary, for
    those not familiar with DTLS the differences are:
 
@@ -254,8 +262,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
       optional for the server to execute, a client implementation has to
       be prepared to respond to it.  Furthermore, the handshake message
       format has been extended to deal with message loss, reordering,
-      and fragmentation.  Retransmission timers have been included to
-      deal with message loss.
+      and fragmentation.
 
 4.  Communication Models
 
@@ -264,6 +271,16 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
    Two communication architectures (and consequently two profiles) are
    described in this document.
+
+
+
+
+
+
+Tschofenig & Fossati    Expires September 7, 2015               [Page 5]
+
+Internet-Draft            TLS/DTLS IoT Profile                March 2015
+
 
 4.1.  Constrained TLS/DTLS Clients
 
@@ -274,14 +291,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    Before a client can initiate the TLS/DTLS handshake it needs to know
    the IP address of that server and what credentials to use.
    Application layer protocols, such as CoAP, which is conveyed on top
-
-
-
-Tschofenig & Fossati    Expires September 7, 2015               [Page 5]
-
-Internet-Draft            TLS/DTLS IoT Profile                March 2015
-
-
    of DTLS, may be configured with URIs of the endpoints to which CoAP
    needs to register and publish data.  This configuration information
    (including credentials) may be conveyed to clients as part of a
@@ -304,15 +313,6 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    This document focuses on the description of the DTLS client-side
    functionality but, quite naturally, the equivalent server-side
    support has to be available.
-
-
-
-
-
-
-
-
-
 
 
 
@@ -496,8 +496,8 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    encapsulates it inside the EAP payload.  In terms of re-use this
    allows many components of the TLS protocol to be shared between the
    network access security functionality and the TLS functionality
-   needed for securing application layer traffic.  The EAP-TLS exchange
-   is shown in Figure 3 where it is worthwhile to point out that in EAP
+   needed for securing application layer traffic.  In the EAP-TLS
+
 
 
 
@@ -506,8 +506,8 @@ Tschofenig & Fossati    Expires September 7, 2015               [Page 9]
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
-   the client / server roles are reversed but with the use of EAP-TLS
-   the IoT device acts as a TLS client.
+   exchange shown in Figure 3 the IoT device as the EAP peer acts as a
+   TLS client.
 
 
       Authenticating Peer     Authenticator
@@ -574,7 +574,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    client on the IoT device that initiates the interaction with the non-
    constrained resource server in our scenario.
 
-   Figure 4 shows a sensor starting with a DTLS exchange with a resource
+   Figure 4 shows a sensor starting a DTLS exchange with a resource
    directory to register available resources.
    [I-D.ietf-core-resource-directory] defines the resource directory
    (RD) as a web entity that stores information about web resources and
@@ -843,7 +843,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 
      Configure Actuator (with authorization credentials)
-     --------------------------------------------------
+     ------------------------------------------------->
      PUT /fan?on-off=true
 
 
@@ -974,7 +974,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
       Algorithm (SHA) in combination with Keyed-Hashing for Message
       Authentication (HMAC) (see [RFC2104] and [RFC4634])
 
-   o  Hash algorithm for use with the pseudorandom function (e.g., HMAC
+   o  Hash algorithm for use with pseudorandom functions (e.g., HMAC
       with the SHA-256)
 
    o  Misc information (e.g., length of authentication tags)
@@ -1332,11 +1332,11 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    certificates are applicable since these constrained servers are less
    likely to have an FQDN configured.  Note that the Service Name
    Indication (SNI) extension cannot be used in this case since SNI does
-   not offer the ability to convey EUI-64 identifiers.
+   not offer the ability to convey EUI-64 [EUI64] identifiers.
 
    For client certificates the identifier used in the SubjectAltName or
-   in the leftmost CN component of subject name MUST be an EUI-64
-   [EUI64], as mandated in Section 9.1.3.3 of [RFC7252].
+   in the leftmost CN component of subject name MUST be an EUI-64, as
+   mandated in Section 9.1.3.3 of [RFC7252].
 
 
 
@@ -1516,10 +1516,10 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
 8.  Error Handling
 
-   TLS/DTLS uses the Alert protocol to convey error messages and
-   specifies a longer list of errors.  However, not all error messages
-   defined in the TLS/DTLS specification are applicable to this profile.
-   In general, there are two categories of errors (as defined in
+   TLS/DTLS uses the Alert protocol to convey errors and specifies a
+   long list of error types.  However, not all error messages defined in
+   the TLS/DTLS specification are applicable to this profile.  In
+   general, there are two categories of errors (as defined in
    Section 7.2 of RFC 5246), namely fatal errors and warnings.  Alert
    messages with a level of fatal result in the immediate termination of
    the connection.  If possible, developers should try to develop
@@ -1535,7 +1535,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    All error messages marked as RESERVED are only supported for
    backwards compatibility with SSL and are therefore not applicable to
    this profile.  Those include decryption_failed_RESERVED,
-   no_certificate_RESERVE, and export_restriction_RESERVED.
+   no_certificate_RESERVED, and export_restriction_RESERVED.
 
    A number of the error messages are applicable only for certificate-
    based authentication ciphersuites.  Hence, for PSK and raw public key
@@ -1857,7 +1857,7 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    ServerHello exchange the client and the server exchange random
    numbers.  Also, the use of the Diffie-Hellman exchange requires
    random numbers during the key pair generation.  Special care has to
-   be paid when generating random numbers in embedded systems as many
+   be taken when generating random numbers in embedded systems as many
    entropy sources available on desktop operating systems or mobile
    devices might be missing, as described in [Heninger].  Consequently,
    if not enough time is given during system start time to fill the
@@ -1871,33 +1871,33 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    dedicated hardware has to be added.
 
    The ClientHello and the ServerHello messages contains the 'Random'
-   structure, which has two components: gmt_unix_time and a random
-   sequence of 28 random bytes. gmt_unix_time holds the current time and
-   date in standard UNIX 32-bit format (seconds since the midnight
-   starting Jan 1, 1970, GMT).  [I-D.mathewson-no-gmtunixtime] argues
-   that the entire ClientHello.Random value (including gmt_unix_time)
-   should be set to a cryptographically random sequence because of
-   privacy concerns regarding device fingerprinting.  Since many IoT
-   devices do not have access to an accurate clock, it is RECOMMENDED to
-   follow the guidance outlined in [I-D.mathewson-no-gmtunixtime]
-   regarding the content of the ClientHello.Random field.  However, for
-   the ServerHello.Random structure it is RECOMMENDED to maintain the
-   existing structure with gmt_unix_time followed by a random sequence
-   of 28 random bytes since the client can use the received time
-   information to securely obtain time information.  For constrained
-   servers it cannot be assumed that they maintain accurate time
-   information; these devices MUST include time information in the
-   Server.Random structure when they actually obtain accurate time
-   information that can be utilized by clients.  Clients MUST only use
-   time information obtained from servers they trust and the use of this
-   approach has to be agreed out-of-band.
+   structure, which has two components: gmt_unix_time and a sequence of
+   28 random bytes. gmt_unix_time holds the current time and date in
+   standard UNIX 32-bit format (seconds since the midnight starting Jan
+   1, 1970, GMT).  [I-D.mathewson-no-gmtunixtime] argues that the entire
+   ClientHello.Random value (including gmt_unix_time) should be a
+   sequence of random bits because of device fingerprinting privacy
+   concerns.  Since many IoT devices do not have access to an accurate
+   clock, it is RECOMMENDED to follow the guidance outlined in
+   [I-D.mathewson-no-gmtunixtime] regarding the content of the
+   ClientHello.Random field.  However, for the ServerHello.Random
+   structure it is RECOMMENDED to maintain the existing structure with
+   gmt_unix_time followed by a sequence of 28 random bytes since the
+   client can use the received time information to securely obtain time
+   information.  For constrained servers it cannot be assumed that they
+   maintain accurate time information; these devices MUST include time
+   information in the Server.Random structure when they actually obtain
+   accurate time information that can be utilized by clients.  Clients
+   MUST only use time information obtained from servers they trust and
+   the use of this approach has to be agreed out-of-band.
 
    IoT devices using TLS/DTLS MUST offer ways to generate quality random
    numbers using hardware-based random number generators.  Note that
    these hardware-based random number generators do not necessarily need
    to be implemented inside the microcontroller itself but could be made
    available in dedicated crypto-chips as well.  Guidelines and
-
+   requirements for random number generation can be found in RFC 4086
+   [RFC4086] and in the NIST Special Publication 800-90a [SP800-90A].
 
 
 
@@ -1905,9 +1905,6 @@ Tschofenig & Fossati    Expires September 7, 2015              [Page 34]
 
 Internet-Draft            TLS/DTLS IoT Profile                March 2015
 
-
-   requirements for random number generation can be found in RFC 4086
-   [RFC4086] and in the NIST Special Publication 800-90a [SP800-90A].
 
    Chip manufacturers are highly encouraged to provide sufficient
    documentation of their design for random number generators so that
@@ -1953,6 +1950,9 @@ Internet-Draft            TLS/DTLS IoT Profile                March 2015
    This specification RECOMMENDs the implementation of the Server Name
    Indication extension unless it is known that a TLS/DTLS client does
    not interact with a server in a hosting environment.
+
+
+
 
 
 

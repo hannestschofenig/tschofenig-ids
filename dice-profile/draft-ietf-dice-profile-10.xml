@@ -120,13 +120,14 @@
     <abstract>
 
 <t>A common design pattern in Internet of Things (IoT) deployments is the use of a
-constrained device (typically providing sensor data) that makes data 
-available for home automation, industrial control systems, smart 
+constrained device that collects data via sensor or controls actuators for use in home automation, industrial control systems, smart 
 cities and other IoT deployments.</t>
 
-<t>This document defines a Transport Layer Security (TLS) and Datagram TLS 1.2 
+<t>This document defines a Transport Layer Security (TLS) and Datagram TLS (DTLS) 1.2 
 profile that offers communications security for this data exchange thereby 
-preventing eavesdropping, tampering, and message forgery.</t>
+preventing eavesdropping, tampering, and message forgery. The lack of communication 
+security is a common vulnerability in Internet of Things products that can easily 
+be solved by using these well-researched and widely deployed Internet security protocols.</t>
 
 
     </abstract>
@@ -228,14 +229,15 @@ or more applications."
 
 <section title="TLS/DTLS Protocol Overview"> 
 
-<t>The TLS protocol <xref target="RFC5246"/> provides authenticated, confidentiality- and integrity-protected communication between two endpoints. The protocol is composed of two layers: the Record Protocol and the Handshake Protocol. At the lowest level, layered on top of a reliable transport protocol (e.g., TCP), is the Record Protocol. It provides connection security by using symmetric cryptography for confidentiality, data origin authentication, and integrity protection. The Record Protocol is used for encapsulation of various higher-level protocols. One such encapsulated protocol, the Handshake Protocol, allows the server and client to authenticate each other and to negotiate an encryption algorithm and cryptographic keys before the application protocol transmits or receives data.</t>
+<t>The TLS protocol <xref target="RFC5246"/> provides authenticated, confidentiality- and integrity-protected communication between two endpoints. The protocol is composed of two layers: the Record Protocol and the Handshaking Protocols. At the lowest level, layered on top of a reliable transport protocol (e.g., TCP), is the Record Protocol. It provides connection security by using symmetric cryptography for confidentiality, data origin authentication, and integrity protection. The Record Protocol is used for encapsulation of various higher-level protocols. The handshaking protocols consist of three sub-protocols, namely the handshake protocol, the change cipher
+spec protocol and the alert protocol. The handshake protocol allows the server and client to authenticate each other and to negotiate an encryption algorithm and cryptographic keys before the application protocol transmits or receives data.</t>
     
 <t>The design of DTLS <xref target="RFC6347"/> is intentionally very similar to TLS. Since DTLS operates on top of an unreliable datagram transport a few enhancements to the TLS structure are, however necessary. RFC 6347 explains these differences in great detail. As a short summary, for those not familiar with DTLS the differences
    are:
    <list style="symbols"> 
       <t>An explicit sequence number and an epoch field is included in the Record Protocol. Section 4.1 of RFC 6347 explains the processing rules for these two new fields. The value used to compute the MAC is the 64-bit value formed by concatenating the epoch and the sequence number.  </t>
       <t>Stream ciphers must not be used with DTLS. The only stream cipher defined for TLS 1.2 is RC4 and due to cryptographic weaknesses it is not recommended anymore even for use with TLS <xref target="I-D.ietf-tls-prohibiting-rc4"/>. Note that the term 'stream cipher' is a technical term in the TLS specification. Section 4.7 of RFC 5246 defines stream ciphers in TLS as follows. In stream cipher encryption, the plaintext is exclusive-ORed with an identical amount of output generated from a cryptographically secure keyed pseudorandom number generator.</t> 
-      <t>The TLS Handshake Protocol has been enhanced to include a stateless cookie exchange for Denial of Service (DoS) resistance. For this purpose a new handshake message, the HelloVerifyRequest, was added to DTLS. This handshake message is sent by the server and includes a stateless cookie, which is returned in a ClientHello message back to the server. Although the exchange is optional for the server to execute, a client implementation has to be prepared to respond to it. Furthermore, the handshake message format has been extended to deal with message loss, reordering, and fragmentation. Retransmission timers have been included to deal with message loss. </t>
+      <t>The TLS Handshake Protocol has been enhanced to include a stateless cookie exchange for Denial of Service (DoS) resistance. For this purpose a new handshake message, the HelloVerifyRequest, was added to DTLS. This handshake message is sent by the server and includes a stateless cookie, which is returned in a ClientHello message back to the server. Although the exchange is optional for the server to execute, a client implementation has to be prepared to respond to it. Furthermore, the handshake message format has been extended to deal with message loss, reordering, and fragmentation. <!-- Retransmission timers have been included to deal with message loss.--> </t>
    </list>
 </t>
 
@@ -376,7 +378,7 @@ the equivalent server-side support has to be available. </t>
           </figure>
 	    </t>
 
-<t>One standardized EAP method is EAP-TLS, defined in RFC 5216 <xref target="RFC5216"/>, which re-uses the TLS-based protocol exchange and encapsulates it inside the EAP payload. In terms of re-use this allows many components of the TLS protocol to be shared between the network access security functionality and the TLS functionality needed for securing application layer traffic. The EAP-TLS exchange is shown in <xref target="eap-tls"/> where it is worthwhile to point out that in EAP the client / server roles are reversed but with the use of EAP-TLS the IoT device acts as a TLS client.</t>
+<t>One standardized EAP method is EAP-TLS, defined in RFC 5216 <xref target="RFC5216"/>, which re-uses the TLS-based protocol exchange and encapsulates it inside the EAP payload. In terms of re-use this allows many components of the TLS protocol to be shared between the network access security functionality and the TLS functionality needed for securing application layer traffic. In the EAP-TLS exchange shown in <xref target="eap-tls"/> the IoT device as the EAP peer acts as a TLS client.</t>
 	
 
 <t><figure title="EAP-TLS Exchange." anchor="eap-tls">
@@ -428,7 +430,7 @@ the equivalent server-side support has to be available. </t>
 
 <t>When a constrained client uploads sensor data to a server infrastructure it may use CoAP by pushing the data via a POST message to a pre-configured endpoint on the server. In certain circumstances this might be too limiting and additional functionality is needed, as shown in <xref target="coap-rd"/>, where the IoT device itself runs a CoAP server hosting the resource that is made accessible to other entities. Despite running a CoaP server on the IoT device it is still the DTLS client on the IoT device that initiates the interaction with the non-constrained resource server in our scenario. </t>
 
-<t><xref target="coap-rd"/> shows a sensor starting with a DTLS exchange with a resource directory to register available resources. <xref target="I-D.ietf-core-resource-directory"/> defines the resource directory (RD) as a web entity that stores information about web resources and implements Representational State Transfer (REST) interfaces for registration and lookup of those resources. Note that the described exchange is borrowed from the OMA Lightweight Machine-to-Machine (LWM2M) specification <xref target="LWM2M"/> that uses RD but adds proxy functionality.</t>
+<t><xref target="coap-rd"/> shows a sensor starting a DTLS exchange with a resource directory to register available resources. <xref target="I-D.ietf-core-resource-directory"/> defines the resource directory (RD) as a web entity that stores information about web resources and implements Representational State Transfer (REST) interfaces for registration and lookup of those resources. Note that the described exchange is borrowed from the OMA Lightweight Machine-to-Machine (LWM2M) specification <xref target="LWM2M"/> that uses RD but adds proxy functionality.</t>
 
 <t>The initial DTLS interaction between the sensor, acting as a DTLS client, and the resource directory, acting as a DTLS server, will be a full DTLS handshake. Once this handshake is complete both parties have established the DTLS record layer. Subsequently, the CoAP client can securely register at the resource directory.</t>
 
@@ -606,7 +608,7 @@ the equivalent server-side support has to be available. </t>
 
 
   Configure Actuator (with authorization credentials)
-  --------------------------------------------------
+  ------------------------------------------------->
   PUT /fan?on-off=true
 
 
@@ -672,7 +674,7 @@ The last challenge is the ability for the constrained server to make an authoriz
   <t>Mode of operation (e.g., Counter with Cipher Block Chaining - Message Authentication
    Code (CBC-MAC) Mode (CCM) for AES) <xref target="RFC3610"/></t>
   <t>Hash algorithm for integrity protection, such as the Secure Hash Algorithm (SHA) in combination with Keyed-Hashing for Message Authentication (HMAC) (see <xref target="RFC2104"/> and <xref target="RFC4634"/>)</t>
-  <t>Hash algorithm for use with the pseudorandom function (e.g., HMAC with the SHA-256) </t>
+  <t>Hash algorithm for use with pseudorandom functions (e.g., HMAC with the SHA-256) </t>
   <t>Misc information (e.g., length of authentication tags)</t>
   <t>Information whether the ciphersuite is suitable for DTLS or only for TLS</t>
 </list> 
@@ -844,9 +846,9 @@ Note: Extensions marked with '*' were introduced with
 
 <t>Server certificates MUST contain the fully qualified DNS domain name or "FQDN" as dNSName. For CoAP, the coaps URI scheme is described in Section 6.2 of <xref target="RFC7252"/>. This FQDN is stored in the SubjectAltName or in the leftmost CN component of subject name, as explained in Section 9.1.3.3 of <xref target="RFC7252"/>, and used by the client to match it against the FQDN used during the look-up process, as described in <xref target="RFC6125"/>. For other protocols, the appropriate URI scheme specification has to be consulted.</t>
 
-<t>When constrained servers are used, for example in context of locally discoverable services as shown in <xref target="local-discovery"/>, then the rules of client certificates are applicable since these constrained servers are less likely to have an FQDN configured. Note that the Service Name Indication (SNI) extension cannot be used in this case since SNI does not offer the ability to convey EUI-64 identifiers.</t>
+<t>When constrained servers are used, for example in context of locally discoverable services as shown in <xref target="local-discovery"/>, then the rules of client certificates are applicable since these constrained servers are less likely to have an FQDN configured. Note that the Service Name Indication (SNI) extension cannot be used in this case since SNI does not offer the ability to convey EUI-64 <xref target="EUI64"/> identifiers.</t>
 
-<t>For client certificates the identifier used in the SubjectAltName or in the leftmost CN component of subject name MUST be an EUI-64 <xref target="EUI64"/>, as mandated in Section 9.1.3.3 of <xref target="RFC7252"/>.</t>
+<t>For client certificates the identifier used in the SubjectAltName or in the leftmost CN component of subject name MUST be an EUI-64, as mandated in Section 9.1.3.3 of <xref target="RFC7252"/>.</t>
 
 <t>For certificate revocation neither the Online Certificate Status Protocol (OCSP) nor Certificate Revocation Lists (CRLs) are used. Instead, this profile relies on a software update mechanism. While multiple OCSP stapling <xref target="RFC6961"/> has recently been introduced as a mechanism to piggyback OCSP request/responses inside the DTLS/TLS handshake (to avoid the cost of a separate protocol handshake), further investigations are needed to determine its suitability for the IoT environment.</t>
 
@@ -993,9 +995,9 @@ infrastructure. For these deployments where IoT devices interact with a fixed, p
 
 <section title="Error Handling"> 
 
-<t>TLS/DTLS uses the Alert protocol to convey error messages and specifies a longer list of errors. However, not all error messages defined in the TLS/DTLS specification are applicable to this profile. In general, there are two categories of errors (as defined in Section 7.2 of RFC 5246), namely fatal errors and warnings. Alert messages with a level of fatal result in the immediate termination of the connection. If possible, developers should try to develop strategies to react to those fatal errors, such as re-starting the handshake or informing the user using the (often limited) user interface. Warnings may be ignored by the application since many IoT devices will either have limited ways to log errors or no ability at all. In any case, implementers have to carefully evaluate the impact of errors and ways to remedy the situation since a commonly used approach for delegating decision making to users is difficult (or impossible) to accomplish in a timely fashion.</t>
+<t>TLS/DTLS uses the Alert protocol to convey errors and specifies a long list of error types. However, not all error messages defined in the TLS/DTLS specification are applicable to this profile. In general, there are two categories of errors (as defined in Section 7.2 of RFC 5246), namely fatal errors and warnings. Alert messages with a level of fatal result in the immediate termination of the connection. If possible, developers should try to develop strategies to react to those fatal errors, such as re-starting the handshake or informing the user using the (often limited) user interface. Warnings may be ignored by the application since many IoT devices will either have limited ways to log errors or no ability at all. In any case, implementers have to carefully evaluate the impact of errors and ways to remedy the situation since a commonly used approach for delegating decision making to users is difficult (or impossible) to accomplish in a timely fashion.</t>
 
-<t>All error messages marked as RESERVED are only supported for backwards compatibility with SSL and are therefore not applicable to this profile. Those include decryption_failed_RESERVED, no_certificate_RESERVE, and export_restriction_RESERVED.</t>
+<t>All error messages marked as RESERVED are only supported for backwards compatibility with SSL and are therefore not applicable to this profile. Those include decryption_failed_RESERVED, no_certificate_RESERVED, and export_restriction_RESERVED.</t>
 
 <t>A number of the error messages are applicable only for certificate-based authentication ciphersuites. Hence, for PSK and raw public key use the following error messages are not applicable:</t>
 <t><list style="symbols">
@@ -1183,11 +1185,11 @@ RFC 6347 by using the fragmentation capability of the handshake protocol).</t>
 
 <section title="Random Number Generation"> 
 
- <t>The TLS/DTLS protocol requires random numbers to be available during the protocol run. For example, during the ClientHello and the ServerHello exchange the client and the server exchange random numbers. Also, the use of the Diffie-Hellman exchange requires random numbers during the key pair generation. Special care has to be paid when generating random numbers in embedded systems as many entropy sources available on desktop operating systems or mobile devices might be missing, as described in <xref target="Heninger"/>. Consequently, if not enough time is given during system start time to fill the entropy pool then the output might be predictable and repeatable, for example leading to the same keys generated again and again.</t>
+ <t>The TLS/DTLS protocol requires random numbers to be available during the protocol run. For example, during the ClientHello and the ServerHello exchange the client and the server exchange random numbers. Also, the use of the Diffie-Hellman exchange requires random numbers during the key pair generation. Special care has to be taken when generating random numbers in embedded systems as many entropy sources available on desktop operating systems or mobile devices might be missing, as described in <xref target="Heninger"/>. Consequently, if not enough time is given during system start time to fill the entropy pool then the output might be predictable and repeatable, for example leading to the same keys generated again and again.</t>
 
  <t>It is important to note that sources contributing to the randomness pool on laptops, or desktop PCs are not available on many IoT device, such as mouse movement, timing of keystrokes, air turbulence on the movement of hard drive heads, etc. Other sources have to be found or dedicated hardware has to be added.</t>
 
-<t>The ClientHello and the ServerHello messages contains the 'Random' structure, which has two components: gmt_unix_time and a random sequence of 28 random bytes. gmt_unix_time holds the current time and date in standard UNIX 32-bit format (seconds since the midnight starting Jan 1, 1970, GMT). <xref target="I-D.mathewson-no-gmtunixtime"/> argues that the entire ClientHello.Random value (including gmt_unix_time) should be set to a cryptographically random sequence because of privacy concerns regarding device fingerprinting. Since many IoT devices do not have access to an accurate clock, it is RECOMMENDED to follow the guidance outlined in <xref target="I-D.mathewson-no-gmtunixtime"/> regarding the content of the ClientHello.Random field. However, for the ServerHello.Random structure it is RECOMMENDED to maintain the existing structure with gmt_unix_time followed by a random sequence of 28 random bytes since the client can use the received time information to securely obtain time information. For constrained servers it cannot be assumed that they maintain accurate time information; these devices MUST include time information in the Server.Random structure when they actually obtain accurate time information that can be utilized by clients. Clients MUST only use time information obtained from servers they trust and the use of this approach has to be agreed out-of-band.</t>
+<t>The ClientHello and the ServerHello messages contains the 'Random' structure, which has two components: gmt_unix_time and a sequence of 28 random bytes. gmt_unix_time holds the current time and date in standard UNIX 32-bit format (seconds since the midnight starting Jan 1, 1970, GMT). <xref target="I-D.mathewson-no-gmtunixtime"/> argues that the entire ClientHello.Random value (including gmt_unix_time) should be a sequence of random bits because of device fingerprinting privacy concerns. Since many IoT devices do not have access to an accurate clock, it is RECOMMENDED to follow the guidance outlined in <xref target="I-D.mathewson-no-gmtunixtime"/> regarding the content of the ClientHello.Random field. However, for the ServerHello.Random structure it is RECOMMENDED to maintain the existing structure with gmt_unix_time followed by a sequence of 28 random bytes since the client can use the received time information to securely obtain time information. For constrained servers it cannot be assumed that they maintain accurate time information; these devices MUST include time information in the Server.Random structure when they actually obtain accurate time information that can be utilized by clients. Clients MUST only use time information obtained from servers they trust and the use of this approach has to be agreed out-of-band.</t>
    
 <t>IoT devices using TLS/DTLS MUST offer ways to generate quality random numbers using hardware-based random number generators. Note that these hardware-based random number generators do not necessarily need to be implemented inside the microcontroller itself but could be made available in dedicated crypto-chips as well. Guidelines and requirements for random number generation can be found in RFC 4086 <xref target="RFC4086"/> and in the NIST Special Publication 800-90a <xref target="SP800-90A"/>.</t>
 
