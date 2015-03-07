@@ -282,7 +282,9 @@ spec protocol and the alert protocol. The handshake protocol allows the server a
   
   </list> 
   </t> 
-  
+
+<t><xref target="model"/> shows example configuration information stored at the constrained client for use with respective servers.</t> 
+
 <t>This document focuses on the description of the DTLS client-side functionality but, quite naturally, 
 the equivalent server-side support has to be available. </t>
 
@@ -293,9 +295,13 @@ the equivalent server-side support has to be available. </t>
            |          Configuration             |
            |////////////////////////////////////|
            | Server A --> PSK Identity, PSK     |
+           |                                    |
            | Server B --> Public Key (Server B),|
-           |              Public Key (Client)   |
-           | Server C --> Public Key (Client),  |
+           |              Public/Private Key    |
+           |              (for Client)          |
+           |                                    |
+           | Server C --> Public/Private Key    |
+           |              (for Client)          |
            |              Trust Anchor Store    |
            +------------------------------------+
              oo
@@ -519,7 +525,7 @@ the equivalent server-side support has to be available. </t>
 
 <section anchor="c-servers" title="Constrained TLS/DTLS Servers"> 
 
-<t><xref target="c-clients"/> illustrates a deployment model where the TLS/DTLS client is constrained and efforts need to be taken to improve memory utilization, bandwidth consumption, reduce performance impacts, etc. In this section we look at cases where constrained devices run TLS/DTLS servers to secure access to application layer services running on top of CoAP, HTTP or other protocols. Running server functionality on a constrained node is typically more demanding since servers have to wait for incoming requests. Therefore, they will have fewer possibilities to enter sleep-cycles. Nevertheless, there are legitimate reasons for deploying servers as constrained devices. <xref target="model2"/> illustrates a possible deployment whereby a number of constrained servers are waiting for regular clients to access their resources. 
+<t><xref target="c-clients"/> illustrates a deployment model where the TLS/DTLS client is constrained and efforts need to be taken to improve memory utilization, bandwidth consumption, reduce performance impacts, etc. In this section, we assume a scenario where constrained devices run TLS/ DTLS servers to secure access to application layer services running on top of CoAP, HTTP or other protocols. <!-- In this section we look at cases where constrained devices run TLS/DTLS servers to secure access to application layer services running on top of CoAP, HTTP or other protocols. Running server functionality on a constrained node is typically more demanding since servers have to wait for incoming requests. Therefore, they will have fewer possibilities to enter sleep-cycles. Nevertheless, there are legitimate reasons for deploying servers as constrained devices.--> <xref target="model2"/> illustrates a possible deployment whereby a number of constrained servers are waiting for regular clients to access their resources. 
 The entire process is likely, but not necessarily, controlled by a third party, the authentication and authorisation server. This authentication and authorization server is responsible for holding authorization policies that govern the access to resources and distribution of keying material.</t> 
 
 <t><figure title="Constrained Server Profile." anchor="model2">
@@ -567,7 +573,40 @@ The entire process is likely, but not necessarily, controlled by a third party, 
 	    </t>
 
 
-<t><xref target="local-discovery"/> shows an example interaction whereby a device, a thermostat in our case, searches in the local network for discoverable resources and accesses those. The thermostat starts the procedure using a link-local discovery message using the "All CoAP Nodes" multicast address by utilizing the RFC 6690 <xref target="RFC6690"/> link format. The IPv6 multicast address used for site-local discovery is FF02::FD. As a result, a temperature sensor and a fan respond. These responses allow the thermostat to subsequently read temperature information from the temperature sensor with a CoAP GET request issued to the previously learned endpoint. In this hypothetical example we assume that this temperature sensor provides this information to every party and no access control mechanism is enforced. However, when the thermostat subsequently uses the obtained temperature reading to control a fan, the fan requires authentication and authorization of the entity requesting changes and TLS is used to authenticate both endpoint as and to secure the communication.</t>
+<t>A deployment with constrained servers has to overcome several challenges. Below we explain how these challenges have be solved with CoAP, as an example. Other protocols may offer similar capabilities. While the requirements for the TLS/DTLS protocol profile change only slightly when run on a constrained server (in comparison to running it on a constrained client) several other eco-system factor will impact deployment.</t>
+
+<t>There are several challenges that need to be addressed:  
+
+<list style="hanging"> 
+
+<t hangText="Discovery and Reachability:">
+<vspace blankLines="1"/>
+A client must first and foremost discover the server before initiating a connection to it.  Once it as been discovered, reachability to the device needs to be maintained.
+<vspace blankLines="1"/>
+In CoAP the discovery of resources offered by servers is accomplished by sending a unicast or multicast CoAP GET to a well-known URI. The CORE Link format specification <xref target="RFC6690"/> describes the use case (see Section 1.2.1), and reserves the URI (see Section 7.1). Section 7 of the CoAP specification <xref target="RFC7252"/> describes the discovery procedure. <xref target="RFC7390"/> describes use case for discovering CoAP servers using multicast (see Section 3.3), and specifies the protocol processing rules for CoAP group communications (see Section 2.7).
+<vspace blankLines="1"/>
+The use of Resource Directory (RD) <xref target="I-D.ietf-core-resource-directory"/> is yet another possibility for discovering registered servers and their resources. Since RD is usually not a proxy, clients can discover links registered with the RD and then access them directly.</t>
+
+<t hangText="Authentication:">
+<vspace blankLines="1"/>
+The next challenge concerns the provisioning of authentication credentials to the clients as well as servers. In <xref target="c-clients"/> we assumed that credentials (and other configuration information) are provisioned to the device and that those can be used with the authorization servers. Of course, this leads to a very static relationship between the clients and their server-side infrastructure but poses fewer challenges from a deployment point of view, as described in Section 2 of <xref target="I-D.iab-smart-object-architecture"/> these different communication patterns. In any case, engineers and product designers have to determine how the relevant credentials are distributed to the respective parties. For example, shared secrets may need to be provisioned to clients and the constrained servers for subsequent use of TLS/DTLS PSK. In other deployments, certificates, private keys, and trust anchors for use with certificate-based authentication may need to be utilized.
+<vspace blankLines="1"/>
+Practical solutions either use pairing (also called imprinting) or a trusted third party. With pairing two devices execute a special protocol exchange that is unauthenticated to establish an shared key (for example using an unauthenticated Diffie-Hellman exchange) key. To avoid man-in-the-middle attacks an out-of-band channel is used to verify that nobody has tampered with the exchanged protocol messages.   This out-of-band channel can come in many forms, including:
+<list style="symbols"> 
+<t>Human involvement by comparing hashed keys, entering passkeys, scanning QR codes</t>
+<t>The use of alternative wireless communication channels (e.g., infra-red communication in addition to WiFi)</t>
+<t>Proximity-based information</t>
+</list>
+More details about these different pairing/imprinting techniques can be found in the smart object security workshop report <xref target="RFC7397"/> and various position papers submitted to that topic, such as <xref target="ImprintingSurvey"/>. The use of a trusted third party follows a different approach and is subject to ongoing standardization efforts in the 'Authentication and Authorization for Constrained Environments (ACE)' working group <xref target="ACE-WG"/>. 
+</t>
+
+<t hangText="Authorization">
+<vspace blankLines="1"/>
+The last challenge is the ability for the constrained server to make an authorization decision when clients access protected resources. Pre-provisioning access control information to constrained servers may be one option but works only in a small scale, less dynamic environment. For a more fine-grained and dynamic access control the reader is referred to the ongoing work in the ACE working group.</t> 
+</list> 
+</t> 
+
+<t><xref target="local-discovery"/> shows an example interaction whereby a device, a thermostat in our case, searches in the local network for discoverable resources and accesses those. The thermostat starts the procedure using a link-local discovery message using the "All CoAP Nodes" multicast address by utilizing the RFC 6690 <xref target="RFC6690"/> link format. The IPv6 multicast address used for site-local discovery is FF02::FD. As a result, a temperature sensor and a fan respond. These responses allow the thermostat to subsequently read temperature information from the temperature sensor with a CoAP GET request issued to the previously learned endpoint. In this example we assume that accessing the temperature sensor readings and controlling the fan requires authentication and authorization of the thermostat and TLS is used to authenticate both endpoint and to secure the communication.</t>
 
 
 <t><figure title="Local Discovery and Resouce Access." anchor="local-discovery">
@@ -594,7 +633,16 @@ The entire process is likely, but not necessarily, controlled by a third party, 
 
 
 
-   Read Sensor Data (unauthenticated)
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+\                                                        /
+\ Protocol steps to obtain access token or keying        /
+\ material for access to the temperature sensor and fan. /
+\                                                        /
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+
+
+   Read Sensor Data 
+   (authenticated/authorized)
    ------------------------------->
    GET /3303/0/5700
 
@@ -604,15 +652,9 @@ The entire process is likely, but not necessarily, controlled by a third party, 
                             22.5 C
 
 
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-\                                                        /
-\ Protocol steps to obtain authorization token / client  /
-\ credentials for access to the fan-provided resources.  /
-\                                                        /
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 
-
-  Configure Actuator (with authorization credentials)
+  Configure Actuator 
+  (authenticated/authorized)
   ------------------------------------------------->
   PUT /fan?on-off=true
 
@@ -624,39 +666,6 @@ The entire process is likely, but not necessarily, controlled by a third party, 
           </figure>
 	    </t>
 
-<t>A deployment with constrained servers has to overcome several challenges. Below we explain how these challenges have been solved with CoAP, as an example. Other protocols may offer similar capabilities. 
-While the requirements for the TLS/DTLS protocol profile change only slightly when run on a constrained server (in comparison to running it on a constrained client) several other eco-system factor will impact deployment.</t>
-
-<t>There are several challenges that need to be addressed:  
-
-<list style="hanging"> 
-
-<t hangText="Discovery and Reachability:">
-<vspace blankLines="1"/>
-A client must first and foremost discover the server before initiating a connection to it.  Once it as been discovered, reachability to the device needs to be maintained.
-<vspace blankLines="1"/>
-In CoAP the discovery of resources offered by servers is accomplished by sending a unicast or multicast CoAP GET to a well-known URI. The CORE Link format specification <xref target="RFC6690"/> describes the use case (see Section 1.2.1), and reserves the URI (see Section 7.1). Section 7 of the CoAP specification <xref target="RFC7252"/> describes the discovery procedure. <xref target="RFC7390"/> describes use case for discovering CoAP servers using multicast (see Section 3.3), and specifies the protocol processing rules for CoAP group communications (see Section 2.7).
-<vspace blankLines="1"/>
-The use of Resource Directory (RD) <xref target="I-D.ietf-core-resource-directory"/> is yet another possibility for discovering registered servers and their resources. Since RD is usually not a proxy clients can discover links registered with the RD and then access them directly.</t>
-
-<t hangText="Authentication:">
-<vspace blankLines="1"/>
-The next challenge concerns the provisioning of authentication credentials to the clients as well as servers. In <xref target="c-clients"/> we assumed that credentials (and other configuration information) are provisioned to the device and that those can be used with the authorization servers. Of course, this leads to a very static relationship between the clients and their server-side infrastructure but poses fewer challenges from a deployment point of view, as described in Section 2 of <xref target="I-D.iab-smart-object-architecture"/> these different communication patterns. In any case, engineers and product designers have to determine how the relevant credentials are distributed to the respective parties. For example, shared secrets may need to be provisioned to clients and the constrained servers for subsequent use of TLS/DTLS PSK. In other deployments, certificates, private keys, and trust anchors for use with certificate-based authentication may need to be utilized.
-<vspace blankLines="1"/>
-Practical solutions either use pairing (also called imprinting) or a trusted third party. With pairing two devices execute a special protocol exchange that is unauthenticated to establish an shared key (for example using an unauthenticated Diffie-Hellman exchange) key. To avoid man-in-the-middle attacks an out-of-band channel is used to verify that nobody has tampered with the exchanged protocol messages.   This out-of-band channel can come in many forms, including:
-<list style="symbols"> 
-<t>Human involvement by comparing hashed keys, entering passkeys, scanning QR codes</t>
-<t>The use of alternative wireless communication channels (e.g., infra-red communication in addition to WiFi)</t>
-<t>Proximity-based information</t>
-</list>
-More details about these different pairing/imprinting techniques can be found in the smart object security workshop report <xref target="RFC7397"/> and various position papers submitted to that topic, such as <xref target="ImprintingSurvey"/>. The use of a trusted third party follows a different approach and is subject to ongoing standardization efforts in the 'Authentication and Authorization for Constrained Environments (ACE)' working group <xref target="ACE-WG"/>. 
-</t>
-
-<t hangText="Authorization">
-<vspace blankLines="1"/>
-The last challenge is the ability for the constrained server to make an authorization decision when clients access protected resources. Pre-provisioning access control information to constrained servers may be one option but works only in a small scale, less dynamic environment. For a more fine-grained and dynamic access control the reader is referred to the ongoing work in the ACE working group.</t> 
-</list> 
-</t> 
 
 </section> <!-- Constrained TLS/DTLS Servers --> 
 
@@ -691,7 +700,7 @@ The last challenge is the ability for the constrained server to make an authoriz
 
 <t>Some AEAD ciphersuites have shorter authentication tags (i.e., message authentication codes) and are therefore more suitable for networks with low bandwidth where small message size matters. The TLS_PSK_WITH_AES_128_CCM_8 ciphersuite that ends in "_8" has an 8-octet authentication tag, while the regular CCM ciphersuites have, at the time of writing, 16-octet authentication tags. The design of CCM and the security properties are described in <xref target="CCM"/>.</t>
 
-<t>TLS 1.2 also replaced the combination of MD5/SHA-1 hash functions in the TLS pseudo random function (PRF) used in earlier versions of TLS with cipher-suite-specified PRFs. For this reason authors of more recent TLS 1.2 ciphersuite specifications explicitly indicate the MAC algorithm and the hash functions used with the TLS PRF. SHA-256 is the recommended default PRF.</t>
+<t>TLS 1.2 also replaced the combination of MD5/SHA-1 hash functions in the TLS pseudo random function (PRF) used in earlier versions of TLS with cipher-suite-specified PRFs. For this reason authors of more recent TLS 1.2 ciphersuite specifications explicitly indicate the MAC algorithm and the hash functions used with the TLS PRF. <!-- SHA-256 is the recommended default PRF.--> </t>
 </section> 
 
     <!-- **************************************************************** -->
@@ -701,11 +710,11 @@ The last challenge is the ability for the constrained server to make an authoriz
 
 <section anchor="credentials" title="Credential Types">
 
-<t>The mandatory-to-implement functionality will depend on the credential type used with IoT devices. The sub-sections below describe the implications of three different credential types, namely pre-shared secrets, raw public keys, and certificates. Note that shared secrets are not passwords.</t>
+<t>The mandatory-to-implement functionality will depend on the credential type used with IoT devices. The sub-sections below describe the implications of three different credential types, namely pre-shared secrets, raw public keys, and certificates. When using pre-shared key, a critical consideration is how to assure the randomness of these secrets.  The best practice is to ensure that any pre-shared key contains as much randomness as possible. Deriving a shared secret from a password, name, or other low-entropy source is not secure. A low-entropy secret, or password, is subject to dictionary attacks.</t>
 
 
 <section anchor="psk" title="Pre-Shared Secret">
-<t>The use of pre-shared secret credentials is one of the most basic techniques for TLS/DTLS since it is both computational efficient and bandwidth conserving. Pre-shared secret based authentication was introduced to TLS with RFC 4279 <xref target="RFC4279"/>. The exchange shown in <xref target="dtls-psk"/> illustrates the DTLS exchange including the cookie exchange. While the server is not required to initiate a cookie exchange with every handshake, the client is required to implement and to react on it when challenged. The cookie exchange allows the server to react to flooding attacks.</t>
+<t>The use of pre-shared secrets is one of the most basic techniques for TLS/DTLS since it is both computational efficient and bandwidth conserving. Pre-shared secret based authentication was introduced to TLS with RFC 4279 <xref target="RFC4279"/>. The exchange shown in <xref target="dtls-psk"/> illustrates the DTLS exchange including the cookie exchange. While the server is not required to initiate a cookie exchange with every handshake, the client is required to implement and to react on it when challenged. The cookie exchange allows the server to react to flooding attacks.</t>
 
 <t><figure title="DTLS PSK Authentication including the Cookie Exchange." anchor="dtls-psk">
             <artwork>
@@ -741,13 +750,17 @@ Legend:
 <t><xref target="RFC4279"/> does not mandate the use of any particular type of client identity and the client and server have to agree on the identities and keys to be used.  
 The mandated encoding of identities in Section 5.1 of RFC 4279 aims to improve interoperability for those cases where the identity is configured by a person using some management interface. However, many IoT devices do not have a user interface and most of their credentials are bound to the device rather than the user. Furthermore, credentials are often provisioned into trusted hardware modules or in the firmware by developers. As such, the encoding considerations are not applicable to this usage environment. For use with this profile the PSK identities SHOULD NOT assume a structured format (as domain names, Distinguished Names, or IP addresses have) and a bit-by-bit comparison operation can then be used by the server-side infrastructure.</t>
 
-<t>The client indicates which key it uses by including a "PSK identity" in the ClientKeyExchange message. As described in <xref target="arch"/> clients may have multiple pre-shared keys with a single server and to help the client in selecting which PSK identity / PSK pair to use, the server can provide a "PSK identity hint" in the ServerKeyExchange message. 
-If the hint for PSK key selection is based on the domain name of the server then servers SHOULD NOT send the "PSK identity hint" in
-   the ServerKeyExchange message. Servers SHOULD NOT send the "PSK identity hint" in the ServerKeyExchange message and clients MUST ignore the message. This approach is inline with RFC 4279 <xref target="RFC4279"/>. Note: The TLS Server Name Indication (SNI) extension allows the client to convey the name of the server it is contacting, which is relevant for hosting environments. A server using the identity hint needs to guide the selection based on a received SNI value from the client.</t>
-   
-<t>RFC 4279 requires TLS implementations supporting PSK ciphersuites to support arbitrary PSK identities up to 128 octets in length, and arbitrary PSKs up to 64 octets in length. This is a useful assumption for TLS stacks used in the desktop and mobile environments where management interfaces are used to provision identities and keys. For the IoT environment, keys are distributed as part of hardware modules or are embedded into the firmware. Implementations in compliance with this profile MAY use PSK identities up to 128 octets in length, and arbitrary PSKs up to 64 octets in length. The use of shorter PSK identities and shorter PSKs is RECOMMENDED.</t>
+<t>The client indicates which key it uses by including a "PSK identity" in the ClientKeyExchange message. As described in <xref target="arch"/> clients may have multiple pre-shared keys with a single server, for example in a hosting context. The TLS Server Name Indication (SNI) extension allows the client to convey the name of the server it is contacting, which is relevant for hosting environments. A server implementation needs to guide the selection based on a received SNI value from the client.</t>
 
-<t><xref target="RFC7252">Constrained Application Protocol (CoAP)</xref> currently specifies TLS_PSK_WITH_AES_128_CCM_8 as the mandatory to implement ciphersuite for use with shared secrets. This ciphersuite uses the AES algorithm with 128 bit keys and CCM as the mode of operation. The label "_8" indicates that an 8-octet authentication tag is used. This ciphersuite makes use of the default TLS 1.2 Pseudorandom Function (PRF), which uses an HMAC with the SHA-256 hash function. (Note that all IoT implementations will need a SHA-256 implementation due to the construction of the pseudo-random number function in DTLS/TLS 1.2.)</t>
+<!-- 
+ and to help the client in selecting which PSK identity / PSK pair to use, the server can provide a "PSK identity hint" in the ServerKeyExchange message. 
+If the hint for PSK key selection is based on the domain name of the server then servers SHOULD NOT send the "PSK identity hint" in
+   the ServerKeyExchange message. Servers SHOULD NOT send the "PSK identity hint" in the ServerKeyExchange message and clients MUST ignore the message. This approach is inline with RFC 4279 <xref target="RFC4279"/>.</t>
+--> 
+   
+<t>RFC 4279 requires TLS implementations supporting PSK ciphersuites to support arbitrary PSK identities up to 128 octets in length, and arbitrary PSKs up to 64 octets in length. This is a useful assumption for TLS stacks used in the desktop and mobile environments where management interfaces are used to provision identities and keys. For the IoT environment, keys are distributed as part of hardware modules or are embedded into the firmware. Implementations in compliance with this profile MAY use PSK identities up to 128 octets in length, and arbitrary PSKs up to 64 octets in length. The use of shorter PSK identities is RECOMMENDED.</t>
+
+<t><xref target="RFC7252">Constrained Application Protocol (CoAP)</xref> currently specifies TLS_PSK_WITH_AES_128_CCM_8 as the mandatory to implement ciphersuite for use with shared secrets. This ciphersuite uses the AES algorithm with 128 bit keys and CCM as the mode of operation. The label "_8" indicates that an 8-octet authentication tag is used. This ciphersuite makes use of the default TLS 1.2 Pseudorandom Function (PRF), which uses an HMAC with the SHA-256 hash function. Note: Starting with TLS 1.2 (and consequently DTLS 1.2) ciphersuites have to specify the pseudorandom function. RFC 5246 states that 'New cipher suites MUST explicitly specify a PRF and, in general, SHOULD use the TLS PRF with SHA-256 or a stronger standard hash function.'. The ciphersuites recommended in this document use the SHA-256 construct defined in Section 5 of RFC 5246.</t>
 
 <t>A device compliant with the profile in this section MUST implement TLS_PSK_WITH_AES_128_CCM_8 and follow the guidance from this section.</t>
 </section> 
@@ -815,7 +828,7 @@ Note: Extensions marked with '#' were introduced with
 
 <section anchor="certs" title="Certificates">
 
-<t>The use of mutual certificate-based authentication is shown in <xref target="dtls-cert"/>, which makes use of the cached info extension <xref target="I-D.ietf-tls-cached-info"/>. Support of the cached info extension is REQUIRED. Caching certificate chains allows the client to reduce the communication overhead significantly since otherwise the server would provide the end entity certificate, and the certificate chain. Because certificate validation requires that root keys be distributed independently, the self-signed certificate that specifies the root certificate authority is omitted from the chain. Client implementations MUST be provisioned with a trust anchor store that contains the root certificates. The use of the Trust Anchor Management Protocol (TAMP) <xref target="RFC5934"/> is, however, not envisioned. Instead IoT devices using this profile MUST use a software update mechanism to populate the trust anchor store.</t>
+<t>The use of mutual certificate-based authentication is shown in <xref target="dtls-cert"/>, which makes use of the cached info extension <xref target="I-D.ietf-tls-cached-info"/>. Support of the cached info extension is REQUIRED. Caching certificate chains allows the client to reduce the communication overhead significantly since otherwise the server would provide the end entity certificate, and the certificate chain. Because certificate validation requires that root keys be distributed independently, the self-signed certificate that specifies the root certificate authority is omitted from the chain. Client implementations MUST be provisioned with a trust anchor store that contains the root certificates. The use of the Trust Anchor Management Protocol (TAMP) <xref target="RFC5934"/> is, however, not envisioned. Instead IoT devices using this profile MUST use a software update mechanism to populate the trust anchor store. </t>
 
 <t><figure title="DTLS Mutual Certificate-based Authentication." anchor="dtls-cert">
             <artwork>
@@ -849,13 +862,13 @@ Note: Extensions marked with '*' were introduced with
           </figure>
 	    </t>
 
-<t>Server certificates MUST contain the fully qualified DNS domain name or "FQDN" as dNSName. For CoAP, the coaps URI scheme is described in Section 6.2 of <xref target="RFC7252"/>. This FQDN is stored in the SubjectAltName or in the leftmost CN component of subject name, as explained in Section 9.1.3.3 of <xref target="RFC7252"/>, and used by the client to match it against the FQDN used during the look-up process, as described in <xref target="RFC6125"/>. For other protocols, the appropriate URI scheme specification has to be consulted.</t>
+<t>Server certificates MUST contain the fully qualified DNS domain name or "FQDN" as dNSName <xref target="RFC5280"/>. For CoAP, the coaps URI scheme is described in Section 6.2 of <xref target="RFC7252"/>. This FQDN is stored in the SubjectAltName or in the leftmost CN component of subject name, as explained in Section 9.1.3.3 of <xref target="RFC7252"/>, and used by the client to match it against the FQDN used during the look-up process, as described in <xref target="RFC6125"/>. For other protocols, the appropriate URI scheme specification has to be consulted.</t>
 
 <t>When constrained servers are used, for example in context of locally discoverable services as shown in <xref target="local-discovery"/>, then the rules of client certificates are applicable since these constrained servers are less likely to have an FQDN configured. Note that the Service Name Indication (SNI) extension cannot be used in this case since SNI does not offer the ability to convey EUI-64 <xref target="EUI64"/> identifiers.</t>
 
 <t>For client certificates the identifier used in the SubjectAltName or in the leftmost CN component of subject name MUST be an EUI-64, as mandated in Section 9.1.3.3 of <xref target="RFC7252"/>.</t>
 
-<t>For certificate revocation neither the Online Certificate Status Protocol (OCSP) nor Certificate Revocation Lists (CRLs) are used. Instead, this profile relies on a software update mechanism. While multiple OCSP stapling <xref target="RFC6961"/> has recently been introduced as a mechanism to piggyback OCSP request/responses inside the DTLS/TLS handshake (to avoid the cost of a separate protocol handshake), further investigations are needed to determine its suitability for the IoT environment.</t>
+<t>For certificate revocation neither the Online Certificate Status Protocol (OCSP) nor Certificate Revocation Lists (CRLs) are used. Instead, this profile relies on a software update mechanism to provision information about revoked certificates. While multiple OCSP stapling <xref target="RFC6961"/> has recently been introduced as a mechanism to piggyback OCSP request/responses inside the DTLS/TLS handshake (to avoid the cost of a separate protocol handshake), further investigations are needed to determine its suitability for the IoT environment.</t>
 
 <t>Regarding the ciphersuite choice the discussion in <xref target="raw"/> applies. Further details about X.509 certificates can be found in Section 9.1.3.3 of <xref target="RFC7252"/>. The TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8 ciphersuite description in <xref target="raw"/> is also applicable to this section.</t>
 
@@ -962,10 +975,14 @@ Note: Extensions marked with '*' were introduced with
  <t>RFC 6066 <xref target="RFC6066"/> allows clients to indicate what trust anchor they
  support. With certificate-based authentication a DTLS server conveys its 
  end entity certificate to the client during the DTLS exchange provides. 
- Since the server does not necessarily know what trust anchors 
- the client has stored it includes intermediate CA certs in the certificate 
- payload as well to facilitate with certification path construction and path 
- validation.</t> 
+Since the server does not necessarily know what trust anchors the
+client has stored and to facilitate certification path construction
+as well as path validation, it includes intermediate CA certs in the
+certificate payload.
+</t> 
+
+
+
 
  <t>Today, in most IoT deployments there is a fairly static relationship
  between the IoT device (and the software running on them) and the server-side 
@@ -1002,9 +1019,9 @@ infrastructure. For these deployments where IoT devices interact with a fixed, p
 
 <t>TLS/DTLS uses the Alert protocol to convey errors and specifies a long list of error types. However, not all error messages defined in the TLS/DTLS specification are applicable to this profile. In general, there are two categories of errors (as defined in Section 7.2 of RFC 5246), namely fatal errors and warnings. Alert messages with a level of fatal result in the immediate termination of the connection. If possible, developers should try to develop strategies to react to those fatal errors, such as re-starting the handshake or informing the user using the (often limited) user interface. Warnings may be ignored by the application since many IoT devices will either have limited ways to log errors or no ability at all. In any case, implementers have to carefully evaluate the impact of errors and ways to remedy the situation since a commonly used approach for delegating decision making to users is difficult (or impossible) to accomplish in a timely fashion.</t>
 
-<t>All error messages marked as RESERVED are only supported for backwards compatibility with SSL and are therefore not applicable to this profile. Those include decryption_failed_RESERVED, no_certificate_RESERVED, and export_restriction_RESERVED.</t>
+<t>All error messages marked as RESERVED are only supported for backwards compatibility with SSL MUST NOT be used with this profile. Those include decryption_failed_RESERVED, no_certificate_RESERVED, and export_restriction_RESERVED.</t>
 
-<t>A number of the error messages are applicable only for certificate-based authentication ciphersuites. Hence, for PSK and raw public key use the following error messages are not applicable:</t>
+<t>A number of the error messages MUST only be used for certificate-based ciphersuites. Hence, the following error messages MUST NOT be used with with PSK and raw public key authentication:</t>
 <t><list style="symbols">
 <t>bad_certificate,</t>
 <t>unsupported_certificate,</t>
@@ -1016,7 +1033,7 @@ infrastructure. For these deployments where IoT devices interact with a fixed, p
 </list>
 </t>
 
-<t>Since this profile does not make use of compression at the TLS layer the decompression_failure error message is not applicable either. </t>
+<t>Since this profile does not make use of compression at the TLS layer the decompression_failure error message MUST NOT be used either. </t>
 
 <t>RFC 4279 introduced a new alert message unknown_psk_identity for PSK ciphersuites. As stated in Section 2 of RFC 4279 the decryption_error error message may also be used instead.
 For this profile the TLS server MUST return the decryption_error error message instead of the unknown_psk_identity since the two mechanisms exist and provide the same functionality.</t>
@@ -1178,7 +1195,7 @@ RFC 6347 by using the fragmentation capability of the handshake protocol).</t>
 
 <t>Note: If a round-trip time estimator (such as proposed in <xref target="I-D.bormann-core-cocoa"/>) is available in the protocol stack of the device, it could be used to dynamically update the setting of the retransmit timeout.</t> 
 
-<t>Choosing appropriate timeout values is difficult with infrequent data transmissions, changing network conditions, and large variance in latency. This specification therefore RECOMMENDS an initial timer value of 10 seconds with exponential back off up to no less then 60 seconds. <xref target="DTLSoSMS"/> provides additional normative text for carrying DTLS over SMS. </t>
+<t>Choosing appropriate timeout values is difficult with changing network conditions, and large variance in latency. This specification therefore RECOMMENDS an initial timer value of 10 seconds with exponential back off up to no less then 60 seconds. <xref target="DTLSoSMS"/> provides additional normative text for carrying DTLS over SMS. </t>
 </section>
 
 
@@ -1252,7 +1269,7 @@ RFC 6347 by using the fragmentation capability of the handshake protocol).</t>
 
  <t>This is a very useful extension that allows the client to indicate to the
  server how much maximum memory buffers it uses for incoming messages. 
- Ultimately, the main benefit of this extension is it to allows client
+ Ultimately, the main benefit of this extension is to allow client
  implementations to lower their RAM requirements since the client does not
  need to accept packets of large size (such as 16k packets as
  required by plain TLS/DTLS).</t>
@@ -1332,7 +1349,7 @@ using the cryptographic parameters established by the original handshake.</t>
     
 <section title="Crypto Agility"> 
 
-<t>This document recommends software and chip manufacturers to implement AES and the CCM mode of operation. This document references the CoAP recommended ciphersuite choices, which have been selected based on implementation and deployment experience from the IoT community. Over time the preference for algorithms will, however, change. Not all components of a ciphersuite are likely to change at the same speed. Changes are more likely expected for ciphers, the mode of operation, and the hash algorithms. The recommended key lengths have to be adjusted over time. Some deployment environments will also be impacted by local regulation, which might dictate a certain cipher and key size. Ongoing discussions regarding the choice of specific ECC curves will also likely to impact implementations.</t>
+<t>This document recommends software and chip manufacturers to implement AES and the CCM mode of operation. This document references the CoAP recommended ciphersuite choices, which have been selected based on implementation and deployment experience from the IoT community. Over time the preference for algorithms will, however, change. Not all components of a ciphersuite are likely to change at the same speed. Changes are more likely expected for ciphers, the mode of operation, and the hash algorithms. The recommended key lengths have to be adjusted over time. Some deployment environments will also be impacted by local regulation, which might dictate a certain cipher and key size. Ongoing discussions regarding the choice of specific ECC curves will also likely impact implementations. Note that this document does not recommend or mandate a specific ECC curve.</t>
 
 <t>The following recommendations can be made to chip manufacturers:<list style="symbols"> 
 
