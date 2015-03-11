@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" []>
+<?xml-stylesheet type='text/xsl' href='http://xml.resource.org/authoring/rfc2629.xslt' ?>
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="no"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc strict="no"?>
+<?rfc compact="no"?>
+<?rfc subcompact="no"?>
+
+<rfc category="info" ipr="trust200902" docName="draft-tschofenig-ace-oauth-bt-01.txt">
+
+  <front>
+  <title abbrev="OAuth 2.0 Bearer Token Usage over CoAP">The OAuth 2.0 Bearer Token Usage over the Constrained Application Protocol (CoAP)</title>   
+
+
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>ARM Limited</organization>
+      <address>
+        <postal>
+          <street></street>
+          <city></city>
+          <code></code>
+          <country>Austria</country>
+        </postal>
+        <phone></phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+        
+    <date year="2015"/>
+    <keyword>Internet-Draft</keyword>
+    <keyword>OAuth 2.0</keyword>
+    <keyword>Smart Objects</keyword>
+    <keyword>Bearer Tokens</keyword>
+    <abstract>
+
+    <t>This specification describes how to use OAuth 2.0 bearer tokens to 
+      access protected resources using the Constrained Application Protocol 
+      (CoAP).  Any party in possession of a bearer token (a "bearer") can 
+      use it to get access to the associated resources (without demonstrating 
+      possession of a cryptographic key).  To prevent misuse, bearer tokens 
+      need to be protected from disclosure in storage and in transport.</t> 
+
+</abstract>
+
+  </front>
+  <middle>
+
+<!-- ====================================================================== -->
+
+<section anchor="introduction" title="Introduction">
+
+   <t>OAuth enables clients to access protected resources by obtaining an
+      access token, which is defined in "The OAuth 2.0 Authorization
+      Framework" <xref target="RFC6749"/> as "a string representing an access
+      authorization issued to the client", rather than using the resource
+      owner's credentials directly.</t>
+
+   <t>Tokens are issued to clients by an authorization server and the 
+      client uses the access token to access the protected resources 
+      hosted by the resource server.  This specification describes how to 
+      make protected resource requests when the access token is a bearer token
+      and conveyed from the client to the resource server using the 
+      Constrained Application Protocol (CoAP) <xref target="RFC7252"/>.
+      To secure the communication exchange the Datagram Transport Layer 
+      Security Version 1.2 <xref target="RFC6347"/> is mandatory to use.</t>
+
+</section> 
+
+<!-- /////////////////////////////////////////////////////////////////////// --> 
+
+<section title="Terminology">
+  <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in "Key words for use in
+   RFCs to Indicate Requirement Levels" <xref target="RFC2119"/>.</t>
+
+   <t>This document also re-uses terminology from RFC 6749 
+    <xref target="RFC6749"/> and RFC 6750 <xref target="RFC6750"/>.</t>
+</section> 
+
+<!-- /////////////////////////////////////////////////////////////////////// --> 
+
+<section title="Introduction">
+
+<t>The abstract OAuth 2.0 flow illustrated in <xref target="flow"/> describes the
+   interaction between the client, resource owner, authorization server,
+   and resource server (described in [<xref target="RFC6749"/>).  The following two
+   steps are specified within this document:
+   <list style="empty">
+
+    <t>(E)  The client requests the protected resource from the resource
+        server and authenticates by presenting the access token.</t>
+
+    <t>(F)  The resource server validates the access token, and if valid,
+        serves the request.</t>
+   </list> 
+</t>
+
+<t>This document also imposes semantic requirements upon the access
+   token returned in step (D).</t>
+
+<t>
+<figure anchor="flow" title="Abstract OAuth 2.0 Protocol Flow.">
+<artwork>
+<![CDATA[
+     +--------+                               +---------------+
+     |        |--(A)- Authorization Request ->|   Resource    |
+     |        |                               |     Owner     |
+     |        |<-(B)-- Authorization Grant ---|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(C)-- Authorization Grant -->| Authorization |
+     | Client |                               |     Server    |
+     |        |<-(D)----- Access Token -------|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(E)----- Access Token ------>|    Resource   |
+     |        |                               |     Server    |
+     |        |<-(F)--- Protected Resource ---|               |
+     +--------+                               +---------------+
+]]>
+          </artwork>
+        </figure>
+      </t>
+
+   
+
+</section>
+
+<!-- /////////////////////////////////////////////////////////////////////// --> 
+
+<section title="Requests">
+
+ <t>Access tokens are embedded in a CoAP message by the use of the "Bearer" 
+  option. The definition is shown in <xref target="bearer-option"/>.</t>
+
+<t>
+<figure anchor="bearer-option" title="Bearer Option Definition.">
+<artwork>
+<![CDATA[
+   +-----+----+---+---+---+----------------+--------+--------+---------+
+   | No. | C  | U | N | R | Name           | Format | Length | Default |
+   +-----+----+---+---+---+----------------+--------+--------+---------+
+   | TBD | x  |   |   |   | Bearer         | opaque | var    | (none)  |
+   +-----+----+---+---+---+----------------+--------+--------+---------+
+
+   Legend:
+     C=Critical, U=Unsafe, N=NoCacheKey, R=Repeatable
+]]>
+          </artwork>
+        </figure>
+      </t>
+
+ <t><xref target="request-example"/> shows an example request from the client to the resource server.
+ </t> 
+
+<t>
+<figure anchor="request-example" title="Example CoAP Request with Bearer Token.">
+<artwork>
+<![CDATA[
+Header: GET (T=CON, Code=0.01, MID=0x7d34,
+            Uri-Path:"resource", Bearer: "mF_9.B5f-4.1JqM")
+]]>
+          </artwork>
+        </figure>
+      </t>
+</section>
+
+<!-- /////////////////////////////////////////////////////////////////////// --> 
+
+<section title="Responses">
+<t>If the request does not contain an access token that enables access
+   to the protected resource, the resource server MUST respond with a
+   4.01 "Unauthorized" error message.</t>
+
+<t>QUESTION: Should the response also provide information about the 
+  scheme (e.g., 'Bearer Tokens' vs. 'Proof-of-Possession Tokens')?
+  Should it contain a "realm" attribute as well? Should a scope value
+  be returned to provide some guidance about the available scopes at that 
+  resource server?</t>
+
+
+<t>For example, in response to a protected resource request without
+   a needed bearer token the error response shown in <xref target="response-example1"/> is sent.</t>
+
+<t>
+<figure anchor="response-example1" title="Failed Request due to Missing Access Token.">
+<artwork>
+<![CDATA[
+Header: ACK (T=ACK, Code=4.01, MID=0x7d34)
+]]>
+          </artwork>
+        </figure>
+      </t>
+
+<t>To provide information back to the client about the failure of the 
+  request the following error codes are defined. These error codes are conveyed within 
+  the 'Error' option, which is defined in <xref target="error-option"/>.</t>
+
+  <t>
+<figure anchor="error-option" title="Error Option Definition.">
+<artwork>
+<![CDATA[
+   +-----+----+---+---+---+----------------+--------+--------+---------+
+   | No. | C  | U | N | R | Name           | Format | Length | Default |
+   +-----+----+---+---+---+----------------+--------+--------+---------+
+   | TBD |    |   |   |   | Error          | uint   |  0-2   | (none)  |
+   +-----+----+---+---+---+----------------+--------+--------+---------+
+
+   Legend:
+     C=Critical, U=Unsafe, N=NoCacheKey, R=Repeatable
+]]>
+          </artwork>
+        </figure>
+      </t>
+
+  <t>This specification defines the following error codes that are 
+    used with the 'Error' option:</t> 
+
+  <t> 
+  <list style="hanging">
+
+   <t hangText="invalid_request (0)">
+    <vspace blankLines="1"/> 
+         The request is missing a required parameter, includes an
+         unsupported parameter or parameter value, repeats the same
+         parameter, uses more than one method for including an access
+         token, or is otherwise malformed.  The resource server MUST
+         respond with the 4.00 (Bad Request) status code.
+   </t> 
+
+   <t hangText="invalid_token (1)">
+   <vspace blankLines="1"/> 
+         The access token provided is expired, revoked, malformed, or
+         invalid for other reasons.  The resource MUST respond with
+         the 4.01 (Unauthorized) status code.  The client MAY
+         request a new access token and retry the protected resource
+         request.</t>
+
+   <t hangText="insufficient_scope (2)">
+   <vspace blankLines="1"/> 
+         The request requires higher privileges than provided by the
+         access token.  The resource server MUST respond with the 
+         4.03 (Forbidden) status code.</t>
+   </list> 
+ </t> 
+ <t>QUESTION: Is the granularity of the error messages useful enough for 
+  client implementations to take actions? </t> 
+
+ <t>As an example, in response to a request using an expired access token 
+   the following error is returned.</t>
+
+<t>
+<figure anchor="response-example2" title="Failed Request due Expired Access Token.">
+<artwork>
+<![CDATA[
+Header: ACK (T=ACK, Code=4.01, MID=0x7d34, 
+             Error="1")
+]]>
+          </artwork>
+        </figure>
+      </t>
+</section>
+        
+<!-- /////////////////////////////////////////////////////////////////////// --> 
+
+<section title="Security Considerations">
+
+<t>The security threats of this specification are identical to those discussed in 
+  RFC 6750 since the encoding of the request does not change the security threats.</t> 
+
+<t>It is nevertheless worthwhile to replicate the security recommendation here 
+  for readers who do not want to consult another document.</t> 
+
+<t>
+  <list style="hanging">
+   <t hangText="Safeguard bearer tokens:">Client implementations MUST ensure that
+      bearer tokens are not leaked to unintended parties, as they will
+      be able to use them to gain access to protected resources.  This
+      is the primary security consideration when using bearer tokens and
+      underlies all the more specific recommendations that follow.</t>
+
+   <t hangText="Validate TLS certificate chains:"> The client MUST validate the 
+      certificate chain, if the resource server is authenticated using a 
+      certificate-based ciphersuite in DTLS, when making requests to protected resources.
+      Failing to do so may enable man-in-the-middle attacks.</t>
+
+   <t hangText="Always use DTLS (coaps):"> Clients MUST always use DTLS <xref target="RFC6347"/>
+      when making requests with bearer tokens.  Failing to do so exposes the token to 
+      third parties and could consequently give attackers unintended access.</t>
+
+   <t hangText="Issue short-lived bearer tokens:"> Authorization servers SHOULD issue
+      short-lived bearer tokens.  Using short-lived bearer tokens reduces the impact of them being
+      leaked.</t>
+
+   <t hangText="Issue scoped bearer tokens:"> Authorization servers MUST issue bearer tokens
+      that contain an audience restriction, scoping their use to the
+      intended relying party or set of relying parties.</t>
+   </list> 
+ </t>
+
+</section> 
+
+<!-- /////////////////////////////////////////////////////////////////////// --> 
+
+<section anchor="iana" title="IANA Considerations">
+
+<t>This specification requests IANA to allocate two values, as shown below, 
+  in the 0..255 range of the CoAP option number registry established with 
+  RFC 7252.</t>
+
+<t>
+<figure>
+<artwork>
+<![CDATA[
+ +--------+-----------+------------+
+ | Number | Name      | Reference  |
+ +--------+-----------+------------+
+ | TBD-61 | Bearer    | [this RFC] |
+ | TBD-62 | Error     | [this RFC] |
+ +--------+-----------+------------+
+]]>
+          </artwork>
+        </figure>
+      </t>
+
+<t>TBD: Add a registry for error codes.</t> 
+
+</section>
+
+<!-- /////////////////////////////////////////////////////////////////////// --> 
+    
+<section title="Acknowledgements">
+  <t>The author would like to thank Mike Jones and Dick Hardt for their work on 
+    RFC 6750. This document is heavily inspired by their work.</t>
+</section>
+
+</middle>
+
+  <back>
+  
+    <references title="Normative References"> 
+        <?rfc include="reference.RFC.6347"?>
+        <?rfc include="reference.RFC.6750"?>
+        <?rfc include="reference.RFC.7252"?>
+        <?rfc include="reference.RFC.6749"?>
+        <?rfc include="reference.RFC.2119"?>  
+    </references>
+<!--     
+    <references title="Informative References"> 
+         <?rfc include="reference.I-D.ietf-lwig-guidance"?>  
+    </references>
+--> 
+  </back>
+</rfc>
