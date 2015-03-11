@@ -1,0 +1,386 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!DOCTYPE rfc SYSTEM 'rfc2629.dtd'>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+<rfc category='info' ipr='trust200902' docName='draft-tschofenig-ace-oauth-iot-01.txt'>
+	<?rfc strict='no' ?>
+	<?rfc toc='yes' ?>
+	<?rfc tocdepth='3' ?>
+	<?rfc symrefs='yes' ?>
+	<?rfc sortrefs='yes' ?>
+	<?rfc compact='no' ?>
+	<?rfc subcompact='no' ?>
+	<front>
+
+		<title abbrev="OAuth 2.0 IoT">The OAuth 2.0 Internet of Things (IoT) Client Credentials Grant
+        </title>
+
+		<author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+			<organization>ARM Limited</organization>
+			<address>
+				<postal>
+					<street></street>
+					<city></city>
+					<code></code>
+					<country>Austria</country>
+				</postal>
+				<phone></phone>
+				<email>Hannes.Tschofenig@gmx.net</email>
+				<uri>http://www.tschofenig.priv.at</uri>
+			</address>
+		</author>
+
+		<date year='2015'/>
+		<area>Security</area>
+		<workgroup>ACE</workgroup>
+		<keyword>Internet-Draft</keyword>
+
+		<abstract>
+			<t>As Internet of Things (IoT) deployments increase steadily the need for a better user 
+experience for handling the authentication and authorization tasks in constrained 
+environments increases.</t>
+
+<t>While several technologies have been developed already that allow federated access to 
+protected resource the nature of IoT deployments requires care with the limited 
+resources available on many of these devices.</t>
+
+<t>This document defines a new OAuth 2.0 authorization grant for the interaction 
+between constrained clients and resource servers to obtain access tokens for 
+access to protected resources. It does so by leveraging prior work on OAuth 2.0, 
+CoAP, and DTLS. </t>
+		</abstract>
+	</front>
+	<middle>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section title='Introduction'>
+
+<t>Early Internet of Things deployments used Internet connectivity to push data 
+to a cloud service or to an application on a smart phone. While these IoT deployments
+offer great benefits for their users they also suffer from a usability problem that 
+can best be demonstrated with a door lock example.</t>
+
+<t>Consider an enterprise environment where access to different parts of the campus 
+is granted to employees dynamically and on a need-by-need basis. New employees receive 
+access rights and those who decide to leave the company get their access rights 
+revoked.</t>
+
+<t>When an employee approaches a door the door lock is supposed to check the authorization 
+rights of that employee in a fraction of a second and to grant (or deny) access 
+appropriately. The building managers expect a centralized management of employees and 
+their access rights and no prior interaction of employees with any object, such as 
+a door, upfront (such as it would be needed with pairing mechanisms utilized by some 
+IoT technologies).</t>
+
+<t>To accomplish such a seamless user experience and offering security at the same time 
+it is necessary to make use of an authentication and authorization server that 
+manages policies for access to protected resources (such as door locks in the previous 
+example). As outlined in <xref target="I-D.seitz-ace-usecases"/>, it is assumed that resource servers do not 
+necessarily need to contact the authorization server every time they receive an 
+access request.</t>
+
+<t>OAuth 2.0 <xref target="RFC6749"/> is a technology that offers such a design pattern via the use of access tokens, 
+which are requested by clients, and subsequently presented to resource servers when 
+demanding access to protected resources managed by those resource servers.</t>
+
+<t>OAuth 2.0 was, however, design primarily for use with the HTTP-based web infrastructure 
+and has only recently been extended for use with SASL <xref target="I-D.ietf-kitten-sasl-oauth"/>. This document extends 
+the OAuth 2.0 idea one step further and defines a Constrained Application Protocol (CoAP)-
+based transport profile for OAuth 2.0. CoAP is specified in RFC 7252 <xref target="RFC7252"/>.</t>
+
+<t>The benefits are as follows:</t>
+
+<t><list style="symbols">
+  
+  <t>The use of the Constrained Application Protocol (CoAP) <xref target="RFC6749"/> 
+     (instead of HTTP) for encoding of requests and responses
+     leads to smaller and fewer message exchanges since CoAP uses a binary format 
+     and relies on UDP rather than TCP. </t>
+
+  <t>The of Datagram Transport Layer Security (DTLS) <xref target="RFC6347"/> 
+     (instead of Transport Layer Security (TLS) for authentication) of the authorization 
+     server to the client and for establishment of an integrity protected 
+     and confidential communication channel follows the spirit of TLS but is 
+     tailored to the unreliable transport protocol used by CoAP.</t>
+
+  <t>The use of DTLS allows to re-use well-analyzed security functionality and 
+     does not require re-designing the same features at the application layer. 
+     Note that the use of DTLS also allows different credential-types to be 
+     re-used, as explained in <xref target="I-D.ietf-dice-profile"/>.</t>
+
+  <t>The use of DTLS client-side authentication instead of the previously 
+     defined application layer client authentication mechanisms (as, for example
+     defined in Section 2.3 of RFC 6749) offers security properties that have 
+     not been exploited in the TLS usage in the Web.</t>
+
+  <t>Allows to re-use the standardized access token format, namely JSON Web Token (JWT) 
+  	<xref target="I-D.ietf-oauth-json-web-token"/>, as well as proof-of-possession tokens 
+  	<xref target="I-D.hunt-oauth-pop-architecture"/>.</t>
+  </list> 
+</t>
+
+<t>Intentionally left outside the scope of this document are the following items:</t>
+
+<t><list style="symbols">
+
+<t>Registration of the client with the authorization server. This includes the 
+    provisioning of security credentials at the client for subsequent use in case of 
+    client authentication.</t>
+
+<t>The interaction between the client and the resource server when presenting the 
+    access token since a variety of different deployment models may be envisioned.
+    In some deployment scenarios the use of bearer tokens may be appropriate whereas in others 
+    proof-of-possession techniques may provide the desired level of security. Also the 
+    desire to use application layer security (in comparison to re-using DTLS) leads to 
+    different security designs.</t>
+
+<t>The interaction between the resource server and the authorization server for 
+    provisioning of access control policies as well as the ability to ask the 
+    authorization in real-time for access control decisions (using the token 
+    introspection endpoint <xref target="I-D.richer-oauth-introspection"/>). This is an 
+    optional part of the OAuth 2.0 architecture that may be used in deployments where 
+    a tied coupling between the authorization server and the resource servers exists 
+    and the real-time interaction is desired.</t>
+
+<t>Cross realm use where authorization servers from different administrative domains 
+	are involved. The use of this protocol needs to be beneficial in a single domain 
+	concept to subsequently see demand in a cross realm situation. Experience from 
+	other federated authentication and authorization protocols shows that adding the 
+	cross realm support is technically but complex from a business point of view.</t>
+
+<t>The authorization server may place authorization information inside the access token 
+	so that the resource server can enforce these access control decisions autonomously. 
+	This information  may come in various flavors, such as basic JWT claims 
+	(such 'audience', 'expiration time', 'not before') or more sophisticated access 
+	control information like <xref target="I-D.bormann-core-ace-aif"/>. These policy 
+	languages are largely independent of the OAuth 2.0 framework.</t>
+
+</list> 
+</t> 
+
+</section> 
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section title='Terminology'>
+<t>The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT', 'SHOULD',
+ 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this specification are to be
+ interpreted as described in <xref target='RFC2119' />.</t>
+
+<t>All terms are as defined in The OAuth 2.0 Authorization Framework <xref target="RFC6749"/>.</t>
+
+</section>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section title='Applicability Statement'>
+<t>The OAuth 2.0 IoT grant defined in this document is only applicable for OAuth 2.0 
+clients that are resource constrained. For all other clients regular OAuth 2.0 can be re-used
+since those clients will be able to execute the RFC 6749-defined client credential grant, which uses HTTPS as a transport.</t>
+<t>The communication between the client and a resource constrained resource server is not 
+  described in this document and orthogonal to this document.</t>  
+</section>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section title="IoT Client Credentials Grant">
+
+<t>This IoT credential grant is a variation of the client credential grant defined in RFC 6749.</t>
+
+<t>The client can request an access token using only its client credentials when the client is 
+   requesting access to the protected resources under its control, or those of another resource
+   owner that have been previously arranged with the authorization server (the method of which 
+   is beyond the scope of this specification).</t>
+
+<t>The IoT client credentials grant type MUST only be used by confidential clients.</t>
+
+<t>
+<figure anchor="iot-flow" title="IoT Client Credentials Flow.">
+<artwork>
+<![CDATA[
+     +---------+                                  +---------------+
+     |         |                                  |               |
+     |         |>--(A)- Access Token Request  --->| Authorization |
+     | Client  |        (protected by DTLS)       |     Server    |
+     |         |<--(B)- Access Token Response ---<|               |
+     |         |        (protected by DTLS)       |               |
+     +---------+                                  +---------------+
+]]>
+					</artwork>
+				</figure>
+			</t>
+<t>The exchange illustrated in <xref target="iot-flow"/> includes the following steps:</t>
+<t><list style="empty">
+
+   <t>(A)  The client authenticates with the authorization server and
+        requests an access token from the token endpoint. Mutual 
+        authentication between the client and then authorization server 
+        authentication takes place as part of the DTLS exchange.</t>
+
+   <t>(B) The authorization server authenticates the client, and if the 
+   	request is valid and authorized, issues an access token.</t>
+</list> 
+</t>
+<section title="Authorization Request and Response">
+
+  <t>Since the client authentication is used as the authorization grant,
+   no additional authorization request is needed.</t>
+
+</section> 
+
+<section title="Access Token Request">
+
+  <t>The client makes a request to the token endpoint by adding the
+   following parameters using the "application/x-www-form-urlencoded"
+   format with a character encoding of UTF-8 in the CoAP request entity-body:</t>
+   
+   <t><list style="hanging"> 
+   	<t hangText="grant_type:">OPTIONAL.  Value MUST be set to "urn:ietf:params:oauth:grant-type:iot" for this grant type.
+         The value is optional since the client may have been pre-provisioned 
+         by the authorization server with information about the grant type.</t>
+    <t hangText="scope:">OPTIONAL. The scope of the access request as described by
+         Section 3.3 of RFC 6749.</t>
+    <t hangText="audience:">OPTIONAL. Value is used by the client to
+   indicate what resource server, as the intended recipient, it wants to
+   access. This field is defined in <xref target="I-D.tschofenig-oauth-audience"/></t> 
+   </list></t> 
+
+   <t>(QUESTION: Would it be useful to also use a JSON encoding here?)</t>
+
+   <t>In order to prevent man-in-the-middle attacks, the client
+   MUST require the use of DTLS with server authentication for any request 
+   sent to the authorization and token endpoints.  If certificate-based server 
+   authentication is used then the client MUST validate the TLS certificate 
+   of the authorization server, as defined by <xref target="RFC6125"/>.</t>
+</section> 
+
+<section title="Access Token Response">
+
+   <t>If the access token request is valid and authorized, the
+   authorization server issues an access token as described in
+   Section 5.1 of RFC 6749 but encoded in a CoAP message using the Content 
+   response code with the response encoded as a JSON structure in the payload 
+   of the message. A refresh token MUST NOT be included.  If the request
+   failed client authentication or is invalid, the authorization server
+   returns an error response using the CoAP 4.00 'Bad Request' response code 
+   with the error messages defined in Section 5.2 of RFC 6749.</t>
+ 
+   <t>Note that the HTTP "Cache-Control" parameters are not used in the CoAP 
+   response message.</t>
+
+   <t>QUESTION: Would it be useful to use the CBOR encoding for the response?
+    This could reduce the response size by a few %.</t>
+
+
+</section> 
+
+</section> 
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section title="Example">
+
+<t>For example, the client makes a CoAP carrying the Access Token Request 
+   protected with DTLS to the authorization server. It then receives a 
+   successful Access Token Response containing the access token.</t>
+
+<t>In the example below content-type 51 corresponds to the 'application/x-www-form-urlencoded'.</t>
+
+<t>
+<figure anchor="arch-symm" title="Example CoAP POST Message Exchange.">
+<artwork>
+<![CDATA[
+           Authorization
+   Client     Server
+      |         |
+      |<=======>| DTLS Connection Establishment
+      |         |
+      +-------->| Header: POST (T=CON, Code=0.02, MID=0x7d34, 
+      | POST    | ct=51, Uri-Path:"token"
+      |         | Payload: grant_type=client_credentials
+      |         |
+      |<--------+ Header: 2.05 Content (T=ACK, Code=2.05, MID=0x7d34,
+      | 2.05    | ct=50)
+      |         | Payload: <JSON-Payload>
+      |         |
+
+<JSON-Payload>:=
+{
+    "access_token":"2YotnFZFE...jr1zCsicMWpAA",
+    "token_type":"bearer",
+    "expires_in":28800
+}
+]]>
+</artwork>
+</figure>
+</t>
+
+</section>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section title="Security Considerations">
+
+<t>This document re-uses a sub-set of the OAuth 2.0 functionality specified in RFC 6749 and intentionally inherits the security
+properties of OAuth 2.0, and DTLS. The discussion in Section 10 of RFC 6749 and Section 4 of RFC 6819 are relevant for this document.</t>
+
+<!-- 
+<t>For a complete solution the interaction between the client and the resource server also needs to be taken into account. 
+For a specification defining a CoAP/DTLS-based solution see <xref target=""/>.</t>
+--> 
+
+</section>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<section title="IANA Considerations">
+
+<section title="Sub-Namespace Registration of urn:ietf:params:oauth:grant-type:iot">
+
+<t>This specification registers the value "grant-type:iot" in the
+   IANA urn:ietf:params:oauth registry established in An IETF URN 
+   Sub-Namespace for OAuth <xref target="RFC6755"/>.</t>
+
+<t><list style="symbols">
+   <t>URN: urn:ietf:params:oauth:grant-type:iot</t>
+
+   <t>Common Name: Internet of Things (IoT) Client Credentails 
+      Grant Type Profile for OAuth 2.0</t>
+
+   <t>Change controller: IETF</t>
+
+   <t>Specification Document: [[this document]]</t>
+</list> 
+</t> 
+</section> 
+
+</section> 
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+	</middle>
+
+	<back>
+
+		<references title='Normative References'>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6749.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6125.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.7252.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6755.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6347.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-dice-profile.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.tschofenig-oauth-audience.xml' ?>	
+		</references>
+
+		<references title='Informative References'>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-json-web-token.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.hunt-oauth-pop-architecture.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.richer-oauth-introspection.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-kitten-sasl-oauth.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.bormann-core-ace-aif.xml' ?>
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.seitz-ace-usecases.xml' ?>
+		</references>
+	</back>
+</rfc>
