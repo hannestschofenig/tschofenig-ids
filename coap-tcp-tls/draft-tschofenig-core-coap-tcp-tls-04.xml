@@ -264,16 +264,14 @@ UDP) for keeping the individual messages separate.</t>
 
 <t>In a stream oriented transport protocol such as TCP, some other form
 of delimiting messages is needed.  For this purpose, CoAP over TCP
-introduces a length field.  <xref target="Shim"/> shows the 2-byte shim header
+introduces a length field.  <xref target="Shim"/> shows the 1-byte shim header
 carrying length information prepending the CoAP message header.</t>
 
 <figure title="CoAP Header with prepended Shim Header." anchor="Shim"><artwork><![CDATA[
      0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |        Message Length         |Ver| T |  TKL  |      Code     |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |   Token (if any, TKL bytes) ...
+   |Length |Ver| T |  TKL  |      Code     | Token (TKL bytes) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |   Options (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -281,8 +279,31 @@ carrying length information prepending the CoAP message header.</t>
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork></figure>
 
-<t>The ‘Message Length' field is a 16-bit unsigned integer in network
-byte order. It provides the length of the subsequent CoAP message
+<t>The ‘Message Length' field is a 8-bit unsigned integer in network
+byte order. Length sematics  follow the same mechanisme as "Major type 0" 
+from CBOR specification (<xref target="RFC7049"/>)
+
+The length field is dicated by the 5 less significant bit of the byte.
+Values are used as such:
+
+<t><list style="symbols">
+  <t>between 0b000_00001 and 0b000_10111 (1 to 23) dictates the actual lenght 
+    of the following message</t>
+  <t>0b000_11000 (24) means an additional 8-bit unsigned Integer is appended 
+    to the length field dictating the total length</t>
+  <t>0b000_11001 (25) means an additional 16-bit unsigned Integer is appended 
+    to the length field dictating the total length</t>
+  <t>0b000_10010 (26) means an additional 32-bit unsigned Integer is appended 
+    to the length field dictating the total length</t>
+</list></t>
+
+The last 3 bit in the initial length field are reserved for future use.
+
+If a recipient get a message larger than it can handle, it should if possible
+send back a 4.13 in accordance with <xref target="RFC7252"/> section on error 
+code
+
+The "length" field provides the length of the subsequent CoAP message
 (including the CoAP header but excluding this message length field) in
 bytes.  T is always the code for NON (1).  The Message ID is
 meaningless and thus elided.  The semantics of the other CoAP header
@@ -753,29 +774,41 @@ Negotiation (ALPN) Protocol IDs" created by <xref target="RFC7301"/>:</t>
 <format type='TXT' octets='79088' target='http://www.rfc-editor.org/rfc/rfc6335.txt' />
 </reference>
 
+<reference anchor='RFC7049'>
+
+<front>
+<title>Concise Binary Object Representation (CBOR)</title>
+<author initials='C.' surname='Bormann' fullname='C. Bormann'>
+<organization /></author>
+<author initials='P.' surname='Hoffman' fullname='P. Hoffman'>
+<organization /></author>
+<date year='2014' month='June' />
+<abstract>
+<t>The Concise Binary Object Representation (CBOR) is a data format whose design goals include the possibility of extremely small code size, fairly small message size, and extensibility without the need for version negotiation.  These design goals make it different from earlier binary serializations such as ASN.1 and MessagePack.</t></abstract></front>
+
+<seriesInfo name='RFC' value='7049' />
+<format type='TXT' octets='134062' target='http://www.rfc-editor.org/rfc/rfc7049.txt' />
+</reference>
 
 
-       <?rfc include="reference.I-D.ietf-core-block"?>  
+
+<?rfc include="reference.I-D.ietf-core-block"?> 
 
 
 
-	<reference anchor="HomeGateway">
-        <front>
-          <title>An experimental study of home gateway characteristics, In Proceedings of the '10th annual conference on Internet measurement'</title>
-            <author initials="L." surname="Eggert" fullname="Lars Eggert">
-              <organization/>
-            </author>
-          <date year="2010"/>
-        </front>
-        <format type='PDF'
+<reference anchor="HomeGateway">
+<front>
+<title>An experimental study of home gateway characteristics, In Proceedings of the '10th annual conference on Internet measurement'</title>
+<author initials="L." surname="Eggert" fullname="Lars Eggert">
+<organization/>
+</author>
+<date year="2010"/>
+</front>
+<format type='PDF'
         target='http://eggert.org/papers/2010-imc-hgw-study.pdf' />
-      </reference>
+</reference>
 
-
-
-
-
-    </references>
+</references>
 
 
 <!--  LocalWords:  TCP CoAP UDP firewalling firewalled TLS IP SCTP
