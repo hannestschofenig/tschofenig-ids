@@ -74,21 +74,21 @@ Table of Contents
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
    3.  Constrained Application Protocol  . . . . . . . . . . . . . .   3
    4.  Message Format  . . . . . . . . . . . . . . . . . . . . . . .   5
-     4.1.  Discussion  . . . . . . . . . . . . . . . . . . . . . . .   7
+     4.1.  Discussion  . . . . . . . . . . . . . . . . . . . . . . .   8
    5.  Message Transmission  . . . . . . . . . . . . . . . . . . . .   8
-   6.  CoAP URI  . . . . . . . . . . . . . . . . . . . . . . . . . .   8
-     6.1.  coap+tcp URI scheme . . . . . . . . . . . . . . . . . . .   8
+   6.  CoAP URI  . . . . . . . . . . . . . . . . . . . . . . . . . .   9
+     6.1.  coap+tcp URI scheme . . . . . . . . . . . . . . . . . . .   9
      6.2.  coaps+tcp URI scheme  . . . . . . . . . . . . . . . . . .   9
-   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
-   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
-     8.1.  Service Name and Port Number Registration . . . . . . . .   9
-     8.2.  URI Schemes . . . . . . . . . . . . . . . . . . . . . . .  10
-     8.3.  ALPN Protocol ID  . . . . . . . . . . . . . . . . . . . .  11
-   9.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  11
-   10. References  . . . . . . . . . . . . . . . . . . . . . . . . .  11
-     10.1.  Normative References . . . . . . . . . . . . . . . . . .  11
-     10.2.  Informative References . . . . . . . . . . . . . . . . .  12
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  12
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+     8.1.  Service Name and Port Number Registration . . . . . . . .  10
+     8.2.  URI Schemes . . . . . . . . . . . . . . . . . . . . . . .  11
+     8.3.  ALPN Protocol ID  . . . . . . . . . . . . . . . . . . . .  12
+   9.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  12
+   10. References  . . . . . . . . . . . . . . . . . . . . . . . . .  12
+     10.1.  Normative References . . . . . . . . . . . . . . . . . .  12
+     10.2.  Informative References . . . . . . . . . . . . . . . . .  13
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  13
 
 1.  Introduction
 
@@ -121,7 +121,7 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
    Some environments may also benefit from the more sophisticated
    congestion control capabilities provided by many TCP implementations.
-   (Note that there is ongoing work to add more sophisticated congestion
+   (Note that there is ongoing work to add more elaborate congestion
    control to CoAP as well, see [I-D.bormann-core-cocoa].)
 
    Finally, CoAP may be integrated into a Web environment where the
@@ -193,7 +193,7 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
    acknowledgement at the CoAP messaging layer.
 
    Hence, the only message type transported when using CoAP over TCP is
-   the Non-confirmable message (NON).  By nature of TCP, a NON over TCP
+   the Non-Confirmable message (NON).  By nature of TCP, a NON over TCP
    is still transmitted reliably.  Figure 2 (derived from [RFC7252],
    Figure 3) shows this message exchange graphically.  A UDP-to-TCP
    gateway will therefore discard all empty messages, such as empty ACKs
@@ -303,7 +303,7 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
    The 'Message Length' field starts with an 8-bit unsigned integer.
    Length encoding follows the same mechanism as "Major type 0" from the
-   CBOR specification ([RFC7049]) The length field is indicated by the 5
+   CBOR specification [RFC7049].  The length field is indicated by the 5
    least significant bits of the byte.  Values are used as such:
 
    o  between 0b000_00001 and 0b000_10111 (1 to 23) indicates the actual
@@ -325,11 +325,11 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
    handle, it SHOULD if possible send back a 4.13 in accordance with
    [RFC7252] section on error code.
 
-   -- End L Alternatives --
+   -- Common for L1 and L2 Alternatives --
 
    The "length" field provides the length of the subsequent CoAP message
    (including the CoAP header but excluding this message length field)
-   in bytes.  T is always the code for NON (1).  The Message ID is
+   in bytes.  T is always the code for NON (1).
 
 
 
@@ -338,8 +338,61 @@ Bormann, et al.         Expires December 12, 2015               [Page 6]
 Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
 
-   meaningless and thus elided.  The semantics of the other CoAP header
-   fields is left unchanged.
+   -- Alternative L3 --
+
+   The initial byte of the frame contains two nibbles, in a similar way
+   to the CoAP option encoding (Section 3.1 of [RFC7252]).  The first
+   nibble is used to indicate the length of the options (including any
+   option delimiter), and the payload (if any); it does not include the
+   Code byte or the Token bytes.  The first nibble is interpreted as a
+   4-bit unsigned integer.  A value between 0 and 12 directly indicates
+   the length of the options/payload, in bytes.  The other three values
+   have a special meaning:
+
+   13:  An 8-bit unsigned integer follows the initial byte and indicates
+      the length of options/payload minus 13.
+
+   14:  A 16-bit unsigned integer in network byte order follows the
+      initial byte and indicates the length of options/payload minus
+      269.
+
+   15:  A 32-bit unsigned integer in network byte order follows the
+      initial byte and indicates the length of options/payload minus
+      65805.
+
+   The second nibble of the initial byte indicates the token length.
+
+   Example: 01 43 7f is a frame just containing a 2.03 code with the
+   token 7f.
+
+        0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  Len  |  TKL  | Len+ bytes... |      Code     | TKL bytes ...
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  Options (if any) ...
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |1 1 1 1 1 1 1 1|    Payload (if any) ...
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+          Figure 6: CoAP Header with prepended Shim Header (L3).
+
+   -- End L Alternatives
+
+   The Message ID is meaningless and thus elided.  The semantics of the
+   other CoAP header fields is left unchanged.
+
+
+
+
+
+
+
+
+Bormann, et al.         Expires December 12, 2015               [Page 7]
+
+Internet-Draft         TCP/TLS Transport for CoAP              June 2015
+
 
 4.1.  Discussion
 
@@ -382,27 +435,23 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
    continue to be used over TCP, even if applications occasionally do
    exchange messages with payload sizes larger than desirable in UDP.
 
+5.  Message Transmission
+
+   As CoAP exchanges messages asynchronously over the TCP connection,
+   the client can send multiple requests without waiting for responses.
+   For this reason, and due to the nature of TCP, responses are returned
+   during the same TCP connection as the request.  In the event that the
+   connection gets terminated, all requests that have not elicited a
 
 
 
-
-
-
-
-Bormann, et al.         Expires December 12, 2015               [Page 7]
+Bormann, et al.         Expires December 12, 2015               [Page 8]
 
 Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
 
-5.  Message Transmission
-
-   Since CoAP exchange message asynchronously over the TCP socket, the
-   client can send multiple requests without waiting for responses.  For
-   this reason, and due to the nature of TCP, responses are returned
-   during the same TCP Session as the request.  In the event that the
-   connection gets terminated, all requests with no response are
-   cancelled; clients are free to transmit the request again once a
-   connection is reestablished.
+   response yet are canceled; clients are free to transmit the request
+   again once a connection is reestablished.
 
    Furthermore, since TCP is bidirectional, requests can be sent from
    both the connecting host or the endpoint that accepted the
@@ -443,17 +492,19 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
       server is located.  (If it is empty or not given, then the default
       port 5683 is assumed, as with UDP.)
 
-
-
-Bormann, et al.         Expires December 12, 2015               [Page 8]
-
-Internet-Draft         TCP/TLS Transport for CoAP              June 2015
-
-
 6.2.  coaps+tcp URI scheme
 
    coaps-tcp-URI = "coaps+tcp:" "//" host [ ":" port ] path-abempty
                    [ "?" query ]
+
+
+
+
+
+Bormann, et al.         Expires December 12, 2015               [Page 9]
+
+Internet-Draft         TCP/TLS Transport for CoAP              June 2015
+
 
    The semantics defined in [RFC7252], Section 6.2, applies to this URI
    scheme, with the following changes:
@@ -499,17 +550,18 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
    Assignee.
       IESG <iesg@ietf.org>
 
-
-
-Bormann, et al.         Expires December 12, 2015               [Page 9]
-
-Internet-Draft         TCP/TLS Transport for CoAP              June 2015
-
-
    Contact.
       IETF Chair <chair@ietf.org>
 
    Description.
+
+
+
+Bormann, et al.         Expires December 12, 2015              [Page 10]
+
+Internet-Draft         TCP/TLS Transport for CoAP              June 2015
+
+
       Constrained Application Protocol (CoAP)
 
    Reference.
@@ -520,7 +572,7 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
    Similarly, IANA is requested to assign the service name "coaps+tcp",
    in accordance with [RFC6335].  However, no separate port number is
-   used for coaps over TCP; instead, the ALPN protocol ID defined in
+   used for "coaps" over TCP; instead, the ALPN protocol ID defined in
    Section 8.3 is used over port 443.
 
    Service Name.
@@ -553,20 +605,18 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
    The syntax of the "coap" and "coaps" URI schemes is specified in
    Section 6 of [RFC7252] and the present document re-uses their
-
-
-
-
-Bormann, et al.         Expires December 12, 2015              [Page 10]
-
-Internet-Draft         TCP/TLS Transport for CoAP              June 2015
-
-
    semantics for "coap+tcp" and "coaps+tcp", respectively, with the
    exception that TCP, or TLS over TCP is used as a transport protocol.
 
    IANA is requested to add these new URI schemes to the registry
    established with [RFC4395].
+
+
+
+Bormann, et al.         Expires December 12, 2015              [Page 11]
+
+Internet-Draft         TCP/TLS Transport for CoAP              June 2015
+
 
 8.3.  ALPN Protocol ID
 
@@ -610,20 +660,19 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
    [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
               (TLS) Protocol Version 1.2", RFC 5246, August 2008.
 
-
-
-
-Bormann, et al.         Expires December 12, 2015              [Page 11]
-
-Internet-Draft         TCP/TLS Transport for CoAP              June 2015
-
-
    [RFC7252]  Shelby, Z., Hartke, K., and C. Bormann, "The Constrained
               Application Protocol (CoAP)", RFC 7252, June 2014.
 
    [RFC7301]  Friedl, S., Popov, A., Langley, A., and E. Stephan,
               "Transport Layer Security (TLS) Application-Layer Protocol
               Negotiation Extension", RFC 7301, July 2014.
+
+
+
+Bormann, et al.         Expires December 12, 2015              [Page 12]
+
+Internet-Draft         TCP/TLS Transport for CoAP              June 2015
+
 
 10.2.  Informative References
 
@@ -669,7 +718,14 @@ Authors' Addresses
 
 
 
-Bormann, et al.         Expires December 12, 2015              [Page 12]
+
+
+
+
+
+
+
+Bormann, et al.         Expires December 12, 2015              [Page 13]
 
 Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
@@ -725,4 +781,4 @@ Internet-Draft         TCP/TLS Transport for CoAP              June 2015
 
 
 
-Bormann, et al.         Expires December 12, 2015              [Page 13]
+Bormann, et al.         Expires December 12, 2015              [Page 14]

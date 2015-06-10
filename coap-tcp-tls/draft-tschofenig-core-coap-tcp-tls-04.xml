@@ -128,7 +128,7 @@ much shorter, as research confirms <xref target="HomeGateway"/>.</t>
 
 <t>Some environments may also benefit from the more sophisticated congestion
 control capabilities provided by many TCP implementations.
-(Note that there is ongoing work to add more sophisticated congestion control
+(Note that there is ongoing work to add more elaborate congestion control
 to CoAP as well, see <xref target="I-D.bormann-core-cocoa"/>.)</t>
 
 <t>Finally, CoAP may be integrated into a Web environment where the front-end
@@ -188,7 +188,7 @@ reliable delivery, there is no need to offer a redundant
 acknowledgement at the CoAP messaging layer.</t>
 
 <t>Hence, the only message type transported when using CoAP over TCP is
-the Non-confirmable message (NON).  By nature of TCP, a NON over TCP is still
+the Non-Confirmable message (NON).  By nature of TCP, a NON over TCP is still
 transmitted
 reliably. <xref target="NON"/> (derived from <xref target="RFC7252"/>, Figure 3) shows this
 message exchange graphically.  A UDP-to-TCP gateway will therefore discard
@@ -284,7 +284,7 @@ byte order.</t>
 
 <t>The ‘Message Length’ field starts with an 8-bit unsigned
 integer. Length encoding follows the same mechanism as “Major type 0”
-from the CBOR specification (<xref target="RFC7049"/>)
+from the CBOR specification <xref target="RFC7049"/>.
 The length field is indicated by the 5 least significant bits of the byte.
 Values are used as such:</t>
 
@@ -307,13 +307,55 @@ If a recipient gets a message larger than it can handle, it SHOULD if possible
 send back a 4.13 in accordance with <xref target="RFC7252"/> section on error
 code.</t>
 
-<t>— End L Alternatives —</t>
+<t>— Common for L1 and L2 Alternatives —</t>
 
 <t>The “length” field provides the length of the subsequent CoAP message
 (including the CoAP header but excluding this message length field) in
-bytes.  T is always the code for NON (1).  The Message ID is
-meaningless and thus elided.  The semantics of the other CoAP header
-fields is left unchanged.</t>
+bytes.  T is always the code for NON (1).</t>
+
+<t>— Alternative L3 —</t>
+
+<t>The initial byte of the frame contains two nibbles, in a similar way to the
+CoAP option encoding (Section 3.1 of <xref target="RFC7252"/>).  The first nibble is used to indicate the length
+of the options (including any option delimiter), and the payload (if
+any); it does not include the Code byte or the Token bytes.  The first
+nibble is interpreted as a 4-bit unsigned integer.  A value between 0
+and 12 directly indicates the length of the options/payload, in bytes.
+The other three values have a special meaning:</t>
+
+<t><list style="hanging">
+  <t hangText='13:'>
+  An 8-bit unsigned integer follows the initial byte and indicates the
+length of options/payload minus 13.</t>
+  <t hangText='14:'>
+  A 16-bit unsigned integer in network byte order follows the initial
+byte and indicates the length of options/payload minus 269.</t>
+  <t hangText='15:'>
+  A 32-bit unsigned integer in network byte order follows the initial
+byte and indicates the length of options/payload minus 65805.</t>
+</list></t>
+
+<t>The second nibble of the initial byte indicates the token length.</t>
+
+<t>Example: 01 43 7f is a frame just containing a 2.03 code with the
+token 7f.</t>
+
+<figure title="CoAP Header with prepended Shim Header (L3)." anchor="ShimL3"><artwork><![CDATA[
+     0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Len  |  TKL  | Len+ bytes... |      Code     | TKL bytes ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Options (if any) ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 1 1 1 1 1 1 1|    Payload (if any) ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork></figure>
+
+<t>— End L Alternatives</t>
+
+<t>The Message ID is meaningless and thus elided.  The semantics of the
+other CoAP header fields is left unchanged.</t>
 
 <section anchor="discussion" title="Discussion">
 
@@ -366,13 +408,13 @@ exchange messages with payload sizes larger than desirable in UDP.</t>
 </section>
 <section anchor="message-transmission" title="Message Transmission">
 
-<t>Since CoAP exchange message asynchronously over the TCP socket, the
+<t>As CoAP exchanges messages asynchronously over the TCP connection, the
 client can send multiple requests without waiting for responses.  For
 this reason, and due to the nature of TCP, responses are returned
-during the same TCP Session as the request.  In the event that the
-connection gets terminated, all requests with no response are
-cancelled; clients are free to transmit the request again once a
-connection is reestablished.</t>
+during the same TCP connection as the request.  In the event that the
+connection gets terminated, all requests that have not elicited a
+response yet are canceled; clients are free to transmit the request
+again once a connection is reestablished.</t>
 
 <t>Furthermore, since TCP is bidirectional, requests can be sent from
 both the connecting host or the endpoint that accepted the connection.
@@ -484,7 +526,7 @@ in accordance with <xref target="RFC6335"/>.</t>
 
 <t>Similarly, IANA is requested to assign the
 service name “coaps+tcp”, in accordance with <xref target="RFC6335"/>.
-However, no separate port number is used for coaps over TCP; instead,
+However, no separate port number is used for “coaps” over TCP; instead,
 the ALPN protocol ID defined in <xref target="alpnpid"/> is used over port 443.</t>
 
 <t><list style="hanging">
@@ -900,7 +942,11 @@ feedback.</t>
  -->
 <!--  LocalWords:  prepending URI DTLS demultiplexing demultiplex pre
  -->
-<!--  LocalWords:  IANA ALPN
+<!--  LocalWords:  IANA ALPN Middleboxes NATs ACK acknowledgements
+ -->
+<!--  LocalWords:  datagram prepended CBOR namespaces subcomponent
+ -->
+<!--  LocalWords:  Assignee
  -->
 
 
