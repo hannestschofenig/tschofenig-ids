@@ -1,0 +1,689 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" []>
+<?xml-stylesheet type='text/xsl' href='http://xml.resource.org/authoring/rfc2629.xslt' ?>
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="no"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc strict="no"?>
+<?rfc compact="no"?>
+<?rfc subcompact="no"?>
+
+<rfc category="std" ipr="trust200902"
+docName="draft-ietf-oauth-pop-key-distribution-00.txt">
+
+  <front>
+  <title abbrev="OAuth 2.0 PoP: AS-Client Key Distribution">OAuth 2.0 Proof-of-Possession: Authorization Server to Client Key Distribution</title>   
+
+    <author fullname="John Bradley" initials="J." surname="Bradley">
+      <organization abbrev="Ping Identity">Ping Identity</organization>
+      <address>
+	<email>ve7jtb@ve7jtb.com</email>
+  <uri>http://www.thread-safe.com/</uri>
+      </address>
+    </author>
+
+      <author fullname="Phil Hunt" initials="P." surname="Hunt">
+      <organization>Oracle Corporation</organization>
+
+      <address>
+        <email>phil.hunt@yahoo.com</email>
+        <uri>http://www.indepdentid.com</uri>
+      </address>
+    </author>
+    
+    
+    <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+      <organization abbrev="Microsoft">Microsoft</organization>
+
+      <address>
+        <email>mbj@microsoft.com</email>
+        <uri>http://self-issued.info/</uri>
+      </address>
+    </author>
+
+
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization>ARM Limited</organization>
+      <address>
+        <postal>
+          <street></street>
+          <city></city>
+          <code></code>
+          <country>Austria</country>
+        </postal>
+        <phone></phone>
+        <email>Hannes.Tschofenig@gmx.net</email>
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+
+    <date year="2014"/>
+    <keyword>Internet-Draft</keyword>
+    <keyword>OAuth</keyword>
+    <keyword>Security</keyword>
+    <keyword>Authorization</keyword>
+        <keyword>Key Distribution</keyword>
+    <keyword>Proof-of-Possession</keyword>
+
+    <abstract>
+
+  <t>RFC 6750 specified the bearer token concept for securing access to protected resources. Bearer tokens need to be protected in transit as well as at rest. When a client requests access to a protected resource it hands-over the bearer token to the resource server.</t> 
+  
+  <t>The OAuth 2.0 Proof-of-Possession security concept extends bearer token security and requires the client to demonstrate possession of a key when accessing a protected resource.</t>
+  
+  <t>This document describes how the client obtains this keying material from the authorization server.</t>
+
+</abstract>
+
+  </front>
+  <middle>
+
+<!-- ====================================================================== -->
+
+<section anchor="introduction" title="Introduction">
+
+   <t>The work on additional security mechanisms beyond OAuth 2.0 bearer tokens <xref target="RFC6750"/> is motivated in <xref target="I-D.hunt-oauth-pop-architecture"/>, which also outlines use cases, requirements and an architecture. This document defines the ability for the client indicate support for this functionality and to obtain keying material from the authorization server. As an outcome of the exchange between the client and the authorization server is an access token that is bound to keying material. Clients that access protected resources then need to demonstrate knowledge of the secret key that is bound to the access token.</t>
+
+  <t>To best describe the scope of this specification, the OAuth 2.0 protocol exchange sequence is shown in <xref target="oauth-flow"/>.
+	  The extension defined in this document piggybacks on the message exchange marked with (C) and (D).</t>
+  
+  	  <t>
+        <figure anchor="oauth-flow" title="Abstract OAuth 2.0 Protocol Flow">
+          <artwork><![CDATA[
+     +--------+                               +---------------+
+     |        |--(A)- Authorization Request ->|   Resource    |
+     |        |                               |     Owner     |
+     |        |<-(B)-- Authorization Grant ---|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(C)-- Authorization Grant -->| Authorization |
+     | Client |                               |     Server    |
+     |        |<-(D)----- Access Token -------|               |
+     |        |                               +---------------+
+     |        |
+     |        |                               +---------------+
+     |        |--(E)----- Access Token ------>|    Resource   |
+     |        |                               |     Server    |
+     |        |<-(F)--- Protected Resource ---|               |
+     +--------+                               +---------------+		  
+]]></artwork>
+        </figure>
+	  </t>
+	  
+	  
+	  	  <t>In OAuth 2.0 <xref target="RFC6749"/> access tokens can be obtained via authorization grants and using refresh tokens. The core OAuth 
+	  specification defines four authorization grants, see Section 1.3 of <xref target="RFC6749"/>, and 
+	  <xref target="I-D.ietf-oauth-assertions"/> adds an assertion-based authorization grant to that list.
+	  The token
+   endpoint, which is described in Section 3.2 of <xref target="RFC6749"/>, is used with every authorization grant except for the implicit grant type. In the implicit grant type the access token is issued directly.</t>
+   
+   <t>This document extends the functionality of the token endpoint, i.e., the protocol exchange between the client and the authorization server, to allow keying material to be bound to an access token. Two types of keying material can be bound to an access token, namely symmetric keys and asymmetric keys. Conveying symmetric keys from the authorization server to the client is described in <xref target="symmetric"/> and the procedure for dealing with asymmetric keys is described in <xref target="asymmetric"/>. </t>
+   
+   <!--
+    <t>QUESTION: This document focuses on binding the keys to access tokens only. Keys can, however, also be bound to refresh tokens and to the authorization code, as described in <xref target="I-D.sakimura-oauth-tcse"/>. Should the scope of this document be extended?</t>
+	--> 
+	
+</section>
+
+<!-- ************************************************************************************** --> 
+
+<section title="Terminology">
+   <t>The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
+   'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
+   specification are to be interpreted as described in <xref target="RFC2119"/>.</t>
+   
+  <t><list style="hanging">
+		
+		<t hangText="Session Key:"><vspace blankLines="1"/>
+		The term session key refers to fresh and unique keying material established between the client and the resource server. This session key has a lifetime that corresponds to the lifetime of the access token, is generated by the authorization server and bound to the access token.<vspace blankLines="1"/></t> 
+	   </list>
+	  </t>
+	  
+	  <t>This document uses the following abbreviations:</t>
+	  
+	  <t>
+	  <list style="hanging">
+	    <t hangText="JWA:">JSON Web Algorithms (JWA) <xref target="I-D.ietf-jose-json-web-algorithms"/></t>
+	    <t hangText="JWT:">JSON Web Token (JWT)	<xref target="I-D.ietf-oauth-json-web-token"/></t>
+	    <t hangText="JWS:">JSON Web Signature (JWS)	<xref target="I-D.ietf-jose-json-web-signature"/></t>	    
+	    <t hangText="JWK:">JSON Web Key (JWK)	<xref target="I-D.ietf-jose-json-web-key"/></t>
+	    <t hangText="JWE:">JSON Web Encryption (JWE) <xref target="I-D.ietf-jose-json-web-encryption"/></t>
+	  </list> 	  
+	  </t>
+	   
+	  </section>
+	  
+<!-- ************************************************************************************** --> 
+
+<section anchor="audience" title="Audience"> 
+
+ <t>When an authorization server creates an access token, according to the PoP security architecture <xref target="I-D.hunt-oauth-pop-architecture"/>, it may need to know which resource server will process it. This information is necessary when the authorization server applies integrity protection to the JWT using a symmetric key and has to selected the key of the resource server that has to verify it. The authorization server also requires this audience information if it has to encrypt a symmetric session key inside the access token using a long-term symmetric key.</t>
+ 
+<t>This section defines a new header that is used by the client to indicate what protected resource at which resource server it wants to access. This information may subsequently also communicated by the authorization server securely to the resource server, for example within the audience field of the access token.</t>
+ 
+ <t>QUESTION: A benefit of asymmetric cryptography is to allow clients to request a PoP token for use with multiple resource servers. The downside of that approach is linkability since different resource servers will be able to link individual requests to the same client. (The same is true if the a single public key is linked with PoP tokens used with different resource servers.) Nevertheless, to support the functionality the audience parameter could carry an array of values. Is this desirable?</t>
+	
+	   <section title='Audience Parameter'>
+	
+	<t>The client constructs the access token request to the token endpoint by adding the 'aud' parameter using the "application/x-www-form-urlencoded" format with a character encoding of UTF-8 in the HTTP request entity-body.</t>
+	
+	<t>The URI included in the aud parameter MUST be an absolute URI as defined by Section 4.3 of <xref target="RFC3986"/>. It MAY include an
+   "application/x-www-form-urlencoded" formatted query component (Section 3.4 of <xref target="RFC3986"/> ). The URI MUST NOT include a
+   fragment component.</t>
+   
+   <t>The ABNF syntax for the 'aud' element is defined in <xref target="ABNF"/>.</t> 
+   
+   </section>
+   
+   
+   <section title="Processing Instructions">
+
+    <t><list style="empty">
+	 
+     <t>Step (0): As an initial step the client typically determines the resource server it wants to interact with. This may, for example, happen as part of a discovery procedure or via manual configuration.</t>
+	 
+	   <t>Step (1): The client starts the OAuth 2.0 protocol interaction based on the selected grant type. </t>
+	  
+	    <t>Step (2): When the client interacts with the token endpoint to obtain an access token it MUST populate the newly defined 'audience' parameter with the information obtained in step (0).</t>
+     
+      <t>Step (2): The authorization server who obtains the request from the client needs to parse it to determine whether the provided audience value matches any of the resource servers it has a relationship with. If the authorization server fails to parse the provided value it MUST reject the request using an error response with the error code "invalid_request". If the authorization server does not consider the resource server acceptable it MUST return an error response with the error code "access_denied". In both cases additional error information may be provided via the error_description, and the error_uri parameters. If the request has, however, been verified successfully then the authorization server MUST include the audience claim into the access token with the value copied from the audience field provided by the client. In case the access token is encoded using the JSON Web Token format <xref target="I-D.ietf-oauth-json-web-token"/> the "aud" claim MUST be used. The access token, if passed per value, MUST be protected against modification by either using a digital signature or a keyed message digest. Access tokens can also be passed by reference, which then requires the token introspection endpoint (or a similiar, proprietary protocol mechanism) to be used. The authorization server returns the access token to the client, as specified in <xref target="RFC6749"/>.</t>
+     
+   </list></t>
+	 
+	 <t>Subsequent steps for the interaction between the client and the resource server are beyond the scope of this document.</t> 
+	
+   </section> 
+   
+</section> 
+  	  
+<!-- ************************************************************************************** --> 
+
+   <section anchor="symmetric" title="Symmetric Key Transport"> 
+   
+   <section title="Client-to-AS Request">
+   <t>In case a symmetric key shall be bound to an PoP token the following procedure is applicable. In the request message from the OAuth client to the OAuth authorization server the following parameters MAY be included:  
+        </t>
+        
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='token_type:'>
+              OPTIONAL.  See <xref target="algorithm"/> for more details. 
+            </t>
+            <t hangText='alg:'>
+              OPTIONAL.  See <xref target="algorithm"/> for more details. 
+            </t>              
+          </list>
+        </t>
+   
+   <t>These two new parameters are optional in the case where the authorization server has prior knowledge of the capabilities of the client otherwise these two parameters are required. This prior knowledge may, for example, be set by the use of a dynamic client registration protocol exchange.
+   </t> 
+
+   <t>QUESTION: Should we register these two parameters for use with the dynamic client registration protocol?</t>   
+      <t>For example, the client makes the following HTTP request using TLS
+   (extra line breaks are for display purposes only).</t>
+
+   <t>
+          <figure title="Example Request to the Authorization Server">
+            <artwork>
+              <![CDATA[
+     POST /token HTTP/1.1
+     Host: server.example.com
+     Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+     Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+
+     grant_type=authorization_code
+     &code=SplxlOBeZQQYbYS6WxSbIA
+     &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
+     &token_type=pop
+     &alg=HS256
+]]>
+          </artwork>
+        </figure>
+      </t>
+    
+    </section>
+    
+    <section title="Client-to-AS Response"> 
+    
+      <t>If the access token request has been successfully verified by the authorization server and the client is authorized to obtain a PoP token for the indicated resource server, the
+   authorization server issues an access token and optionally a refresh
+   token. If client authentication failed or is invalid, the authorization server returns
+   an error response as described in Section 5.2 of <xref target="RFC6749"/>.</t>
+
+      <t>The authorization server MUST include an access token and a 'key' element in a successful response. The 'key' parameter either contains a plain JWK structure or a JWK encrypted with a JWE. The difference between the two approaches is the following:
+         
+         <list style="hanging"> 
+         
+          <t hangText="Plain JWK:">If the JWK container is placed in the 'key' element then the security of the overall PoP architecture relies on Transport Layer Security (TLS) between the authorization server and the client. <xref target="symmetric-response"/> illustrates an example response using a plain JWK for key transport from the authorization server to the client. </t>
+         
+          <t hangText="JWK protected by a JWE:">If the JWK container is protected by a JWE then additional security protection at the application layer is provided between the authorization server and the client beyond the use of TLS. This approach is a reasonable choice, for example, when a hardware security module is available on the client device and confidentiality protection can be offered directly to this hardware security module.</t>         
+      </list> 
+      </t>
+
+<t>Note that there are potentially two JSON-encoded structures in the response, namely the access token (with the recommended JWT encoding) and the actual key transport mechanism itself. Note, however, that the two structures serve a different purpose and are consumed by different parites. The access token is created by the authorization server and processed by the resource server (and opaque to the client) whereas the key transport payload is created by the authorization server and processed by the client; it is never forwarded to the resource server.
+        </t>
+       
+        <t>
+        <figure title="Example: Response from the Authorization Server (Symmetric Variant)" anchor="symmetric-response">
+          <artwork>
+            <![CDATA[
+  HTTP/1.1 200 OK
+  Content-Type: application/json
+  Cache-Control: no-store
+
+  {
+    "access_token":"SlAV32hkKG ... 
+     (remainder of JWT omitted for brevity;
+     JWT contains JWK in the cnf claim)",
+    "token_type":"pop",
+    "expires_in":3600,
+    "refresh_token":"8xLOxBtZp8",
+    "key":"eyJhbGciOiJSU0ExXzUi ...
+     (remainder of plain JWK omitted for brevity)"
+  }
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>The content of the key parameter, which is a JWK in our example, is shown in <xref target="symmetric-JWK"/>.</t>
+
+<t>
+ <figure title="Example: Key Transport to Client via a JWK" anchor="symmetric-JWK">
+ <artwork>
+ <![CDATA[
+  {
+   "kty":"oct",
+   "kid":"id123",
+   "alg":"HS256",
+   "k":"ZoRSOrFzN_FzUA5XKMYoVHyzff5oRJxl-IXRtztJ6uE"
+  }
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>The content of the 'access_token' in JWT format contains 
+  the 'cnf' (confirmation) claim, as shown in <xref target="symmetric-JWT"/>. The confirmation claim is defined in <xref target="I-D.jones-oauth-proof-of-possession"/>. 
+  The digital signature or the 
+  keyed message digest offering integrity protection
+  is not shown in this example but MUST be present in a real deployment to mitigate a number of security threats. Those security threats are described in <xref target="I-D.hunt-oauth-pop-architecture"/>.</t>
+
+<t>The JWK in the key element of the response from the authorization server, as shown in <xref target="symmetric-response"/>, contains 
+  the same session key as the JWK inside the access token, as shown in <xref target="symmetric-JWT"/>. It is, in this example, protected 
+  by TLS and transmitted from the authorization server to the client (for processing by the client).</t>
+
+ <t>
+ <figure title="Example: Access Token in JWT Format" anchor="symmetric-JWT">
+ <artwork>
+ <![CDATA[
+   {
+      "iss": "https://server.example.com",
+      "sub": "24400320",
+      "aud": "s6BhdRkqt3",
+      "nonce": "n-0S6_WzA2Mj",
+      "exp": 1311281970,
+      "iat": 1311280970,
+      "cnf":{
+        "jwk":
+          "JDLUhTMjU2IiwiY3R5Ijoi ...
+           (remainder of JWK protected by JWE omitted for brevity)"
+        }
+   }
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>Note: When the JWK inside the access token contains a symmetric key it 
+  MUST be confidentiality protected using a JWE to maintain the security goals of 
+  the PoP architecture, as described in <xref target="I-D.hunt-oauth-pop-architecture"/>
+since content is meant for consumption by the selected resource server only.</t>
+    
+<t>Note: This document does not impose requirements on the encoding of the access token. 
+The examples used in this document make use of the JWT structure since this is the only 
+standardized format.</t>
+
+<t>If the access token is only a reference then a look-up by 
+  the resource server is needed, as described in the token introspection specification <xref target="I-D.richer-oauth-introspection"/>. </t>
+
+</section> 
+
+   </section> 
+   
+<!-- ====================================================================== -->
+
+   <section anchor="asymmetric" title="Asymmetric Key Transport"> 
+   
+   
+    <section title="Client-to-AS Request"> 
+   <t>In case an asymmetric key shall be bound to an access token then the following procedure is applicable.  In the request message from the OAuth client to the OAuth authorization server the request MAY include the following parameters:  
+        </t>
+        
+        <t>
+          <list style='hanging' hangIndent='6'>
+            <t hangText='token_type:'>
+              OPTIONAL. See <xref target="algorithm"/> for more details.
+            </t>           
+            <t hangText='alg:'>
+              OPTIONAL. See <xref target="algorithm"/> for more details.
+            </t>
+            <t hangText='key:'>
+              OPTIONAL. This field contains information about the public key the client would like to bind to the access token in the JWK format. If the client does not provide a public key then the authorization server MUST create an ephemeral key pair (considering the information provided by the client) or alternatively respond with an error message. The client may also convey the fingerprint of the public key to the authorization server instead of passing the entire public key along (to conserve bandwidth). <xref target="I-D.jones-jose-jwk-thumbprint"/> defines a way to compute a thumbprint for a JWK and to embedd it within the JWK format. 
+            </t> 
+          </list>
+        </t>
+
+   <t>The 'token_type' and the 'alg' parameters are optional in the case where the authorization server has prior knowledge of the capabilities of the client otherwise these two parameters are required.</t> 
+
+   <t>For example, the client makes the following HTTP request using TLS (extra line breaks are for display purposes only) shown in <xref target="asymmetric-example"/>.
+   </t>
+   
+   <t>
+   <figure anchor="asymmetric-example" title="Example Request to the Authorization Server (Asymmetric Key Variant)">
+   <artwork>
+   <![CDATA[
+     POST /token HTTP/1.1
+     Host: server.example.com
+     Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+     Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+
+     grant_type=authorization_code
+     &code=SplxlOBeZQQYbYS6WxSbIA
+     &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
+     &token_type=pop
+     &alg=RS256
+     &key=eyJhbGciOiJSU0ExXzUi ...
+     (remainder of JWK omitted for brevity)
+   ]]></artwork>
+   </figure>
+   </t>
+ 
+   <t>As shown in <xref target="asymmetric-pk"/> the content of the 'key' parameter contains the RSA public key 
+   the client would like to associate with the access token.</t>
+   
+   <t>
+   <figure anchor="asymmetric-pk" title="Client Providing Public Key to Authorization Server">
+   <artwork>
+   <![CDATA[    
+   {"kty":"RSA",
+    "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+     4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+     tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+     QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+     SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+     w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+     "e":"AQAB",
+     "alg":"RS256",
+     "kid":"id123"}
+   ]]></artwork>
+   </figure>
+   </t>
+
+   </section> 
+   
+   <section title="Client-to-AS Response"> 
+          
+   <t>If the access token request is valid and authorized, the
+   authorization server issues an access token and optionally a refresh
+   token.  If the request client authentication failed or is invalid, the authorization server returns
+   an error response as described in Section 5.2 of <xref target="RFC6749"/>.</t>
+   
+   <t>The authorization server also places information 
+   about the public key used by the client into the access token to create the 
+   binding between the two. The new token type "public_key" is placed into the 'token_type' parameter. </t>
+
+   <t>An example of a successful response is shown in <xref target="asymmetric-response"/>.</t>
+   
+   <t>
+   <figure title="Example: Response from the Authorization Server (Asymmetric Variant)" anchor="asymmetric-response">
+   <artwork>
+   <![CDATA[
+     HTTP/1.1 200 OK
+     Content-Type: application/json;charset=UTF-8
+     Cache-Control: no-store
+     Pragma: no-cache
+
+     {
+       "access_token":"2YotnFZFE....jr1zCsicMWpAA",
+       "token_type":"pop",
+       "alg":"RS256",
+       "expires_in":3600,
+       "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA"
+     }   
+    ]]></artwork>
+   </figure>
+   </t>
+
+   <t>The content of the 'access_token' field contains an encoded
+    JWT with the following structure, as shown in <xref target="asymmetric-access-token"/>. The digital 
+    signature or the keyed message digest offering integrity protection
+    is not shown (but must be present).</t>
+
+   <t>
+   <figure title="Example: Access Token Structure (Asymmetric Variant)" anchor="asymmetric-access-token">
+   <artwork>
+   <![CDATA[   
+    {
+      "iss":"xas.example.com",
+      "aud":"http://auth.example.com",
+      "exp":"1361398824",
+      "nbf":"1360189224",
+      "cnf":{
+        "jwk":{"kty":"RSA",
+          "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
+     4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
+     tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
+     QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
+     SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
+     w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+          "e":"AQAB",
+          "alg":"RS256",
+          "kid":"id123"}
+       }
+     }
+    ]]></artwork>
+   </figure>
+   </t>
+     
+   <t>Note: In this example there is no need for the authorization server
+    to convey further keying material to the client since the client is 
+    already in possession of the private RSA key.</t>
+   </section> 
+   
+  </section> 
+	  
+	  
+<!-- ************************************************************************************** --> 
+
+   <section anchor="algorithm" title="Token Types and Algorithms"> 
+
+    <t>To allow clients to indicate support for specific token types and respective algorithms they need to interact with authorization servers. 
+    They can either provide this information out-of-band, for example, via pre-configuration or up-front via the dynamic client registration protocol <xref target="I-D.ietf-oauth-dyn-reg"/>.</t>
+    
+    <t>The value in the 'alg' parameter together with value from the 'token_type' parameter allow the client to indicate the supported algorithms for a given token type. The token type refers to the specification used by the client to interact with the resource server to demonstrate possession of the key. The 'alg' parameter provides further information about the algorithm, such as whether a symmetric or an asymmetric crypto-system is used. Hence, a client supporting a specific token type also knows how to populate the values to the 'alg' parameter.</t>
+    
+    <t>The value for the 'token_type' MUST be taken from the 'OAuth Access Token Types' registry created by <xref target='RFC6749' />.</t>
+
+    <t>This document does not register a new value for the OAuth Access Token Types registry nor does it define values to be used for the 'alg' parameter since this is the responsibility of specifications defining the mechanism for clients interacting with resource servers. An example of such specification can be found in <xref target="I-D.richer-oauth-signed-http-request"/>.</t>
+
+    <t>The values in the 'alg' parameter are case-sensitive. If the client supports more than one algorithm then each individual value MUST be separated by a space.</t>
+
+</section> 
+ 
+ 
+<!-- ====================================================================== -->
+
+<section anchor="SecurityConsiderations" title="Security Considerations">
+  
+  <t><xref target="I-D.hunt-oauth-pop-architecture"/> describes the architecture for the OAuth 2.0 proof-of-possession security architecture, including use cases, threats, and requirements.
+  This requirements describes one solution component of that architecture, namely the mechanism for the client to interact with the authorization server to either obtain a symmetric key from the authorization server, to obtain an asymmetric key pair, or to offer a public key to the authorization. In any case, these keys are then bound to the access token by the authorization server. 
+  </t>
+
+   <t>To summarize the main security recommendations: A large range of threats can be mitigated by protecting the contents
+   of the access token by using a digital signature or a keyed message digest. 
+   Consequently, the token integrity protection MUST be applied 
+   to prevent the token from being modified, particularly since it contains a reference to the symmetric key or the asymmetric key.
+   If the access token contains the symmetric key (see Section 2.2 of <xref target="I-D.jones-oauth-proof-of-possession"/> for a description about how symmetric keys can be securely conveyed within the access token) this symmetric key MUST be encrypted by the authorization server with a long-term key shared with the resource server. </t>
+
+   <t>To deal with token redirect, it is important for the authorization
+   server to include the identity of the intended recipient (the
+   audience), typically a single resource server (or a list of resource
+   servers), in the token. Using a single shared secret with multiple authorization server to simplify key management is 
+   NOT RECOMMENDED since the benefit from using the proof-of-possession concept is significantly reduced. </t>
+
+   <t>Token replay is also not possible since an eavesdropper will also have to obtain 
+   the corresponding private key or shared secret that is bound to the access token. 
+   Nevertheless, it is good practice to limit the lifetime of the access token and therefore the lifetime 
+   of associated key.
+   </t>
+   
+   <t>The authorization server MUST offer confidentiality protection for any interactions with the client. 
+   This step is extremely important since the client will obtain the session key from the authorization server for use with a specific 
+   access token. Not using confidentiality protection exposes this secret (and the access token) to an eavesdropper thereby making the OAuth 2.0 proof-of-possession security model completely insecure. 
+   OAuth 2.0 <xref target="RFC6749"/> relies on TLS to offer confidentiality protection and additional protection can be applied using the JWK <xref target="I-D.ietf-jose-json-web-key"/> offered security mechanism, which would add an additional layer of protection on top of TLS for cases where the keying material is conveyed, for example, to a hardware security module. Which version(s) of TLS ought
+   to be implemented will vary over time, and depend on the widespread
+   deployment and known security vulnerabilities at the time of
+   implementation.  At the time of this writing, TLS version 1.2
+   <xref target="RFC5246"/> is the most recent version. The
+   client MUST validate the TLS certificate chain when making requests
+   to protected resources, including checking the validity of the certificate. 
+   </t> 
+  
+   <t>Similarly to the security recommendations for the bearer token specification <xref target="RFC6750"/> developers MUST ensure that the ephemeral 
+   credentials (i.e., the private key or the session key) is not leaked to third parties. An adversary in possession of the ephemeral credentials bound to the access token will be able to impersonate the client. Be aware that this is a real risk with many smart phone app and Web development environments.</t>
+
+
+ <t>Clients can at any time request a new proof-of-possession capable access token. Using a refresh token to regularly request new access tokens that are bound to fresh and unique keys is important. Keeping the lifetime of the access token short allows the authorization server to use shorter key sizes, which translate to a performance benefit for the client and for the resource server. Shorter keys also lead to shorter messages (particularly with asymmetric keying material).</t> 
+   
+   <t>When authorization servers bind symmetric keys to access tokens then they SHOULD scope these access tokens to a specific permissions.</t> 
+
+</section> 
+
+
+<!-- ====================================================================== -->
+<!-- 
+<section anchor="PrivacyConsiderations" title="Privacy Considerations">
+  <t>TBD</t>
+</section>
+--> 
+<!-- ====================================================================== -->
+
+<section anchor="iana" title="IANA Considerations">
+
+<t>This specification registers the following parameters in the OAuth Parameters Registry established by <xref target="RFC6749"/>.</t>
+
+<t><list style="hanging"> 
+<t hangText="Parameter name:">alg</t>
+<t hangText="Parameter usage location:"> token request, token response, authorization response</t>
+<t hangText="Change controller:"> IETF</t>
+<t hangText="Specification document(s):">  [[ this document ]]</t>
+<t hangText="Related information:">  None</t>
+</list> 
+</t> 
+
+<t><list style="hanging"> 
+<t hangText="Parameter name:">key</t>
+<t hangText="Parameter usage location:"> token request, token response, authorization response</t>
+<t hangText="Change controller:"> IETF</t>
+<t hangText="Specification document(s):">  [[ this document ]]</t>
+<t hangText="Related information:">  None</t>
+</list> 
+</t> 
+
+<t><list style="hanging"> 
+<t hangText="Parameter name:">aud</t>
+<t hangText="Parameter usage location:"> token request</t>
+<t hangText="Change controller:"> IETF</t>
+<t hangText="Specification document(s):"> [[This document.]</t>
+<t hangText="Related information:">  None</t>
+</list> 
+</t>
+
+</section> 
+
+<!-- ====================================================================== -->
+
+    
+<section anchor="acks" title="Acknowledgements">
+  <t>We would like to thank Chuck Mortimore for his review comments. </t>
+</section>
+
+
+  </middle>
+
+<!-- ====================================================================== -->
+  <back>
+
+    <references title="Normative References"> 
+      <?rfc include="reference.RFC.2119"?>
+      <?rfc include="reference.RFC.6749"?>
+      <?rfc include="reference.RFC.3986"?>
+      <?rfc include="reference.RFC.5246"?>
+      <?rfc include="reference.I-D.ietf-jose-json-web-key"?>
+      <?rfc include="reference.I-D.ietf-jose-json-web-signature"?>      
+      <?rfc include="reference.I-D.ietf-jose-json-web-algorithms"?>
+      <?rfc include="reference.I-D.ietf-jose-json-web-encryption"?>
+      <?rfc include="reference.I-D.ietf-oauth-json-web-token"?>
+      <?rfc include="reference.I-D.jones-oauth-proof-of-possession"?>
+      <?rfc include="reference.I-D.jones-jose-jwk-thumbprint"?>
+    </references> 
+
+    <references title="Informative References"> 
+      <?rfc include="reference.RFC.6750"?>
+      <?rfc include="reference.RFC.5234"?>
+      <?rfc include="reference.I-D.ietf-oauth-assertions"?>
+      <?rfc include="reference.I-D.sakimura-oauth-tcse"?>
+      <?rfc include="reference.I-D.ietf-oauth-dyn-reg"?>
+      <?rfc include="reference.I-D.hunt-oauth-pop-architecture"?>    
+      <?rfc include="reference.I-D.richer-oauth-introspection"?>    
+      <?rfc include="reference.I-D.richer-oauth-signed-http-request"?>    
+      
+    </references>
+  
+  <section anchor="ABNF" title="Augmented Backus-Naur Form (ABNF) Syntax"> 
+  
+  <t>This section provides Augmented Backus-Naur Form (ABNF) syntax
+   descriptions for the elements defined in this specification using the
+   notation of <xref target="RFC5234"/>.</t> 
+   
+   
+   <section title="'aud' Syntax">
+  
+   <t>The ABNF syntax is defined as follows where by the "URI-reference" definition is taken from <xref target="RFC3986"/>:</t>
+   
+     <t><list style="empty"> 
+   <t>aud = URI-reference</t>
+</list></t> 
+
+   </section> 
+
+   <section title="'key' Syntax">
+
+    <t>The "key" element is defined in <xref target="symmetric"/> and <xref target="asymmetric"/>:</t>
+    
+    <t><list style="empty"> 
+<t>key = 1*VSCHAR</t>
+</list> 
+</t>
+    </section>
+     
+     <section title="'alg' Syntax">
+     <t>The "alg" element is defined in <xref target="algorithm"/>:</t>
+<t><list style="empty"> 
+<t>alg = alg-token *( SP alg-token )</t>
+<t>alg-token = 1*NQCHAR</t>
+</list>
+</t>
+</section>
+
+</section> 
+  </back>
+
+</rfc>

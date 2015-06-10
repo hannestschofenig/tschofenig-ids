@@ -15,7 +15,7 @@
 <?rfc comments="yes"?>
 <?rfc inline="yes"?>
 
-<rfc ipr="trust200902" docName="draft-tschofenig-core-coap-tcp-tls-02.txt" category="std">
+<rfc ipr="trust200902" docName="draft-tschofenig-core-coap-tcp-tls-04.txt" category="std">
 
   <front>
     <title abbrev="TCP/TLS Transport for CoAP">A TCP and TLS Transport for the Constrained Application Protocol (CoAP)</title>
@@ -104,6 +104,7 @@ This document defines the use of CoAP over TCP as well as CoAP over TLS.</t>
 
 <section anchor="introduction" title="Introduction">
 
+<!-- 
 <t>The Internet protocol stack is organized in layers, namely link layer,
 internet layer, transport layer, and the application layer
 (<xref target="RFC1122"/>).</t>
@@ -120,26 +121,32 @@ Having IP as the waist means that anyone can extend the layers above
 the network layer in the way they want to communicate end-to-end,
 including defining new transport layer protocols.</t>
 
-<t>Unfortunately, some network deployments depart from this architecture.
-The <xref target="RFC7252">Constrained Application Protocol (CoAP)</xref> was designed
+
+<t>Unfortunately, some network deployments depart from this architecture. --> 
+<t>The <xref target="RFC7252">Constrained Application Protocol (CoAP)</xref> was designed
 for Internet of Things (IoT) deployments, assuming that UDP can be
 used freely – UDP <xref target="RFC0768"/>, or DTLS <xref target="RFC6347"/> over UDP, is a good choice for
 transferring small amounts of data in networks that follow the IP
 architecture.
 Some CoAP deployments, however, may have to integrate well with
 existing enterprise infrastructure, where the use of UDP-based
-protocols may not be well-received or even supported by firewalls.
-Middleboxes that are unaware of the IoT can make the use of UDP
+protocols may not be well-received or even blocked by firewalls.
+Middleboxes that are unaware of CoAP usage for IoT can make the use of UDP
 brittle.</t>
 
-<t>As a separate consideration, some environments benefit from the more advanced congestion
-control and flow control capabilities provided by TCP.  For instance,
-CoAP back-end processors in a cloud environment may want to connect
-between each other via TCP instead of UDP; a TCP-to-UDP gateway can be
+<t>CoAP over TCP can also help with NAT traversal too. NATs often calculate expiration timers 
+based on the transport layer protocol being used by application protocols. A transport layer protocol like 
+TCP gives NAT implementations additional information about the session semantic and this allows 
+NATs to keep NAT bindings around for a longer period. UDP on the other hand does not provide such 
+session semantics to a NAT and timeouts tend to be much shorter, as research confirms <xref target="HomeGateway"/>.</t>
+
+<t>As an additional usage scenario, some environments benefit from the congestion control capabilities provided by TCP. 
+Note that there is ongoing work to add more sophisticated congestion control to CoAP as well, see <xref target="I-D.bormann-core-cocoa"/>.</t>
+
+<t>Finally, CoAP may be integrated into a Web environment where the front-end uses CoAP from IoT devices to a cloud infrastructure but the CoAP messages are then piggybacked on top of TCP in the back-end to other Web services. A TCP-to-UDP gateway can be
 used at the cloud boundary to talk to the UDP-based IoT.</t>
 
-<t>To make both IoT devices and their associated back-end processors work
-smoothly in these demanding environments, CoAP needs
+<t>To make both IoT devices work smoothly in these demanding environments, CoAP needs
 to make use of a different transport protocol, namely TCP
 <xref target="RFC0793"/> and in some situations even TLS <xref target="RFC5246"/>.</t>
 
@@ -255,16 +262,14 @@ UDP) for keeping the individual messages separate.</t>
 
 <t>In a stream oriented transport protocol such as TCP, some other form
 of delimiting messages is needed.  For this purpose, CoAP over TCP
-introduces a length field.  <xref target="Shim"/> shows the 2-byte shim header
+introduces a length field.  <xref target="Shim"/> shows the 1-byte shim header
 carrying length information prepending the CoAP message header.</t>
 
 <figure title="CoAP Header with prepended Shim Header." anchor="Shim"><artwork><![CDATA[
      0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |        Message Length         |Ver| T |  TKL  |      Code     |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |   Token (if any, TKL bytes) ...
+   |Length |Ver| T |  TKL  |      Code     | Token (TKL bytes) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |   Options (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -272,8 +277,31 @@ carrying length information prepending the CoAP message header.</t>
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork></figure>
 
-<t>The ‘Message Length' field is a 16-bit unsigned integer in network
-byte order. It provides the length of the subsequent CoAP message
+<t>The ‘Message Length' field is a 8-bit unsigned integer in network
+byte order. Length sematics  follow the same mechanisme as "Major type 0" 
+from CBOR specification (<xref target="RFC7049"/>)
+
+The length field is dicated by the 5 less significant bit of the byte.
+Values are used as such:</t>
+
+<t><list style="symbols">
+  <t>between 0b000_00001 and 0b000_10111 (1 to 23) dictates the actual lenght 
+    of the following message</t>
+  <t>0b000_11000 (24) means an additional 8-bit unsigned Integer is appended 
+    to the length field dictating the total length</t>
+  <t>0b000_11001 (25) means an additional 16-bit unsigned Integer is appended 
+    to the length field dictating the total length</t>
+  <t>0b000_11010 (26) means an additional 32-bit unsigned Integer is appended 
+    to the length field dictating the total length</t>
+</list></t>
+
+<t>The 3 most significante bit in the initial length field are reserved for future use.
+
+If a recipient get a message larger than it can handle, it SHOULD if possible
+send back a 4.13 in accordance with <xref target="RFC7252"/> section on error 
+code</t>
+
+<t>The "length" field provides the length of the subsequent CoAP message
 (including the CoAP header but excluding this message length field) in
 bytes.  T is always the code for NON (1).  The Message ID is
 meaningless and thus elided.  The semantics of the other CoAP header
@@ -323,6 +351,21 @@ continue to be used over TCP, even if applications occasionally do
 exchange messages with payload sizes larger than desirable in UDP.</t>
 
 </section>
+</section>
+
+
+<section anchor="message-transmission" title="Message Transmission">
+
+  <t>Since CoAP exchange message asyncroniously over the TCP socket, the client can 
+  send multiple request without wating for responses.  For this reason, and due to the 
+  nature of TCP, all response MUST return during the same TCP Session as the request.  In
+  the event that the connection gets terminated, all request with no response are canceled 
+  and should retransmite once the connection is restablished. </t>
+
+  <t>Furthermore, since TCP is bidirectional, request can be sent from both the connection 
+  host or the remote entity.  This does not change the coap client and coap server sematic 
+  when interaction occurs.</t>
+
 </section>
 <section anchor="URI" title="CoAP URI">
 
@@ -654,8 +697,7 @@ Negotiation (ALPN) Protocol IDs" created by <xref target="RFC7301"/>:</t>
     <references title='Informative References'>
 
 
-
-
+       <?rfc include="reference.I-D.bormann-core-cocoa"?>  
 
 <reference anchor='RFC0768'>
 
@@ -679,7 +721,7 @@ Negotiation (ALPN) Protocol IDs" created by <xref target="RFC7301"/>:</t>
 </reference>
 
 
-
+<!-- 
 <reference anchor='RFC1122'>
 
 <front>
@@ -702,7 +744,7 @@ Negotiation (ALPN) Protocol IDs" created by <xref target="RFC7301"/>:</t>
 <format type='TXT' octets='295992' target='http://www.rfc-editor.org/rfc/rfc1122.txt' />
 </reference>
 
-
+--> 
 
 <reference anchor='RFC6347'>
 
@@ -745,16 +787,41 @@ Negotiation (ALPN) Protocol IDs" created by <xref target="RFC7301"/>:</t>
 <format type='TXT' octets='79088' target='http://www.rfc-editor.org/rfc/rfc6335.txt' />
 </reference>
 
+<reference anchor='RFC7049'>
+
+<front>
+<title>Concise Binary Object Representation (CBOR)</title>
+<author initials='C.' surname='Bormann' fullname='C. Bormann'>
+<organization /></author>
+<author initials='P.' surname='Hoffman' fullname='P. Hoffman'>
+<organization /></author>
+<date year='2014' month='June' />
+<abstract>
+<t>The Concise Binary Object Representation (CBOR) is a data format whose design goals include the possibility of extremely small code size, fairly small message size, and extensibility without the need for version negotiation.  These design goals make it different from earlier binary serializations such as ASN.1 and MessagePack.</t></abstract></front>
+
+<seriesInfo name='RFC' value='7049' />
+<format type='TXT' octets='134062' target='http://www.rfc-editor.org/rfc/rfc7049.txt' />
+</reference>
 
 
-       <?rfc include="reference.I-D.ietf-core-block"?>  
+
+<?rfc include="reference.I-D.ietf-core-block"?> 
 
 
 
+<reference anchor="HomeGateway">
+<front>
+<title>An experimental study of home gateway characteristics, In Proceedings of the '10th annual conference on Internet measurement'</title>
+<author initials="L." surname="Eggert" fullname="Lars Eggert">
+<organization/>
+</author>
+<date year="2010"/>
+</front>
+<format type='PDF'
+        target='http://eggert.org/papers/2010-imc-hgw-study.pdf' />
+</reference>
 
-
-
-    </references>
+</references>
 
 
 <!--  LocalWords:  TCP CoAP UDP firewalling firewalled TLS IP SCTP
