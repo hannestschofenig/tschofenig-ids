@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="us-ascii"?>
+
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+  <!ENTITY RFC7516 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7516.xml">
+  <!ENTITY RFC7519 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7519.xml">
+  <!ENTITY RFC7049 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7049.xml">
+  <!ENTITY I-D.gerdes-ace-actors SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.gerdes-ace-actors.xml">
+]>
+
+<?xml-stylesheet type="text/xsl" href="rfc2629.xslt"?>
+
+<?rfc strict="yes"?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="2"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+
+<rfc category="std" docName="draft-somaraju-ace-multicast-00.txt" ipr="trust200902">
+
+  <front>
+    <title>Multicast Security for the Lighting Domain</title>
+
+<author initials="A.S." surname="Somaraju" fullname="Abhinav Somaraju">
+<organization></organization>
+<address>
+<postal>
+<street>Downing Street No. 10</street>
+<city>London</city>
+<region/>
+<code></code>
+<country>UK</country>
+</postal>
+<email>Dr. No</email>
+</address>
+</author>
+
+<author initials="S.S." surname="Kumar" fullname="Sandeep S. Kumar">
+<organization>Philips Research</organization>
+<address>
+<postal>
+<street>High Tech Campus 34</street>
+<city>Eindhoven</city>
+<region/>
+<code>5656 AE</code>
+<country>NL</country>
+</postal>
+<email>ietf.author@sandeep-kumar.org</email>
+</address>
+</author>
+
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig ">
+      <organization>ARM Ltd.</organization>
+      <address>
+        <postal>
+          <street>110 Fulbourn Rd</street>
+          <city>Cambridge</city>
+          <code>CB1 9NJ</code>
+          <country>Great Britain</country>
+        </postal>
+        <email>Hannes.tschofenig@gmx.net </email>
+        <uri>http://www.tschofenig.priv.at</uri>
+ 
+      </address>
+    </author>
+
+    <date/>
+    <area>Security</area>
+    <workgroup>ace</workgroup>
+      
+    <abstract>
+
+<t>TBD.</t>
+
+
+    </abstract>
+
+  </front>
+
+  <middle>
+
+    <!-- **************************************************************** -->
+
+    <section title="Introduction" anchor="introduction">
+
+<t>There are several lighting related use cases that require securing the communication between a sender and a group of receivers where a message needs to be received.</t>
+
+<t>For such applications, two problems need to be addressed: 
+<list style="numbers">
+<t>Only authorized members of the multicast group must read and process messages.</t>
+<t>Message processing must happen with low latency (typically 200 ms).</t>
+</list> 
+</t> 
+
+<t>This document discusses these two issues and describes the picture picture of how these issues could be addressed.</t>
+
+<t>Typically, multiple lighting nodes (incl. sensors, switches, luminaires etc.) are grouped into a single lighting application group. Each node in the group might be a sender, a receiver or both sender and receiver within the group (even though in the picture below, we show nodes that are only senders or receivers for clarity). Every sender in the group needs to be authorized to send a message (with low latency) to all the receivers within that group. Receivers in the group process the message after verifying the included access token, which encapsulates the capabilities given to the sender. On some occasions, a sender in group will be required to send unicast messages to unique receivers within the same group and the authorization procedure must also ensure security for such communications.</t>
+
+<t><xref target="Figure1a"/> and <xref target="Figure1b"/> provide an architectural overview. Figure 1a illustrates the information flow between an authorization server and the participating nodes. This step is typically executed during the commissioning phase for nodes that are statically mounted in buildings. The authorization server is a logical function that may, however, be included in a device carried by the commissioner. In other situations where authorization decisions change often or dynamically, as it would be the case with employees using their smartphones to control lights.</t>
+
+<t>In any case, the described architecture envisioned a separation between the authorization server providing authorization and configuration information to all nodes in the network and the key distribution server (KDC) that is responsible to distributing group keying material.</t>
+
+<t>As a result of the initial interaction described in <xref target="Figure1a"/> network nodes are configured with an proof-of-possession (PoP) access token for use with the KDC and the corresponding key associated with that access token. The token and the key is subsequently used with the KDC when requesting group keys, as described in <xref target="Figure1b"/>. 
+</t>
+
+<t><figure title="Architecture: Commissioning Phase." anchor="Figure1a">
+            <artwork>
+              <![CDATA[
+FIGURE does in here. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t><figure title="Architecture: Operational Phase. " anchor="Figure1b">
+            <artwork>
+              <![CDATA[
+FIGURE does in here. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t>The dotted lines in <xref target="Figure1a"/> and <xref target="Figure1b"/> illustrate the use of DTLS for securing the message exchange between all involved parties. This document assumes that the credentials used to authenticate network nodes to the authorization server have been pre-provisioned.</t>
+
+<t>Prior to the protocol interaction the resource owner specifies authorization policies within the authorization server that define which network node is allowed to perform which actions.</t>
+
+<t>The steps during the commission phase are as follows:
+<list style="hanging"> 
+<t>All nodes obtain contact an authorization server. This step happens during the commissioning process or, dynamically for those cases where authorization decisions changes over time (such as with smartphones or tablets). This interaction is secured and the endpoints are authenticated.</t>
+<t>The authorization server evaluates the request and determines what access level the requestor can be granted. Finally, configuration information, a proof-of-possession (PoP) access token and the key bound to that token from the authorization server is provided to the requestor. The PoP access token (AT) is meant for use with the Key Distribution Center (KDC). It is labelled as AT-KDC.</t>
+</list> 
+</t> 
+
+<t><xref target="Figure2"/> describes the algorithm for obtaining the necessary credentials to transmit a secure multicast message based on the architectural description shown in Figure 1b. When sender wants to send a message to the application group, it checks if it has the group key If no group key is available then it checks if it has an access token for use with the KDC (AT-KDC). If no AT-KDC is found then it contacts the authorization server to obtain an access token. Note that this assumes that the authorization server is online, which is only true in scenarios where granting authorization dynamically is supported. In the other case where the AT-KDC is already available the sender contacts the KDC to obtain a group key. If a group key is already available then the sender can transmit a message secured to the group immediately. </t>
+
+<t><figure title="Steps to Transmit Multicast Message." anchor="Figure2">
+            <artwork>
+              <![CDATA[
+FIGURE does in here. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t>Note that the sender does not have to wait until it has to transmit a message in order to request a group key; the sender is likely to be pre-configured with information about which lighting application group it belongs to and can therefore pre-fetch the required information.</t>
+
+<t>Group keys have a lifetime, which is configuration dependent, but mechanisms need to be provided to update group keys either via the sender asking for a group key renewal or via the KDC pushing new keys to senders and receivers. The lifetime can be based on time or on the number of transmitted messages. </t>
+
+<t>In the simplified message exchange the sender obtained a group key and started communicating with receivers in that group using secure multicast. The description skipped two important aspects, namely it was not explained how the receivers themselves are able to obtain the necessary group key to verify incoming messages. Furthermore, receivers themselves also need information about what the specific sender is authorized to access. </t>
+
+<t>Authorization information as well as the group key is conveyed within an access token, which is provided by the sender to the receivers in the initial multicast message. The authorization information includes details about the authorized access level as granted by the authorization server as well as information about the more fine grained access, for example the group the sender is permitted to send messages to. </t>
+
+<t>Multicast messages need protected such that reply and modification can be detected. The integrity of the message is protected using the group key. The use of symmetric keys is envisioned. For secure unicast messaging, a topic outside the scope of this document, the sender is assumed to use the DTLS handshake to establish the necessary security context for securing subsequent message interactions. </t>
+
+</section> 
+
+    <!-- **************************************************************** -->
+
+<section title="Terminology">
+
+<t>This document the following terms from <xref target="I-D.gerdes-ace-actors"/>: Authorization Server, Resource Owner, Client, Resource Server. The term 'sender' corresponds to client and the term 'receiver' corresponds to Resource Server from <xref target="I-D.gerdes-ace-actors"/>.</t>
+
+<t>This document also assumes that the reader is familiar with the OMA Lightweight Machine-to-Machine (LWM2M) specifications <xref target="LWM2M"/> and the IPSO specification <xref target="IPSO"/>.</t>
+
+</section> 
+
+    <!-- **************************************************************** -->
+
+<section title="The Access Level Concept">
+
+<t>A characteristic of the lighting domain is that access control decisions are also impacted by the type of operation being performed and those categories are listed below. The following access levels are pre-defined.</t>
+
+<t><list style="hanging">
+<t hangText="Level 0: Service detection only"><vspace blankLines="1"/>
+This is a service that is used with broadcast service detection methods. No operational data is accessible at this level. </t>
+
+<t hangText="Level 1: Reporting only"><vspace blankLines="1"/>
+This level allows access to sensor and other (relatively uncritical) operational data and the device error status. The operation of the system cannot be influenced using this level.</t>
+
+<t hangText="Level 2: Standard use"><vspace blankLines="1"/>
+This level allows access to all operational features, including access to operational parameters.
+This is the highest level of access that can be obtained using (secure) multicast.</t>
+
+<t hangText="Level 3: Commissioning use / Parametrization Services"><vspace blankLines="1"/>
+This level gives access to parameters that commission the operation of the system , but does not allow structural changes.</t>
+
+<t hangText="Level 4: Commissioning use / Localization and Addressing Services"><vspace blankLines="1"/>
+(including Factory Reset and Plugin-Disabling)
+This level also allows access to all services and parameters including structural settings.  </t>
+
+<t hangText="Level 5: Software Update and related Services"><vspace blankLines="1"/>
+This level allows the change and upgrade of the software of the devices. </t>
+</list>
+</t>
+
+<t>Note: The use of (secure) multicast communication is disallowed for level higher than Level 2. </t>
+
+</section> 
+
+    <!-- **************************************************************** -->
+
+<section title="Access Token Format">
+
+<t>This document assumes the use of access tokens to pass authorization information as well as keying material between the different parties in the lighting domain. To improve interoperability a token format needs to be standardized and this section outlines the use of an existing format based on the JSON Web Token (JWT). It contains a symmetric key encapsulated inside the JSON Web Key (JWK). The capabilities, called claims in the JWT jargon, are included inside the token and, in this example, state that the granted access level is 2 and access to the group 2 multicast is allowed by the sender.</t>
+
+<t>The example below shows an access token using the standardized JWT-format with an embedded symmetric key. While JSON is a compact encoding format standardization work is ongoing to define an even more efficient format for conveying the same information using a binary format (using CBOR as defined in RFC 7049 <xref target="RFC7049"/>). The corresponding security protection is currently being defined in the IETF COSE working group <xref target="COSE"/>.</t>
+
+<t>JSON Web Token (JWT) protected using a JSON Web Signature (JWS) applying a message authentication code to protect against forgery. The actual signature computation (and the result) is omitted in this example.</t>
+
+<t><figure>
+            <artwork>
+              <![CDATA[
+JWS Header: 
+
+    {"alg":"HS256",
+     "kid":"123"
+    }
+
+Legend for JWS Header: 
+- alg: Algorithm parameter indicating the type of cryptographic 
+       algorithm used to protect the structure. In this case 
+       HMAC-SHA 256 is used. 
+- kid: Key Identifier used to select the appropriate key. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t><figure>
+            <artwork>
+              <![CDATA[
+JWT Body: 
+   {
+      "iss": "coaps://as.example.com",
+      "exp": "1361398824",
+      "scp": "l2,g2", 
+      "cnf":{
+        "jwe":
+          "eyJhbGciOiJSU0ExXzUiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiY3R5Ijoi
+           andrK2pzb24ifQ. ... (remainder of JWE omitted for brevity)"
+        }
+     }
+
+Legend for JWT Body: 
+- iss: Issuer (which is the entity creating the access token). The 
+       content does not need to be a URI but can also be a string 
+       identifying the entity issuing the token. 
+- exp: Expiry date of the access token. Claim can be omitted if 
+       tokens do not expire (for example, in a small enterprise 
+       environment).
+- scp: Scope denoting the capabilities of the token
+- cnf: Key confirmation element containing an encrypted JSON Web 
+       Key. The encryption being applied uses JSON Web 
+       Encryption (JWE).
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t>The JSON Web Encryption (JWE) contains a header followed by the content that is encrypted. Details about the JWE usage relevant for this example can be found in Appendix A.3 of RFC 7516 <xref target="RFC7516"/>.</t>
+
+<t><figure>
+            <artwork>
+              <![CDATA[
+JWE Header: 
+
+{"alg":"A128KW",
+ "enc":
+ "A128CBC-HS256"
+}
+
+Legend for JWE Header: 
+- alg: Algorithm parameter indicating the AES 128 Key Wrap algorithm 
+       being used for encrypting the included key and the 
+       AES_128_CBC_HMAC_SHA_256 algorithm is used for authenticated 
+       encryption. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t><figure>
+            <artwork>
+              <![CDATA[
+JWE Header: 
+
+{"alg":"A128KW",
+ "enc":
+ "A128CBC-HS256"
+}
+
+Legend for JWE Header: 
+- alg: Algorithm parameter indicating the AES 128 Key Wrap algorithm 
+       being used for encrypting the included key and the 
+       AES_128_CBC_HMAC_SHA_256 algorithm is used for authenticated 
+       encryption. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t><figure>
+            <artwork>
+              <![CDATA[
+JWE Header: 
+
+{"alg":"A128KW",
+ "enc":
+ "A128CBC-HS256"
+}
+
+Legend for JWE Header: 
+- alg: Algorithm parameter indicating the AES 128 Key Wrap algorithm 
+       being used for encrypting the included key and the 
+       AES_128_CBC_HMAC_SHA_256 algorithm is used for authenticated 
+       encryption. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t><figure>
+            <artwork>
+              <![CDATA[
+JWK to be encrypted by JWE:
+
+ {"kty":"oct",
+  "k":"GawgguFyGrWKav7AX4VKUg"
+ }
+
+Legend for the JWK to be encrypted: 
+- kty: Key type identifies the cryptographic algorithm family used with
+       the key. In this example the JWK contains a symmetric key denoted
+       as "oct" for octet sequence.  
+- k: Key parameter containing the actual key. 
+
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+</section>
+
+    <!-- **************************************************************** -->
+
+<section title="Lighting Application">
+
+<t>The group keys distributed by the KDC are used to secure CoAP messages between senders (e.g., light switch) and receivers (e.g., luminaire). 
+</t>
+
+<section title="Application Group vs. Security Group vs. Multicast Group"> 
+
+<t>There are three types of groups that we need to consider:
+<list style="hanging"> 
+
+<t hangText="Application Group:"><vspace blankLines="1"/>
+A lighting application group that consists of the set of all lighting devices that have been configured by a commissioner to respond to events in a consistent manner. For instance, a wall mounted switch and a set of luminaires in a single room might belong to a single group and the switch may be used to turn on/off all the luminaires in the group simultaneously with a single button press. In the remainder of this document we will use GId to identify an application group.</t>
+
+<t hangText="Multicast Group:"><vspace blankLines="1"/>
+A multicast group consists of the set of all nodes that subscribe to the same multicast IP address.</t>
+
+<t hangText="Security Group:"><vspace blankLines="1"/>
+A security group consists of a set of sending and receiving nodes such that any sending node is able to securely send a message to all the receiving nodes. For instance, if symmetric keys are used to secure such messages then every node that has access to the symmetric key is a part of the security group. Should every node in a security group decrypt a message even if it is not for it because it is not for its application group.
+</t>
+</list> 
+</t> 
+
+<t>Typically, the three groups might not coincide due to the memory constraints on the devices and also security considerations. For instance, in a small room with windows, we may have three application groups: "room group", "luminaires close to the window group" and "luminaires far from the window group". However, we may choose to use only one multicast group for all devices in the room and one security group for all the devices in the room. At the other end of the spectrum, we may have an application group consisting of all the luminaires on a floor consisting of several smaller rooms. In this case, due to security considerations we may choose to not distribute a single key to all the devices on the whole floor. Therefore, the security group might be much smaller (e.g., one per room) and the application floor group is split up into smaller security groups.</t>
+
+</section> 
+
+
+<section title="LWM2M Object and CoAP Message Format">
+
+<t>The CoAP/LWMM2M/IPSO protocol stack can be used as a foundation for the design of a lighting system. The architecture identifies three functions present in a lighting system:
+<list style="symbols">
+<t>Sensor functions which detect a (physical) phenomenon like a light sensor, a presence detector or a push button.</t>
+<t>Actuator functions which cause action or change like setting a driver value of a light source.</t>
+<t>Control functions which link the inputs (from sensor functions) to outputs (from actuator functions) and enforce specific behaviour.</t>
+</list> 
+</t> 
+
+<t>In typical applications, a sensor output might be used by multiple control functions and a single control function might control many actuators and a single actuator may be controlled by multiple control functions. Moreover, different functions (e.g., control and actuator) might be collocated on a single device. In the example below, we show one method that may be used to implement the above architecture using the LWM2M object model. We begin with the case of unicast communication (because the LWM2M model does not directly support multicast communication). We then explain a possible way to expand to the multicast situation. </t>
+
+<section title="Unicast Messages using the LWM2M Object Model">
+
+<t>The follow scenario considers a deployment with a single (physical) presence sensor, a single (physical) luminaire and the desired functionality is the following: dim the luminaires to 90% when presence is detected in the room and to dim the luminaires to 10% when there is no presence. In this situation, the sensor functionality is implemented on the presence sensor, the actuator functionality is implemented on the luminaire and the control functionality could be implemented on the presence sensor or the luminaire or on independent physical control device.</t> 
+
+<t>In this example, we assume that 
+<list style="symbols">
+<t>the presence sensor function is implemented using the IPSO Presence object with Object ID 3302 [1].</t>
+<t>the actuator control function is implemented using the IPSO Light control object with Object ID 3311 [1].</t>
+<t>the control function is implemented by a LWM2M server to which the two LWM2M clients on the luminaire and presence sensor register.</t>
+</list> 
+</t> 
+
+<t>The IPSO Light Control Object supports the "Dimmer" resource (Res ID 5851) which may be written to in order to change the light intensity output. The IPSO Presence Object supports the "Digital Input State" resource (Res ID 5500) which is a boolean readable resource that reflects the current state of the presence sensor. A method to implement the control functionality is the following: 
+<list style="numbers"> 
+<t>The luminaire and the presence sensor register with their objects with the control LWM2M server. This registration step happens during commissioning phase, when the device  reboots or whenever IP addresses change.</t>
+<t>The control LWM2M server observes the "Digital Input State" of the presence sensor. </t>
+<t>When the presence sensor state changes, the sensor notifies the control LWM2M server. </t>
+<t>The control LWM2M server writes the correct output intensity to the "Dimmer" resource to change the luminaire light output. </t>
+</list> 
+</t>
+ 
+<t>This sequence of messages is shown in <xref target="Figure3"/>.</t> 
+
+<t><figure title="Unicast messaging between control unit and luminaire." anchor="Figure3">
+            <artwork>
+              <![CDATA[
+FIGURE does in here. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t>Here, [IP_C], [IP_L] and [IP_S] are the unicast IP addresses of the devices that implement the control function, light control object and sensor object, respectively.</t>
+
+</section> 
+
+<section title="Multicast Communication using the LWM2M Object Model">
+
+<t>We now see how the above unicast model may be extended to the group communication case. In particular, we look at the situation of a single sensor connected to multiple control functions each of which in turn control multiple luminaires (as explained in the controller architecture). Consider a typical application in a room consisting of 8 luminaires and a room presence sensor and a corridor presence sensor. The luminaires are divided into the "close to the window" group and "wall group". </t>
+
+<t>The functionality we wish to implement is the following:
+<list style="symbols">
+<t>If presence is detected in the room, then dim-up the wall luminaires to 90% and window luminaires to 50%.</t>
+<t>If no presence is detected in the room or corridor, then turn off all luminaires.</t>
+<t>If no presence is detected in the room but presence is detected in the corridor, then turn all the luminaires to 10% (for all rooms attached to corridor).</t>
+</list> 
+</t> 
+
+<t>For multicast communication, we can not use the LWM2M model directly. However, we can make the following assumptions:
+<list style="symbols"> 
+<t>All luminaires are CoAP servers whose resource tree supports the IPSO Light Control object.</t>
+<t>All presence sensors are CoAP servers whose resource tree supports the IPSO Presence Object. </t>
+<t>The control unit is a CoAP clients.</t>
+<t>All devices in the room subscribe to the multicast address [IP_M_R] and the device that implements the room control also subscribes to the same multicast address.</t>
+<t>All devices that implement control functions for rooms attached to the floor subscribe to the multicast address [IP_M_C].</t>
+<t>There are three groups in the room: "room group" (GId = 0), "window group" (GId = 1), "wall group" (GId = 2).</t>
+<t>There is one group in rooms attached to corridor: "All controllers" (GId = 0).  </t>
+<t>The GId is carried as a CoAP header (query?) option.</t>
+</list>
+</t>
+
+<t><figure title="Multicast messaging between control unit and luminaires." anchor="Figure4">
+            <artwork>
+              <![CDATA[
+FIGURE does in here. 
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+<t>Note: <xref target="Figure4"/> does not comply with the CoAP specification. In, particular a server can not send notifications to a multicast address and must always send notifications back to the unicast address of the client that made the initial GET request. If the controller model is used as explained here then the token number that is sent back with the notification message needs to be fixed somehow. An alternative to this model will be that the Room controller is both a CoAP client and CoAP server and the presence sensor is a CoAP client. Then the presence sensor will need to PUT (or POST) to specific resources on the CoAP server on the room controller (similar to how the Room controller PUTs to CoAP resources on the luminaires. The alternative to the above picture is to make the Controller a CoAP client and server simultaneously and the sensor a CoAP client. Then the sensors write to resources on the controller using multicast PUT/POST requests similar to how the controller is writing to the luminaire resources.</t> 
+
+</section> 
+
+</section>
+
+</section> 
+
+    <!-- **************************************************************** -->
+
+<section title="Security Considerations">
+
+<section title="Token Verification">
+
+<t>Due to the low latency requirements token verification has to be happen locally and cannot be outsourced to other parties. For this reason self-contained token must be used and the receivers are required to follow the steps outlined in Section 7.2 of RFC 7519 <xref target="RFC7519"/>. This includes the verification of the message authentication code protecting the content of the token and the encryption envelope protecting the contained symmetric group key.</t>
+
+</section> 
+
+<section title="Token Revocation">
+
+<t>Tokens have a specific lifetime. Setting the lifetime is a policy decision that involves making a tradeoff decision. Allowing a longer lifetime increases the need to introduce a mechanism for token revocation (e.g., a real-time signal from the KDC/Authorization Server to the receivers to blacklist tokens) but lowers the communication overhead during normal operation since new tokens need to be obtained from time to time. Real-time communication with the receivers to revoke tokens may not be possible in all cases either, particularly when off-line operation is demanded or in small networks where a KDC/AS is only present during commissioning time.</t> 
+
+<t>We therefore recommend to issue short-lived tokens for users accessing the lighting infrastructure of buildings using smartphones, tablets and alike to avoid potential security problems when tokens are leaked or where authorization rights are revoked. For senders that are statically mounted (like traditional light switches) we recommend a longer lifetime since re-configurations and token leakage is less likely to happen frequently.</t>
+
+<t>To limit the authorization rights tokens should contain an audience restriction, scoping their use to the intended receivers and to their access level.</t>
+
+</section> 
+
+<section title="Time">
+
+<t>Senders and receivers are not assumed to be equipped with real-time clocks but these devices are still assumed to interact with a time server. The lack of accurate clocks is likely to lead to clock drifts and limited ability to check for replays. For those cases where no time server is available, such as in small network installations, tokens verification cannot check for expired tokens and hence it might be necessary to fall-back to tokens that do not expire.</t>
+
+</section> 
+
+</section> 
+
+    <!-- **************************************************************** -->
+
+<section title="Operational Considerations">
+
+<section title="Persistence of State Information">
+<t>What is stored across power cycles? authorization grants, tokens, last seen replay counter?
+Issues with multiple writes to flash (lifetime) for such inter-power cycle storage
+</t>
+</section> 
+
+<section title="Provisioning in Small Networks">
+<t>In small networks the authorization server and the KDC may be available only temporarily during the commissioning process and are not available afterwards. </t>
+</section> 
+
+</section> 
+
+    
+    <!-- **************************************************************** -->
+    
+    
+    <section title="Acknowledgements">
+      <t>The author would like to thank Walter Werner for his help with this document.</t>
+    </section>
+
+    <!-- **************************************************************** -->
+    
+    
+  </middle>
+  
+  <back>
+  
+      <references title="Normative References">
+
+
+    &I-D.gerdes-ace-actors; 
+
+     <reference anchor="LWM2M">
+        <front>
+          <title>Lightweight Machine-to-Machine, Technical Specification, Candidate Version 1.0</title>
+          <author>
+            <organization>Open Mobile Alliance</organization>
+          </author>
+          <date month="December" year="2013" />
+        </front>
+        <format type='HTML'
+        target='http://openmobilealliance.org/about-oma/work-program/m2m-enablers/' />
+      </reference>
+      
+      <reference anchor="IPSO">
+        <front>
+          <title>IPSO Smart Object Guidelines - Starter Pack 1.0</title>
+            <author>
+               <organization>IPSO Alliance</organization>
+            </author>
+          <date year="2015"/>
+        </front>
+        <format type='HTML'
+        target='http://www.ipso-alliance.org/smart-object-guidelines' />
+      </reference>
+
+        &RFC7516; 
+        
+        
+    </references> <!-- Normative Refs -->
+
+
+    <references title="Informative References">
+
+     &RFC7049; 
+     &RFC7519;
+     <reference anchor="COSE">
+        <front>
+          <title>CBOR Object Signing and Encryption (cose) Working Group</title>
+          <author> 
+            <organization>IETF</organization>
+          </author>
+          <date year="2015"/>
+        </front>
+       <seriesInfo name="" value="https://datatracker.ietf.org/wg/cose/charter/"/>        
+     </reference>
+
+
+  </references>
+    
+  </back>
+
+</rfc>
