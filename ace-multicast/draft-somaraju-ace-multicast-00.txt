@@ -64,13 +64,13 @@ Table of Contents
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   7
    3.  The Access Level Concept  . . . . . . . . . . . . . . . . . .   8
    4.  Access Token Format . . . . . . . . . . . . . . . . . . . . .   8
-   5.  Lighting Application  . . . . . . . . . . . . . . . . . . . .  12
-     5.1.  Application Group vs. Security Group vs. Multicast Group   12
-     5.2.  LWM2M Object and CoAP Message Format  . . . . . . . . . .  13
+   5.  Lighting application example  . . . . . . . . . . . . . . . .  12
+     5.1.  Unicast Messages using the LWM2M Object Model . . . . . .  12
+     5.2.  Multicast Communication using the LWM2M Object Model  . .  14
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .  18
      6.1.  Token Verification  . . . . . . . . . . . . . . . . . . .  18
      6.2.  Token Revocation  . . . . . . . . . . . . . . . . . . . .  18
-     6.3.  Time  . . . . . . . . . . . . . . . . . . . . . . . . . .  19
+     6.3.  Time  . . . . . . . . . . . . . . . . . . . . . . . . . .  18
    7.  Operational Considerations  . . . . . . . . . . . . . . . . .  19
      7.1.  Persistence of State Information  . . . . . . . . . . . .  19
      7.2.  Provisioning in Small Networks  . . . . . . . . . . . . .  19
@@ -91,21 +91,21 @@ Table of Contents
    1.  Only authorized members of the multicast group must read and
        process messages.
 
-   2.  Message processing must happen with low latency (typically 200
-       ms).
+   2.  Message transfer and processing must happen with low latency
+       (typically 200 ms).
 
-   This document discusses these two issues and describes the picture
-   picture of how these issues could be addressed.
+   This document discusses these two issues and describes how these
+   issues could be addressed.
 
    Typically, multiple lighting nodes (incl. sensors, switches,
    luminaires etc.) are grouped into a single lighting application
    group.  Each node in the group might be a sender, a receiver or both
-   sender and receiver within the group (even though in the picture
+   sender and receiver within the group (even though in the figures
    below, we show nodes that are only senders or receivers for clarity).
    Every sender in the group needs to be authorized to send a message
-   (with low latency) to all the receivers within that group.  Receivers
-   in the group process the message after verifying the included access
-   token, which encapsulates the capabilities given to the sender.  On
+   (with low latency) to all the receivers within that application
+   group.  Receivers in the group process the message after verifying
+   the included access token, which encapsulates the capabilities given
 
 
 
@@ -114,26 +114,32 @@ Somaraju, et al.         Expires January 1, 2016                [Page 2]
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
-   some occasions, a sender in group will be required to send unicast
-   messages to unique receivers within the same group and the
-   authorization procedure must also ensure security for such
-   communications.
+   to the sender.  On some occasions, a sender in a group will be
+   required to send unicast messages to unique receivers within the same
+   group and the authorization procedure must also ensure security for
+   such communications.
 
-   Figure 1 and Figure 2 provide an architectural overview.  Figure 1a
+   Figure 1 and Figure 2 provide an architectural overview.  Figure 1
    illustrates the information flow between an authorization server and
    the participating nodes.  This step is typically executed during the
    commissioning phase for nodes that are statically mounted in
    buildings.  The authorization server is a logical function that may,
    however, be included in a device carried by the commissioner.  In
-   other situations where authorization decisions change often or
+   other situations, the authorization decisions change often or
    dynamically, as it would be the case with employees using their
    smartphones to control lights.
 
-   In any case, the described architecture envisioned a separation
+   In any case, the described architecture envisions a separation
    between the authorization server providing authorization and
-   configuration information to all nodes in the network and the key
-   distribution server (KDC) that is responsible to distributing group
-   keying material.
+   configuration information to all nodes in the network and the Key
+   Distribution Center (KDC) that is responsible to distributing group
+   keying material to support both the static and the dynamic model.  In
+   a static model, the authorization is a one time process during the
+   commissioning and the authorization server can be removed while still
+   allowing key updates using the KDC.  In the dynamic model, the
+   authorization server and KDC continue to be available online during
+   the operational phase, often both the logical functions physically on
+   a same device.
 
    As a result of the initial interaction described in Figure 1 network
    nodes are configured with an proof-of-possession (PoP) access token
@@ -159,39 +165,33 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
 
-
-
-
-
-
-
 Somaraju, et al.         Expires January 1, 2016                [Page 3]
 
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
-                               +------------+
-                               |    Key     |
-                            +--|Distribution|
-                            |  |   Center   |
-                         Key|  +------------+
-                            |
-                            |
-           C-Data  +-------------+   C-Data
-            +------+Authorization+------+
-            | ****>|   Server    |<**** |
-            | *D   +-------------+   D* |
-            | *T                     T* |
-            | *L                     L* |
-            | *S                     S* |
-            v v                       v v
-         +-----+                    +-----+
-        +-----+|                   +-----+|
-       +-----+|+                  +-----+|+
-       |  A  |+                   |  B  |+
-       +-----+                    +-----+
-       Sender(s)                 Receiver(s)
-    e.g. Light Switch         e.g. Luminaries
+                                   +------------+
+                                   |    Key     |
+                                +--|Distribution|
+                                |  |   Center   |
+                             Key|  +------------+
+                                |
+                                |
+           C-Data       +-------------+        C-Data
+            +-----------+Authorization+------------+
+            | .........>|   Server    |<.......... |
+            | .  DTLS   +-------------+   DTLS   . |
+            | .                                  . |
+            | .                                  . |
+            | .                                  . |
+            v v                                  v v
+         +-----+                               +-----+
+        +-----+|                              +-----+|
+       +-----+|+                             +-----+|+
+       |  A  |+                              |  B  |+
+       +-----+                               +-----+
+       Sender(s)                            Receiver(s)
+    e.g. Light Switch                    e.g. Luminaries
 
    Legend:
 
@@ -226,22 +226,22 @@ Somaraju, et al.         Expires January 1, 2016                [Page 4]
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
-                    +------------+
-    AT-R            |    Key     |    Revocation
-   +Group  +--------|Distribution|---------+
-     Key   | ******>|   Center   |<******* |
-           | *D     +------------+      D* |
-           | *T                         T* |
-           | *L                         L* |
-           | *S                         S* |
-           v v                           v v
-        +-----+                        +-----+
-       +-----+|                       +-----+|
-      +-----+|+   Multicast mesg     +-----+|+
-      |  A  |+---------------------> |  B  |+
-      +-----+********DTLS**********> +-----+
-      Sender(s)                     Receiver(s)
-   e.g. Light Switch             e.g. Luminaries
+                        +------------+
+    AT-R                |    Key     |        Revocation
+   +Group  +------------|Distribution|-------------+
+     Key   | ..........>|   Center   |<........... |
+           | .  DTLS    +------------+    DTLS   . |
+           | .                                   . |
+           | .                                   . |
+           | .                                   . |
+           v v                                   v v
+        +-----+                                +-----+
+       +-----+|                               +-----+|
+      +-----+|+       Multicast mesg         +-----+|+
+      |  A  |+-----------------------------> |  B  |+
+      +-----+............DTLS..............> +-----+
+      Sender(s)                            Receiver(s)
+   e.g. Light Switch                    e.g. Luminaries
 
 
                 Figure 2: Architecture: Operational Phase.
@@ -257,22 +257,22 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
    The steps during the commission phase are as follows:
 
-      All nodes obtain contact an authorization server.  This step
-      happens during the commissioning process or, dynamically for those
-      cases where authorization decisions changes over time (such as
-      with smartphones or tablets).  This interaction is secured and the
+      All nodes contact an authorization server.  This step happens
+      during the commissioning process or, dynamically for those cases
+      where authorization decisions changes over time (such as with
+      smartphones or tablets).  This interaction is secured and the
       endpoints are authenticated.
 
       The authorization server evaluates the request and determines what
-      access level the requestor can be granted.  Finally, configuration
+      access level the requester can be granted.  Finally, configuration
       information, a proof-of-possession (PoP) access token and the key
       bound to that token from the authorization server is provided to
-      the requestor.  The PoP access token (AT) is meant for use with
+      the requester.  The PoP access token (AT) is meant for use with
       the Key Distribution Center (KDC).  It is labelled as AT-KDC.
 
    Figure 3 describes the algorithm for obtaining the necessary
    credentials to transmit a secure multicast message based on the
-   architectural description shown in Figure 1b.  When sender wants to
+   architectural description shown in Figure 2.  When sender wants to
    send a message to the application group, it checks if it has the
 
 
@@ -345,18 +345,17 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    information.
 
    Group keys have a lifetime, which is configuration dependent, but
-   mechanisms need to be provided to update group keys either via the
-   sender asking for a group key renewal or via the KDC pushing new keys
-   to senders and receivers.  The lifetime can be based on time or on
-   the number of transmitted messages.
+   mechanisms need to be provided to update the group keys either via
+   the sender asking for a group key renewal or via the KDC pushing new
+   keys to senders and receivers.  The lifetime can be based on time or
+   on the number of transmitted messages.
 
-   In the simplified message exchange the sender obtained a group key
-   and started communicating with receivers in that group using secure
-   multicast.  The description skipped two important aspects, namely it
-   was not explained how the receivers themselves are able to obtain the
-   necessary group key to verify incoming messages.  Furthermore,
-   receivers themselves also need information about what the specific
-   sender is authorized to access.
+   In the simplified message exchange the sender obtains a group key and
+   starts communicating with receivers in that group using secure
+   multicast.  The receivers on their side need to perform two important
+   steps, namely the receivers themselves need to obtain the necessary
+   group key to verify the incoming messages and, receivers also need
+   information about what the specific sender is authorized to access.
 
    Authorization information as well as the group key is conveyed within
    an access token, which is provided by the sender to the receivers in
@@ -366,13 +365,14 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    grained access, for example the group the sender is permitted to send
    messages to.
 
-   Multicast messages need protected such that reply and modification
-   can be detected.  The integrity of the message is protected using the
-   group key.  The use of symmetric keys is envisioned.  For secure
-   unicast messaging, a topic outside the scope of this document, the
-   sender is assumed to use the DTLS handshake to establish the
-   necessary security context for securing subsequent message
-   interactions.
+   Multicast messages need to be protected such that replay and
+   modification can be detected.  The integrity of the message is
+   protected using a group key.  The use of symmetric keys is envisioned
+   here due to latency requirements and level of security required for
+   these messages as described in Section 3.  For secure unicast
+   messaging, a topic outside the scope of this document, the sender is
+   assumed to use the DTLS handshake to establish the necessary security
+   context for securing subsequent message interactions.
 
 2.  Terminology
 
@@ -420,14 +420,14 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
    Level 3: Commissioning use / Parametrization Services
 
-      This level gives access to parameters that commission the
-      operation of the system , but does not allow structural changes.
+      This level gives access to certain parameters that change the day-
+      to-day operation of the system, but does not allow structural
+      changes.
 
    Level 4: Commissioning use / Localization and Addressing Services
 
-      (including Factory Reset and Plugin-Disabling) This level also
-      allows access to all services and parameters including structural
-      settings.
+      (including Factory Reset) This level allows access to all services
+      and parameters including structural settings.
 
    Level 5: Software Update and related Services
 
@@ -455,11 +455,11 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    symmetric key encapsulated inside the JSON Web Key (JWK).  The
    capabilities, called claims in the JWT jargon, are included inside
    the token and, in this example, state that the granted access level
-   is 2 and access to the group 2 multicast is allowed by the sender.
+   is 2 and access to the application group 2 is allowed by the sender.
 
-   The example below shows an access token using the standardized JWT-
+   The example below shows an access token using the standardized JWT
    format with an embedded symmetric key.  While JSON is a compact
-   encoding format standardization work is ongoing to define an even
+   encoding format, standardization work is ongoing to define an even
    more efficient format for conveying the same information using a
    binary format (using CBOR as defined in RFC 7049 [RFC7049]).  The
    corresponding security protection is currently being defined in the
@@ -618,69 +618,13 @@ Somaraju, et al.         Expires January 1, 2016               [Page 11]
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
-5.  Lighting Application
+5.  Lighting application example
 
-   The group keys distributed by the KDC are used to secure CoAP
-   messages between senders (e.g., light switch) and receivers (e.g.,
-   luminaire).
-
-5.1.  Application Group vs. Security Group vs. Multicast Group
-
-   There are three types of groups that we need to consider:
-
-   Application Group:
-
-      A lighting application group that consists of the set of all
-      lighting devices that have been configured by a commissioner to
-      respond to events in a consistent manner.  For instance, a wall
-      mounted switch and a set of luminaires in a single room might
-      belong to a single group and the switch may be used to turn on/off
-      all the luminaires in the group simultaneously with a single
-      button press.  In the remainder of this document we will use GId
-      to identify an application group.
-
-   Multicast Group:
-
-      A multicast group consists of the set of all nodes that subscribe
-      to the same multicast IP address.
-
-   Security Group:
-
-      A security group consists of a set of sending and receiving nodes
-      such that any sending node is able to securely send a message to
-      all the receiving nodes.  For instance, if symmetric keys are used
-      to secure such messages then every node that has access to the
-      symmetric key is a part of the security group.  Should every node
-      in a security group decrypt a message even if it is not for it
-      because it is not for its application group.
-
-   Typically, the three groups might not coincide due to the memory
-   constraints on the devices and also security considerations.  For
-   instance, in a small room with windows, we may have three application
-   groups: "room group", "luminaires close to the window group" and
-   "luminaires far from the window group".  However, we may choose to
-   use only one multicast group for all devices in the room and one
-   security group for all the devices in the room.  At the other end of
-   the spectrum, we may have an application group consisting of all the
-   luminaires on a floor consisting of several smaller rooms.  In this
-   case, due to security considerations we may choose to not distribute
-   a single key to all the devices on the whole floor.  Therefore, the
-
-
-
-
-Somaraju, et al.         Expires January 1, 2016               [Page 12]
-
-Internet-Draft Multicast Security for the Lighting Domain      June 2015
-
-
-   security group might be much smaller (e.g., one per room) and the
-   application floor group is split up into smaller security groups.
-
-5.2.  LWM2M Object and CoAP Message Format
-
-   The CoAP/LWMM2M/IPSO protocol stack can be used as a foundation for
-   the design of a lighting system.  The architecture identifies three
+   In this Section, we look at a typical lighting application in which
+   presence sensor(s) are used to actuate a group of light points via a
+   control function based on a pre-specified set of rules.  The
+   CoAP/LWMM2M/IPSO protocol stack can be used as a foundation for the
+   design of a lighting system.  The architecture identifies three
    functions present in a lighting system:
 
    o  Sensor functions which detect a (physical) phenomenon like a light
@@ -695,27 +639,27 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    In typical applications, a sensor output might be used by multiple
    control functions and a single control function might control many
    actuators and a single actuator may be controlled by multiple control
-   functions.  Moreover, different functions (e.g., control and
-   actuator) might be collocated on a single device.  In the example
-   below, we show one method that may be used to implement the above
-   architecture using the LWM2M object model.  We begin with the case of
-   unicast communication (because the LWM2M model does not directly
-   support multicast communication).  We then explain a possible way to
-   expand to the multicast situation.
+   functions.  Moreover, different functions (e.g. control and actuator)
+   might be collocated on a single device.  In the example below, we
+   show one method that may be used to implement the above architecture
+   using the LWM2M object model.  We begin with the case of unicast
+   communication (because the LWM2M model does not directly support
+   multicast communication).  We then explain a possible way to extend
+   to the multicast situation.
 
-5.2.1.  Unicast Messages using the LWM2M Object Model
+5.1.  Unicast Messages using the LWM2M Object Model
 
-   The follow scenario considers a deployment with a single (physical)
+   The unicast scenario considers a deployment with a single (physical)
    presence sensor, a single (physical) luminaire and the desired
-   functionality is the following: dim the luminaires to 90% when
-   presence is detected in the room and to dim the luminaires to 10%
-   when there is no presence.  In this situation, the sensor
-   functionality is implemented on the presence sensor, the actuator
-   functionality is implemented on the luminaire and the control
-   functionality could be implemented on the presence sensor or the
-   luminaire or on independent physical control device.
+   control functionality is the following: dim the luminaire to 90% when
+   presence is detected in the room and dim the luminaire to 10% when
+   there is no presence.  In this situation, the sensor functionality is
+   implemented on the presence sensor, the actuator functionality is
+   implemented on the luminaire and the control functionality could be
+   implemented on the presence sensor or the luminaire or on an
+   independent physical control device.
 
-   In this example, we assume that
+   Using the LWM2M object model,
 
    o  the presence sensor function is implemented using the IPSO
       Presence object with Object ID 3302 [1].
@@ -725,7 +669,7 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
 
-Somaraju, et al.         Expires January 1, 2016               [Page 13]
+Somaraju, et al.         Expires January 1, 2016               [Page 12]
 
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
@@ -740,10 +684,10 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    reflects the current state of the presence sensor.  A method to
    implement the control functionality is the following:
 
-   1.  The luminaire and the presence sensor register with their objects
-       with the control LWM2M server.  This registration step happens
-       during commissioning phase, when the device reboots or whenever
-       IP addresses change.
+   1.  The luminaire and the presence sensor register their objects with
+       the control LWM2M server.  This registration step happens during
+       commissioning phase, when the device reboots or whenever IP
+       addresses change.
 
    2.  The control LWM2M server observes the "Digital Input State" of
        the presence sensor.
@@ -754,7 +698,10 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    4.  The control LWM2M server writes the correct output intensity to
        the "Dimmer" resource to change the luminaire light output.
 
-   This sequence of messages is shown in Figure 4.
+   This sequence of messages is shown in Figure 4.  Here, [IP_C], [IP_L]
+   and [IP_S] are the unicast IP addresses of the devices that implement
+   the control function, light control object and sensor object,
+   respectively.
 
 
 
@@ -778,10 +725,7 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
 
-
-
-
-Somaraju, et al.         Expires January 1, 2016               [Page 14]
+Somaraju, et al.         Expires January 1, 2016               [Page 13]
 
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
@@ -817,30 +761,64 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
       Figure 4: Unicast messaging between control unit and luminaire.
 
-   Here, [IP_C], [IP_L] and [IP_S] are the unicast IP addresses of the
-   devices that implement the control function, light control object and
-   sensor object, respectively.
-
-5.2.2.  Multicast Communication using the LWM2M Object Model
+5.2.  Multicast Communication using the LWM2M Object Model
 
    We now see how the above unicast model may be extended to the group
-   communication case.  In particular, we look at the situation of a
-   single sensor connected to multiple control functions each of which
-   in turn control multiple luminaires (as explained in the controller
-   architecture).  Consider a typical application in a room consisting
-   of 8 luminaires and a room presence sensor and a corridor presence
-   sensor.  The luminaires are divided into the "close to the window"
-   group and "wall group".
+   communication case and explain the security implications of the group
+   communication case.  There are three types of groups that we need to
+   consider:
 
-   The functionality we wish to implement is the following:
+   Application Group:
+
+      A lighting application group that consists of the set of all
+      lighting devices that have been configured by a commissioner to
+      respond to events in a consistent manner.  For instance, a wall
+      mounted switch and a set of luminaires in a single room might
+      belong to a single group and the switch may be used to turn on/off
+      all the luminaires in the group simultaneously with a single
+      button press.  In the remainder of this document we will use GId
+      to identify an application group.
 
 
 
-
-Somaraju, et al.         Expires January 1, 2016               [Page 15]
+Somaraju, et al.         Expires January 1, 2016               [Page 14]
 
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
+
+   Multicast Group:
+
+      A multicast group consists of the set of all nodes that subscribe
+      to the same multicast IP address.
+
+   Security Group:
+
+      A security group consists of a set of sending and receiving nodes
+      such that any sending node is able to securely send a message to
+      all the receiving nodes.  For instance, if symmetric keys are used
+      to secure such messages then every node that has access to the
+      symmetric key is a part of the security group.  Should every node
+      in a security group decrypt a message even if it is not for it
+      because it is not for its application group.
+
+   Typically, the three groups might not coincide due to the memory
+   constraints on the devices and also security considerations.  For
+   instance, in a small room with windows, we may have three application
+   groups: "room group", "luminaires close to the window group" and
+   "luminaires far from the window group".  However, we may choose to
+   use only one multicast group for all devices in the room and one
+   security group for all the devices in the room.
+
+   Let us now look at a typical lighting application that requires group
+   communication: 1) A set of rooms are attached to a single corridor;
+   2) Each room consists of 8 luminaires with 4 luminaires close to a
+   window and four luminaires close to a wall; 3) Every room has a
+   presence sensor and the corridor also has a presence sensor. 4) Every
+   room has an individual control function that maybe implemented on the
+   room presence sensor device, one of the luminaries or an independent
+   control device.
+
+   The control functionality we wish to implement is the following:
 
    o  If presence is detected in the room, then dim-up the wall
       luminaires to 90% and window luminaires to 50%.
@@ -855,26 +833,29 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    For multicast communication, we can not use the LWM2M model directly.
    However, we can make the following assumptions:
 
+
+
+
+
+Somaraju, et al.         Expires January 1, 2016               [Page 15]
+
+Internet-Draft Multicast Security for the Lighting Domain      June 2015
+
+
    o  All luminaires are CoAP servers whose resource tree supports the
       IPSO Light Control object.
 
    o  All presence sensors are CoAP servers whose resource tree supports
       the IPSO Presence Object.
 
-   o  The control unit is a CoAP clients.
+   o  The control function is implemented using a CoAP client.
 
-   o  All devices in the room subscribe to the multicast address
-      [IP_M_R] and the device that implements the room control also
-      subscribes to the same multicast address.
+   o  All devices in the nth room subscribe to the multicast address
+      [IP_M_Rn] and the device that implements the control function in
+      this room has unicast address [IP_Cn].
 
-   o  All devices that implement control functions for rooms attached to
-      the floor subscribe to the multicast address [IP_M_C].
-
-   o  There are three groups in the room: "room group" (GId = 0),
-      "window group" (GId = 1), "wall group" (GId = 2).
-
-   o  There is one group in rooms attached to corridor: "All
-      controllers" (GId = 0).
+   o  Every room has three groups: "room group" (GId = 0), "window
+      group" (GId = 1), "wall group" (GId = 2).
 
    o  The GId is carried as a CoAP header (query?) option.
 
@@ -890,14 +871,6 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
  ||| +---------------+       +---------------+          +--------------+
  |||        |                         |                             |||
  |||        |            [IP_SC]GET /3302/0/5500 Obs.               |||
-
-
-
-Somaraju, et al.         Expires January 1, 2016               [Page 16]
-
-Internet-Draft Multicast Security for the Lighting Domain      June 2015
-
-
  |||        |<------------------------------------------------------|||
  |||        |                         |                             |||
  |||        |              [IP_C1] 2.05 Content Obs.                |||
@@ -916,7 +889,15 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
  |||        |------------------------------------------------------>|||
  |||        |                       TRUE                            |||
  |||        |                         |                             |||
- |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=0                  |||
+ |||        |       [IP_M_R1]PUT /3311/0/5851 ?gp=0                 |||
+
+
+
+Somaraju, et al.         Expires January 1, 2016               [Page 16]
+
+Internet-Draft Multicast Security for the Lighting Domain      June 2015
+
+
  |||<---------------------------------------------------------------+||
  |||        |                     10  |                             |||
  |||        |                         |                             |||
@@ -924,11 +905,11 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
  |||        |                         |---------------------------->|||
  |||        |                         |            TRUE             |||
  |||        |                         |                             |||
- |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=1                  |||
+ |||        |       [IP_M_R1]PUT /3311/0/5851 ?gp=1                 |||
  |||<---------------------------------------------------------------|||
  |||        |                     50  |                             |||
  |||        |                         |                             |||
- |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=2                  |||
+ |||        |       [IP_M_R1]PUT /3311/0/5851 ?gp=2                 |||
  |||<-------------------------------------------------------------->|||
  |||        |                     90  |                             |||
  |||        |                         |                             |||
@@ -938,14 +919,33 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
     Figure 5: Multicast messaging between control unit and luminaires.
 
-   Note: Figure 5 does not comply with the CoAP specification.  In,
-   particular a server can not send notifications to a multicast address
-   and must always send notifications back to the unicast address of the
-   client that made the initial GET request.  If the controller model is
-   used as explained here then the token number that is sent back with
-   the notification message needs to be fixed somehow.  An alternative
-   to this model will be that the Room controller is both a CoAP client
-   and CoAP server and the presence sensor is a CoAP client.  Then the
+   Figure 5 shows a typical sequence of messages that occur.  For,
+   simplicity, we only show the messages exchanged with the control
+   function in room 1 and luminaires in room 1 though the same exchange
+   of messages applies to every room.  Initially, the control function
+   in every room observes resource 5500 on the presence sensor in the
+   corridor and also the presence sensor in it's own room.  When the
+   presence state changes in the corridor, the corridor notifies the
+   control function in every room using a sequence of unicast
+   notification messages.  Once a controller in the room receives this
+   notification, it sends out a multicast message to all luminaires in
+   the group (GId = 0).  If presence is then detected in the room, then
+   the room controller is notified and the room controller sends a
+   multicast message to the window group (GId = 1) to dim-up to 50% and
+   wall group (GID = 2) to dim-up to 90%.
+
+   The authorization and key distribution problems that need to be
+   addressed in this example are: 1) The authorization server must
+   provide AC-KDC tokens to: a) Allow corridor presence sensor to
+   communication with all the control functions in rooms attached to the
+   corridor; b) Allow the room presence sensor to communicate with the
+   control function in the room; c) Allow the room control function to
+   communicate with all the luminaires in the room.  The corridor
+   presence sensor MUST NOT be authorized to communicate directly with
+   the luminaries. 2) The KDC must provide AC-R keys for all the
+   authorized communication.
+
+
 
 
 
@@ -954,61 +954,43 @@ Somaraju, et al.         Expires January 1, 2016               [Page 17]
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
 
-   presence sensor will need to PUT (or POST) to specific resources on
-   the CoAP server on the room controller (similar to how the Room
-   controller PUTs to CoAP resources on the luminaires.  The alternative
-   to the above picture is to make the Controller a CoAP client and
-   server simultaneously and the sensor a CoAP client.  Then the sensors
-   write to resources on the controller using multicast PUT/POST
-   requests similar to how the controller is writing to the luminaire
-   resources.
-
 6.  Security Considerations
 
 6.1.  Token Verification
 
-   Due to the low latency requirements token verification has to be
-   happen locally and cannot be outsourced to other parties.  For this
+   Due to the low latency requirements, token verification needs to be
+   done locally and cannot be outsourced to other parties.  For this
    reason self-contained token must be used and the receivers are
    required to follow the steps outlined in Section 7.2 of RFC 7519
    [RFC7519].  This includes the verification of the message
-   authentication code protecting the content of the token and the
+   authentication code protecting the contents of the token and the
    encryption envelope protecting the contained symmetric group key.
 
 6.2.  Token Revocation
 
    Tokens have a specific lifetime.  Setting the lifetime is a policy
-   decision that involves making a tradeoff decision.  Allowing a longer
-   lifetime increases the need to introduce a mechanism for token
+   decision that involves making a trade-off decision.  Allowing a
+   longer lifetime increases the need to introduce a mechanism for token
    revocation (e.g., a real-time signal from the KDC/Authorization
    Server to the receivers to blacklist tokens) but lowers the
    communication overhead during normal operation since new tokens need
-   to be obtained from time to time.  Real-time communication with the
-   receivers to revoke tokens may not be possible in all cases either,
-   particularly when off-line operation is demanded or in small networks
-   where a KDC/AS is only present during commissioning time.
+   to be obtained only from time to time.  Real-time communication with
+   the receivers to revoke tokens may not be possible in all cases
+   either, particularly when off-line operation is demanded or in small
+   networks where the AS or even the KDC is only present during
+   commissioning time.
 
-   We therefore recommend to issue short-lived tokens for users
-   accessing the lighting infrastructure of buildings using smartphones,
-   tablets and alike to avoid potential security problems when tokens
-   are leaked or where authorization rights are revoked.  For senders
-   that are statically mounted (like traditional light switches) we
-   recommend a longer lifetime since re-configurations and token leakage
-   is less likely to happen frequently.
+   We therefore recommend to issue short-lived tokens for for dynamic
+   scenarios like users accessing the lighting infrastructure of
+   buildings using smartphones, tablets and alike to avoid potential
+   security problems when tokens are leaked or where authorization
+   rights are revoked.  For senders that are statically mounted (like
+   traditional light switches) we recommend a longer lifetime since re-
+   configurations and token leakage is less likely to happen frequently.
 
    To limit the authorization rights tokens should contain an audience
    restriction, scoping their use to the intended receivers and to their
    access level.
-
-
-
-
-
-
-Somaraju, et al.         Expires January 1, 2016               [Page 18]
-
-Internet-Draft Multicast Security for the Lighting Domain      June 2015
-
 
 6.3.  Time
 
@@ -1017,17 +999,34 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
    server.  The lack of accurate clocks is likely to lead to clock
    drifts and limited ability to check for replays.  For those cases
    where no time server is available, such as in small network
-   installations, tokens verification cannot check for expired tokens
-   and hence it might be necessary to fall-back to tokens that do not
+   installations, token verification cannot check for expired tokens and
+   hence it might be necessary to fall-back to tokens that do not
    expire.
+
+
+
+Somaraju, et al.         Expires January 1, 2016               [Page 18]
+
+Internet-Draft Multicast Security for the Lighting Domain      June 2015
+
 
 7.  Operational Considerations
 
 7.1.  Persistence of State Information
 
-   What is stored across power cycles? authorization grants, tokens,
-   last seen replay counter?  Issues with multiple writes to flash
-   (lifetime) for such inter-power cycle storage
+   Devices in the lighting system can often be powered down
+   intentionally or unintentionally.  Therefore the devices may need to
+   store the authorization tokens and cryptographic keys (along with
+   replay context) in persistence storage like flash.  This is
+   especially required if the authorization server is no more online
+   since it was removed after the commissioning phase.  However the
+   decision on the data to be persistently stored is a trade-off between
+   how soon the devices can be back online to normal operational mode
+   and the memory wear caused due to limited program-erase cycles of
+   flash over 15-20 years life-time of the device.
+
+   The different data that may need to be stored are access tokens AT-
+   KDC, AT-R and last seen replay counter.
 
 7.2.  Provisioning in Small Networks
 
@@ -1057,7 +1056,8 @@ Internet-Draft Multicast Security for the Lighting Domain      June 2015
               Technical Specification, Candidate Version 1.0", December
               2013.
 
-
+   [RFC7516]  Jones, M. and J. Hildebrand, "JSON Web Encryption (JWE)",
+              RFC 7516, May 2015.
 
 
 
@@ -1065,9 +1065,6 @@ Somaraju, et al.         Expires January 1, 2016               [Page 19]
 
 Internet-Draft Multicast Security for the Lighting Domain      June 2015
 
-
-   [RFC7516]  Jones, M. and J. Hildebrand, "JSON Web Encryption (JWE)",
-              RFC 7516, May 2015.
 
 9.2.  Informative References
 
@@ -1109,6 +1106,9 @@ Authors' Addresses
 
    Email: Hannes.tschofenig@gmx.net
    URI:   http://www.tschofenig.priv.at
+
+
+
 
 
 

@@ -421,50 +421,24 @@ Legend for the JWK to be encrypted:
 
     <!-- **************************************************************** -->
 
-<section title="Lighting Application">
+<section title="Lighting application example">
 
-<t>The group keys distributed by the KDC are used to secure CoAP messages between senders (e.g., light switch) and receivers (e.g., luminaires). 
-</t>
-
-<section title="Application Group vs. Security Group vs. Multicast Group"> 
-
-<t>There are three types of groups that we need to consider:
-<list style="hanging"> 
-
-<t hangText="Application Group:"><vspace blankLines="1"/>
-A lighting application group that consists of the set of all lighting devices that have been configured by a commissioner to respond to events in a consistent manner. For instance, a wall mounted switch and a set of luminaires in a single room might belong to a single group and the switch may be used to turn on/off all the luminaires in the group simultaneously with a single button press. In the remainder of this document we will use GId to identify an application group.</t>
-
-<t hangText="Multicast Group:"><vspace blankLines="1"/>
-A multicast group consists of the set of all nodes that subscribe to the same multicast IP address.</t>
-
-<t hangText="Security Group:"><vspace blankLines="1"/>
-A security group consists of a set of sending and receiving nodes such that any sending node is able to securely send a message to all the receiving nodes. For instance, if symmetric keys are used to secure such messages then every node that has access to the symmetric key is a part of the security group. 
-</t>
-</list> 
-</t> 
-
-<t>Typically, the three groups might not coincide due to the memory constraints on the devices and also security considerations. For instance, in a small room with windows, we may have three application groups: "room group", "luminaires close to the window group" and "luminaires far from the window group". However, we may choose to use only one multicast group for all devices in the room and one security group for all the devices in that room. At the other end of the spectrum, we may have an application group consisting of all the luminaires on a floor consisting of several smaller rooms. In this case, due to security considerations we may choose not to distribute a single key to all the devices on the whole floor. Therefore, the security group might be much smaller (e.g., one per room) and the application floor group is split up into smaller security groups.</t>
-
-</section> 
-
-
-<section title="LWM2M Object and CoAP Message Format">
-
-<t>The CoAP/LWM2M/IPSO protocol stack can be used as a foundation for the design of a lighting system. The architecture identifies three functions present in a lighting system:
+<t> In this Section, we look at a typical lighting application in which presence sensor(s) are used to actuate a group of light points via a control function based on a pre-specified set of rules. The CoAP/LWMM2M/IPSO protocol stack can be used as a foundation for the design of a lighting system. The architecture identifies three functions present in a lighting system:
 <list style="symbols">
 <t>Sensor functions which detect a (physical) phenomenon like a light sensor, a presence detector or a push button.</t>
 <t>Actuator functions which cause action or change like setting a driver value of a light source.</t>
 <t>Control functions which link the inputs (from sensor functions) to outputs (from actuator functions) and enforce specific behaviour.</t>
 </list> 
-</t> 
+</t>
 
-<t>In typical applications, a sensor output might be used by multiple control functions and a single control function might control many actuators and a single actuator may be controlled by multiple control functions. Moreover, different functions (e.g., control and actuator) might be collocated on a single device. In the example below, we show one method that may be used to implement the above architecture using the LWM2M object model. We begin with the case of unicast communication (because the LWM2M model does not directly support multicast communication). We then explain a possible way to expand to the multicast situation. </t>
+<t>In typical applications, a sensor output might be used by multiple control functions and a single control function might control many actuators and a single actuator may be controlled by multiple control functions. Moreover, different functions (e.g. control and actuator) might be collocated on a single device. In the example below, we show one method that may be used to implement the above architecture using the LWM2M object model. We begin with the case of unicast communication (because the LWM2M model does not directly support multicast communication). We then explain a possible way to extend to the multicast situation. </t> 
+
 
 <section title="Unicast Messages using the LWM2M Object Model">
 
-<t>The follow scenario considers a deployment with a single (physical) presence sensor, a single (physical) luminaire and the desired functionality is the following: dim the luminaires to 90% when presence is detected in the room and to dim the luminaires to 10% when there is no presence. In this situation, the sensor functionality is implemented on the presence sensor, the actuator functionality is implemented on the luminaire and the control functionality could be implemented on the presence sensor or the luminaire or on independent physical control device.</t> 
+<t>The unicast scenario considers a deployment with a single (physical) presence sensor, a single (physical) luminaire and the desired control functionality is the following: dim the luminaire to 90% when presence is detected in the room and dim the luminaire to 10% when there is no presence. In this situation, the sensor functionality is implemented on the presence sensor, the actuator functionality is implemented on the luminaire and the control functionality could be implemented on the presence sensor or the luminaire or on an independent physical control device.</t> 
 
-<t>In this example, we assume that 
+<t>Using the LWM2M object model,
 <list style="symbols">
 <t>the presence sensor function is implemented using the IPSO Presence object with Object ID 3302 [1].</t>
 <t>the actuator control function is implemented using the IPSO Light control object with Object ID 3311 [1].</t>
@@ -474,14 +448,14 @@ A security group consists of a set of sending and receiving nodes such that any 
 
 <t>The IPSO Light Control Object supports the "Dimmer" resource (Res ID 5851) which may be written to in order to change the light intensity output. The IPSO Presence Object supports the "Digital Input State" resource (Res ID 5500) which is a boolean readable resource that reflects the current state of the presence sensor. A method to implement the control functionality is the following: 
 <list style="numbers"> 
-<t>The luminaire and the presence sensor register with their objects with the control LWM2M server. This registration step happens during commissioning phase, when the device  reboots or whenever IP addresses change.</t>
+<t>The luminaire and the presence sensor register their objects with the control LWM2M server. This registration step happens during commissioning phase, when the device  reboots or whenever IP addresses change.</t>
 <t>The control LWM2M server observes the "Digital Input State" of the presence sensor. </t>
 <t>When the presence sensor state changes, the sensor notifies the control LWM2M server. </t>
 <t>The control LWM2M server writes the correct output intensity to the "Dimmer" resource to change the luminaire light output. </t>
 </list> 
 </t>
  
-<t>This sequence of messages is shown in <xref target="Figure3"/>.</t> 
+<t>This sequence of messages is shown in <xref target="Figure3"/>. Here, [IP_C], [IP_L] and [IP_S] are the unicast IP addresses of the devices that implement the control function, light control object and sensor object, respectively.</t> 
 
 <t><figure title="Unicast messaging between control unit and luminaire." anchor="Figure3">
             <artwork>
@@ -519,15 +493,29 @@ A security group consists of a set of sending and receiving nodes such that any 
           </figure>
 	    </t>
 
-<t>Here, [IP_C], [IP_L] and [IP_S] are the unicast IP addresses of the devices that implement the control function, light control object and sensor object, respectively.</t>
-
 </section> 
 
 <section title="Multicast Communication using the LWM2M Object Model">
+<t>We now see how the above unicast model may be extended to the group communication case and explain the security implications of the group communication case. There are three types of groups that we need to consider:
+<list style="hanging"> 
 
-<t>We now see how the above unicast model may be extended to the group communication case. In particular, we look at the situation of a single sensor connected to multiple control functions each of which in turn control multiple luminaires (as explained in the controller architecture). Consider a typical application in a room consisting of 8 luminaires and a room presence sensor and a corridor presence sensor. The luminaires are divided into the "close to the window" group and "wall group". </t>
+<t hangText="Application Group:"><vspace blankLines="1"/>
+A lighting application group that consists of the set of all lighting devices that have been configured by a commissioner to respond to events in a consistent manner. For instance, a wall mounted switch and a set of luminaires in a single room might belong to a single group and the switch may be used to turn on/off all the luminaires in the group simultaneously with a single button press. In the remainder of this document we will use GId to identify an application group.</t>
 
-<t>The functionality we wish to implement is the following:
+<t hangText="Multicast Group:"><vspace blankLines="1"/>
+A multicast group consists of the set of all nodes that subscribe to the same multicast IP address.</t>
+
+<t hangText="Security Group:"><vspace blankLines="1"/>
+A security group consists of a set of sending and receiving nodes such that any sending node is able to securely send a message to all the receiving nodes. For instance, if symmetric keys are used to secure such messages then every node that has access to the symmetric key is a part of the security group. Should every node in a security group decrypt a message even if it is not for it because it is not for its application group.
+</t>
+</list> 
+</t> 
+
+<t>Typically, the three groups might not coincide due to the memory constraints on the devices and also security considerations. For instance, in a small room with windows, we may have three application groups: "room group", "luminaires close to the window group" and "luminaires far from the window group". However, we may choose to use only one multicast group for all devices in the room and one security group for all the devices in the room.</t>
+<!--Note: At the other end of the spectrum, we may have an application group consisting of all the luminaires on a floor consisting of several smaller rooms. In this case, due to security considerations we may choose to not distribute a single key to all the devices on the whole floor. Therefore, the security group might be much smaller (e.g., one per room) and the application floor group is split up into smaller security groups.-->
+
+<t> Let us now look at a typical lighting application that requires group communication: 1) A set of rooms are attached to a single corridor; 2) Each room consists of 8 luminaires with 4 luminaires close to a window and four luminaires close to a wall; 3) Every room has a presence sensor and the corridor also has a presence sensor. 4) Every room has an individual control function that maybe implemented on the room presence sensor device, one of the luminaries or an independent control device. </t>
+<t>The control functionality we wish to implement is the following:
 <list style="symbols">
 <t>If presence is detected in the room, then dim-up the wall luminaires to 90% and window luminaires to 50%.</t>
 <t>If no presence is detected in the room or corridor, then turn off all luminaires.</t>
@@ -539,11 +527,9 @@ A security group consists of a set of sending and receiving nodes such that any 
 <list style="symbols"> 
 <t>All luminaires are CoAP servers whose resource tree supports the IPSO Light Control object.</t>
 <t>All presence sensors are CoAP servers whose resource tree supports the IPSO Presence Object. </t>
-<t>The control unit is a CoAP clients.</t>
-<t>All devices in the room subscribe to the multicast address [IP_M_R] and the device that implements the room control also subscribes to the same multicast address.</t>
-<t>All devices that implement control functions for rooms attached to the floor subscribe to the multicast address [IP_M_C].</t>
-<t>There are three groups in the room: "room group" (GId = 0), "window group" (GId = 1), "wall group" (GId = 2).</t>
-<t>There is one group in rooms attached to corridor: "All controllers" (GId = 0).  </t>
+<t>The control function is implemented using a CoAP client.</t>
+<t>All devices in the nth room subscribe to the multicast address [IP_M_Rn] and the device that implements the control function in this room has unicast address [IP_Cn].</t>
+<t>Every room has three groups: "room group" (GId = 0), "window group" (GId = 1), "wall group" (GId = 2).</t>
 <t>The GId is carried as a CoAP header (query?) option.</t>
 </list>
 </t>
@@ -580,7 +566,7 @@ A security group consists of a set of sending and receiving nodes such that any 
  |||        |------------------------------------------------------>|||
  |||        |                       TRUE                            |||
  |||        |                         |                             |||
- |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=0                  |||
+ |||        |       [IP_M_R1]PUT /3311/0/5851 ?gp=0                 |||
  |||<---------------------------------------------------------------+||
  |||        |                     10  |                             |||
  |||        |                         |                             |||
@@ -588,11 +574,11 @@ A security group consists of a set of sending and receiving nodes such that any 
  |||        |                         |---------------------------->|||
  |||        |                         |            TRUE             |||
  |||        |                         |                             |||
- |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=1                  |||
+ |||        |       [IP_M_R1]PUT /3311/0/5851 ?gp=1                 |||
  |||<---------------------------------------------------------------|||
  |||        |                     50  |                             |||
  |||        |                         |                             |||
- |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=2                  |||
+ |||        |       [IP_M_R1]PUT /3311/0/5851 ?gp=2                 |||
  |||<-------------------------------------------------------------->|||
  |||        |                     90  |                             |||
  |||        |                         |                             |||
@@ -603,11 +589,10 @@ A security group consists of a set of sending and receiving nodes such that any 
           </figure>
 	    </t>
 
-<t>Note: <xref target="Figure4"/> does not comply with the CoAP specification. In, particular a server can not send notifications to a multicast address and must always send notifications back to the unicast address of the client that made the initial GET request. If the controller model is used as explained here then the token number that is sent back with the notification message needs to be fixed somehow. An alternative to this model will be that the Room controller is both a CoAP client and CoAP server and the presence sensor is a CoAP client. Then the presence sensor will need to PUT (or POST) to specific resources on the CoAP server on the room controller (similar to how the Room controller PUTs to CoAP resources on the luminaires. The alternative to the above picture is to make the Controller a CoAP client and server simultaneously and the sensor a CoAP client. Then the sensors write to resources on the controller using multicast PUT/POST requests similar to how the controller is writing to the luminaire resources.</t> 
+<t><xref target="Figure4"/> shows a typical sequence of messages that occur. For, simplicity, we only show the messages exchanged with the control function in room 1 and luminaires in room 1 though the same exchange of messages applies to every room. Initially, the control function in every room observes resource 5500 on the presence sensor in the corridor and also the presence sensor in it's own room. When the presence state changes in the corridor, the corridor notifies the control function in every room using a sequence of unicast notification messages. Once a controller in the room receives this notification, it sends out a multicast message to all luminaires in the group (GId = 0). If presence is then detected in the room, then the room controller is notified and the room controller sends a multicast message to the window group (GId = 1) to dim-up to 50% and wall group (GID = 2) to dim-up to 90%.</t> 
 
+<t> The authorization and key distribution problems that need to be addressed in this example are: 1) The authorization server must provide AC-KDC tokens to: a) Allow corridor presence sensor to communication with all the control functions in rooms attached to the corridor; b) Allow the room presence sensor to communicate with the control function in the room; c) Allow the room control function to communicate with all the luminaires in the room. The corridor presence sensor MUST NOT be authorized to communicate directly with the luminaries. 2) The KDC must provide AC-R keys for all the authorized communication.</t>
 </section> 
-
-</section>
 
 </section> 
 
