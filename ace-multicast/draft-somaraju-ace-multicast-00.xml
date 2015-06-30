@@ -23,16 +23,16 @@
     <title>Multicast Security for the Lighting Domain</title>
 
 <author initials="A.S." surname="Somaraju" fullname="Abhinav Somaraju">
-<organization></organization>
+<organization> Tridonic GmbH &amp; Co KG </organization>
 <address>
 <postal>
-<street>Downing Street No. 10</street>
-<city>London</city>
+<street> Farbergasse 15</street>
+<city>Dornbirn </city>
 <region/>
-<code></code>
-<country>UK</country>
+<code>6850 </code>
+<country>Austria</country>
 </postal>
-<email>Dr. No</email>
+<email>abhinav.somaraju@tridonic.com</email>
 </address>
 </author>
 
@@ -107,8 +107,37 @@
 <t><figure title="Architecture: Commissioning Phase." anchor="Figure1a">
             <artwork>
               <![CDATA[
-FIGURE does in here. 
-]]>
+                            +------------+
+                            |    Key     |
+                         +--|Distribution|
+                         |  |   Center   |
+                      Key|  +------------+
+                         |                
+                         |                
+        C-Data  +-------------+   C-Data
+         +------+Authorization+------+
+         | ****>|   Server    |<**** |
+         | *D   +-------------+   D* |
+         | *T                     T* |
+         | *L                     L* |
+         | *S                     S* |
+         v v                       v v
+      +-----+                    +-----+
+     +-----+|                   +-----+|
+    +-----+|+                  +-----+|+
+    |  A  |+                   |  B  |+
+    +-----+                    +-----+ 
+    Sender(s)                 Receiver(s)
+ e.g. Light Switch         e.g. Luminaries
+
+Legend: 
+
+C-Data (Configuration Data) includes configuration parameters, 
+authorization information encapsulated inside an proof-of-possesion
+access token (AT-KDC) and long-term key.
+
+
+    ]]>
             </artwork>
           </figure>
 	    </t>
@@ -116,7 +145,22 @@ FIGURE does in here.
 <t><figure title="Architecture: Operational Phase. " anchor="Figure1b">
             <artwork>
               <![CDATA[
-FIGURE does in here. 
+                 +------------+            
+ AT-R            |    Key     |    Revocation
++Group  +--------|Distribution|---------+    
+  Key   | ******>|   Center   |<******* |    
+        | *D     +------------+      D* |    
+        | *T                         T* |    
+        | *L                         L* |    
+        | *S                         S* |    
+        v v                           v v    
+     +-----+                        +-----+  
+    +-----+|                       +-----+|  
+   +-----+|+   Multicast mesg     +-----+|+ 
+   |  A  |+---------------------> |  B  |+   
+   +-----+********DTLS**********> +-----+    
+   Sender(s)                     Receiver(s) 
+e.g. Light Switch             e.g. Luminaries
 ]]>
             </artwork>
           </figure>
@@ -138,7 +182,39 @@ FIGURE does in here.
 <t><figure title="Steps to Transmit Multicast Message." anchor="Figure2">
             <artwork>
               <![CDATA[
-FIGURE does in here. 
+                                  _______
+                                 /       \
+                                 | Start |
+                                 \_______/
+                                     |
+                                     v
+                                    /\
+                                   /  \
+                                  /    \
+                                 /      \
+                                /        \
+                      ___No____/Group Key \____
+                     |         \Available?/    |
+                     |          \        /     |
+                     v           \      /     Yes
+                    /\            \    /       |
+                   /  \            \  /        v
+                  /    \            \/   +-------------+
+                 /      \            ^   |Transmit     |
+                /        \           |   |multicast    |
+           ____/  AT+KDC  \__        |   |mesg to group|
+          |    \Available?/  |       |   +-------------+
+          |     \        /   |       |
+         No      \      /   Yes      |
+          |       \    /     |       |
+          |        \  /      |       |
+          v         \/       v       |
+    +-----+-----+   ^  +----------+  |
+    |Request    |   |  |Request   |  |
+    |AT-KDC     |   |  |Group Key |  |
+    |from       |---+  |from KDC  |--+
+    |Auth Server|      |          |
+    +-----------+      +----------+
 ]]>
             </artwork>
           </figure>
@@ -410,8 +486,35 @@ A security group consists of a set of sending and receiving nodes such that any 
 <t><figure title="Unicast messaging between control unit and luminaire." anchor="Figure3">
             <artwork>
               <![CDATA[
-FIGURE does in here. 
-]]>
+
++---------------+    +--------------+     +--------------+
+|Presence Sensor|    | Control Unit |     |  Luminaire   |
+|(LWM2M client) |    |(LWM2M server)|     |(LWM2M client)|
++---------------+    +--------------+     +--------------+
+       |                     |                      |
+       |  [IP_C]Register     |    [IP_C]Register    |
+       |-------------------->|<---------------------|
+       |     </3302/0>       |      </3311/0>       |
+       |                     |                      |
+       |  [IP_S]2.01 Created | [IP_L]2.01 Created   |
+       |<--------------------|--------------------->|
+       |                     |                      |
+       |[IP_S]GET            |                      |
+       |<--------------------|                      |
+       |    /3302/0/5500 Obs.|                      |
+       |                     |                      |
+       |[IP_C]2.05 Content   |                      |
+       |-------------------->|[IP_L]PUT /3311/0/5851|
+       |     Obs. FALSE      |--------------------->|
+       |                     |         10           |
+       |   [IP_C]Notify      |                      |
+       |-------------------->|[IP_L]PUT /3311/0/5851|
+       |      TRUE           |--------------------->|
+       |                     |         90           |
+       |   [IP_C]Notify      |                      |
+       |-------------------->|[IP_L]PUT /3311/0/5851|
+       |       FALSE         |--------------------->|
+       |                     |         10           |]]>
             </artwork>
           </figure>
 	    </t>
@@ -448,7 +551,53 @@ FIGURE does in here.
 <t><figure title="Multicast messaging between control unit and luminaires." anchor="Figure4">
             <artwork>
               <![CDATA[
-FIGURE does in here. 
++--------------+
+|  Luminaire   |
+|(CoAP Server) |
++--------------+
+ ||| +---------------+       +---------------+
+ ||| |Presence Sensor|       |Presense Sensor|          +--------------+
+ ||| |Corridor       |       |Room           |          | Control Unit||
+ ||| |(CoAP Server)  |       |(CoAP Server)  |          | (CoAP Client)|
+ ||| +---------------+       +---------------+          +--------------+
+ |||        |                         |                             |||
+ |||        |            [IP_SC]GET /3302/0/5500 Obs.               |||
+ |||        |<------------------------------------------------------|||
+ |||        |                         |                             |||
+ |||        |              [IP_C1] 2.05 Content Obs.                |||
+ |||        |------------------------------------------------------>|||
+ |||        |                       FALSE                           |||
+ |||        |                         |                             |||
+ |||        |                         |[IP_SR]GET /3302/0/5500 Obs. |||
+ |||        |                         |<----------------------------|||
+ |||        |                         |                             |||
+ |||        |                         |  [IP_C1] 2.05 Content Obs.  |||
+ |||        |                         |---------------------------->|||
+ |||        |                         |           FALSE             |||
+ |||        |                         |                             |||
+ |||        |                         |                             |||
+ |||        |                  [IP_C1] Notify                       |||
+ |||        |------------------------------------------------------>|||
+ |||        |                       TRUE                            |||
+ |||        |                         |                             |||
+ |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=0                  |||
+ |||<---------------------------------------------------------------+||
+ |||        |                     10  |                             |||
+ |||        |                         |                             |||
+ |||        |                         |      [IP_C1] Notify         |||
+ |||        |                         |---------------------------->|||
+ |||        |                         |            TRUE             |||
+ |||        |                         |                             |||
+ |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=1                  |||
+ |||<---------------------------------------------------------------|||
+ |||        |                     50  |                             |||
+ |||        |                         |                             |||
+ |||        |       [IP_M_R]PUT /3311/0/5851 ?gp=2                  |||
+ |||<-------------------------------------------------------------->|||
+ |||        |                     90  |                             |||
+ |||        |                         |                             |||
+ |||        |                         |                             |||
+
 ]]>
             </artwork>
           </figure>
