@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="us-ascii"?>
 
 <!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
-  <!ENTITY RFC1191 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.1191.xml">
+  <!ENTITY RFC4821 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4821.xml">
   <!ENTITY RFC1981 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.1981.xml">
   <!ENTITY RFC2119 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
  <!-- <!ENTITY RFC3552 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3552.xml"> --> 
@@ -1254,16 +1254,23 @@ RFC 6347 by using the fragmentation capability of the handshake protocol).</t>
 
 <section anchor="timeouts" title="Timeouts">
 
-<t>To connect to the Internet a variety of wired and wireless technologies are available. Many of the low power radio technologies, such as IEEE 802.15.4 or Bluetooth Smart, only support small frame sizes (e.g., 127 bytes in case of IEEE 802.15.4 as explained in RFC 4919 <xref target="RFC4919"/>). Other radio technologies, such as the Global System for Mobile Communications (GSM) using the short messaging service (SMS) have similar constraints in terms of payload sizes, such as 140 bytes without the optional segmentation and reassembly scheme known as Concatenated SMS, but show higher latency. 
+<t>To connect to the Internet a variety of wired and wireless technologies are available. Many of the low power radio technologies, such as IEEE 802.15.4 or Bluetooth Smart, only support small frame sizes (e.g., 127 bytes in case of IEEE 802.15.4 as explained in <xref target="RFC4919"/>). Other radio technologies, such as the Global System for Mobile Communications (GSM) using the short messaging service (SMS) have similar constraints in terms of payload sizes, such as 140 bytes without the optional segmentation and reassembly scheme known as Concatenated SMS, but show higher latency. 
 </t>
 
 <t>The DTLS handshake protocol adds a fragmentation and reassembly mechanism to the TLS handshake protocol since each DTLS record must fit within a single transport layer datagram, as described in Section 4.2.3 of <xref target="RFC6347"/>. Since handshake messages are potentially bigger than the maximum record size, the mechanism fragments a handshake message over a number of DTLS records, each of which can be transmitted separately.</t>
 
-<t>To deal with the unreliable message delivery provided by UDP, DTLS adds timeouts and re-transmissions, as described in Section 4.2.4 of <xref target="RFC6347"/>. Although the timeout values are implementation specific, recommendations are provided in Section 4.2.4.1 of <xref target="RFC6347"/>, with an initial timer value of 1 second and doubled with at each retransmission up to no less than 60 seconds. Due to the nature of some radio technologies, these values are too aggressive and lead to spurious failures when messages in flight need longer.</t>
+<t>To deal with the unreliable message delivery provided by UDP, DTLS adds timeouts and re-transmissions, as described in Section 4.2.4 of <xref target="RFC6347"/>. Although the timeout values are implementation specific, recommendations are provided in Section 4.2.4.1 of <xref target="RFC6347"/>, with an initial timer value of 1 second and doubled with at each retransmission up to no less than 60 seconds.</t>
 
-<t>Note: If a round-trip time estimator (such as proposed in <xref target="I-D.bormann-core-cocoa"/>) is available in the protocol stack of the device, it could be used to dynamically update the setting of the retransmit timeout.</t> 
+<t>TLS protocol steps can take longer due to higher processing time on the constrained side.  On the other hand, the way DTLS handles retransmission, which is per-flight instead of per-segment, tends to interact poorly with low bandwidth networks.</t>
 
-<t>Choosing appropriate timeout values is difficult with changing network conditions, and large variance in latency. This specification therefore RECOMMENDS an initial timer value of 10 seconds with exponential back off up to no less then 60 seconds. <xref target="DTLSoSMS"/> provides additional normative text for carrying DTLS over SMS. </t>
+<t>For these reasons, it's essential that the probability of a spurious retransmit is minimized and, on timeout, the sending endpoint does not react too aggressively.  The latter is particularly relevant when the WSN is temporarily congested: if lost packets are re-injected too quickly, congestion worsens.</t>
+
+<t>An initial timer value of 9 seconds with exponential back off up to no less then 60 seconds is therefore RECOMMENDED.</t>
+
+<t>This value is chosen big enough to absorb large latency variance due to either slow computation on constrained endpoints or to intrinsic network characteristics (e.g. GSM-SMS), as well as to produce a low number of retransmission events and relax the pacing between them.  Its worst case wait time is the same as using 1s timeout (i.e. 63s), while triggering less then half retransmissions (2 instead of 5).</t>
+
+<t>In order to minimise the wake time during DTLS handshake, sleepy nodes might decide to select a lower threshold, and consequently a smaller initial timeout value.  If this is the case, the implementation MUST keep into account the considerations about network stability described in this section.</t>
+
 </section>
 
 
@@ -1625,7 +1632,7 @@ Sean Turner
 
 
     <references title="Informative References">
-      &RFC1191; <!-- PMTU discovery for IPv4 -->
+      &RFC4821; <!-- Packetization Layer Path MTU Discovery -->
       &RFC1981; <!-- PMTU discovery for IPv6 -->
       &RFC4492; <!-- ECC Cipher Suites for TLS -->
       &RFC5077; <!-- Session Resumption without Server-Side State --> 
@@ -1688,7 +1695,7 @@ Sean Turner
       &RFC7366; <!--  Encrypt-then-MAC --> 
       &RFC7228; <!-- Terminology for Constrained-Node Networks --> 
       &RFC4919; <!-- 6LoWPANs Overview, Assumptions, Problem Statement, and Goals -->
-      &I-D.bormann-core-cocoa;
+      <!-- &I-D.bormann-core-cocoa; -->
       &RFC2104; <!-- HMAC --> 
       &RFC6024; <!-- Trust Anchor Trust Anchor Management Requirements --> 
       &RFC5480; <!-- PKIX --> 
@@ -2110,16 +2117,18 @@ the SMS transport described in <xref target="DTLSoSMS"/>. </t>
 
 <section title="DTLS Fragmentation">
 
-<t>[Editor's Note: Proposed text that requires discussion. ]</t>
+<t>Section 4.2.3 of <xref target="RFC6347"/> advises DTLS implementations to not produce overlapping fragments. However, it requires receivers to be able to cope with them.  The need for the latter requisite is explained in Section 4.1.1.1 of <xref target="RFC6347"/>: accurate path MTU (PMTU) estimation may be traded for shorter handshake completion time.</t>
 
-<t>Section 4.2.3 of <xref target="RFC6347"/> advises DTLS implementations to not produce overlapping fragments, but requires receivers to be able to cope with them. The need for the latter requisite is explained in Section 4.1.1.1 of <xref target="RFC6347"/>: accurate path MTU (PMTU) estimation may be traded for shorter handshake completion time.  This approach may be beneficial in unconstrained networks where a PMTU of 1280 bytes can be pretty much universally assumed. However, an handshake that is carried over a narrow-band radio technology, such as IEEE 802.15.4, Bluetooth Smart or GSM-SMS, and the client is lacking reliable PMTU data to inform fragmentation (e.g., using <xref target="RFC1981"/> or <xref target="RFC1191"/>) can place a cost on the constrained implementation in terms of memory (due to re-buffering) and latency (due to re-transmission) much higher than the benefit that it would get from a shorter handshake.</t>
+<t>In many cases, the cost of handling fragment overlaps has proved to be unaffordable for constrained implementations, particularly because of the increased complexity in buffer management.</t>
 
-<t> In order to reduce the likelihood of producing different fragment sizes (and consequent overlaps) within the same handshake, this document RECOMMENDs:
+<t>In order to reduce the likelihood of producing different fragment sizes and consequent overlaps within the same handshake, this document RECOMMENDs:
 <list style="symbols">
-<t>for clients (handshake initiators), to perform PMTU discovery towards the server before handshake starts, and not rely on any guesses (unless the network path characteristics are reliably known from another source);</t>
-<t>for servers, to mirror the fragment size selected by their clients.</t>
+<t>clients (handshake initiators) to use reliable PMTU information for the intended destination;</t>
+<t>servers to mirror the fragment size selected by their clients.</t>
 </list>
 </t>
+
+<t>The PMTU information comes either from a "fresh enough" discovery performed by the client (<xref target="RFC1981"/>, <xref target="RFC4821"/>), or from some other reliable out-of-band channel.</t>
 
 </section>
 
