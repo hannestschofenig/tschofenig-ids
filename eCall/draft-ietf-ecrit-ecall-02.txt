@@ -1,0 +1,1904 @@
+
+
+
+
+ECRIT                                                         R. Gellens
+Internet-Draft                               Qualcomm Technologies, Inc.
+Intended status: Informational                             H. Tschofenig
+Expires: September 8, 2015                              (no affiliation)
+                                                           March 7, 2015
+
+
+                   Next-Generation Pan-European eCall
+                     draft-ietf-ecrit-ecall-02.txt
+
+Abstract
+
+   This document describes how to use IP-based emergency services
+   mechanisms to support the next generation of the Pan European in-
+   vehicle emergency call service defined under the eSafety initiative
+   of the European Commission (generally referred to as "eCall"). eCall
+   is a standardized and mandated system for a special form of emergency
+   calls placed by vehicles.  eCall deployment is required in the very
+   near future in European Union member states, and eCall (and eCall-
+   compatible systems) are also being deployed in other regions.  eCall
+   provides an integrated voice path and a standardized set of vehicle,
+   sensor (e.g., crash related), and location data.  An eCall is
+   recognized and handled as a specialized form of emergency call and is
+   routed to a specialized eCall-capable Public Safety Answering Point
+   (PSAP) capable of processing the vehicle data and trained in handling
+   emergency calls from vehicles.
+
+   Currently, eCall functions over circuit-switched cellular telephony;
+   work on next-generation eCall (NG-eCall, sometimes called packet-
+   switched eCall or PS-eCall) is now in process, and this document
+   assists in that work by describing how to support eCall within the
+   IP-based emergency services infrastructure.
+
+   This document also registers a MIME Content Type and an Emergency
+   Call Additional Data Block for the eCall vehicle data.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 1]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on September 8, 2015.
+
+Copyright Notice
+
+   Copyright (c) 2015 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  Document Scope  . . . . . . . . . . . . . . . . . . . . . . .   4
+   3.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   4
+   4.  eCall Requirements  . . . . . . . . . . . . . . . . . . . . .   6
+   5.  Vehicle Data  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   6.  Call Setup  . . . . . . . . . . . . . . . . . . . . . . . . .   7
+   7.  Call Routing  . . . . . . . . . . . . . . . . . . . . . . . .   9
+     7.1.  ESInets . . . . . . . . . . . . . . . . . . . . . . . . .   9
+   8.  Test Calls  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+   9.  eCall-Specific Control/Metadata . . . . . . . . . . . . . . .  10
+     9.1.  The eCall Control Block . . . . . . . . . . . . . . . . .  11
+       9.1.1.  The 'ack' Element . . . . . . . . . . . . . . . . . .  12
+         9.1.1.1.  Attributes of the 'ack' Element . . . . . . . . .  13
+         9.1.1.2.  Child Elements of the 'ack' Element . . . . . . .  13
+       9.1.2.  The 'capabilities' Element  . . . . . . . . . . . . .  14
+         9.1.2.1.  Child Elements of the 'capabilities' Element  . .  14
+       9.1.3.  The 'request' Element . . . . . . . . . . . . . . . .  15
+         9.1.3.1.  Attributes of the 'request' Element . . . . . . .  15
+         9.1.3.2.  Child Elements of the 'request' Element . . . . .  16
+     9.2.  The emergencyCallData.eCall INFO package  . . . . . . . .  16
+   10. Examples  . . . . . . . . . . . . . . . . . . . . . . . . . .  18
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  19
+   12. XML Schema  . . . . . . . . . . . . . . . . . . . . . . . . .  20
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
+     13.1.  Service URN Registrations  . . . . . . . . . . . . . . .  20
+     13.2.  MIME Content-type Registration for
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 2]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+            'application/emergencyCallData.eCall.MSD+xml'  . . . . .  21
+     13.3.  MIME Content-type Registration for
+            'application/emergencyCallData.eCall.control+xml'  . . .  22
+     13.4.  Registration of the 'eCall.MSD' entry in the Emergency
+            Call Additional Data Blocks registry . . . . . . . . . .  24
+     13.5.  Registration of the 'eCall.control' entry in the
+            Emergency Call Additional Data Blocks registry . . . . .  24
+     13.6.  Registration of the emergencyCallData.eCall Info Package  24
+     13.7.  URN Sub-Namespace Registration . . . . . . . . . . . . .  24
+       13.7.1.  Registration for urn:ietf:params:xml:ns:eCall  . . .  24
+       13.7.2.  Registration for
+                urn:ietf:params:xml:ns:eCall:control . . . . . . . .  25
+     13.8.  Registry creation  . . . . . . . . . . . . . . . . . . .  26
+       13.8.1.  eCall Control Action Registry  . . . . . . . . . . .  26
+       13.8.2.  eCall Static Message Registry  . . . . . . . . . . .  27
+       13.8.3.  eCall Reason Registry  . . . . . . . . . . . . . . .  28
+       13.8.4.  eCall Lamp ID Registry . . . . . . . . . . . . . . .  28
+   14. Contributors  . . . . . . . . . . . . . . . . . . . . . . . .  29
+   15. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  29
+   16. Changes from Previous Versions  . . . . . . . . . . . . . . .  30
+     16.1.  Changes from draft-ietf-01 to draft-ietf-02  . . . . . .  30
+     16.2.  Changes from draft-ietf-00 to draft-ietf-01  . . . . . .  30
+     16.3.  Changes from draft-gellens-03 to draft-ietf-00 . . . . .  30
+     16.4.  Changes from draft-gellens-02 to -03 . . . . . . . . . .  31
+     16.5.  Changes from draft-gellens-01 to -02 . . . . . . . . . .  31
+     16.6.  Changes from draft-gellens-00 to -01 . . . . . . . . . .  31
+   17. References  . . . . . . . . . . . . . . . . . . . . . . . . .  31
+     17.1.  Normative References . . . . . . . . . . . . . . . . . .  31
+     17.2.  Informative references . . . . . . . . . . . . . . . . .  32
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  33
+
+1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
+
+   This document re-uses terminology defined in Section 3 of [RFC5012].
+
+   Additionally, we use the following abbreviations:
+
+
+
+
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 3]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+            +--------+----------------------------------------+
+            | Term   | Expansion                              |
+            +--------+----------------------------------------+
+            | 3GPP   | 3rd Generation Partnership Project     |
+            | CEN    | European Committee for Standardization |
+            | EENA   | European Emergency Number Association  |
+            | ESInet | Emergency Services IP network          |
+            | IMS    | Internet Multimedia Subsystem          |
+            | IVS    | In-Vehicle System                      |
+            | MNO    | Mobile Network Operator                |
+            | MSD    | Minimum Set of Data                    |
+            | PSAP   | Public Safety Answering Point          |
+            +--------+----------------------------------------+
+
+2.  Document Scope
+
+   This document is limited to the signaling, data exchange, and
+   protocol needs of next-generation eCall (NG-eCall, also referred to
+   as packet-switched eCall (PS-eCall) and all-IP eCall) within the SIP
+   framework for emergency calls, as described in [RFC6443] and
+   [RFC6881].  eCall itself is specified by 3GPP and CEN and these
+   specifications include far greater scope than is covered here.
+
+   The eCall service operates over cellular wireless communication, but
+   this document does not address cellular-specific details, nor client
+   domain selection (e.g., circuit-switched versus packet-switched).
+   All such aspects are the purview of their respective standards
+   bodies.  The scope of this document is limited to eCall operating
+   within a SIP-based environment (e.g., 3GPP IMS Emergency Calling).
+
+   The technical contents of this document may be suitable for use in
+   other vehicle-initiated emergency call systems, but this is out of
+   scope for this document.
+
+   Vehicles designed for multiple regions may need to support eCall and
+   other Advanced Automatic Crash Notification systems, such as
+   described in [draft-ietf-ecrit-car-crash].  That system is compatible
+   with eCall, differing primarily in the specific data set that is
+   sent.
+
+3.  Introduction
+
+   Emergency calls made from vehicles (e.g., in the event of a crash)
+   assist in significantly reducing road deaths and injuries by allowing
+   emergency services to be aware of the incident, the state of the
+   vehicle, the location of the vehicle, and to have a voice channel
+   with the vehicle occupants.  This enables a quick and appropriate
+   response.
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 4]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   The European Commission initiative of eCall was conceived in the late
+   1990s, and has evolved to a European Parliament decision requiring
+   the implementation of compliant in-vehicle systems (IVS) in new
+   vehicles and the deployment of eCall in the European Member States in
+   the very near future.  eCall (and eCall-compatible systems) are also
+   being adopted in other regions.
+
+   The pan-European eCall system provides a standardized and mandated
+   mechanism for emergency calls by vehicles.  eCall establishes
+   procedures for such calls to be placed by in-vehicle systems,
+   recognized and processed by the network, and routed to a specialized
+   PSAP where the vehicle data is available to assist the call taker in
+   assessing and responding to the situation.  eCall provides a standard
+   set of vehicle, sensor (e.g., crash related), and location data.
+
+   An eCall may be either user-initiated or automatically triggered.
+   Automatically triggered eCalls indicate a car crash or some other
+   serious incident and carry a greater presumption of risk of injury.
+   Manually triggered eCalls may be reports of serious hazards and are
+   likely to require a different response than an automatically
+   triggered eCall.  Manually triggered eCalls are also more likely to
+   be false (e.g., accidental) calls and may thus be subject to
+   different handling by the PSAP.
+
+   Currently, eCall is standardized (by 3GPP [SDO-3GPP] and CEN [CEN])
+   as a 3GPP circuit-switched call over GSM (2G) or UMTS (3G).  Flags in
+   the call setup mark the call as an eCall, and further indicate if the
+   call was automatically or manually triggered.  The call is routed to
+   an eCall-capable PSAP, a voice channel is established between the
+   vehicle and the PSAP, and an eCall in-band modem is used to carry a
+   defined set of vehicle, sensor (e.g., crash related), and location
+   data (the Minimum Set of Data or MSD) within the voice channel.  The
+   same in-band mechanism is used for the PSAP to acknowledge successful
+   receipt of the MSD, and to request the vehicle to send a new MSD
+   (e.g., to check if the state of or location of the vehicle or its
+   occupants has changed).  Work on next-generation eCall (NG-eCall,
+   also referred to as packet-switched eCall or PS eCall) is now in
+   process.  As part of this work, the European Telecommunications
+   Standards Institute (ETSI) [SDO-ETSI] has published a Technical
+   Report titled "Mobile Standards Group (MSG); eCall for VoIP" [MSG_TR]
+   that presents findings and recommendations regarding support for
+   eCall in an all-IP environment.  NG-eCall moves from circuit switched
+   to all-IP, and carries the vehicle data and other eCall-specific data
+   as additional data associated with the call.  This document describes
+   how IETF mechanisms for IP-based emergency calls, including [RFC6443]
+   and [additional-data-draft] are used to provide the signaling and
+   data exchange of the next generation of pan-European eCall.
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 5]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   The [MSG_TR] recommendation for NG-eCall is to use 3GPP IMS emergency
+   calling with additional elements identifying the call as an eCall and
+   as carrying eCall data and with mechanisms for carrying the data.
+   3GPP IMS emergency services support multimedia, providing the ability
+   to carry voice, text, and video.  This capability is referred to
+   within 3GPP as Multimedia Emergency Services (MMES).
+
+   A transition period will exist during which time the various entities
+   involved in initiating and handling an eCall might support next-
+   generation eCall, legacy eCall, or both.  This transition period
+   might last several years or longer.  The issue of migration/co-
+   existence during the transition period is very important but is
+   outside the scope of this document.  The ETSI TR "Mobile Standards
+   Group (MSG); eCall for VoIP" [MSG_TR] discusses these issues in
+   Clause 7.
+
+4.  eCall Requirements
+
+   Overall eCall requirements are specified by CEN in [EN_16072] and by
+   3GPP in [TS22.101] clauses 10.7 and A.27.  Requirements specific to
+   vehicle data are contained in EN 15722 [msd].  For convenience, the
+   requirements most applicable to the limited scope of this document
+   are summarized very briefly below.
+
+   eCall requires:
+
+   o  The call be recognized as an eCall (which is inherently an
+      emergency call)
+   o  The call setup indicates if the call was manually or automatically
+      triggered
+   o  A voice channel between the vehicle and the PSAP
+   o  Carrying the MSD intrinsically with the call (the MSD needs to be
+      available to the same call-taker as the voice)
+   o  The ability for the PSAP to acknowledge receipt of the MSD
+   o  The ability for the PSAP to request that the vehicle generate and
+      transmit a new MSD
+   o  The ability of the PSAP to be able to re-contact the occupants of
+      vehicle after the initial eCall is concluded
+   o  The ability to perform a test call (which may be routed to a PSAP
+      but is not treated as an emergency call and not handled by a call
+      taker)
+
+   It is recognized that NG-eCall offers many potential enhancements,
+   although these are not required by current EU regulations.  For
+   convenience, the enhancements most applicable to the limited scope of
+   this document are summarized very briefly below.
+
+   NG-eCall is expected to offer:
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 6]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   o  The ability to carry more data (e.g., an enhanced MSD or an MSD
+      plus additional sets of data)
+   o  The ability to handle video
+   o  The ability to handle text
+   o  The ability for the PSAP to access vehicle components (e.g., an
+      onboard camera (such as rear facing or blind-spot cameras) for a
+      visual assessment of the crash site situation)
+   o  The ability for the PSAP to request the vehicle to take actions
+      (e.g., sound the horn, disable the ignition, lock/unlock doors)
+   o  The ability to avoid audio muting of the voice channel (because
+      the MSD is not transferred using an in-band modem)
+
+5.  Vehicle Data
+
+   Pan-European eCall provides a standardized and mandated set of
+   vehicle related data, known as the Minimum Set of Data (MSD).  The
+   European Committee for Standardization (CEN) has specified this data
+   in EN 15722 [msd], along with both ASN.1 and XML encodings for the
+   MSD [msd].  Circuit-switched eCall uses the ASN.1 encoding.  The XML
+   encoding is better suited for use in SIP messages and is used in this
+   document.  (The ASN.1 encoding is specified in Annex A of EN 15722
+   [msd], while the XML encoding is specified in Annex C.)
+
+   The "Additional Data related to an Emergency Call" document
+   [additional-data-draft] establishes a general mechanism for attaching
+   blocks of data to a SIP emergency call.  This document makes use of
+   that mechanism to carry the eCall MSD in a SIP emergency call.
+
+   This document registers the 'application/
+   emergencyCallData.eCall.MSD+xml' MIME Content-Type to enable the MSD
+   to be carried in SIP.  This document also adds the 'eCall.MSD' entry
+   to the Emergency Call Additional Data Blocks registry (established by
+   [additional-data-draft]) to enable the MSD to be recognized as such
+   in a SIP-based eCall emergency call.
+
+   Note that if additional data sets are defined and registered (e.g.,
+   in the future or in other regions) and transmitted using the same
+   mechanisms, the size and frequency of transmission during a session
+   needs to be evaluated to be sure it is appropriate to use the
+   signaling channel.
+
+6.  Call Setup
+
+   In circuit-switched eCall, the IVS places a special form of a 112
+   emergency call which carries the eCall flag (indicating that the call
+   is an eCall and also if the call was manually or automatically
+   triggered); the mobile network operator (MNO) recognizes the eCall
+   flag and routes the call to an eCall-capable PSAP; vehicle data is
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 7]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   transmitted to the PSAP via the eCall in-band modem (in the voice
+   channel).
+
+      ///----\\\      112 voice call with eCall flag      +------+
+     ||| IVS  |||---------------------------------------->+ PSAP |
+      \\\----///   vehicle data via eCall in-band modem   +------+
+
+
+                     Figure 1: circuit-switched eCall
+
+   An In-Vehicle System (IVS) which supports NG-eCall transmits the MSD
+   in accordance with [additional-data-draft] by encoding it as
+   specified (per Appendix C of EN 15722 [msd]) and attaching it to an
+   INVITE as a MIME body part.  The body part is identified by its MIME
+   content-type ('application/emergencyCallData.eCall.MSD+xml') in the
+   Content-Type header field of the body part.  The body part is
+   assigned a unique identifier which is listed in a Content-ID header
+   field in the body part.  The INVITE is marked as containing the MSD
+   by adding (or appending to) a Call-Info header field at the top level
+   of the INVITE.  This Call-Info header field contains a CID URL
+   referencing the body part's unique identifier, and a 'purpose'
+   parameter identifying the data as the eCall MSD per the registry
+   entry; the 'purpose' parameter's value is 'emergencyCallData.' and
+   the root of the MIME type (not including the 'emergencyCallData'
+   prefix and any suffix such as '+xml' (e.g.,
+   'purpose=emergencyCallData.eCall.MSD').
+
+   For NG-eCall, the IVS establishes an emergency call using the 3GPP
+   IMS solution with a Request-URI indicating an eCall type of emergency
+   call and with vehicle data attached; the MNO or ESInet recognizes the
+   eCall URN and routes the call to a NG-eCall capable PSAP; the PSAP
+   interpets the vehicle data sent with the call and makes it available
+   to the call taker.
+
+     ///----\\\     IMS emergency call with eCall URN    +------+
+        IVS    ----------------------------------------->+ PSAP |
+     \\\----///    vehicle data included in call setup   +------+
+
+                            Figure 2: NG-eCall
+
+   This document registers new service URN children within the "sos"
+   subservice.  These URNs provide the mechanism by which an eCall is
+   identified, and differentiate between manually and automatically
+   triggered eCalls (which may be subject to different treatment,
+   depending on policy).  The two service URNs are:
+   urn:service:sos.ecall.automatic and urn:service:sos.ecall.manual
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 8]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+7.  Call Routing
+
+   The routing rules for eCalls are likely to differ from those of other
+   emergency calls because eCalls are special types of emergency calls
+   (with implications for the types of response required) and need to be
+   handled by specially designated PSAPs.  In an environment that uses
+   ESInets, the originating network passes all types of emergency calls
+   to an ESInet (which have a request URI containing the "SOS" service
+   URN).  The ESInet is then responsible for routing such calls to the
+   appropriate PSAP.  In an environment without an ESInet, the emergency
+   services authorities and the originating network jointly determine
+   how such calls are routed.
+
+7.1.  ESInets
+
+   This section provides background information on ESInets for
+   information only.
+
+   An Emergency Services IP Network (ESInet) is a network operated by
+   emergency services authorities.  It handles emergency call routing
+   and processing before delivery to a PSAP.  In the NG1-1-2
+   architecture adopted by EENA, each PSAP is connected to one or more
+   ESInets.  Each originating network is also connected to one or more
+   ESInets.  The ESInets maintain policy-based routing rules which
+   control the routing and processing of emergency calls.  The
+   centralization of such rules within ESInets provides for a cleaner
+   separation between the responsibilities of the originating network
+   and that of the emergency services network, and provides greater
+   flexibility and control over processing of emergency calls by the
+   emergency services authorities.  This makes it easier to react
+   quickly to unusual situations that require changes in how emergency
+   calls are routed or handled (e.g., a natural disaster closes a PSAP),
+   as well as ease in making long-term changes that affect such routing
+   (e.g., cooperative agreements to specially handle calls requiring
+   translation or relay services).  ESInets may support the ability to
+   interwork NG-eCall to legacy eCall to handle eCall-capable PSAPs that
+   are not IP PSAPs (similarly to the ability to interwork IP emergency
+   calls to legacy non-IP PSAPs).  Note that in order to support legacy
+   eCall-capable PSAPs that are not IP PSAPs and are not attached to an
+   ESInet, an originating network may need the ability to route an eCall
+   itself (e.g., to an interworking facility with interconnection to a
+   suitable legacy eCall capable PSAP) based on the eCall and manual or
+   automatic indications.  The ETSI TR "Mobile Standards Group (MSG);
+   eCall for VoIP" [MSG_TR] discusses transition issues in Clause 7.
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015               [Page 9]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+8.  Test Calls
+
+   eCall requires the ability to place test calls.  These are calls that
+   are recognized and treated to some extent as eCalls but are not given
+   emergency call treatment and are not handled by call takers.  The
+   test call facility allows the IVS or user to verify that an eCall can
+   be successfully established with voice communication.  The IVS can
+   also verify that the MSD was successfully received.
+
+   A service URN starting with "test." indicates a test call.  For
+   eCall, "urn:service:test.sos.ecall" indicates such a test feature.
+   This functionality is defined in [RFC6881].
+
+   This document registers "urn:service:test.sos.ecall" for eCall test
+   calls.
+
+   the current eCall test call facility is a non-emergency number so
+   does not get treated as an emergency call.  MNOs may treat a vehicle
+   call in the "test" service URN in a way that tests as much
+   functionality as desired, but this is outside the scope of this
+   document.
+
+   PSAPs that have the ability to process NG-eCalls SHOULD accept test
+   calls and send an acknowledgment if the MSD was successfully
+   received, per this document.  Such PSAPs MAY also play an audio clip
+   (for example, saying that the call reached a PSAP) in addition to
+   supporting media loopback per [RFC6881].
+
+9.  eCall-Specific Control/Metadata
+
+   eCall requires the ability for the PSAP to acknowledge successful
+   receipt of an MSD sent by the IVS, and for the PSAP to request that
+   the IVS send an MSD (e.g., the call taker may initiate a request for
+   a new MSD to see if the vehicle's state or location has changed).
+   Future enhancements are desired to enable the PSAP to send other
+   requests to the vehicle, such as locking or unlocking doors, sounding
+   the horn, flashing the lights, starting a video stream from on-board
+   cameras (such as rear focus or blind-spot), etc.
+
+   The mechanism established in [additional-data-draft], used in
+   Section 5 of this document to carry the MSD from the IVS to the PSAP,
+   is also used to carry a block of control data from the PSAP to the
+   IVS.  This eCall control block (sometimes referred to as eCall
+   metadata) is an XML structure containing eCall-specific elements.
+   When the PSAP needs to send an eCall control block that is in
+   response to the MSD or other data sent by the IVS in a SIP request,
+   the control block can be sent in the SIP response to that request
+   (e.g., the INVITE).  When the PSAP needs to send an eCall control
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 10]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   block that is not an immediate response to an MSD or other data sent
+   by the IVS, the control block can be transmitted from the PSAP to the
+   IVS in a SIP INFO message within the established session.  The IVS
+   can then send any requested data (such as a new MSD) in the reply to
+   the INFO message.  This mechanism flexibly allows the PSAP to send
+   eCall-specific data to the IVS and the IVS to respond.  If control
+   data sent in a response message requests the IVS to send a new MSD or
+   other data block, or to perform an action other than sending data,
+   the IVS can send the requested data or an acknowledgment regarding
+   the action in an INFO message within the session (it could also use
+   re-INVITE but that is unnecessary when no aspect of the session or
+   media is changing).
+
+   This mechanism requires
+
+   o  An XML definition of the eCall control object
+   o  An extension mechanism by which new elements can be added to the
+      control object definition (e.g., permitting additional elements to
+      be included by adding their namespace)
+   o  A MIME type registration for the control object (so it can be
+      carried in SIP messages and responses)
+   o  An entry in the Emergency Call Additional Data Blocks sub-registry
+      (established by [additional-data-draft]) so that the control block
+      can be recognized as emergency call specific data within the SIP
+      messages
+   o  An Info-Package registration per [RFC6086] permitting the control
+      block within Info messages
+
+9.1.  The eCall Control Block
+
+   The eCall control block is an XML data structure allowing for
+   acknowledgments, requests, and capabilities information.  It is
+   carried in a SIP body part with a specific MIME content type.  Three
+   top-level elements are defined for use within an eCall control block:
+
+   ack           Used in a control block sent by either side.  The PSAP
+                 uses this to acknowledge receipt of data set sent by
+                 the IVS.  The IVS uses this to acknowledge receipt of a
+                 request by the PSAP when that request would not
+                 otherwise be acknowledged (if the PSAP requests the
+                 vehicle to send data and the vehicle does so, the data
+                 serves as a success acknowledgement).
+
+   capabilities: Used in a control block sent from the IVS to the PSAP
+                 (in the initial INVITE or subsequently if desired) to
+                 inform the PSAP of the vehicle capabilities.  Child
+                 elements contain all actions and data types supported
+                 by the vehicle .
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 11]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   request       Used in a control block sent by the PSAP to the IVS, to
+                 request the vehicle to perform an action.
+
+   Mandatory Actions (the IVS and the PSAP MUST support):
+
+   o  Transmit data object
+
+   Optional Actions (the IVS and the PSAP MAY support):
+
+   o  Play and/or display static (pre-defined) message
+   o  Speak/display dynamic text (text supplied in action)
+   o  Flash lights, honk horn
+
+   The 'ack' element indicates the object being acknowledged, and
+   reports success or failure.
+
+   The 'capabilities' element has child 'request' elements to indicate
+   the actions supported by the IVS.
+
+   The 'request' element contains attributes to indicate the request and
+   to supply any needed information, and MAY contain a 'text' child
+   element to contain the text for a dynamic message.  The 'action'
+   attribute is mandatory and indicates the specific action.  An IANA
+   registry is established by this document in Section 13.8.1 to contain
+   the allowed values.
+
+   New elements, child elements, and attributes can be defined with
+   their own sub-namespaces.  IANA registries are used to specify the
+   permitted values of several elements and attributes.  These
+   mechanisms allow for extension.
+
+   The control block does not contain a 'request' action to play dynamic
+   media (such as a pre-recorded audio message).  The SIP re-INVITE
+   mechanism can be used to establish a one-way media stream for this
+   purpose.
+
+9.1.1.  The 'ack' Element
+
+   The 'ack' element is transmitted by the PSAP to acknowledge receipt
+   of an eCall data object.  An 'ack' element sent by a PSAP references
+   the unique ID of the data object that was sent by the IVS, and
+   further indicates if the PSAP considers the receipt successful or
+   not.  The 'ack' element is also transmitted by the IVS to the PSAP to
+   acknowledge receipt of a 'request' element that requested the IVS to
+   perform an action other than transmitting a data object (e.g., a
+   request to display a message would be acknowledged, but a request to
+   transmit a data object would not result in a separate 'ack' element
+   being sent, since the data object itself serves as acknowledgment.)
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 12]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   An 'ack' element sent by an IVS references the unique ID of the
+   request being acknowledged, and further indicates whether the request
+   was successfully performed.
+
+   The 'ack' element has the following attributes and child elements:
+
+9.1.1.1.  Attributes of the 'ack' Element
+
+   The 'ack' element has the following attributes:
+
+   Name:  ref
+   Usage:  Mandatory
+   Type:  anyURI
+   Description:  References the Content-ID of the body part that
+      contained the data object or control object being acknowledged.
+   Example:  <ack received="yes" ref="1234567890@atlanta.example.com"/>
+
+   Name:  rec
+   Usage:  Mandatory
+   Type:  Boolean
+   Description:  Indicates if the referenced object was successfully
+      received or not.
+   Example:  <ack received="yes" ref="1234567890@atlanta.example.com"/>
+
+9.1.1.2.  Child Elements of the 'ack' Element
+
+   The 'ack' element has the following child elements:
+
+   Name:  ActionResult
+   Usage:  Optional
+   Description:  An 'ActionResult' element indicates the result of an
+      action (other than a 'send-data' action).  It has the following
+      attributes:
+
+
+
+      Name:  action
+      Usage:  Mandatory
+      Type:  token
+      Description:  Contains the value of the 'action' attribute of the
+         'request' element
+
+      Name:  success
+      Usage:  Mandatory
+      Type:  Boolean
+      Description:  Indicates if the action was successfully
+         accomplished
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 13]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+      Name:  reason
+      Usage:  Conditional
+      Type:  token
+      Description:  Used when 'success' is "False", this attribute
+         contains a reason code for a failure.  A registry for reason
+         codes is defined in Section 13.8.3.
+
+      Name:  details
+      Usage:  optional
+      Type:  string
+      Description:  Contains further explanation of the circumstances of
+         a success or failure.  The contents are implementation-specific
+         and human-readable.
+
+   Example:  <ActionResult action="msg-dynamic" success="true"/>
+
+   Example:  <ActionResult action="lamp" success="false" reason="unable"
+      details="The requested lamp is inoperable"/>
+
+9.1.2.  The 'capabilities' Element
+
+   The 'capabilities' element is transmitted by the IVS to indicate to
+   the PSAP its capabilities.  No attributes are currently defined.  The
+   following child elements may be used:
+
+9.1.2.1.  Child Elements of the 'capabilities' Element
+
+   The 'capabilities' element has the following child elements:
+
+   Name:  request
+   Usage:  Mandatory
+   Description:  The 'capabilities' element contains a <request> child
+      element per action supported by the vehicle.  Because support for
+      a 'send-data' action is REQUIRED, a <request> child element with a
+      "send-data" 'action' attribute is also REQUIRED.  The 'supported-
+      datatype' attribute is REQUIRED in this <request> element and MUST
+      contain all eCall data blocks supported by the IVS.  Currently,
+      only the 'eCall.MSD' datatype is defined.  All other actions are
+      OPTIONAL.  If the "msg-static" action is supported, a <request>
+      child element with a "msg-static" 'action' attribute is sent, with
+      a 'msgid' attribute set to the highest supported static message
+      supported by the vehicle.
+   Examples:  <request action="send-data" supported-datatype="eCall.MSD"
+      />
+      <request action="send-data" supported-datatype="eCall.MSD; VEDS;
+      eCall.type2" />
+      <request action="msg-dynamic"/>
+      <request action="msg.static" msgid="17" />
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 14]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+9.1.3.  The 'request' Element
+
+   A 'request' element appears one or more times on its own or as a
+   child of a 'capabilities' element.  The following attributes and
+   child elements may be used:
+
+9.1.3.1.  Attributes of the 'request' Element
+
+   The 'request' element has the following attributes:
+
+   Name:  action
+   Usage:  Mandatory
+   Type:  token
+   Description:  Identifies the action that the vehicle is requested to
+      perform.  An IANA registry is established in Section 13.8.1 to
+      contain the allowed values.
+   Example:  action="send-data"
+
+   Name:  msgid
+   Usage:  Conditional
+   Type:  int
+   Description:  Mandatory with a "msg-static" action.  Indicates the
+      identifier of the static message to be displayed and/or spoken for
+      the vehicle occupants.  This document established an IANA registry
+      for messages and their IDs, in Section 13.8.2
+   Example:  msgid="3"
+
+   Name:  persistance
+   Usage:  Optional
+   Type:  duration
+   Description:  Specifies how long to carry on the specified action,
+      for example, how long to continue honking or flashing.  If absent,
+      the default is indefinitely.
+   Example:  persistance="PT1H"
+
+   Name:  datatype
+   Usage:  Conditional
+   Type:  token
+   Description:  Mandatory with a "send-data" action.  Specifies the
+      data block that the IVS is requested to transmit, using the same
+      identifier as in the 'purpose' attribute set in a Call-Info header
+      field to point to the data block.  Permitted values are contained
+      in the 'Emergency Call Data Types' IANA registry established in
+      [additional-data-draft].
+   Example:  datatype="eCall.MSD"
+
+   Name:  supported-datatype
+   Usage:  Conditional
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 15]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   Type:  token
+   Description:  Used with a 'send-data' action in a 'request' element
+      that is a child of a 'capability' element, this attribute lists
+      all data blocks that the vehicle can transmit, using the same
+      identifier as in the 'purpose' attribute in a Call-Info header
+      field to point to the data block.  Permitted values are contained
+      in the 'Emergency Call Data Types' IANA registry established in
+      [additional-data-draft].  Multiple values are separated with a
+      semicolon.
+   Example:  supported-datatype="eCall.MSD; VEDS; eCall.foo"
+
+   Name:  lamp-ID
+   Usage:  Conditional
+   Type:  token
+   Description:  Used with a 'lamp' action, indicates which lamps the
+      action affects.  This document creates a registry of lamp-ID
+      tokens, in Section 13.8.4
+   Example:  lamp-ID="hazard"
+
+   Name:  lamp-action
+   Usage:  Conditional
+   Type:  enumeration
+   Description:  Used with a 'lamp' action, indicates if the lamp should
+      be illuminated, turned off, or flashed.  Permitted values are
+      'on', 'off', and 'flash'.
+   Example:  lamp-action="flash"
+
+9.1.3.2.  Child Elements of the 'request' Element
+
+   The 'request' element has the following child elements:
+
+   Name:  text
+   Usage:  Conditional
+   Type:  string
+   Description:  Used within a <request action="msg-dynamic"> element to
+      contain the text to be displayed and/or spoken (via text-to-
+      speech) for the vehicle occupants.
+   Example:  <text>Emergency authorities are aware of your incident and
+      location.  Due to a multi-vehicle incident in your area, no one is
+      able to speak with you right now.  Please remain calm.  We will
+      assist you soon.</text>
+
+9.2.  The emergencyCallData.eCall INFO package
+
+   This document registers the 'emergencyCallData.eCall' INFO package.
+   Both endpoints (the IVS and the PSAP equipment) set the Recv-Info
+   header field to 'emergencyCallData.eCall' per [RFC6086] to indicate
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 16]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   ability to receive INFO messages carrying eCall data or control
+   blocks.
+
+   Support for the 'emergencyCallData.eCall' INFO package indicates the
+   ability to receive eCall data and control blocks, which are carried
+   in a body part whose subtype starts with 'emergencyCallData.eCall.'.
+   At present there is only one defined eCall data block, which has the
+   'application/emergencyCallData.eCall.MSD+xml' MIME type, and one
+   eCall control block, which has the 'application/
+   emergencyCallData.eCall.control+xml' MIME type.  The eCall control
+   block includes the ability for the IVS to indicate its capabilities,
+   so in the event additional eCall blocks are defined, the IVS can
+   indicate which it supports.
+
+   The use of INFO is based on an analysis of the requirements against
+   the intent and effects of INFO versus other approaches (such as SIP
+   MESSAGE, media plane, or non-SIP protocols).  In particular, the
+   transport of eCall data and control blocks is done only during an
+   emergency session established with SIP, using the mechanism
+   established in [additional-data-draft], and is normally carried in
+   the initial INVITE and its response; the use of INFO only occurs when
+   a data block or request needs to be sent subsequently during the
+   call.  While MESSAGE could be used, it is not tied to a SIP session
+   as is INFO.  REINVITE could also be used, but is normally used to
+   modify the session.  SUBSCRIBE/NOTIFY could be coerced into service,
+   but the semantics are not a clean fit.  Hence, INFO is appropriate.
+
+   An INFO request message carrying an eCall data or control block has
+   an Info-Package header field set to 'emergencyCallData.eCall' per
+   [RFC6086].  The INFO request message is marked as containing the
+   eCall data or control block by a Call-Info header field containing a
+   CID URL referencing the unique identifier of the body part containing
+   the eCall data or control, and a 'purpose' parameter identifying the
+   block.  Because the eCall data or control block is being carried in
+   an INFO request message, the body part also carries a Content-
+   Disposition header field set to "Info-Package".
+
+   Per [additional-data-draft], emergency call related additional data
+   MAY be included in any SIP request or response message that may
+   contain a body.  Hence, notwithstanding Section 4.3.2. of [RFC6086],
+   INFO response messages MAY contain eCall data or control blocks,
+   provided they are included as described in this document (with a
+   Call-Info header field containing a CID URL referencing the unique
+   identifier of the body part, and a 'purpose' parameter identifying
+   the block).  When eCall data or control blocks are included in an
+   INFO response message, this is done per [additional-data-draft] and
+   this document, and not under [RFC6086]; that is, they are included as
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 17]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   emergency call additional data, not as an INFO package associated
+   data.
+
+10.  Examples
+
+   Figure 3 shows an eCall.  The call uses the request URI
+   'urn:service:sos.ecall.automatic' service URN and is recognized as an
+   eCall, and further as one that was invoked automatically by the IVS
+   due to a crash or other serious incident.  In this example, the
+   originating network routes the call to an ESInet (as for any
+   emergency call in an environment with an ESInet).  The ESInet routes
+   the call to the appropriate NG-eCall capable PSAP.  The emergency
+   call is received by the ESInet's Emergency Services Routing Proxy
+   (ESRP), as the entry point into the ESInet.  The ESRP routes the call
+   to a PSAP, where it is received by a call taker.  In deployments
+   where there is no ESInet, the originating network routes the call
+   directly to the appropriate NG-eCall capable PSAP.
+
+
+               +------------+  +---------------------------------------+
+               |            |  |                  +-------+            |
+               |            |  |                  | PSAP2 |            |
+               |            |  |                  +-------+            |
+               |            |  |                                       |
+               |            |  |  +------+     +-------+               |
+     Vehicle-->|            |--+->| ESRP |---->| PSAP1 |--> Call-Taker |
+               |            |  |  +------+     +-------+               |
+               |            |  |                                       |
+               |            |  |                  +-------+            |
+               |            |  |                  | PSAP3 |            |
+               | Originating|  |                  +-------+            |
+               |   Mobile   |  |                                       |
+               |  Network   |  |                ESInet                 |
+               +------------+  +---------------------------------------+
+
+                Figure 3: Example of NG-eCall Message Flow
+
+   The example, shown in Figure 4, illustrates a SIP eCall INVITE that
+   contains an MSD.
+
+
+
+
+
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 18]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+      INVITE urn:service:sos.ecall.automatic SIP/2.0
+      To: urn:service:sos.ecall.automatic
+      From: <sip:+13145551111@example.com>;tag=9fxced76sl
+      Call-ID: 3848276298220188511@atlanta.example.com
+      Geolocation: <cid:target123@example.com>
+      Geolocation-Routing: no
+      Call-Info: cid:1234567890@atlanta.example.com;
+                 purpose=emergencyCallData.eCall.MSD
+      Accept: application/sdp, application/pidf+xml
+      CSeq: 31862 INVITE
+      Recv-Info: emergencyCallData.eCall
+      Content-Type: multipart/mixed; boundary=boundary1
+      Content-Length: ...
+
+      --boundary1
+
+      Content-Type: application/sdp
+
+      ...Session Description Protocol (SDP) goes here
+
+      --boundary1
+
+      Content-Type: application/emergencyCallData.eCall.MSD+xml
+      Content-ID: 1234567890@atlanta.example.com
+
+      ...eCall MSD data object goes here
+
+       --boundary1--
+
+                       Figure 4: SIP NG-eCall INVITE
+
+11.  Security Considerations
+
+   The security considerations described in [RFC5069] apply here.
+
+   An eCall will carry two forms of location data: the network-provided
+   location that is inherently part of IMS emergency calls (which might
+   be determined solely by the network, or in cooperation with or
+   possibly entirely by the originating device), and the IVS-supplied
+   location within the MSD.  This is likely to be useful to the PSAP,
+   especially when the two locations are independently determined.  Even
+   in situations where the network-supplied location is limited to the
+   cell site, this can be useful as a sanity check on the device-
+   supplied location contained in the MSD.
+
+   The document [I-D.ietf-ecrit-trustworthy-location] discusses trust
+   issues regarding location provided by or determined in cooperation
+   with end devices.
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 19]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   The mechanism by which the PSAP sends acknowledgments and requests to
+   the vehicle requires authenticity considerations; when the PSAP
+   request is received within a session initiated by the vehicle as an
+   eCall emergency call placed over a cellular network, there is a
+   higher degree of trust that the source is indeed a PSAP.  If the PSAP
+   request is received in other situations, such as a call-back, the
+   trust issues in verifying that a call-back is indeed from a PSAP are
+   more complex (see the PSAP Callback document [RFC7090]).  A further
+   safeguard (applicable regardless of which end initiated the call and
+   the means of the call) is for the PSAP or emergency service provider
+   to sign the body part using a certificate issued by a known emergency
+   services certificate authority and for which the IVS can verify the
+   root certificate.
+
+12.  XML Schema
+
+   This section defines the XML schema of the eCall control block.
+
+
+       <?xml version="1.0" ?>
+       <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://example.com/ct-required"
+                  xmlns:xmime="http://www.w3.org/2005/05/xmlmime"
+                  targetNamespace="http://example.com/ct-required">
+
+           <xs:import namespace="http://www.w3.org/2005/05/xmlmime"
+                   schemaLocation="http://www.w3.org/2005/05/xmlmime"/>
+
+
+
+       </xs:schema>
+
+
+                   Figure 5: eCall Control Block Schema
+
+13.  IANA Considerations
+
+13.1.  Service URN Registrations
+
+   IANA is requested to register the URN 'urn:service:sos.ecall' under
+   the sub-services 'sos' registry defined in Section 4.2 of [RFC5031].
+
+   This service identifies a type of emergency call (placed by a
+   specialized in-vehicle system and a carrying standardized set of data
+   related to the vehicle and crash or incident, and is needed to direct
+   the call to a specialized public safety answering point (PSAP) with
+   technical and operational capabilities to handle such calls.  Two
+   sub-services are registered as well, namely
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 20]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   urn:service:sos.ecall.manual
+
+      This service URN indicates that an eCall had been triggered based
+      on the manual interaction of the driver or a passenger.
+
+   urn:service:sos.ecall.automatic
+
+      This service URN indicates that an eCall had been triggered
+      automatically, for example, due to a crash or other serious
+      incident (e.g., fire).
+
+   IANA is also requested to register the URN
+   'urn:service:test.sos.ecall' under the sub-service 'test' registry
+   defined in Setcion 17.2 of [RFC6881].
+
+13.2.  MIME Content-type Registration for 'application/
+       emergencyCallData.eCall.MSD+xml'
+
+   IANA is requested to add application/emergencyCallData.eCall.MSD+xml
+   as a MIME content type, with a reference to this document, in
+   accordance to the procedures of RFC 6838 [RFC6838] and guidelines in
+   RFC 7303 [RFC7303].
+
+      MIME media type name: application
+
+      MIME subtype name: emergencyCallData.eCall.MSD+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of the XML content.
+
+      Encoding considerations: Uses XML, which can employ 8-bit
+      characters, depending on the character encoding used.  See
+      Section 3.2 of RFC 7303 [RFC7303].
+
+      Security considerations: This content type is designed to carry
+      vehicle and incident-related data during an emergency call.  This
+      data contains personal information including vehicle VIN,
+      location, direction, etc.  Appropriate precautions need to be
+      taken to limit unauthorized access, inappropriate disclosure to
+      third parties, and eavesdropping of this information.  In general,
+      it is permissible for the data to be unprotected while briefly in
+      transit within the Mobile Network Operator (MNO); the MNO is
+      trusted to not permit the data to be accessed by third parties.
+      Sections 7 and Section 8 of [I-D.ietf-ecrit-additional-data]
+      contain more discussion.
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 21]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+      Interoperability considerations: None
+
+      Published specification: Annex C of EN 15722 [msd]
+
+      Applications which use this media type: Pan-European eCall
+      compliant systems
+
+      Additional information: None
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+      Person and email address for further information: Hannes
+      Tschofenig, Hannes.Tschofenig@gmx.net
+
+      Intended usage: LIMITED USE
+
+      Author: This specification was produced by the European Committee
+      For Standardization (CEN).  For contact information, please see
+      <http://www.cen.eu/cen/Pages/contactus.aspx>.
+
+      Change controller: The European Committee For Standardization
+      (CEN)
+
+13.3.  MIME Content-type Registration for 'application/
+       emergencyCallData.eCall.control+xml'
+
+   IANA is requested to add application/
+   emergencyCallData.eCall.control+xml as a MIME content type, with a
+   reference to this document, in accordance to the procedures of RFC
+   6838 [RFC6838] and guidelines in RFC 7303 [RFC7303].
+
+      MIME media type name: application
+
+      MIME subtype name: emergencyCallData.eCall.control+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of the XML content.
+
+      Encoding considerations: Uses XML, which can employ 8-bit
+      characters, depending on the character encoding used.  See
+      Section 3.2 of RFC 7303 [RFC7303].
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 22]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+      Security considerations: This content type carries metadata and
+      control information and requests, primarily from a Public Safety
+      Answering Point (PSAP) to an In-Vehicle System (IVS) during an
+      emergency call, and also capabilities from the IVS to the PSAP.
+      Metadata (such as an acknowledgment that data sent by the IVS to
+      the PSAP was successfully received) has limited privacy and
+      security implications.  Control information (such as requests from
+      the PSAP that the vehicle perform an action) has some privacy and
+      important security implications.  The privacy concern arises from
+      the ability to request the vehicle to transmit a data set, which
+      as described in Section 13.2, may contain personal information.
+      The security implication is the ability to request the vehicle to
+      perform an action.  It is important that control information
+      originate only from a PSAP or other emergency services provider,
+      and not from an impostor.  The first safeguard for this is the
+      security of the cellular network over which the emergency call was
+      placed.  In particular, when the IVS initiates an eCall over a
+      cellular network, the MNO routes the call to a PSAP.  (Calls
+      placed using other means, such as Wi-Fi or over-the-top services,
+      do not carry the same degree of trust.)  Calls received by the
+      IVS, such as a call-back from a PSAP, also do not carry the same
+      degree of trust, since the current mechanisms are not ideal for
+      verifying that such a call is indeed from a PSAP in response to an
+      emergency call placed by the IVS.  See the discussion in
+      Section 11 and the PSAP Callback document [RFC7090].  A further
+      safeguard, and one applicable regardless of which end initiated
+      the call and the means of the call, is for the PSAP or emergency
+      service provider to sign the body part using a certificate issued
+      by a known emergency services certificate authority and for which
+      the IVS can verify the root certificate.  Sections 7 and Section 8
+      of [I-D.ietf-ecrit-additional-data] contain more discussion.
+
+      Interoperability considerations: None
+
+      Published specification: Annex C of EN 15722 [msd]
+
+      Applications which use this media type: Pan-European eCall
+      compliant systems
+
+      Additional information: None
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 23]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+      Person and email address for further information: Randall Gellens,
+      rg+ietf@qti.qualcomm.com
+
+      Intended usage: LIMITED USE
+
+      Author: The IETF ECRIT WG.
+
+      Change controller: The IETF ECRIT WG.
+
+13.4.  Registration of the 'eCall.MSD' entry in the Emergency Call
+       Additional Data Blocks registry
+
+   This specification requests IANA to add the 'eCall.MSD' entry to the
+   Emergency Call Additional Data Blocks registry (established by
+   [additional-data-draft]), with a reference to this document.
+
+13.5.  Registration of the 'eCall.control' entry in the Emergency Call
+       Additional Data Blocks registry
+
+   This specification requests IANA to add the 'eCall.control' entry to
+   the Emergency Call Additional Data Blocks registry (established by
+   [additional-data-draft]), with a reference to this document.
+
+13.6.  Registration of the emergencyCallData.eCall Info Package
+
+   IANA is requested to add emergencyCallData.eCall to the Info Packages
+   Registry under "Session Initiation Protocol (SIP) Parameters", with a
+   reference to this document.
+
+13.7.  URN Sub-Namespace Registration
+
+13.7.1.  Registration for urn:ietf:params:xml:ns:eCall
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:eCall
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 24]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   BEGIN
+   <?xml version="1.0"?>
+   <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+    "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+   <html xmlns="http://www.w3.org/1999/xhtml">
+   <head>
+    <meta http-equiv="content-type"
+          content="text/html;charset=iso-8859-1"/>
+    <title>Namespace for eCall Data</title>
+   </head>
+   <body>
+    <h1>Namespace for eCall Data
+       </h1>
+   <p>See [TBD: This document].</p>
+   </body>
+   </html>
+   END
+
+
+13.7.2.  Registration for urn:ietf:params:xml:ns:eCall:control
+
+   This section registers a new XML namespace, as per the guidelines in
+   RFC 3688 [RFC3688].
+
+   URI:  urn:ietf:params:xml:ns:eCall:control
+
+   Registrant Contact:  IETF, ECRIT working group, <ecrit@ietf.org>, as
+      delegated by the IESG <iesg@ietf.org>.
+
+   XML:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 25]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+      BEGIN
+      <?xml version="1.0"?>
+      <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.0//EN"
+        "http://www.w3.org/TR/xhtml-basic/xhtml-basic10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta http-equiv="content-type"
+              content="text/html;charset=iso-8859-1"/>
+        <title>Namespace for eCall Data:
+               Control Block</title>
+      </head>
+      <body>
+        <h1>Namespace for eCall Data
+           </h1>
+        <h2>Control Block</h2>
+      <p>See [TBD: This document].</p>
+      </body>
+      </html>
+      END
+
+
+13.8.  Registry creation
+
+   This document creates a new registry called 'eCall Control Data'.
+   The following sub-registries are created for this registry.
+
+13.8.1.  eCall Control Action Registry
+
+   This document creates a new sub-registry called "eCall Control Action
+   Registry".  As defined in [RFC5226], this registry operates under
+   "Expert Review" rules.  The expert should determine that the proposed
+   action is within the purview of a vehicle, is sufficiently
+   distinguishable from other actions, and the actions is clearly and
+   fully described.  In most cases, a published and stable document is
+   referenced for the description of the action.
+
+   The content of this registry includes:
+
+   Name:  The identifier to be used in the 'action' attribute of an
+      eCall control 'request' element.
+
+   Description:  A description of the action.  In most cases this will
+      be a reference to a published and stable document.  The
+      description MUST specify if any attributes or child elements are
+      optional or mandatory, and describe the action to be taken by the
+      vehicle.
+
+   The initial set of values is listed in Table 2.
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 26]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+              +-------------+------------------------------+
+              |     Name    |         Description          |
+              +-------------+------------------------------+
+              |  send-data  | Section xxx of this document |
+              |             |                              |
+              |  msg-static | Section xxx of this document |
+              |             |                              |
+              | msg-dynamic | Section xxx of this document |
+              |             |                              |
+              |     honk    | Section xxx of this document |
+              |             |                              |
+              |     lamp    | Section xxx of this document |
+              +-------------+------------------------------+
+
+           Table 2: eCall Control Action Registry Initial Values
+
+13.8.2.  eCall Static Message Registry
+
+   This document creates a new sub-registry called "eCall Static Message
+   Registry".  Because all compliant vehicles are expected to support
+   all static messages translated into all languages supported by the
+   vehicle, it is important to limit the number of such messages.  As
+   defined in [RFC5226], this registry operates under "Publication
+   Required" rules, which require a stable, public document and imply
+   expert review of the publication.  The expert should determine that
+   the document has been published by an appropriate emergency services
+   organization (e.g., NENA, EENA, APCO) and that the proposed message
+   is sufficiently distinguishable from other messages.
+
+   The content of this registry includes:
+
+   ID:  An integer identifier to be used in the 'msgid' attribute of an
+      eCall control 'request' element.
+
+   Message:  The text of the message.  Messages are listed in the
+      registry in English; vehicles are expected to implement
+      translations into languages supported by the vehicle.
+
+   When new messages are added to the registry, the message text is
+   determined by the registrant; IANA assigns the IDs.  Each message is
+   assigned a consecutive integer value as its ID.  This allows an IVS
+   to indicate by a single integer value that it supports all messages
+   with that value or lower.
+
+   The initial set of values is listed in Table 3.
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 27]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   +----+--------------------------------------------------------------+
+   | ID |                           Message                            |
+   +----+--------------------------------------------------------------+
+   | 1  |     Emergency authorities are aware of your incident and     |
+   |    |  location.  No one is free to speak with you right now.  We  |
+   |    |              will help you as soon as possible.              |
+   +----+--------------------------------------------------------------+
+
+                  Table 3: eCall Static Message Registry
+
+13.8.3.  eCall Reason Registry
+
+   This document creates a new sub-registry called "eCall Reason
+   Registry" which contains values for the 'reason' attribute of the
+   'ActionResult' element.  As defined in [RFC5226], this registry
+   operates under "Expert Review" rules.  The expert should determine
+   that the proposed reason is sufficiently distinguishable from other
+   reasons and that the proposed description is understandable and
+   correctly worded.
+
+   The content of this registry includes:
+
+   ID:  A short string identifying the reason, for use in the 'reason'
+      attribute of an 'ActionResult' element.
+
+   Description:  A description of the reason.
+
+   The initial set of values is listed in Table 4.
+
+   +------------------+------------------------------------------------+
+   |        ID        |                  Description                   |
+   +------------------+------------------------------------------------+
+   |   unsupported    |         The 'action' is not supported.         |
+   |                  |                                                |
+   |      unable      |    The 'action' could not be accomplished.     |
+   |                  |                                                |
+   | data-unsupported |   The data item referenced in a 'send-data'    |
+   |                  |           request is not supported.            |
+   +------------------+------------------------------------------------+
+
+                      Table 4: eCall Reason Registry
+
+13.8.4.  eCall Lamp ID Registry
+
+   This document creates a new sub-registry called "eCall Lamp ID
+   Registry" to standardize the names of automotive lamps (lights).  As
+   defined in [RFC5226], this registry operates under "Expert Review"
+   rules.  The expert should determine that the proposed lamp name is
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 28]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   clearly understandable and is sufficiently distinguishable from other
+   lamp names.
+
+   The content of this registry includes:
+
+   Name:  The identifier to be used in the 'lamp-ID' attribute of an
+      eCall control 'request' element.
+
+   Description:  A description of the lamp (light).
+
+   The initial set of values is listed in Table 5.
+
+     +----------------+---------------------------------------------+
+     | Name           | Description                                 |
+     +----------------+---------------------------------------------+
+     | head           | The main lamps used to light the road ahead |
+     |                |                                             |
+     | interior       | Interior lamp, often at the top center      |
+     |                |                                             |
+     | fog-front      | Front fog lamps                             |
+     |                |                                             |
+     | fog-rear       | Rear fog lamps                              |
+     |                |                                             |
+     | brake          | Brake indicator lamps                       |
+     |                |                                             |
+     | position-front | Front position/parking/standing lamps       |
+     |                |                                             |
+     | position-rear  | Rear position/parking/standing lamps        |
+     |                |                                             |
+     | turn-left      | Left turn/directional lamps                 |
+     |                |                                             |
+     | turn-right     | Right turn/directional lamps                |
+     |                |                                             |
+     | hazard         | Hazard/four-way lamps                       |
+     +----------------+---------------------------------------------+
+
+              Table 5: eCall Lamp ID Registry Initial Values
+
+14.  Contributors
+
+   Brian Rosen was a co-author of the original document upon which this
+   document is based.
+
+15.  Acknowledgements
+
+   We would like to thank Bob Williams and Ban Al-Bakri for their
+   feedback and suggestions, and Keith Drage for his review comments.
+   We would like to thank Michael Montag, Arnoud van Wijk, Gunnar
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 29]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   Hellstrom, and Ulrich Dietz for their help with the original document
+   upon which this document is based.
+
+16.  Changes from Previous Versions
+
+16.1.  Changes from draft-ietf-01 to draft-ietf-02
+
+   o  Added clarifying text reinforcing that the data exchange is for
+      small blocks of data infrequently transmitted
+   o  Clarified that dynamic media is conveyed using SIP re-INVITE to
+      establish a one-way media stream
+   o  Clarified that the scope is the needs of eCall within the SIP
+      emergency call environment
+   o  Added informative statement that the document may be suitable for
+      reuse by other ACN systems
+   o  Clarified that normative language for the control block applies to
+      both IVS and PSAP
+   o  Removed 'ref', 'supported-mime', and 'media' elements
+   o  Minor wording improvements and clarifications
+
+16.2.  Changes from draft-ietf-00 to draft-ietf-01
+
+   o  Added further discussion of test calls
+   o  Added further clarification to the document scope
+   o  Mentioned that multi-region vehicles may need to support other
+      crash notification specifications in addition to eCall
+   o  Added details of the eCall metadata and control functionality
+   o  Added IANA registration for the MIME content type for the eCall
+      control object
+   o  Added IANA registries for protocol elements and tokens used in the
+      eCall control object
+   o  Minor wording improvements and clarifications
+
+16.3.  Changes from draft-gellens-03 to draft-ietf-00
+
+   o  Renamed from draft-gellens- to draft-ietf-.
+   o  Added mention of and reference to ETSI TR "Mobile Standards Group
+      (MSG); eCall for VoIP"
+   o  Added text to Introduction regarding migration/co-existence being
+      out of scope
+   o  Added mention in Security Considerations that even if the network-
+      supplied location is just the cell site, this can be useful as a
+      sanity check on the IVS-supplied location
+   o  Minor wording improvements and clarifications
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 30]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+16.4.  Changes from draft-gellens-02 to -03
+
+   o  Clarifications and editorial improvements.
+
+16.5.  Changes from draft-gellens-01 to -02
+
+   o  Minor wording improvements
+   o  Removed ".automatic" and ".manual" from
+      "urn:service:test.sos.ecall" registration and discussion text.
+
+16.6.  Changes from draft-gellens-00 to -01
+
+   o  Now using 'EmergencyCallData' for purpose parameter values and
+      MIME subtypes, in accordance with changes to
+      [additional-data-draft]
+   o  Added reference to RFC 6443
+   o  Fixed bug that caused Figure captions to not appear
+
+17.  References
+
+17.1.  Normative References
+
+   [EN_16072]
+              CEN, , "Intelligent transport systems - eSafety - Pan-
+              European eCall operating requirements", December 2011.
+
+   [I-D.ietf-ecrit-additional-data]
+              Randy, R., Rosen, B., Tschofenig, H., Marshall, R., and J.
+              Winterbottom, "Additional Data related to an Emergency
+              Call", draft-ietf-ecrit-additional-data-24 (work in
+              progress), October 2014.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3688]  Mealling, M., "The IETF XML Registry", BCP 81, RFC 3688,
+              January 2004.
+
+   [RFC5031]  Schulzrinne, H., "A Uniform Resource Name (URN) for
+              Emergency and Other Well-Known Services", RFC 5031,
+              January 2008.
+
+   [RFC5226]  Narten, T. and H. Alvestrand, "Guidelines for Writing an
+              IANA Considerations Section in RFCs", BCP 26, RFC 5226,
+              May 2008.
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 31]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   [RFC6443]  Rosen, B., Schulzrinne, H., Polk, J., and A. Newton,
+              "Framework for Emergency Calling Using Internet
+              Multimedia", RFC 6443, December 2011.
+
+   [RFC6838]  Freed, N., Klensin, J., and T. Hansen, "Media Type
+              Specifications and Registration Procedures", BCP 13, RFC
+              6838, January 2013.
+
+   [RFC6881]  Rosen, B. and J. Polk, "Best Current Practice for
+              Communications Services in Support of Emergency Calling",
+              BCP 181, RFC 6881, March 2013.
+
+   [RFC7303]  Thompson, H. and C. Lilley, "XML Media Types", RFC 7303,
+              July 2014.
+
+   [TS22.101]
+              3GPP, , "Technical Specification Group Services and System
+              Aspects; Service aspects; Service principles", .
+
+   [additional-data-draft]
+              Rosen, B., Tschofenig, H., Marshall, R., Gellens, R., and
+              J. Winterbottom, "Additional Data related to an Emergency
+              Call", draft-ietf-ecrit-additional-data-11 (work in
+              progress), July 2013.
+
+   [msd]      CEN, , "Intelligent transport systems -- eSafety -- eCall
+              minimum set of data (MSD), EN 15722", June 2011.
+
+17.2.  Informative references
+
+   [CEN]      "European Committee for Standardization",
+              <http://www.cen.eu>.
+
+   [I-D.ietf-ecrit-trustworthy-location]
+              Tschofenig, H., Schulzrinne, H., and B. Aboba,
+              "Trustworthy Location", draft-ietf-ecrit-trustworthy-
+              location-14 (work in progress), July 2014.
+
+   [MSG_TR]   ETSI, , "ETSI Mobile Standards Group (MSG); eCall for
+              VoIP", ETSI Technical Report TR 103 140 V1.1.1 (2014-04),
+              April 2014.
+
+   [RFC5012]  Schulzrinne, H. and R. Marshall, "Requirements for
+              Emergency Context Resolution with Internet Technologies",
+              RFC 5012, January 2008.
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 32]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   [RFC5069]  Taylor, T., Tschofenig, H., Schulzrinne, H., and M.
+              Shanmugam, "Security Threats and Requirements for
+              Emergency Call Marking and Mapping", RFC 5069, January
+              2008.
+
+   [RFC5491]  Winterbottom, J., Thomson, M., and H. Tschofenig, "GEOPRIV
+              Presence Information Data Format Location Object (PIDF-LO)
+              Usage Clarification, Considerations, and Recommendations",
+              RFC 5491, March 2009.
+
+   [RFC6086]  Holmberg, C., Burger, E., and H. Kaplan, "Session
+              Initiation Protocol (SIP) INFO Method and Package
+              Framework", RFC 6086, January 2011.
+
+   [RFC6442]  Polk, J., Rosen, B., and J. Peterson, "Location Conveyance
+              for the Session Initiation Protocol", RFC 6442, December
+              2011.
+
+   [RFC7090]  Schulzrinne, H., Tschofenig, H., Holmberg, C., and M.
+              Patel, "Public Safety Answering Point (PSAP) Callback",
+              RFC 7090, April 2014.
+
+   [SDO-3GPP]
+              "3d Generation Partnership Project",
+              <http://www.3gpp.org/>.
+
+   [SDO-ETSI]
+              "European Telecommunications Standards Institute (ETSI)",
+              <http://www.etsi.org>.
+
+   [draft-ietf-ecrit-car-crash]
+              Gellens, R., Rosen, B., and H. Tschofenig, "Next-
+              Generation Vehicle-Initiated Emergency Calls", draft-ietf-
+              ecrit-car-crash (work in progress), March 2015.
+
+Authors' Addresses
+
+   Randall Gellens
+   Qualcomm Technologies, Inc.
+   5775 Morehouse Drive
+   San Diego  92651
+   US
+
+   Email: rg+ietf@qti.qualcomm.com
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 33]
+
+Internet-Draft            Next-Generation eCall               March 2015
+
+
+   Hannes Tschofenig
+   (no affiliation)
+
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gellens & Tschofenig    Expires September 8, 2015              [Page 34]
