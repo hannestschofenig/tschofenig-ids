@@ -1,0 +1,1232 @@
+
+
+
+
+ECRIT                                                         R. Gellens
+Internet-Draft                                Qualcomm Technologies, Inc
+Intended status: Informational                                  B. Rosen
+Expires: September 8, 2015                                 NeuStar, Inc.
+                                                           H. Tschofenig
+                                                        (no affiliation)
+                                                           March 7, 2015
+
+
+           Next-Generation Vehicle-Initiated Emergency Calls
+                   draft-ietf-ecrit-car-crash-02.txt
+
+Abstract
+
+   This document describes how to use IP-based emergency services
+   mechanisms to support the next generation of emergency calls placed
+   by vehicles (automatically in the event of a crash or serious
+   incident, or manually invoked by a vehicle occupant) and conveying
+   vehicle, sensor, and location data related to the crash or incident.
+   Such calls are often referred to as "Automatic Crash Notification"
+   (ACN), or "Advanced Automatic Crash Notification" (AACN), even in the
+   case of manual trigger.  The "Advanced" qualifier refers to the
+   ability to carry a richer set of data.
+
+   This document also registers a MIME Content Type and an Emergency
+   Call Additional Data Block for the vehicle, sensor, and location data
+   (often referred to as "crash data" even though there is not
+   necessarily a crash).  An external specification for the data format,
+   contents, and structure are referenced in this document.
+
+   Profiling and simplifications of the general emergency call
+   mechanism, as described in [RFC6443] and [RFC6881], are possible due
+   to the nature of the functionality that is provided in vehicles such
+   as the usage of Global Satellite Navigation System (GNSS).
+
+   This document reuses the technical aspects of next-generation pan-
+   European eCall (a mandated and standardized system for emergency
+   calls by in-vehicle systems within Europe and other regions), as
+   described in [I-D.ietf-ecrit-ecall].  However, this document
+   specifies a different set of vehicle (crash) data, specifically, the
+   Vehicle Emergency Data Set (VEDS) rather than the eCall Minimum Set
+   of Data (MSD).
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 1]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at http://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on September 8, 2015.
+
+Copyright Notice
+
+   Copyright (c) 2015 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (http://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Overview of Current Deployment Models . . . . . . . . . . . .   7
+   4.  Document Scope  . . . . . . . . . . . . . . . . . . . . . . .   8
+   5.  Migration to Next-Generation  . . . . . . . . . . . . . . . .   9
+   6.  Profile . . . . . . . . . . . . . . . . . . . . . . . . . . .  11
+   7.  Call Setup  . . . . . . . . . . . . . . . . . . . . . . . . .  11
+   8.  Call Routing  . . . . . . . . . . . . . . . . . . . . . . . .  14
+   9.  Test Calls  . . . . . . . . . . . . . . . . . . . . . . . . .  15
+   10. Example . . . . . . . . . . . . . . . . . . . . . . . . . . .  15
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  17
+   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  18
+     12.1.  MIME Content-type Registration for
+            'application/EmergencyCall.VEDS+xml' . . . . . . . . . .  18
+     12.2.  Registration of the 'VEDS' entry in the Emergency Call
+            Additional Data registry . . . . . . . . . . . . . . . .  19
+   13. Contributors  . . . . . . . . . . . . . . . . . . . . . . . .  19
+   14. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  19
+   15. Changes from Previous Versions  . . . . . . . . . . . . . . .  19
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 2]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+     15.1.  Changes from draft-ietf-01 to draft-ietf-02  . . . . . .  19
+     15.2.  Changes from draft-ietf-00 to draft-ietf-01  . . . . . .  19
+     15.3.  Changes from draft-gellens-02 to draft-ietf-00 . . . . .  20
+     15.4.  Changes from draft-gellens-01 to -02 . . . . . . . . . .  20
+     15.5.  Changes from draft-gellens-00 to -01 . . . . . . . . . .  20
+   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  20
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  20
+     16.2.  Informative references . . . . . . . . . . . . . . . . .  21
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  21
+
+1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
+
+   This document re-uses terminology defined in Section 3 of [RFC5012].
+
+   Additionally, we use the following abbreviations:
+
+   +--------+----------------------------------------------------------+
+   | Term   | Expansion                                                |
+   +--------+----------------------------------------------------------+
+   | 3GPP   | 3rd Generation Partnership Project                       |
+   | AACN   | Advanced Automatic Crash Notification                    |
+   | ACN    | Automatic Crash Notification                             |
+   | APCO   | Association of Public-Safety Communications Officials    |
+   | EENA   | European Emergency Number Association                    |
+   | ESInet | Emergency Services IP network                            |
+   | GNSS   | Global Satellite Navigation System (which includes the   |
+   |        | various such systems including the Global Positioning    |
+   |        | System or GPS)                                           |
+   | IVS    | In-Vehicle System                                        |
+   | MNO    | Mobile Network Operator                                  |
+   | NENA   | National Emergency Number Association                    |
+   | TSP    | Telematics Service Provider                              |
+   | VEDS   | Vehicle Emergency Data Set                               |
+   +--------+----------------------------------------------------------+
+
+2.  Introduction
+
+   Emergency calls made by in-vehicle systems (e.g., in the event of a
+   crash) assist in significantly reducing road deaths and injuries by
+   allowing emergency services to respond quickly and often with better
+   location.
+
+   Drivers often have a poor location awareness, especially outside of
+   major cities, at night and when away from home (especially abroad).
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 3]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   In the most crucial cases, the victim(s) may not be able to call
+   because they have been injured or trapped.
+
+   For more than a decade, some vehicles have been equipped with
+   telematics systems that, among other features, place an emergency
+   call automatically in the event of a crash or manually in response to
+   an emergency call button.  Such systems generally have on-board
+   location determination systems that make use of satellite-based
+   positioning technology, inertial sensors, gyroscopes, etc., to
+   provide a fairly accurate position for the vehicle.  Such built-in
+   systems can take advantage of the benefits of being integrated into a
+   vehicle, such as more reliable power, ability to have larger or
+   specialized antenna, ability to be engineered to avoid or minimise
+   degradation by vehicle glass coatings, interference from other
+   vehicle systems, etc.  Thus, the PSAP can be provided with a good
+   estimate of where the vehicle is during an emergency.  Vehicle
+   manufacturers are increasingly adopting such systems, both for the
+   safety benefits and for the additional features and services they
+   enable (e.g., remote engine diagnostics, remote door unlock, stolen
+   vehicle tracking and disabling, etc.).
+
+   The general term for such systems is Automatic Crash Notification
+   (ACN) or "Advanced Automatic Crash Notification" (AACN).  "ACN" is
+   used in this document as a general term.  ACN systems transmit some
+   amount of data specific to the incident, referred to generally as
+   "crash data" (the term is commonly used even though there might not
+   have been a crash).  While different systems transmit different
+   amounts of crash data, standardized formats, structures, and
+   mechanisms are needed to provide interoperability among systems and
+   PSAPs.
+
+   Currently deployed in-vehicle telematics systems are circuit-switched
+   and lack a standards-based ability to convey crash data directly to
+   the PSAP (generally relying on either a human call taker or an
+   automated system to provide the PSAP call taker with some crash data
+   orally, or possibly a proprietary mechanism).  The PSAP call taker
+   needs to first realize that the call is related to a vehicle
+   incident, and in most cases must then listen to the data and
+   transcribe it.
+
+   The transition to next-generation calling in general, and emergency
+   calling in particular, provides an opportunity to vastly improve the
+   scope, breadth, reliability and usefulness of crash data during an
+   emergency by allowing it to be presented alongside the call, and to
+   be automatically processed by the PSAP and made available to the call
+   taker in an integrated, automated way.  In addition, vehicle
+   manufacturers are provided an opportunity to take advantage of the
+   same standardized mechanisms for data transmission for internal use
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 4]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   if they wish (such as telemetry between the vehicle and a service
+   center for both emergency and non-emergency uses, including location-
+   based services, multi-media entertainment systems, and road-side
+   assistance applications).
+
+   Next-generation ACN provides an opportunity for such calls to be
+   recognized and processed as such during call set-up, and optionally
+   routed to an upgraded PSAP where the vehicle data is available to
+   assist the call taker in assessing and responding to the situation.
+
+   An ACN call may be either occupant-initiated or automatically
+   triggered.  (The "A" in "ACN" does stand for "Automatic," but the
+   term is often used to refer to the class of calls that are placed by
+   an in-vehicle system (IVS) and that carry incident-related data as
+   well as voice.)  Automatically triggered calls indicate a car crash
+   or some other serious incident (e.g., a fire) and carry a greater
+   presumption of risk of injury.  Manually triggered calls are often
+   reports of serious hazards (such as drunk drivers) and may require
+   different responses depending on the situation.  Manually triggered
+   calls are also more likely to be false (e.g., accidental) calls and
+   may thus be subject to different handling by the PSAP.
+
+   This document describes how the IETF mechanisms for IP-based
+   emergency calls, including [RFC6443] and
+   [I-D.ietf-ecrit-additional-data], are used to provide the realization
+   of next-generation ACN.
+
+   The Association of Public-Safety Communications Officials (APCO) and
+   the National Emergency Number Association (NENA) have jointly
+   developed a standardized set of incident-related vehicle data for ACN
+   use, called the Vehicle Emergency Data Set (VEDS) [VEDS].  Such data
+   is often referred to as crash data although it is applicable in
+   incidents other than crashes.
+
+   VEDS provides a standard data set for the transmission, exchange, and
+   interpretation of vehicle-related data.  A standard data format
+   allows the data to be generated by an IVS, and interpreted by PSAPs,
+   emergency responders, and medical facilities (including those capable
+   of providing trauma level patient care).  It includes incident-
+   related information such as airbag deployment, location of the
+   vehicle, if the vehicle was involved in a rollover, various sensor
+   data that can indicate the potential severity of the crash and the
+   likelihood of severe injuries to the vehicle occupants, etc.  This
+   data better informs the PSAP and emergency responders as to the type
+   of response that may be needed.  This information was recently
+   included in the federal guidelines for field triage of injured
+   patients.  These guidelines are designed to help responders at the
+   accident scene identify the potential existence of severe internal
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 5]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   injuries and to make critical decisions about how and where a patient
+   needs to be transported.
+
+   This document registers the 'application/EmergencyCallData.VEDS+xml'
+   MIME content-type, and registers the 'VEDS' entry in the Emergency
+   Call Additional Data registry.
+
+   VEDS is an XML structure (see [VEDS]).  The 'application/
+   EmergencyCallData.VEDS+xml' MIME content-type is used to identify it.
+   The 'VEDS' entry in the Emergency Call Additional Data registry is
+   used to construct a 'purpose' parameter value for conveying VEDS data
+   in a Call-Info header (as described in
+   [I-D.ietf-ecrit-additional-data]).
+
+   VEDS is a versatile structure that can accomodate varied needs.
+   However, if additional sets of data are determined to be needed
+   (e.g., in the future or in different regions), the steps to enable
+   each data block are very briefly summarized below:
+
+   o  A standardized format and encoding (such as XML) is defined and
+      published by a Standards Development Organization (SDO).
+
+   o  A MIME Content-Type is registered for it (typically under the
+      'Application' media type and with a sub-type starting with
+      'EmergencyCallData.').
+
+   o  An entry for the block is added to the Emergency Call Additional
+      Data Blocks sub-registry (established by
+      [I-D.ietf-ecrit-additional-data]); the registry entry is the root
+      of the MIME sub-type (not including the 'EmergencyCallData' prefix
+      and any suffix such as '+xml').
+
+   A next-generation In-Vehicle System (IVS) transmits crash data by
+   encoding it in a standardized and registered format (such as VEDS)
+   and attaching it to an INVITE as a MIME body part.  The body part is
+   identified by its MIME content-type (such as 'application/
+   EmergencyCallData.VEDS+xml') in the Content-Type header field of the
+   body part.  The body part is assigned a unique identifier which is
+   listed in a Content-ID header field in the body part.  The INVITE is
+   marked as containing the crash data by adding a Call-Info header
+   field at the top level of the INVITE.  This Call-Info header field
+   contains a CID URL referencing the body part's unique identifier, and
+   a 'purpose' parameter identifying the data as the crash data per the
+   registry entry; the 'purpose' parameter's value is
+   'EmergencyCallData.' and the root of the MIME type (not including the
+   'EmergencyCallData' prefix and any suffix such as '+xml' (e.g.,
+   'purpose=EmergencyCallData.VEDS').
+
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 6]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   The mechanisms described here are thus used to place emergency calls
+   that are identifiable as ACN calls and that carry one or more
+   standardized crash data objects in an interoperable way.
+
+3.  Overview of Current Deployment Models
+
+   Current (circuit-switched or legacy) systems for placing emergency
+   calls by in-vehicle systems, including automatic crash notification
+   systems, generally have a limited ability to convey at least location
+   and in some cases telematics data to the PSAP.  Most such systems use
+   one of three architectural models, which are described here as:
+   "Telematics Service Provider" (TSP), "direct", and "paired handset".
+   These three models are illustrated below.
+
+   In the TSP model, both emergency and non-emergency calls are placed
+   to a Telematics Service Provider (TSP); a proprietary technique is
+   used for data transfer (such as proprietary in-band modems) to the
+   TSP.
+
+   In an emergency, the TSP call taker bridges in the PSAP and
+   communicates location, crash data (such as impact severity and trauma
+   prediction), and other data (such as the vehicle description) to the
+   PSAP call taker verbally.  Typically, a three-way voice call is
+   established between the vehicle, the TSP, and the PSAP, allowing
+   communication between the PSAP call taker, the TSP call taker, and
+   the vehicle occupants (who might be unconscious).
+
+      ///----\\\  proprietary  +------+    911 trunk      +------+
+     ||| IVS |||-------------->+ TSP  +------------------>+ PSAP |
+      \\\----///  crash data   +------+                   +------+
+
+
+                        Figure 1: Legacy TSP Model.
+
+   In the paired model, the IVS uses a Bluetooth link with a previously-
+   paired handset to establish an emergency call with the PSAP (by
+   dialing a standard emergency number such as 9-1-1), and then
+   communicates location data to the PSAP via text-to-speech; crash data
+   is not conveyed.  Some such systems use an automated voice prompt
+   menu (e.g., "this is an automatic emergency call from a vehicle;
+   press 1 to open a voice path to the vehicle; press 2 to hear the
+   location read out") to allow the call taker to request location data
+   via text-to-speech.
+
+
+
+
+
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 7]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+                   +---+
+      ///----\\\   | H |   911/etc voice call via handset   +------+
+     ||| IVS |||-->| S +----------------------------------->+ PSAP |
+      \\\----///   +---+   location via text-to-speech      +------+
+
+
+                       Figure 2: Legacy Paired Model
+
+   In the direct model, the IVS directly places an emergency call with
+   the PSAP by dialing a standard emergency number such as 9-1-1.  Such
+   systems might communicate location data to the PSAP via text-to-
+   speech; crash data might not be conveyed.
+
+      ///----\\\      911/etc voice call via IVS          +------+
+     ||| IVS  |||---------------------------------------->+ PSAP |
+      \\\----///     location via text-to-speech          +------+
+
+
+                       Figure 3: Legacy Direct Model
+
+4.  Document Scope
+
+   This document is focused on the interface to the PSAP, that is, how
+   an ACN emergency call is setup and incident-related data (including
+   vehicle, sensor, and location data) is transmitted to the PSAP using
+   IETF specifications.  (The goal is to re-use specifications rather
+   than to invent new.)  For the direct model, this is the end-to-end
+   description (between the vehicle and the PSAP).  For the TSP model,
+   this describes the right-hand side (between the TSP and the PSAP),
+   leaving the left-hand side (between the vehicle and the TSP) up to
+   the entities involved (i.e., IVS and TSP vendors) who are then free
+   to use the same mechanism as for the right-hand side (or not).
+
+   Note that while ACN systems in the U.S. and other regions are not
+   currently mandated, Europe has a mandated and standardized system for
+   emergency calls by in-vehicle systems.  This pan-European system is
+   known as "eCall" and is the subject of a separate document,
+   [I-D.ietf-ecrit-ecall].  Vehicles designed to operate in multiple
+   regions may need to support eCall as well as the ACN described here.
+   If other regions devise their own specifications or data formats, a
+   multi-region vehicle may need to support those as well.  This
+   document adopts the call set-up and other technical aspects of
+   [I-D.ietf-ecrit-ecall], which uses [I-D.ietf-ecrit-additional-data],
+   which makes it easy to substitute a different data set while keeping
+   other technical aspects unchanges.  Hence, both NG-eCall and the ACN
+   mechanism described here are fully compatible, differing only in the
+   specific data block that is sent (the eCall MSD in the case of NG-
+   eCall, and the APCO/NENA VEDS used in this document).  If other
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 8]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   regions adopt their own data set, this can be similarly accomodated
+   without changing other technical aspects.
+
+5.  Migration to Next-Generation
+
+   Migration of emergency calls placed by in-vehicle systems to next-
+   generation (all-IP) technology provides a standardized mechanism to
+   identify such calls and to present crash data with the call.  This
+   allows ACN calls and crash data to be automatically processed by the
+   PSAP and made available to the call taker in an integrated, automated
+   way.  Because the crash data is carried in the initial SIP INVITE
+   (per [I-D.ietf-ecrit-additional-data]) the PSAP can present it to the
+   call taker simultaneously with the appearance of the call.
+
+   Vehicle manufacturers using the TSP model may choose to take
+   advantage of the same mechanism to carry telematics data between the
+   vehicle and the TSP for both emergency and non-emergency calls.
+
+   A next-generation IVS establishes an emergency call using the
+   emergency call solution as described in [RFC6443] and [RFC6881], with
+   the difference that the Request-URI indicates an ACN type of
+   emergency call and a Call-Info header field indicates that vehicle
+   crash data is attached.  When an ESInet is deployed the MNO only
+   needs to recognize the call as an emergency call and route it to an
+   ESInet.  The ESInet may recognize the call as an ACN with vehicle
+   data and may route the call to an NG-ACN capable PSAP.  Such a PSAP
+   would interpet the vehicle data sent with the call and make it
+   available to the call taker.
+
+   Because of the need to identify and specially process Next-Generation
+   ACN calls (as discussed above), [I-D.ietf-ecrit-ecall] registers new
+   service URN children within the "sos" subservice.  These URNs provide
+   a mechanism by which an NG-ACN call is identified, and differentiate
+   between manually and automatically triggered NG-ACN calls, which can
+   be subject to different treatment, depending on policy.  (The two
+   service URNs registered in [I-D.ietf-ecrit-ecall] are:
+   urn:service:sos.ecall.automatic and urn:service:sos.ecall.manual.)
+
+   Note that in North America, routing queries performed by clients
+   outside of an ESInet are likely to treat all sub-services of "sos"
+   identically to "sos" with no sub-service.  However, the Request-URI
+   header field retains the full sub-service; route and handling
+   decisions within an ESInet or PSAP may take the sub-service into
+   account.  For example, in a region with multiple cooperating PSAPs,
+   an NG-ACN call might be routed to a PSAP that is NG-ACN capable, or
+   one that specializes in vehicle-related incidents.
+
+
+
+
+
+Gellens, et al.         Expires September 8, 2015               [Page 9]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   Migration of the three architectural models to next-generation (all-
+   IP) is described below.
+
+   In the TSP model, the IVS transmits crash and location data to the
+   TSP using either a protocol that is based on a proprietary design or
+   one that re-uses IETF specifications.  In an emergency, the TSP call
+   taker bridges in the PSAP and the TSP transmits crash and other data
+   to the PSAP using IETF specifications.  There is a three-way call
+   between the vehicle, the TSP, and the PSAP, allowing communication
+   between the PSAP call taker, the TSP call taker, and the vehicle
+   occupants (who might be unconscious).
+
+                  proprietary
+      ///----\\\  or standard       +------+     standard       +------+
+     ||| IVS ||| ------------------->+ TSP +------------------->+ PSAP |
+      \\\----/// crash + other data +------+ crash + other data +------+
+
+                    Figure 4: Next-Generation TSP Model
+
+   The vehicle manufacturer and the TSP may choose to use the same IETF
+   specifications to transmit crash and location data from the vehicle
+   to the TSP as is described here to transmit such data from the TSP to
+   the PSAP.
+
+   In the paired model, the IVS uses a Bluetooth link to a previously-
+   paired handset to establish an emergency call with the PSAP; it is
+   not clear what facilities are or will be available for transmitting
+   crash data through the Bluetooth link to the handset for inclusion in
+   an NG emergency call.
+
+                                   +---+
+      ///----\\\     (unclear)     | H |      (unclear)     +------+
+     ||| IVS |||------------------>| S +------------------->+ PSAP |
+      \\\----///     (unclear)     +---+      (unclear)     +------+
+
+                  Figure 5: Next-Generation Paired Model
+
+   In the direct model, the IVS communicates crash data to the PSAP
+   directly using IETF specifications.
+
+     ///----\\\           NG emergency call              +------+
+    ||| IVS |||----------------------------------------->+ PSAP |
+     \\\----///          crash + other data              +------+
+
+                      Figure 6: Next-Generation Model
+
+   If the call is routed to a PSAP that is not capable of processing the
+   vehicle data, the PSAP ignores (or does not receive) the vehicle
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 10]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   data.  This is detectable by the IVS or TSP when it receives a 200 OK
+   to the INVITE that lacks an eCall control structure acknowledging
+   receipt of the data [I-D.ietf-ecrit-ecall].  The IVS or TSP then
+   proceeds as it would for a non-NG ACN call (e.g., verbal conveyance
+   of data)
+
+6.  Profile
+
+   In the context of emergncy calls placed by an in-vehicle system it is
+   assumed that the car is equipped with a built-in GNSS receiver.  For
+   this reason only geodetic location information will be sent within an
+   emergency call.  The following location shapes MUST be implemented:
+   2d and 3d Point (see Section 5.2.1 of [RFC5491]), Circle (see
+   Section 5.2.3 of [RFC5491]), and Ellipsoid (see Section 5.2.7 of
+   [RFC5491]).  The coordinate reference systems (CRS) specified in
+   [RFC5491] are also mandatory for this document.  The <direction>
+   element, as defined in [RFC5962] which indicates the direction of
+   travel of the vehicle, is important for dispatch and hence it MUST be
+   included in the PIDF-LO [RFC4119].  The <heading> element specified
+   in [RFC5962] MUST be implemented and MAY be included.
+
+   Calls by in-vehicle systems are placed via cellular networks, which
+   may ignore location sent by an originating device in an emergency
+   call INVITE, instead attaching their own location (often determined
+   in cooperation with the originating device).  Standardized crash data
+   structures often include location as determined by the IVS.  A
+   benefit of this is that it allows the PSAP to see both the location
+   as determined by the cellular network (often in cooperation with the
+   originating device) and the location as determined by the IVS.
+
+   This specification inherits the ability to utilize test call
+   functionality from Section 15 of [RFC6881].
+
+7.  Call Setup
+
+   It is important that ACN calls be easily identifiable as such at all
+   stages of call handling, and that automatic versus manual triggering
+   be known.  ACN calls differ from general emergency calls in several
+   aspects, including the presence of standardized crash data, the fact
+   that the call is known to be placed by an in-vehicle system (which
+   has implications for PSAP operational processes), and, especially for
+   automatic calls, information that may indicate a likelihood of severe
+   injury and hence need for trauma services.  Knowledge that a call is
+   an ACN and further that it was automatically or manually invoked
+   carries a range of implications about the call, the circumstances,
+   and the vehicle occupants.  Calls by in-vehicle systems may be
+   considered a specific sub-class of general emergency calls and are
+   optimally handled by a PSAP with the technical and operational
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 11]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   capabilities to serve such calls.  (This is especially so in
+   environments such as the U.S. where there are many PSAPs and where
+   individual PSAPs have a range of capabilities.)  Technical
+   capabilities include the ability to recognize and process
+   standardized crash data.  Operational capabilities include training
+   and processes for assessing severe injury likelihood and responding
+   appropriately (e.g., dispatching trauma-capable medical responders or
+   those trained and equipped to extract occupants from crashed vehicles
+   and handle gasoline or other hazardous materials, transporting
+   victims to a trauma center, alerting the receiving facility, etc.).
+
+   Because ACN calls differ in significant ways from general emergency
+   calls, and because such calls should be handled by specialized PSAPs
+   (equipped technically to interpet and make use of crash data, and
+   operationally to handle emergency calls placed by in-vehicle
+   systems), [I-D.ietf-ecrit-ecall] registers SOS sub-services.  Using a
+   sub-service makes it readily obvious that the call is an ACN; a
+   further child element distinguishes calls automatically placed due to
+   a crash or other serious incident (such as a fire) from those
+   manually invoked by a vehicle occupant (specifically,
+   "SOS.ecall.automatic" and "SOS.ecall.manual").  The distinction
+   between automatic and manual invocation is also significant;
+   automatically triggered calls indicate a car crash or some other
+   serious incident (e.g., a fire) and carry a greater presumption of
+   risk of injury and hence need for specific responders (such as trauma
+   or fire).  Manually triggered calls are often reports of serious
+   hazards (such as drunk drivers) and may require different responses
+   depending on the situation.  Manually triggered calls are also more
+   likely to be false (e.g., accidental) calls and may thus be subject
+   to different handling by the PSAP.
+
+   A next-generation In-Vehicle System (IVS) transmits crash data by
+   encoding it in a standardized and registered format and attaching it
+   to an INVITE as an additional data block as specified in Section 4.1
+   of [I-D.ietf-ecrit-additional-data].  As described in that document,
+   the block is identified by its MIME content-type, and pointed to by a
+   CID URL in a Call-Info header with a 'purpose' parameter value
+   corresponding to the block.
+
+   Specifically, the steps required during standardization are:
+
+   o  A set of crash data is standardized by an SDO or appropriate
+      organization
+
+   o  A MIME Content-Type for the crash data set is registered with IANA
+
+
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 12]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+      *  If the data is specifically for use in emergency calling, the
+         MIME type is normally under the 'application' type with a
+         subtype starting with 'EmergencyCallData.'
+
+      *  If the data format is XML, then by convention the name has a
+         suffix of '+xml'
+
+   o  The item is registered in the Emergency Call Additional Data
+      registry, as defined in Section 9.1.7 of
+      [I-D.ietf-ecrit-additional-data]
+
+      *  For emergency-call-specific formats, the registered name is the
+         root of the MIME Content-Type (not including the
+         'EmergencyCallData' prefix and any suffix such as '+xml') as
+         described in Section 4.1 of [I-D.ietf-ecrit-additional-data]
+
+   When placing an emergency call:
+
+   o  The crash data set is created and encoded per its specification
+
+   o  The crash data set is attached to the emergency call INVITE as
+      specified in Section 4.1 of [I-D.ietf-ecrit-additional-data], that
+      is, as a MIME body part identified by its MIME Content-Type in the
+      body part's Content-Type header field
+
+   o  The body part is assigned a unique identifier label in a Content-
+      ID header field of the body part
+
+   o  A Call-Info header field at the top level of the INVITE is added
+      that references the crash data and identifies it by its MIME root
+      (as registered in the Emergency Call Additional Data registry)
+
+      *  The crash data is referenced in the Call-Info header field by a
+         CID URL that contains the unique Content ID assigned to the
+         crash data body part
+
+      *  The crash data is identified in the Call-Info header field by a
+         'purpose' parameter whose value is 'EmergencyCallData.'
+         concatenated with the specific crash data entry in the
+         Emergency Call Additional Data registry
+
+      *  The Call-Info header field MAY be either solely to reference
+         the crash data (and hence have only the one URL) or may also
+         contain other URLs referencing other data
+
+   o  Additional crash data sets MAY be included by following the same
+      steps
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 13]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   The Vehicle Emergency Data Set (VEDS) is an XML structure defined by
+   the Association of Public-Safety Communications Officials (APCO) and
+   the National Emergency Number Association (NENA) [VEDS].  The
+   'application/EmergencyCallData.VEDS+xml' MIME content-type is used to
+   identify it.  The 'VEDS' entry in the Emergency Call Additional Data
+   registry is used to construct a 'purpose' parameter value for
+   conveying VEDS data in a Call-Info header.
+
+   The VEDS data is attached as a body part with MIME content type
+   'application/EmergencyCallData.VEDS+xml' which is pointed at by a
+   Call-Info URL of type CID with a 'purpose' parameter of
+   'EmergencyCallData.VEDS'.
+
+   Entities along the path between the vehicle and the PSAP are able to
+   identify the call as an ACN call and handle it appropriately.  The
+   PSAP is able to identify the crash data as well as any other
+   additional data attached to the INVITE by examining the Call-Info
+   header fields for 'purpose' parameters whose values start with
+   'EmergencyCallData.'  The PSAP is able to access and the data it is
+   capable of handling and is interested in by checking the 'purpose'
+   parameter values.
+
+8.  Call Routing
+
+   An Emergency Services IP Network (ESInet) is a network operated by
+   emergency services authorities.  It handles emergency call routing
+   and processing before delivery to a PSAP.  In the NG9-1-1
+   architecture adopted by NENA as well as the NG1-1-2 architecture
+   adopted by EENA, each PSAP is connected to one or more ESInets.  Each
+   originating network is also connected to one or more ESInets.  The
+   ESInets maintain policy-based routing rules which control the routing
+   and processing of emergency calls.  The centralization of such rules
+   within ESInets provides for a cleaner separation between the
+   responsibilities of the originating network and that of the emergency
+   services network, and provides greater flexibility and control over
+   processing of emergency calls by the emergency services authorities.
+   This makes it easier to react quickly to unusual situations that
+   require changes in how emergency calls are routed or handled (e.g., a
+   natural disaster closes a PSAP), as well as ease in making long-term
+   changes that affect such routing (e.g., cooperative agreements to
+   specially handle calls requiring translation or relay services).
+
+   In an environment that uses ESInets, the originating network need
+   only detect that the service URN of an emergency call is or starts
+   with "sos", passing all types of emergency calls to an ESInet.  The
+   ESInet is then responsible for routing such calls to an appropriate
+   PSAP.  In an environment without an ESInet, the emergency services
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 14]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   authorities and the originating carriers would need to determine how
+   such calls are routed.
+
+9.  Test Calls
+
+   This document uses [I-D.ietf-ecrit-ecall], which inherits the ability
+   to utilize test call functionality from Section 15 of [RFC6881].
+
+   A service URN starting with "test." indicates a request for an
+   automated test.  Per [I-D.ietf-ecrit-ecall],
+   "urn:service:test.sos.ecall.automatic" indicates such a test feature.
+   This functionality is defined in [RFC6881].
+
+   Note that since test calls are placed using "test" as the parent
+   service URN and "sos" as a child, such calls are not treated as an
+   emergency call and so some functionality will not apply (such as
+   preemption or service availability for devices lacking service ("non-
+   service-initialized" or "NSI") if those are available for emergency
+   calls); this is by design.  MNOs may recognize test calls and treat
+   them in a way that tests as much functionality as desired, but this
+   is outside the scope of this document.
+
+10.  Example
+
+   Figure 7 shows an emergency call placed by a vehicle whereby location
+   information and VEDS crash data are both attached to the SIP INVITE
+   message.  The INVITE has a request URI containing the
+   'urn:service:sos.ecall.automatic' service URN and is thus recognized
+   as an ACN type of emergency call, and is also recognized as a type of
+   emergency call because the request URI starts with 'urn:service:sos'.
+   The mobile network operator (MNO) routes the call to an Emergency
+   services IP Network (ESInet), as for any emergency call.  The ESInet
+   processes the call as an ACN and routes the call to an appropriate
+   ACN-capable PSAP (using location information and the fact that that
+   it is an ACN).  (In deployments where there is no ESInet, the MNO
+   itself needs to route directly to an appropriate ACN-capable PSAP.)
+   The call is processed by the Emergency Services Routing Proxy (ESRP),
+   as the entry point to the ESInet.  The ESRP routes the call to an
+   appropriate ACN-capable PSAP, where the call is received by a call
+   taker.
+
+
+
+
+
+
+
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 15]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+                               +---------------------------------------+
+                               |                                       |
+               +------------+  |                  +-------+            |
+               |            |  |                  | PSAP2 |            |
+               |            |  |                  +-------+            |
+               | Originating|  |                                       |
+               |   Mobile   |  |  +------+     +-------+               |
+     Vehicle-->|  Network   |--+->| ESRP |---->| PSAP1 |--> Call-Taker |
+               |            |  |  +------+     +-------+               |
+               |            |  |                                       |
+               +------------+  |                  +-------+            |
+                               |                  | PSAP3 |            |
+                               |                  +-------+            |
+                               |                                       |
+                               |                                       |
+                               |                                       |
+                               |                ESInet                 |
+                               +---------------------------------------+
+
+      Figure 7: Example of Vehicle-Placed Emergency Call Message Flow
+
+   The example, shown in Figure 8, illustrates a SIP emergency call
+   INVITE that is being conveyed with location information (a PIDF-LO)
+   and crash data (as VEDS data).
+
+      INVITE urn:service:sos.ecall.automatic SIP/2.0
+      To: urn:service:sos.ecall.automatic
+      From: <sip:+13145551111@example.com>;tag=9fxced76sl
+      Call-ID: 3848276298220188511@atlanta.example.com
+      Geolocation: <cid:target123@example.com>
+      Geolocation-Routing: no
+      Call-Info: cid:1234567890@atlanta.example.com;
+                 purpose=EmergencyCallData.VEDS
+      Accept: application/sdp, application/pidf+xml
+      CSeq: 31862 INVITE
+      Content-Type: multipart/mixed; boundary=boundary1
+      Content-Length: ...
+
+      --boundary1
+
+      Content-Type: application/sdp
+
+      ...Session Description Protocol (SDP) goes here
+
+      --boundary1
+
+   Content-Type: application/pidf+xml
+   Content-ID: <target123@atlanta.example.com>
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 16]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <presence
+          xmlns="urn:ietf:params:xml:ns:pidf"
+          xmlns:dm="urn:ietf:params:xml:ns:pidf:data-model"
+          xmlns:gp="urn:ietf:params:xml:ns:pidf:geopriv10"
+          xmlns:dyn="urn:ietf:params:xml:ns:pidf:geopriv10:dynamic"
+          xmlns:gml="http://www.opengis.net/gml"
+          xmlns:gs="http://www.opengis.net/pidflo/1.0"
+          entity="sip:+13145551111@example.com">
+          <dm:device id="123">
+              <gp:geopriv>
+                  <gp:location-info>
+                      <gml:Point srsName="urn:ogc:def:crs:EPSG::4326">
+                         <gml:pos>-34.407 150.883</gml:pos>
+                      </gml:Point>
+                       <dyn:Dynamic>
+                          <dyn:heading>278</dyn:heading>
+                          <dyn:direction><dyn:direction>
+                       </dyn:Dynamic>
+                  </gp:location-info>
+                  <gp:usage-rules/>
+                  <method>gps</method>
+              </gp:geopriv>
+              <timestamp>2012-04-5T10:18:29Z</timestamp>
+              <dm:deviceID>1M8GDM9A_KP042788</dm:deviceID>
+          </dm:device>
+   </presence>
+
+       --boundary1
+
+   Content-Type: application/EmergencyCallData.VEDS+xml
+   Content-ID: 1234567890@atlanta.example.com
+
+   ...VEDS data object goes here
+
+       --boundary1--
+
+    Figure 8: SIP INVITE indicating a Vehicule-Initated Emergency Call
+
+11.  Security Considerations
+
+   This document does not raise security considerations beyond those
+   described in [RFC5069].  As with emergency service systems with end
+   host provided location information there is the possibility that that
+   location is incorrect, either intentially (in case of an a denial of
+   service attack against the emergency services infrastructure) or due
+   to a malfunctioning device.  The reader is referred to
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 17]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   [I-D.ietf-ecrit-trustworthy-location] for a discussion of some of
+   these vulnerabilities.
+
+12.  IANA Considerations
+
+12.1.  MIME Content-type Registration for 'application/
+       EmergencyCall.VEDS+xml'
+
+   This specification requests the registration of a new MIME type
+   according to the procedures of RFC 4288 [RFC4288] and guidelines in
+   RFC 3023 [RFC3023].
+
+      MIME media type name: application
+
+      MIME subtype name: EmergencyCallData.VEDS+xml
+
+      Mandatory parameters: none
+
+      Optional parameters: charset
+
+      Indicates the character encoding of enclosed XML.
+
+      Encoding considerations: Uses XML, which can employ 8-bit
+      characters, depending on the character encoding used.  See
+      Section 3.2 of RFC 3023 [RFC3023].
+
+      Security considerations: This content type is designed to carry
+      vehicle crash data during an emergency call.  This data may
+      contains personal information including vehicle VIN, location,
+      direction, etc.  appropriate precautions need to be taken to limit
+      unauthorized access, inappropriate disclosure to third parties,
+      and eavesdropping of this information.  Please refer to Section 7
+      and Section 8 of [I-D.ietf-ecrit-additional-data] for more
+      information.
+
+      Interoperability considerations: None
+
+      Published specification: [VEDS]
+
+      Applications which use this media type: Emergency Services
+
+      Additional information: None
+
+      Magic Number: None
+
+      File Extension: .xml
+
+      Macintosh file type code: 'TEXT'
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 18]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+      Person and email address for further information: Hannes
+      Tschofenig, Hannes.Tschofenig@gmx.net
+
+      Intended usage: LIMITED USE
+
+      Author: This specification is a work item of the IETF ECRIT
+      working group, with mailing list address <ecrit@ietf.org>.
+
+      Change controller: The IESG <ietf@ietf.org>
+
+12.2.  Registration of the 'VEDS' entry in the Emergency Call Additional
+       Data registry
+
+   This specification requests IANA to add the 'VEDS' entry to the
+   Emergency Call Additional Data registry, with a reference to this
+   document.  The Emergency Call Additional Data registry has been
+   established by [I-D.ietf-ecrit-additional-data].
+
+13.  Contributors
+
+   We would like to thank Ulrich Dietz for his help with earlier
+   versions of the original version of this document.
+
+14.  Acknowledgements
+
+   We would like to thank Michael Montag, Arnoud van Wijk, Ban Al-Bakri,
+   and Gunnar Hellstrom for their feedback.
+
+15.  Changes from Previous Versions
+
+15.1.  Changes from draft-ietf-01 to draft-ietf-02
+
+   o  This document now refers to [I-D.ietf-ecrit-ecall] for technical
+      aspects including the service URN; this document no longer
+      proposes a unique service URN for non-eCall NG-ACN calls; the same
+      service URN is now used for all NG-ACN calls including NG-eCall
+      and non-eCall
+   o  Added discussion of an NG-ACN call placed to a PSAP that doesn't
+      support it
+   o  Minor wording improvements and clarifications
+
+15.2.  Changes from draft-ietf-00 to draft-ietf-01
+
+   o  Added further discussion of test calls
+   o  Added further clarification to the document scope
+   o  Mentioned that multi-region vehicles may need to support other
+      crash notification specifications such as eCall
+   o  Minor wording improvements and clarifications
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 19]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+15.3.  Changes from draft-gellens-02 to draft-ietf-00
+
+   o  Renamed from draft-gellens- to draft-ietf-
+   o  Added text to Introduction to clarify that during a CS ACN, the
+      PSAP call taker usually needs to listen to the data and transcribe
+      it
+
+15.4.  Changes from draft-gellens-01 to -02
+
+   o  Fixed case of 'EmergencyCallData', in accordance with changes to
+      [I-D.ietf-ecrit-additional-data]
+
+15.5.  Changes from draft-gellens-00 to -01
+
+   o  Now using 'EmergencyCallData' for purpose parameter values and
+      MIME subtypes, in accordance with changes to
+      [I-D.ietf-ecrit-additional-data]
+   o  Added reference to RFC 6443
+   o  Fixed bug that caused Figure captions to not appear
+
+16.  References
+
+16.1.  Normative References
+
+   [I-D.ietf-ecrit-additional-data]
+              Randy, R., Rosen, B., Tschofenig, H., Marshall, R., and J.
+              Winterbottom, "Additional Data related to an Emergency
+              Call", draft-ietf-ecrit-additional-data-24 (work in
+              progress), October 2014.
+
+   [I-D.ietf-ecrit-ecall]
+              Gellens, R. and H. Tschofenig, "Next-Generation Pan-
+              European eCall", draft-ietf-ecrit-ecall (work in
+              progress), March 2015.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3023]  Murata, M., St. Laurent, S., and D. Kohn, "XML Media
+              Types", RFC 3023, January 2001.
+
+   [RFC4119]  Peterson, J., "A Presence-based GEOPRIV Location Object
+              Format", RFC 4119, December 2005.
+
+   [RFC4288]  Freed, N. and J. Klensin, "Media Type Specifications and
+              Registration Procedures", RFC 4288, December 2005.
+
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 20]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   [RFC5031]  Schulzrinne, H., "A Uniform Resource Name (URN) for
+              Emergency and Other Well-Known Services", RFC 5031,
+              January 2008.
+
+   [RFC5491]  Winterbottom, J., Thomson, M., and H. Tschofenig, "GEOPRIV
+              Presence Information Data Format Location Object (PIDF-LO)
+              Usage Clarification, Considerations, and Recommendations",
+              RFC 5491, March 2009.
+
+   [RFC5962]  Schulzrinne, H., Singh, V., Tschofenig, H., and M.
+              Thomson, "Dynamic Extensions to the Presence Information
+              Data Format Location Object (PIDF-LO)", RFC 5962,
+              September 2010.
+
+   [RFC6443]  Rosen, B., Schulzrinne, H., Polk, J., and A. Newton,
+              "Framework for Emergency Calling Using Internet
+              Multimedia", RFC 6443, December 2011.
+
+   [RFC6881]  Rosen, B. and J. Polk, "Best Current Practice for
+              Communications Services in Support of Emergency Calling",
+              BCP 181, RFC 6881, March 2013.
+
+   [VEDS]     "Vehicular Emergency Data Set (VEDS) version 3", July
+              2012, <http://apcointl.org/resources/
+              aacn-and-veds/2012-07-25-19-24-06.html>.
+
+16.2.  Informative references
+
+   [I-D.ietf-ecrit-trustworthy-location]
+              Tschofenig, H., Schulzrinne, H., and B. Aboba,
+              "Trustworthy Location", draft-ietf-ecrit-trustworthy-
+              location-14 (work in progress), July 2014.
+
+   [RFC5012]  Schulzrinne, H. and R. Marshall, "Requirements for
+              Emergency Context Resolution with Internet Technologies",
+              RFC 5012, January 2008.
+
+   [RFC5069]  Taylor, T., Tschofenig, H., Schulzrinne, H., and M.
+              Shanmugam, "Security Threats and Requirements for
+              Emergency Call Marking and Mapping", RFC 5069, January
+              2008.
+
+Authors' Addresses
+
+
+
+
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 21]
+
+Internet-Draft      Vehicle-Initiated Emergency Calls         March 2015
+
+
+   Randall Gellens
+   Qualcomm Technologies, Inc
+   5775 Morehouse Drive
+   San Diego  92651
+   US
+
+   Email: rg+ietf@qti.qualcomm.com
+
+
+   Brian Rosen
+   NeuStar, Inc.
+   470 Conrad Dr
+   Mars, PA   16046
+   US
+
+   Email: br@brianrosen.net
+
+
+   Hannes Tschofenig
+   (no affiliation)
+
+   Email: Hannes.Tschofenig@gmx.net
+   URI:   http://www.tschofenig.priv.at
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gellens, et al.         Expires September 8, 2015              [Page 22]
