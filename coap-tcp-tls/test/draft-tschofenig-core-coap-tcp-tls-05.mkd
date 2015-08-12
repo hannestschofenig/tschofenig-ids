@@ -32,7 +32,7 @@ author:
 - ins: S. Lemay
   name: Simon Lemay
   org: Zebra Technologies
-  street: 820 W. Jackson Blvd. suite 700
+  street: 820 W. Jackson Blvd.suite 700
   city: Chicago
   code: '60607'
   country: United States of America
@@ -90,7 +90,7 @@ reliable delivery and a simple congestion control and flow control mechanism
 are provided by the message layer of the CoAP protocol.
 
 A number of environments benefit from the use of CoAP directly over a reliable
-byte stream such as TCP which already provides these services.  This document
+byte stream such as TCP that already provides these services.  This document
 defines the use of CoAP over TCP as well as CoAP over TLS.
 
 --- middle
@@ -99,24 +99,24 @@ defines the use of CoAP over TCP as well as CoAP over TLS.
 
 The [Constrained Application Protocol (CoAP)](#RFC7252) was designed
 for Internet of Things (IoT) deployments, assuming that UDP can be
-used unimpeded --- UDP {{RFC0768}}, or DTLS {{RFC6347}} over UDP; it is a good choice for
-transferring small amounts of data across networks that follow the IP
+used freely --- UDP {{RFC0768}}, or DTLS {{RFC6347}} over UDP, is a good choice for
+transferring small amounts of data in networks that follow the IP
 architecture.
 Some CoAP deployments, however, may have to integrate well with
 existing enterprise infrastructure, where the use of UDP-based
 protocols may not be well-received or may even be blocked by firewalls.
 Middleboxes that are unaware of CoAP usage for IoT can make the use of UDP
-brittle, resulting in lost or malformed packets.
+brittle.
 
-When behind a NAT,
+Where NATs are still present,
 CoAP over TCP can also help with their traversal. NATs often calculate
 expiration timers
 based on the transport layer protocol being used by application protocols.
 Many NATs are built around the assumption that a transport layer protocol
 such as
 TCP gives them additional information about the session life cycle
-and keep TCP-based NAT bindings around for a longer period. UDP, on the other
-hand,
+and keep TCP-based NAT bindings around for a longer period. UDP on the other
+hand
 does not provide such information to a NAT and timeouts tend to be
 much shorter, as research confirms {{HomeGateway}}.
 
@@ -125,15 +125,19 @@ control capabilities provided by many TCP implementations.
 (Note that there is ongoing work to add more elaborate congestion control
 to CoAP as well, see {{-cocoa}}.)
 
-Finally, CoAP may be integrated into an environment where IoT devices communicate over CoAP with a cloud infrastructure via a UDP-to-TCP proxy or gateway.  The CoAP messages
-are then transported over TCP between the back-end services.
+Finally, CoAP may be integrated into a Web environment where the front-end
+uses CoAP from IoT devices to a cloud infrastructure but the CoAP messages
+are then transported in TCP between the back-end services.
+A TCP-to-UDP gateway can be
+used at the cloud boundary to talk to the UDP-based IoT.
 
-To make IoT devices work smoothly in these demanding environments, CoAP
+To make both IoT devices work smoothly in these demanding environments, CoAP
 needs
-to make use of different transport protocols, namely TCP {{RFC0793}} and in some situations even TLS {{RFC5246}}.
+to make use of a different transport protocol, namely TCP {{RFC0793}} and in some situations even TLS {{RFC5246}}.
 
-This document
-describes a shim header that conveys length information about CoAP messages.  Modifications to CoAP beyond the replacement
+The present document
+describes a shim header that conveys length information about
+each CoAP message included.  Modifications to CoAP beyond the replacement
 of the message layer
 (e.g., to introduce further optimizations) are intentionally avoided.
 
@@ -148,7 +152,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 # Constrained Application Protocol
 
 The interaction model of CoAP over TCP is very similar to the one for
-CoAP over UDP, with the key difference that using TCP voids the need to
+CoAP over UDP with the key difference that TCP voids the need to
 provide certain transport layer protocol features, such as reliable
 delivery, fragmentation and reassembly, as well as congestion control,
 at the CoAP level. The protocol stack is illustrated in {{stack}} (derived
@@ -177,13 +181,13 @@ Since TCP offers reliable delivery, there is no need to offer a redundant
 acknowledgement at the CoAP messaging layer.
 
 Since there is no need to carry around acknowledgement semantics,
-messages do not require a message type; no
+messages do not carry a message type: no
 message layer acknowledgement is expected or even possible.
-Because something needs to be put
+As something needs to be put
 into the two bits indicating the message type (unless alternative L3
 below is chosen), we put the bits for a
-Non-Confirmable message (NON) into the header.  By the nature of TCP,
-messages are always transmitted
+Non-Confirmable message (NON) into the header.  By nature of TCP, the
+messages is always transmitted
 reliably over TCP. {{untyped1}} (derived from {{RFC7252}}, Figure 3) shows this
 message exchange graphically.  A UDP-to-TCP gateway will therefore discard
 all
@@ -333,7 +337,7 @@ The other three values have a special meaning:
 
 The second nibble of the initial byte indicates the token length.
 
-Example: 01 43 7f is a frame containing a 2.03 code with the
+Example: 01 43 7f is a frame just containing a 2.03 code with the
 token 7f.
 
 ~~~~
@@ -351,8 +355,8 @@ token 7f.
 
 --- End L Alternatives
 
-The Message ID (and message type in L3) is meaningless and thus elided.  The semantics of the
-other CoAP header fields are left unchanged.
+The Message ID is meaningless and thus elided.  The semantics of the
+other CoAP header fields is left unchanged.
 
 ## Discussion
 
@@ -409,14 +413,15 @@ As CoAP exchanges messages asynchronously over the TCP connection, the
 client can send multiple requests without waiting for responses.  For
 this reason, and due to the nature of TCP, responses are returned
 during the same TCP connection as the request.  In the event that the
-connection gets terminated, all requests that have not yet elicited a
-response MUST be implicitly ignored; clients may retransmit the request
-once a connection is reestablished.
+connection gets terminated, all requests that have not elicited a
+response yet are implicitly canceled; clients may transmit the request
+again once a connection is reestablished.
 
 Furthermore, since TCP is bidirectional, requests can be sent from
-both the connecting host and the endpoint that accepted the connection.
-In other words, whoever initiated the TCP connection has no bearing on the
-meaning of the CoAP terms client and server.
+both the connecting host or the endpoint that accepted the connection.
+In other words, who initiated the TCP connection has no bearing on the
+meaning of the CoAP terms client and server, which are relating only
+to an individual request and response pair.
 
 
 # CoAP URI {#URI}
@@ -447,7 +452,7 @@ coap-tcp-URI = "coap+tcp:" "//" host [ ":" port ] path-abempty
                [ "?" query ]
 ~~~~
 
-The semantics defined in {{RFC7252}}, Section 6.1, apply to this
+The semantics defined in {{RFC7252}}, Section 6.1, applies to this
 URI scheme, with the following changes:
 
 * The port subcomponent indicates the TCP port
@@ -461,7 +466,7 @@ coaps-tcp-URI = "coaps+tcp:" "//" host [ ":" port ] path-abempty
                 [ "?" query ]
 ~~~~
 
-The semantics defined in {{RFC7252}}, Section 6.2, apply to this
+The semantics defined in {{RFC7252}}, Section 6.2, applies to this
 URI scheme, with the following changes:
 
 * The port subcomponent indicates the TCP port at which the TLS server
@@ -474,7 +479,7 @@ URI scheme, with the following changes:
   at the server-side unless out-of-band information ensures that the
   client only interacts with a server that is able to demultiplex CoAP
   messages over port 443. This would, for example, be true for many
-  IoT deployments where clients are pre-configured to
+  Internet of Things deployments where clients are pre-configured to
   only ever talk with specific servers.[^_1]
 
 [^_1]: Shouldn't we simply always require ALPN?
@@ -589,7 +594,7 @@ Reference:
 # Acknowledgements {#acknowledgements}
 
 We would like to thank Stephen Berard, Geoffrey Cristallo, Olivier Delaby,
-Michael Koster, Matthias Kovatsch, Szymon Sasin, Andrew Summers, and Zach Shelby for their
+Michael Koster, Matthias Kovatsch, Szymon Sasin, and Zach Shelby for their
 feedback.
 
 
