@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+
+<?xml-stylesheet type='text/xsl' href='http://xml2rfc.tools.ietf.org/authoring/rfc2629.xslt' ?>
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="4"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="no"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc strict="no"?>
+<?rfc compact="no"?>
+<?rfc subcompact="no"?>
+
+<rfc category="info" ipr="trust200902" docName="draft-wahlstroem-oauth-cbor-web-token-00">
+
+  <front>
+    <title abbrev="CBOR Web Token">CBOR Web Token (CWT)</title>
+
+    <author initials="E." surname="Wahlstroem" fullname="Erik Wahlstroem">
+      <organization>Nexus Technology</organization>
+      <address>
+        <postal>
+          <street></street>
+          <city></city>
+          <code></code>
+          <country>Sweden</country>
+        </postal>
+        <phone></phone>
+        <email>erik.wahlstrom@nexusgroup.com</email>
+        <uri>https://www.nexusgroup.com</uri>
+      </address>
+    </author>
+
+    <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+      <organization>Microsoft</organization>
+      <address>
+        <email>mbj@microsoft.com</email>
+        <uri>http://self-issued.info/</uri>
+      </address>
+    </author>
+
+    <author fullname="Hannes Tschofenig" initials="H." surname="Tschofenig">
+      <organization>ARM Ltd.</organization>
+      <address>
+        <postal>
+          <street></street>
+          <code>6060</code> <city>Hall in Tirol</city>
+          <country>Austria</country>
+        </postal>
+        <email>Hannes.Tschofenig@arm.com</email>
+      </address>
+    </author>
+
+    <date year="2015"/>
+
+    <area>Security</area>
+    <workgroup>OAuth Working Group</workgroup>
+
+    <keyword>Internet-Draft</keyword>
+    <keyword>JSON Web Token</keyword>
+    <keyword>JWT</keyword>
+    <keyword>Claims</keyword>
+    <keyword>CBOR</keyword>
+    <keyword>COSE</keyword>
+
+    <abstract>
+      <t>
+        CBOR Web Token (CWT) is a compact means of representing
+        claims to be transferred between two parties.  CWT is a profile of
+        the JSON Web Token (JWT) that is optimized for constrained devices. The claims
+        in a CWT are encoded in the Concise Binary Object Representation (CBOR) and CBOR Object Signing and Encryption (COSE) is used for added application layer security protection.  A claim is a piece of information asserted about a
+        subject and is represented as a name/value pair consisting of a
+        claim name and a claim value.
+      </t>
+    </abstract>
+
+  </front>
+
+  <middle>
+
+    <!-- ====================================================================== -->
+
+    <section anchor="introduction" title="Introduction">
+
+      <t>With JSON Web Tokens (JWTs) a standardized format of security tokens has been
+	  defined and has found use in OAuth 2.0 and OpenID Connect deployments. With
+	  JSON Web Signatures (JWS) and JSON Web Encryption (JWE) security the content of
+	  the JWT, which comes in form of claims, is protected. The use of JSON for encoding
+	  information is popular for Web applications but it is still considered inefficient
+	  for use in many IoT systems that use low power radio technologies.</t>
+
+	  <t>In this document an alternative encoding of claims is defined. Instead of using
+	  JSON, as provided by JWTs, this specification suggests the use of CBOR and calls this
+	  new structure 'CBOR Web Token (CWT)', which is a compact means of representing
+        claims to be transferred between two parties. To protect the claims inside the CWT
+ the CBOR Object Signing and Encryption (COSE) specification is re-used.</t>
+
+      <t>
+        The suggested pronunciation of CWT is the same as the English word
+        "cot".
+      </t>
+
+    </section>
+
+    <!-- /////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Terminology">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+       "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+       document are to be interpreted as described in "Key words for use in
+       RFCs to Indicate Requirement Levels" <xref target="RFC2119"/>.</t>
+
+       <t>This document reuses terminology and definitions from the 
+        CBOR <xref target="RFC7519"/> and COSE <xref target="I-D.ietf-cose-msg" />
+        specifications.
+      </t>
+
+      <t>The following data types are used in this document: 
+        <list style="hanging">
+          <t hangText="StringOrURI:"><vspace blankLines="1"/>
+             A CBOR major type 3, string value, with the additional requirement that while
+             arbitrary string values MAY be used, any value containing a ":"
+             character MUST be a URI <xref target="RFC3986"/>.  StringOrURI values are
+             compared as case-sensitive strings with no transformations or
+             canonicalizations applied.
+          </t>
+
+          <t hangText="DateTime:"><vspace blankLines="1"/>
+            The date/time strings are defined in Section 2.4.1 in RFC 7049 <xref target="RFC7049" /> as a CBOR major type 6, with tag value 0.
+          </t>
+        </list>
+      </t>
+
+    </section>
+<!--
+    <section title="Overview">
+      <t>
+        COSE, claims, and connections to JWT.
+      </t>
+    </section>
+
+    <section title="Encryption and signatures">
+      <t>
+	Describe COSE and how a CWT is using the COSE formats.
+      </t>
+
+      <t>
+        COSE_Sign structure
+        <vspace blankLines="1"/>
+        COSE_signature structure
+      </t>
+
+      <t>
+        COSE_encrypt structure
+        <vspace blankLines="1"/>
+        COSE_recipient structures
+      </t>
+    </section>
+-->
+
+    <section title="Claims">
+      <t>
+        The set of claims that a CWT must contain to be considered valid is
+        context dependent and is outside the scope of this specification.
+        Specific applications of CWTs will require implementations to
+        understand and process some claims in particular ways.  However, in
+        the absence of such requirements, all claims that are not understood
+        by implementations MUST be ignored.
+      </t>
+
+      <section anchor="CWTClaimNames" title="Claim Names">
+
+         <t>
+           None of the claims defined below are intended to be
+           mandatory to use or mandatory implement. They rather provide
+           a starting point for a set of useful, interoperable claims.
+           Applications using CWTs should define which specific claims they
+           use and when they are required or optional.
+         </t>
+
+         <section anchor="CWTCNiss" title="iss (Issuer) Claim">
+            <t>
+              The "iss" (issuer) claim identifies the principal that issued the
+              CWT.  The "iss" value is a case-sensitive string containing
+              a StringOrURI  value.
+            </t>
+         </section>
+
+         <section anchor="CWTCNsub" title="sub (Subject) Claim">
+            <t>
+              The "sub" (subject) claim identifies the principal that is the
+              subject of the CWT.  The claims in a CWT are normally statements
+              about the subject.  The subject value MUST either be scoped to be
+              locally unique in the context of the issuer or be globally
+              unique.  The processing of this claim is generally application
+              specific.  The "sub" value is a case-sensitive string containing
+              a StringOrURI value.
+            </t>
+          </section>
+
+          <section anchor="CWTCNaud" title="aud (Audience) Claim">
+            <t>
+              The "aud" (audience) claim identifies the recipients that the
+              CWT is intended for.  Each principal intended to process the CWT
+              MUST identify itself with a value in the audience claim.  If the
+              principal processing the claim does not identify itself with a
+              value in the "aud" claim when this claim is present, then the
+              CWT MUST be rejected.  In the general case, the "aud" value is
+              an array of case-sensitive strings, each containing a
+              StringOrURI value.  In the special case when the CWT has one
+              audience, the "aud" value MAY be a single case-sensitive string
+              containing a StringOrURI value.
+            </t>
+          </section>
+
+          <section anchor="CWTCNexp" title="exp (Expiration Time) Claim">
+            <t>
+              The "exp" (expiration time) claim identifies the expiration time
+              on or after which the CWT MUST NOT be accepted for processing.
+              The processing of the "exp" claim requires that the current
+              date/time MUST be before the expiration date/time listed in the
+              "exp" claim.  Implementers MAY provide for some small leeway,
+              usually no more than a few minutes, to account for clock skew.
+              Its value MUST be a number containing a DateTime value.
+            </t>
+          </section>
+
+          <section anchor="CWTCNnbf" title="nbf (Not Before) Claim">
+            <t>
+              The "nbf" (not before) claim identifies the time before which
+              the CWT MUST NOT be accepted for processing.  The processing of
+              the "nbf" claim requires that the current date/time MUST be
+              after or equal to the not-before date/time listed in the "nbf"
+              claim.  Implementers MAY provide for some small leeway, usually
+              no more than a few minutes, to account for clock skew.  Its
+              value MUST be a number containing a DateTime value.
+            </t>
+          </section>
+
+          <section anchor="CWTCNiat" title="iat (Issued At) Claim">
+            <t>
+              The "iat" (issued at) claim identifies the time at which the CWT
+              was issued.  This claim can be used to determine the age of the
+              CWT.  Its value MUST be a number containing a DateTime
+              value.
+            </t>
+          </section>
+
+          <section anchor="CWTCNcti" title="cti (CWT ID) Claim">
+            <t>
+              The "cti" (CWT ID) claim provides a unique identifier for the
+              CWT.  The identifier value MUST be assigned in a manner that
+              ensures that there is a negligible probability that the same
+              value will be accidentally assigned to a different data object;
+              if the application uses multiple issuers, collisions MUST be
+              prevented among values produced by different issuers as well.
+              The "cti" claim can be used to prevent the CWT from being
+              replayed.  The "cti" value is a case-sensitive string of CBOR
+              major type 3.
+            </t>
+          </section>
+
+         <section anchor="CWTCNcks" title="cks (COSE Key Structure) Claim">
+            <t>
+              The "cks" (COSE Key Structure) claim holds members representing a
+              COSE Key Structure.  The members of the structure can be found in
+              Section 7.1 of <xref target="I-D.ietf-cose-msg" />. The "cti"
+              value is a case-sensitive string of CBOR major type 2, byte
+              string.
+	      <!-- TBD: Check this section number periodically -->
+            </t>
+         </section>
+
+<!--
+  DISCUSS the cnf claim before adding it.
+
+         <section anchor="CWTCNcnf" title="cnf (Confirmation) Claim">
+            <t>
+              The "cnf" (confirmation) claim is used in the CWT to contain
+              members used to identify a proof-of-possession key.  The "cnf"
+              claim is used to express a declaration in a CWT that a Client of
+              the CWT possesses a particular key and that the recipient can
+              cryptographically confirm proof-of-possession of the key by the
+              client.
+            </t>
+         </section>
+-->
+
+<!--
+DISCUSS the aif claim before adding it.
+
+         <section anchor="CWTCNaif"
+                  title="aif (Authorization Information Format) Claim">
+            <t>
+              The "aif" (Authorization Information Format) claim uses the AIF
+              format defined in <xref target="I-D.bormann-core-ace-aif" /> to
+              transfer information about the authorization from the AS to the
+              RS.
+            </t>
+         </section>
+-->
+
+      </section>
+
+    </section>
+
+
+    <section anchor="CWTCNMajorTypes" title="Summary of CBOR major types used by
+      defined claims">
+
+      <t>
+        <figure align="center" anchor="fig:cborMappingValuesAccessTokens"
+                title="Summary of CBOR major types used by defined Claims.">
+          <artwork align="left"><![CDATA[
+/-----------+---------------+-----------------------\
+| Value     | Major Type    | Key                   |
+|-----------+---------------+-----------------------|
+| 1         | 3             | iss                   |
+| 2         | 3             | sub                   |
+| 3         | 3             | aud                   |
+| 4         | 6 tag value 0 | exp                   |
+| 5         | 6 tag value 0 | nbf                   |
+| 6         | 6 tag value 0 | iat                   |
+| 7         | 3             | cti                   |
+| 8         | 2             | cks                   |
+\-----------+---------------+-----------------------/
+          ]]></artwork>
+        </figure>
+      </t>
+
+<t>Note: Claims defined by the OpenID Foundation have not yet been included in the table above.</t>
+
+    </section>
+
+    <section anchor="CWTExample" title="CBOR Web Token Example">
+
+      <t>This section illustrates a CWT in the CBOR diagnostic
+      notation.  This example CWT was issued by the AS identified as
+      "coap://as.example.com" in the "iss" (issuer) claim.  The CWT is only
+      valid at a resource server at "coap://light.example.com".  Its validity
+      is 2 minutes.</t>
+
+      <t>
+        <figure align="center" anchor="fig:cborMappingValuesCWT"
+              title="CWT Example in the CBOR Diagnostic Notation.">
+          <artwork align="left"><![CDATA[
+{
+  "iss": "coap://as.example.com",
+  "aud": "coap://light.example.com",
+  "exp": 1444064944,
+  "iat": 1443944944
+}
+          ]]></artwork>
+        </figure>
+      </t>
+
+    </section>
+
+<!--
+    <section anchor="CWTCreation" title="CWT creation">
+
+      <t>TBD</t>
+
+      <t>
+        Rewrite section 7 from  <xref target="RFC7519"/>.
+      </t>
+
+      <t>
+        Reference section 4.2 in  <xref target="I-D.ietf-cose-msg" /> for
+        descriptions on how to sign and encrypt the claims.
+      </t>
+
+    </section>
+
+    <section anchor="CWTValidation" title="CWT validation">
+
+      <t>TBD</t>
+
+      <t>
+        Rewrite section 7 from  <xref target="RFC7519"/>.
+      </t>
+
+      <t>
+        Reference section 4.2 in  <xref target="I-D.ietf-cose-msg" /> for
+        descriptions on how to sign and encrypt the claims.
+      </t>
+
+
+    </section>
+
+
+	  <section title="Data Type Mapping">
+
+      <t>The data types listed along with the claim definitions in <xref target="claims"/> need to be mapped to data types available with CBOR. This document has not yet attempted to provide such mapping.</t>
+
+    </section>
+  -->
+
+
+    <section title="Security Considerations">
+
+      <t>The security of the CWT is dependent on the protection offered by COSE. Without protecting the claims contained in a CWT an adversary is able to modify, add or remove claims. Since the claims conveyed in a CWT are used to make authorization decisions it is not only important to protect the CWT in transit but also to ensure that the recipient is able to authenticate the party that collected the claims and created the CWT. Without trust of the recipient in the party that created the CWT no sensible authorization decision can be made. Furthermore, the creator of the CWT needs to carefully evaluate each claim value prior to including it in the CWT so that the recipient can be assured about the correctness of the provided information.</t>
+
+    </section>
+
+    <!-- /////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="iana" title="IANA Considerations">
+
+    <t>
+      This section will create a registry for CWT claims, possibly relating them to the JWT Claims Registry.
+    </t>
+
+    </section>
+
+    <!-- /////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Acknowledgements">
+        <t>Add your name here. </t>
+
+        <t>
+          A straw man proposal of CWT was written in the draft
+          "Authorization for the Internet of Things using OAuth 2.0"
+          <xref target="I-D.seitz-ace-oauth-authz" /> with the help of
+          Ludwig Seitz, Göran Selander, and Samuel Erdtman.
+        </t>
+    </section>
+
+  </middle>
+
+  <back>
+    <references title='Normative References'>
+      <?rfc include='http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+      <?rfc include='http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.7049.xml' ?>
+      <?rfc include='http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.3986.xml' ?>
+      <?rfc include="http://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-cose-msg"?>
+	</references> 
+    <references title='Informative References'>
+      <?rfc include="http://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.seitz-ace-oauth-authz"?>
+      <?rfc include='http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.7519.xml' ?>
+	  </references>
+
+
+    <!--
+    <references title='Informative References'>
+    </references>
+    -->
+
+<!--
+    <section title="Example CWT" anchor="examplecwt">
+      <t>This appendix shows multiple examples of CWTs.</t>
+
+      <t>
+        FIXME: For now this is just copied from examples in COSE to show a
+        cose format.
+
+        This example uses the following:
+
+        o  Signature Algorithm: ECDSA w/ SHA-256, Curve P-256-1
+
+        Size of binary file is 105 bytes
+      </t>
+
+      <t>
+        <figure align="center" anchor="fig:exampleCWTSig"
+              title="CWT Example">
+          <artwork align="left"><![CDATA[
+
+            999( [
+              h'',
+              {
+              },
+              h'546869732069732074686520636f6e74656e742e',
+              [
+                [
+                  h'a10126',
+                  {
+                    4: h'3131'
+                  },
+                  h'4358e9e92b46d45134548b6e3b4eae3d2f801bce85236c7aab42968ad
+            8e3e92400873ed761735222a6d1f442c4bb3a3151946b16900048572455e65451
+            d89aaba7'
+                ]
+              ]
+            ])
+
+          ]]></artwork>
+        </figure>
+      </t>
+
+    </section>
+-->
+  </back>
+</rfc>
