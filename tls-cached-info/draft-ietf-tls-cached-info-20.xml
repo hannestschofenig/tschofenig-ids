@@ -151,16 +151,16 @@ be the case when the client has cached multiple certificates from a server.
 ]]></artwork>
           </figure></t>
 
-<t>This document defines the following types: 
+<t>This document defines the following two types: 
 <list style="hanging">
-<t hangText="Omitting the Server Certificate Message:"><vspace blankLines="1"/> 
-With the type field set to 'cert', the client MUST include the message digest of the Certificate message in the hash_value field. For this type the message digest MUST be calculated using SHA-256 <xref target="RFC4634"/>.</t>
-<t hangText="Omitting the CertificateRequest Message"><vspace blankLines="1"/> 
-With the type set to 'cert_req', the client MUST include the message digest of the CertificateRequest message in the hash_value field. For this type the message digest MUST be calculated using SHA-256 <xref target="RFC4634"/>.</t>
+<t hangText="'cert' Type for not sending the complete Server Certificate Message:"><vspace blankLines="1"/> 
+With the type field set to 'cert', the client MUST include the fingerprint of the Certificate message in the hash_value field. For this type the fingerprint MUST be calculated using the procedure described in <xref target="fingerprint"/> with the Certificate message as input data.</t>
+<t hangText="'cert_req' Type for not sending the complete CertificateRequest Message:"><vspace blankLines="1"/> 
+With the type set to 'cert_req', the client MUST include the fingerprint of the CertificateRequest message in the hash_value field. For this type the fingerprint MUST be calculated using the procedure described in <xref target="fingerprint"/> with the CertificateRequest message as input data..</t>
 </list> 
 </t>
 
-<t>New types can be added following the policy described in the IANA considerations section, see <xref target="IANA"/>. Different message digest algorithms for use with these types can also be added by registering a new type that makes use of this updated message digest algorithm.</t>
+<t>New cached info types can be added following the policy described in the IANA considerations section, see <xref target="IANA"/>. New message digest algorithms for use with these types can also be added by registering a new type that makes use of the updated message digest algorithm. There are no specific requirements for the use of specific hash algorithms but for practical reason it is useful to re-use algorithms already available with TLS ciphersuites to avoid additional code and to keep the collision probably low.</t>
 
 </section> 
 
@@ -170,7 +170,7 @@ With the type set to 'cert_req', the client MUST include the message digest of t
 
 <t>Clients supporting this extension MAY include the "cached_info" extension in the (extended) client hello. If the client includes the extension then it MUST contain one or more CachedObject attributes.</t>
 
-<t>A server supporting this extension MAY include the "cached_info" extension in the (extended) server hello. By returning the "cached_info" extension the server indicates that it supports the cached info types. For each indicated cached info type the server MUST alter the transmission of respective payloads, according to the rules outlined with each type. If the server includes the extension it MUST only include CachedObjects of a type also supported by the client (as expressed in the client hello). For example, if a client indicates support for 'cert' and 'cert_req' then the server cannot respond with a "cached_info" attribute containing support for 'cert_status'.</t>
+<t>A server supporting this extension MAY include the "cached_info" extension in the (extended) server hello. By returning the "cached_info" extension the server indicates that it supports the cached info types. For each indicated cached info type the server MUST alter the transmission of respective payloads, according to the rules outlined with each type. If the server includes the extension it MUST only include CachedObjects of a type also supported by the client (as expressed in the client hello). For example, if a client indicates support for 'cert' and 'cert_req' then the server cannot respond with a "cached_info" attribute containing support for ('foo-bar'.</t>
 
 <t>Since the client includes a fingerprint of information it cached (for each indicated type) the server is able to determine whether cached information is stale. If the server supports this specification and notices a mismatch between the data cached by the client and its own information then the server MUST include the information in full and MUST NOT list the respective type in the "cached_info" extension.</t>
 
@@ -178,15 +178,16 @@ With the type set to 'cert_req', the client MUST include the message digest of t
 
 <t>Following a successful exchange of the "cached_info" extension in the client and server hello, the server alters sending the corresponding handshake message. How information is altered from the handshake messages is defined in <xref target="cert"/>, and in <xref target="cert_req"/> for the types defined in this specification.</t>
 
+<t><xref target="example-hash"/> shows an example hash calculation and  <xref target="example-exchange"/> shows an example protocol exchange.</t>
 
 <section anchor="cert" title="Server Certificate Message">
 
 <t>When a ClientHello message contains the "cached_info" extension with a type set to 'cert' then the server MAY send the Certificate message shown in <xref target="cert-structure-modified"/> under the following conditions:
 
-<list style="enumerate">
+<list style="symbols">
 <t>The server software implements the "cached_info" extension defined in this specification.</t>
 <t>The 'cert' cached info extension is enabled (for example, a policy allows the use of this extension).</t>
-<t>The server compared the value in the hash_value field of the client-provided "cached_info" extension with the fingerprint of the Certificate message it normally sends to clients. This check ensures that the information cached by the client is current.</t>
+<t>The server compared the value in the hash_value field of the client-provided "cached_info" extension with the fingerprint of the Certificate message it normally sends to clients. This check ensures that the information cached by the client is current. The procedure for calculating the fingerprint is described in <xref target="fingerprint"/>.</t>
 </list> 
 </t>
 
@@ -203,49 +204,74 @@ With the type set to 'cert_req', the client MUST include the message digest of t
 ]]></artwork>
           </figure>
 		  </t>
-
-<t>The fingerprint MUST be computed as a SHA-256 hash of the original Certificate message in the following manner: hash_value:=SHA-256(Certificate). Note that the computed hash does not cover any type and length information in the record layer. However, the Certificate message that is used as input to the fingerprint calculation includes type and length information itself.</t>
-
-<t><xref target="example-hash"/> shows an example.</t>
-
    </section> 
 
 <section anchor="cert_req" title="CertificateRequest Message">
 
-<t>When a fingerprint for an object of type 'cert_req' is provided in the client hello, the server MAY omit the CertificateRequest message under the following conditions:
+<t>When a fingerprint for an object of type 'cert_req' is provided in the client hello, the server MAY send the CertificateRequest message shown in <xref target="certreq-structure-modified"/> message under the following conditions:
 
-<list style="enumerate">
+<list style="symbols">
 <t>The server software implements the "cached_info" extension defined in this specification.</t>
 <t>The 'cert_req' cached info extension is enabled (for example, a policy allows the use of this extension).</t>
-<t>The server compared the value in the hash_value field of the client-provided "cached_info" extension with the fingerprint of the CertificateRequest message it normally sends to clients. This check ensures that the information cached by the client is current.</t>
+<t>The server compared the value in the hash_value field of the client-provided "cached_info" extension with the fingerprint of the CertificateRequest message it normally sends to clients. This check ensures that the information cached by the client is current. The procedure for calculating the fingerprint is described in <xref target="fingerprint"/>.</t>
 <t>The server wants to request a certificate from the client.</t> 
 </list> 
 </t>
 
-<t>The original CertificateRequest handshake message syntax is defined in RFC 5246 <xref target="RFC5246"/>.</t>
+<t>The original CertificateRequest handshake message syntax is defined in RFC 5246 <xref target="RFC5246"/>. The modified structure of the CertificateRequest message is shown in <xref target="certreq-structure-modified"/>.</t>
 
-<t>The new structure of the CertificateRequest message is shown in <xref target="certreq-structure-modified"/>.</t>
-
-           <t><figure anchor="certreq-structure-modified" title="Cached Info CertificateRequest Message.">
-            <artwork>
-              <![CDATA[
+<t><figure anchor="certreq-structure-modified" title="Cached Info CertificateRequest Message.">
+<artwork>
+<![CDATA[
       struct {
           opaque hash_value<1..255>;
       } CertificateRequest;
 ]]></artwork>
-          </figure>
-		  </t>
+</figure>
+</t>
 
-<t>The fingerprint MUST be computed as follows: hash_value:=SHA-256(CertificateRequest)</t>
+<t>The CertificateRequest payload is the input parameter to the fingerprint calculation described in <xref target="fingerprint"/>.</t>
 
 </section>
 
 </section> 
 
+        <!-- ******************************************************************************** -->
+
+<section anchor="fingerprint" title="Fingerprint Calculation"> 
+
+<t>The fingerprint MUST be computed as follows:
+<list style="numbers"> 
+<t>Compute the SHA-256 <xref target="RFC4634"/> hash of the input data. The input data depends on the cached info type. This document defines two cached info types, described in 
+<xref target="cert"/> and in <xref target="cert_req"/>. Note that the computed hash only covers the input data structure (and not any type and length information of the record layer). </t> 
+<t>Truncate the output of the SHA-256 hash. When a hash value is truncated to 32 bits, the leftmost 32 bits (that
+   is, the most significant 32 bits in network byte order) from the
+   binary representation of the hash value MUST be used as the truncated
+   value.  An example of a 256-bit hash output truncated to 32 bits is
+   shown in <xref target="truncated-hash"/>.</t> 
+</list> 
+</t> 
+
+<t>
+<figure anchor="truncated-hash" title="Truncated Hash Example.">
+            <artwork>
+              <![CDATA[
+256-bit hash: 
+0x265357902fe1b7e2a04b897c6025d7a2265357902fe1b7e2a04b897c6025d7a2
+
+32-bit truncated hash: 
+0x26535790
+]]></artwork>
+</figure>
+</t>
+
+<t>The purpose of the fingerprint provided by the client is to help the server select the correct information. For example, in case of the certificate message the fingerprint identifies the server certificate (and the corresponding private key) for use for with the rest of the handshake. Servers may have more than one certificate and therefore a hash needs to be long enough to keep the probably of hash collisions low. On the other hand, the cached info design aims to reduce the amount of data being exchanged. The security of the handshake depends on the private key and not on the size of the fingerprint. Hence, the fingerprint is a way to prevent the server from accidentally selecting the wrong information. If an attacker injects an incorrect fingerprint then two outcomes are possible: (1) The fingerprint does not relate to any cached state and the server has to fall back to a full exchange. (2) If the attacker manages to inject a fingerprint that refers to data the client has not cached then the exchange will fail later when the client continues with the handshake and aims to verify the digital signature. The signature verification will fail since the public key cached by the client will not correspond to the private key that was used by server to sign the message.</t>  
+
+</section> 
 
         <!-- ******************************************************************************** -->
    
-        <section title="Example">
+        <section anchor="example-exchange" title="Example">
 
 <t><xref target="example"/> illustrates an example exchange using the TLS cached info extension. 
 In the normal TLS handshake exchange shown in flow (A) the TLS server provides its certificate 
@@ -312,14 +338,15 @@ Application Data <-------> Application Data
    unencrypted handshake, as the client and server hello is, may allow an attacker or observer to 
    correlate independent TLS exchanges. While some information elements used in this specification,
    such as server certificates, are public objects and usually do not contain 
-   sensitive information, other (not yet defined cached info types) may. Those who implement and deploy this specification should therefore 
+   sensitive information, other not yet defined types may. Those who implement and deploy this specification should therefore 
    make an informed decision whether the cached information is inline with their security and privacy goals. 
    In case of concerns, it is advised to avoid sending the fingerprint of the data objects in clear.</t>
 
-   <t>The use of the cached info extension allows the server to obmit sending certain TLS messages. Consequently, these omitted messages are not included in the transcript of the handshake in the TLS Finish message per value. However, since the client communicates the hash values of the cached values in the initial handshake message the fingerprints are included in the TLS Finish message. </t>
+   <t>The use of the cached info extension allows the server to send significantly smaller TLS messages. Consequently, these omitted parts of the messages are not included in the transcript of the handshake in the TLS Finish message. However, since the client and the server communicate the hash values of the cached data in the initial handshake messages the fingerprints are included in the TLS Finish message. </t>
 
 <t>Clients MUST ensure that they only cache information from legitimate sources. For example, when the client populates the cache from a TLS exchange then it must only cache information after the successful completion of a TLS exchange to ensure that an attacker does not inject incorrect information into the cache. Failure to do so allows for man-in-the-middle attacks.</t> 
    
+<t>Security consideratios for the fingerprint calculation are discussed in <xref target="fingerprint"/>.</t> 
         </section>
 
         <!-- ******************************************************************************** -->
@@ -365,8 +392,11 @@ defined in RFC 5246 <xref target="RFC5246"/>, for cached_info(TBD) defined in th
    <t>Martin Thomson (in August 2015)</t>
    </list> 
    </t> 
-   
-   <t>Additionally, we would like to thank the TLS working group chairs, Sean Turner and Joe Salowey, as well as the responsible security area director, Stephen Farrell, for their support. </t>
+  
+   <t>We would also to thank Martin Thomson, Karthikeyan Bhargavan, Sankalp Bagaria and Eric Rescorla for their feedback regarding the fingerprint calculation.</t> 
+
+
+   <t>Finally, we would like to thank the TLS working group chairs, Sean Turner and Joe Salowey, as well as the responsible security area director, Stephen Farrell, for their support. </t>
         </section>
 
         <!-- ******************************************************************************** -->
@@ -428,7 +458,7 @@ Gutmann's ASN.1 decoder <xref target="ASN.1-Dump"/> in <xref target="example-cer
        :       }
  13   1:     INTEGER 13
  16  10:     SEQUENCE {
- 18   8:       OBJECT IDENTIFIER ecdsaWithSHA256 (1 2 840 10045 4 3 2)
+ 18   8:      OBJECT IDENTIFIER ecdsaWithSHA256 (1 2 840 10045 4 3 2)
        :       }
  28  62:     SEQUENCE {
  30  11:       SET {
@@ -498,13 +528,13 @@ Gutmann's ASN.1 decoder <xref target="ASN.1-Dump"/> in <xref target="example-cer
 301   3:           OBJECT IDENTIFIER subjectKeyIdentifier (2 5 29 14)
 306  22:           OCTET STRING, encapsulates {
 308  20:             OCTET STRING
-       :               7A 00 5F 86 64 FC E0 5D E5 11 10 3B B2 E6 3B C4
-       :               26 3F CF E2
+       :              7A 00 5F 86 64 FC E0 5D E5 11 10 3B B2 E6 3B C4
+       :              26 3F CF E2
        :             }
        :           }
 330 110:         SEQUENCE {
-332   3:           OBJECT IDENTIFIER authorityKeyIdentifier (2 5 29 35)
-337 103:           OCTET STRING, encapsulates {
+332   3:          OBJECT IDENTIFIER authorityKeyIdentifier (2 5 29 35)
+337 103:          OCTET STRING, encapsulates {
 339 101:             SEQUENCE {
 341  20:               [0]
        :               9D 6D 20 24 49 01 3F 2B CB 78 B5 19 BC 7E 24 C9
@@ -513,24 +543,24 @@ Gutmann's ASN.1 decoder <xref target="ASN.1-Dump"/> in <xref target="example-cer
 365  64:                 [4] {
 367  62:                   SEQUENCE {
 369  11:                     SET {
-371   9:                       SEQUENCE {
-373   3:                        OBJECT IDENTIFIER countryName (2 5 4 6)
-378   2:                        PrintableString 'NL'
-       :                        }
+371   9:                      SEQUENCE {
+373   3:                       OBJECT IDENTIFIER countryName (2 5 4 6)
+378   2:                       PrintableString 'NL'
        :                       }
+       :                      }
 382  17:                     SET {
-384  15:                       SEQUENCE {
-386   3:                         OBJECT IDENTIFIER organizationName 
-       :                                (2 5 4 10)
-391   8:                         PrintableString 'PolarSSL'
-       :                         }
-       :                       }
+384  15:                      SEQUENCE {
+386   3:                        OBJECT IDENTIFIER organizationName 
+       :                               (2 5 4 10)
+391   8:                        PrintableString 'PolarSSL'
+       :                        }
+       :                      }
 401  28:                     SET {
-403  26:                       SEQUENCE {
-405   3:                        OBJECT IDENTIFIER commonName (2 5 4 3)
-410  19:                        PrintableString 'Polarssl Test EC CA'
-       :                         }
-       :                       }
+403  26:                      SEQUENCE {
+405   3:                       OBJECT IDENTIFIER commonName (2 5 4 3)
+410  19:                       PrintableString 'Polarssl Test EC CA'
+       :                        }
+       :                      }
        :                     }
        :                   }
        :                 }
@@ -567,7 +597,7 @@ This Certificate message header in our example is 0b 00 02 36 00 02 33 00 02 00 
 <list style="hanging">
 
 <t hangText="Message Type:"> 0b -- 1 byte type field indicating a Certificate message</t>
-<t hangText="Length"> 00 02 36 -- 3 byte length field indicating a 566 bytes payload</t>
+<t hangText="Length:"> 00 02 36 -- 3 byte length field indicating a 566 bytes payload</t>
 <t hangText="Certificates Length:"> 00 02 33 -- 3 byte length field indicating 563 bytes for the entire certificates_list structure, which may contain multiple certificates. In our example only one certificate is included.</t>
 <t hangText="Certificate Length:"> 00 02 30 -- 3 byte length field indicating 560 bytes of the actual certificate following immediately afterwards. In our example, this is the certificate content with 30 82 02 .... 9E 57 45 shown in <xref target="example-cert-hex"/>.</t>
 </list> 
@@ -616,7 +646,7 @@ This Certificate message header in our example is 0b 00 02 36 00 02 33 00 02 00 
 ]]></artwork>
           </figure></t>
 
-<t>The fingerprint is computed by applying the SHA-256 function to the Certificate message, which is starts with 0b 00 02 and ends with 9E 57 45. The resulting SHA-256 fingerprint is 086eefb4859adfe977defac494fff6b73033b4ce1f86b8f2a9fc0c6bf98605af.</t>
+<t>Applying the SHA-256 hash function to the Certificate message, which is starts with 0b 00 02 and ends with 9E 57 45, produces 0x086eefb4859adfe977defac494fff6b73033b4ce1f86b8f2a9fc0c6bf98605af. Subsequently, this output is truncated to 32 bits, which leads to a fingerpint of 0x086eefb4.</t>
 
 </section> 
 

@@ -5,8 +5,8 @@
 TLS                                                         S. Santesson
 Internet-Draft                                           3xA Security AB
 Intended status: Standards Track                           H. Tschofenig
-Expires: February 25, 2016                                      ARM Ltd.
-                                                         August 24, 2015
+Expires: April 21, 2016                                         ARM Ltd.
+                                                        October 19, 2015
 
 
       Transport Layer Security (TLS) Cached Information Extension
@@ -40,7 +40,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on February 25, 2016.
+   This Internet-Draft will expire on April 21, 2016.
 
 Copyright Notice
 
@@ -53,9 +53,9 @@ Copyright Notice
 
 
 
-Santesson & Tschofenig  Expires February 25, 2016               [Page 1]
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 1]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
    publication of this document.  Please review these documents
@@ -70,20 +70,21 @@ Table of Contents
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
    3.  Cached Information Extension  . . . . . . . . . . . . . . . .   3
-   4.  Exchange Specification  . . . . . . . . . . . . . . . . . . .   4
+   4.  Exchange Specification  . . . . . . . . . . . . . . . . . . .   5
      4.1.  Server Certificate Message  . . . . . . . . . . . . . . .   5
      4.2.  CertificateRequest Message  . . . . . . . . . . . . . . .   6
-   5.  Example . . . . . . . . . . . . . . . . . . . . . . . . . . .   7
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
-     7.1.  New Entry to the TLS ExtensionType Registry . . . . . . .   9
-     7.2.  New Registry for CachedInformationType  . . . . . . . . .   9
-   8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  10
-   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  10
-     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  10
-     9.2.  Informative References  . . . . . . . . . . . . . . . . .  11
-   Appendix A.  Example  . . . . . . . . . . . . . . . . . . . . . .  11
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  15
+   5.  Fingerprint Calculation . . . . . . . . . . . . . . . . . . .   7
+   6.  Example . . . . . . . . . . . . . . . . . . . . . . . . . . .   8
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+     8.1.  New Entry to the TLS ExtensionType Registry . . . . . . .  10
+     8.2.  New Registry for CachedInformationType  . . . . . . . . .  10
+   9.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  11
+   10. References  . . . . . . . . . . . . . . . . . . . . . . . . .  11
+     10.1.  Normative References . . . . . . . . . . . . . . . . . .  11
+     10.2.  Informative References . . . . . . . . . . . . . . . . .  12
+   Appendix A.  Example  . . . . . . . . . . . . . . . . . . . . . .  12
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  17
 
 1.  Introduction
 
@@ -105,15 +106,15 @@ Table of Contents
    client connects to the TLS server some time in the future, without
    using session resumption, it then attaches the cached_info extension
    defined in this document to the client hello message to indicate that
-   it had cached the certificate, and it provides the fingerprint of it.
 
 
 
-Santesson & Tschofenig  Expires February 25, 2016               [Page 2]
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 2]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
+   it had cached the certificate, and it provides the fingerprint of it.
    If the server's certificate has not changed then the TLS server does
    not need to send its' certificate and the corresponding certificate
    chain again.  In case information has changed, which can be seen from
@@ -164,10 +165,9 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
 
 
-
-Santesson & Tschofenig  Expires February 25, 2016               [Page 3]
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 3]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
          enum {
@@ -188,26 +188,43 @@ Internet-Draft      TLS Cached Information Extension         August 2015
               CachedObject cached_info<1..2^16-1>;
          } CachedInformation;
 
-   This document defines the following types:
+   This document defines the following two types:
 
-   Omitting the Server Certificate Message:
+   'cert' Type for not sending the complete Server Certificate Message:
+
 
       With the type field set to 'cert', the client MUST include the
-      message digest of the Certificate message in the hash_value field.
-      For this type the message digest MUST be calculated using SHA-256
-      [RFC4634].
+      fingerprint of the Certificate message in the hash_value field.
+      For this type the fingerprint MUST be calculated using the
+      procedure described in Section 5 with the Certificate message as
+      input data.
 
-   Omitting the CertificateRequest Message
+   'cert_req' Type for not sending the complete CertificateRequest
+   Message:
 
       With the type set to 'cert_req', the client MUST include the
-      message digest of the CertificateRequest message in the hash_value
-      field.  For this type the message digest MUST be calculated using
-      SHA-256 [RFC4634].
+      fingerprint of the CertificateRequest message in the hash_value
+      field.  For this type the fingerprint MUST be calculated using the
+      procedure described in Section 5 with the CertificateRequest
+      message as input data..
 
-   New types can be added following the policy described in the IANA
-   considerations section, see Section 7.  Different message digest
+   New cached info types can be added following the policy described in
+   the IANA considerations section, see Section 8.  New message digest
    algorithms for use with these types can also be added by registering
-   a new type that makes use of this updated message digest algorithm.
+   a new type that makes use of the updated message digest algorithm.
+   There are no specific requirements for the use of specific hash
+   algorithms but for practical reason it is useful to re-use algorithms
+   already available with TLS ciphersuites to avoid additional code and
+   to keep the collision probably low.
+
+
+
+
+
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 4]
+
+Internet-Draft      TLS Cached Information Extension        October 2015
+
 
 4.  Exchange Specification
 
@@ -218,22 +235,14 @@ Internet-Draft      TLS Cached Information Extension         August 2015
    A server supporting this extension MAY include the "cached_info"
    extension in the (extended) server hello.  By returning the
    "cached_info" extension the server indicates that it supports the
-
-
-
-Santesson & Tschofenig  Expires February 25, 2016               [Page 4]
-
-Internet-Draft      TLS Cached Information Extension         August 2015
-
-
    cached info types.  For each indicated cached info type the server
    MUST alter the transmission of respective payloads, according to the
    rules outlined with each type.  If the server includes the extension
    it MUST only include CachedObjects of a type also supported by the
    client (as expressed in the client hello).  For example, if a client
    indicates support for 'cert' and 'cert_req' then the server cannot
-   respond with a "cached_info" attribute containing support for
-   'cert_status'.
+   respond with a "cached_info" attribute containing support for ('foo-
+   bar'.
 
    Since the client includes a fingerprint of information it cached (for
    each indicated type) the server is able to determine whether cached
@@ -254,34 +263,38 @@ Internet-Draft      TLS Cached Information Extension         August 2015
    messages is defined in Section 4.1, and in Section 4.2 for the types
    defined in this specification.
 
+   Appendix A shows an example hash calculation and Section 6 shows an
+   example protocol exchange.
+
 4.1.  Server Certificate Message
 
    When a ClientHello message contains the "cached_info" extension with
    a type set to 'cert' then the server MAY send the Certificate message
    shown in Figure 1 under the following conditions:
 
-      The server software implements the "cached_info" extension defined
+   o  The server software implements the "cached_info" extension defined
       in this specification.
 
-      The 'cert' cached info extension is enabled (for example, a policy
+
+
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 5]
+
+Internet-Draft      TLS Cached Information Extension        October 2015
+
+
+   o  The 'cert' cached info extension is enabled (for example, a policy
       allows the use of this extension).
 
-      The server compared the value in the hash_value field of the
+   o  The server compared the value in the hash_value field of the
       client-provided "cached_info" extension with the fingerprint of
       the Certificate message it normally sends to clients.  This check
-      ensures that the information cached by the client is current.
+      ensures that the information cached by the client is current.  The
+      procedure for calculating the fingerprint is described in
+      Section 5.
 
    The original Certificate handshake message syntax is defined in RFC
    5246 [RFC5246] and has been extended with RFC 7250 [RFC7250].  RFC
    7250 allows the certificate payload to contain only the
-
-
-
-Santesson & Tschofenig  Expires February 25, 2016               [Page 5]
-
-Internet-Draft      TLS Cached Information Extension         August 2015
-
-
    SubjectPublicKeyInfo instead of the full information typically found
    in a certificate.  Hence, when this specification is used in
    combination with [RFC7250] and the negotiated certificate type is a
@@ -302,47 +315,38 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
                 Figure 1: Cached Info Certificate Message.
 
-   The fingerprint MUST be computed as a SHA-256 hash of the original
-   Certificate message in the following manner: hash_value:=SHA-
-   256(Certificate).  Note that the computed hash does not cover any
-   type and length information in the record layer.  However, the
-   Certificate message that is used as input to the fingerprint
-   calculation includes type and length information itself.
-
-   Appendix A shows an example.
-
 4.2.  CertificateRequest Message
 
    When a fingerprint for an object of type 'cert_req' is provided in
-   the client hello, the server MAY omit the CertificateRequest message
-   under the following conditions:
+   the client hello, the server MAY send the CertificateRequest message
+   shown in Figure 2 message under the following conditions:
 
-      The server software implements the "cached_info" extension defined
+   o  The server software implements the "cached_info" extension defined
       in this specification.
 
-      The 'cert_req' cached info extension is enabled (for example, a
+   o  The 'cert_req' cached info extension is enabled (for example, a
       policy allows the use of this extension).
 
-      The server compared the value in the hash_value field of the
+   o  The server compared the value in the hash_value field of the
       client-provided "cached_info" extension with the fingerprint of
       the CertificateRequest message it normally sends to clients.  This
-      check ensures that the information cached by the client is
-      current.
-
-      The server wants to request a certificate from the client.
 
 
 
-Santesson & Tschofenig  Expires February 25, 2016               [Page 6]
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 6]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
+
+      check ensures that the information cached by the client is
+      current.  The procedure for calculating the fingerprint is
+      described in Section 5.
+
+   o  The server wants to request a certificate from the client.
 
    The original CertificateRequest handshake message syntax is defined
-   in RFC 5246 [RFC5246].
-
-   The new structure of the CertificateRequest message is shown in
-   Figure 2.
+   in RFC 5246 [RFC5246].  The modified structure of the
+   CertificateRequest message is shown in Figure 2.
 
 
          struct {
@@ -351,12 +355,67 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
              Figure 2: Cached Info CertificateRequest Message.
 
-   The fingerprint MUST be computed as follows: hash_value:=SHA-
-   256(CertificateRequest)
+   The CertificateRequest payload is the input parameter to the
+   fingerprint calculation described in Section 5.
 
-5.  Example
+5.  Fingerprint Calculation
 
-   Figure 3 illustrates an example exchange using the TLS cached info
+   The fingerprint MUST be computed as follows:
+
+   1.  Compute the SHA-256 [RFC4634] hash of the input data.  The input
+       data depends on the cached info type.  This document defines two
+       cached info types, described in Section 4.1 and in Section 4.2.
+       Note that the computed hash only covers the input data structure
+       (and not any type and length information of the record layer).
+
+   2.  Truncate the output of the SHA-256 hash.  When a hash value is
+       truncated to 32 bits, the leftmost 32 bits (that is, the most
+       significant 32 bits in network byte order) from the binary
+       representation of the hash value MUST be used as the truncated
+       value.  An example of a 256-bit hash output truncated to 32 bits
+       is shown in Figure 3.
+
+
+   256-bit hash:
+   0x265357902fe1b7e2a04b897c6025d7a2265357902fe1b7e2a04b897c6025d7a2
+
+   32-bit truncated hash:
+   0x26535790
+
+                     Figure 3: Truncated Hash Example.
+
+   The purpose of the fingerprint provided by the client is to help the
+   server select the correct information.  For example, in case of the
+
+
+
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 7]
+
+Internet-Draft      TLS Cached Information Extension        October 2015
+
+
+   certificate message the fingerprint identifies the server certificate
+   (and the corresponding private key) for use for with the rest of the
+   handshake.  Servers may have more than one certificate and therefore
+   a hash needs to be long enough to keep the probably of hash
+   collisions low.  On the other hand, the cached info design aims to
+   reduce the amount of data being exchanged.  The security of the
+   handshake depends on the private key and not on the size of the
+   fingerprint.  Hence, the fingerprint is a way to prevent the server
+   from accidentally selecting the wrong information.  If an attacker
+   injects an incorrect fingerprint then two outcomes are possible: (1)
+   The fingerprint does not relate to any cached state and the server
+   has to fall back to a full exchange. (2) If the attacker manages to
+   inject a fingerprint that refers to data the client has not cached
+   then the exchange will fail later when the client continues with the
+   handshake and aims to verify the digital signature.  The signature
+   verification will fail since the public key cached by the client will
+   not correspond to the private key that was used by server to sign the
+   message.
+
+6.  Example
+
+   Figure 4 illustrates an example exchange using the TLS cached info
    extension.  In the normal TLS handshake exchange shown in flow (A)
    the TLS server provides its certificate in the Certificate payload to
    the client, see step [1].  This allows the client to store the
@@ -386,12 +445,9 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
 
 
-
-
-
-Santesson & Tschofenig  Expires February 25, 2016               [Page 7]
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 8]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
    (A) Initial (full) Exchange
@@ -435,9 +491,9 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
    Application Data <-------> Application Data
 
-                    Figure 3: Example Message Exchange
+                    Figure 4: Example Message Exchange
 
-6.  Security Considerations
+7.  Security Considerations
 
    This specification defines a mechanism to reference stored state
    using a fingerprint.  Sending a fingerprint of cached information in
@@ -445,27 +501,27 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
 
 
-Santesson & Tschofenig  Expires February 25, 2016               [Page 8]
+Santesson & Tschofenig   Expires April 21, 2016                 [Page 9]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
    allow an attacker or observer to correlate independent TLS exchanges.
    While some information elements used in this specification, such as
    server certificates, are public objects and usually do not contain
-   sensitive information, other (not yet defined cached info types) may.
-   Those who implement and deploy this specification should therefore
-   make an informed decision whether the cached information is inline
-   with their security and privacy goals.  In case of concerns, it is
-   advised to avoid sending the fingerprint of the data objects in
-   clear.
+   sensitive information, other not yet defined types may.  Those who
+   implement and deploy this specification should therefore make an
+   informed decision whether the cached information is inline with their
+   security and privacy goals.  In case of concerns, it is advised to
+   avoid sending the fingerprint of the data objects in clear.
 
-   The use of the cached info extension allows the server to obmit
-   sending certain TLS messages.  Consequently, these omitted messages
-   are not included in the transcript of the handshake in the TLS Finish
-   message per value.  However, since the client communicates the hash
-   values of the cached values in the initial handshake message the
-   fingerprints are included in the TLS Finish message.
+   The use of the cached info extension allows the server to send
+   significantly smaller TLS messages.  Consequently, these omitted
+   parts of the messages are not included in the transcript of the
+   handshake in the TLS Finish message.  However, since the client and
+   the server communicate the hash values of the cached data in the
+   initial handshake messages the fingerprints are included in the TLS
+   Finish message.
 
    Clients MUST ensure that they only cache information from legitimate
    sources.  For example, when the client populates the cache from a TLS
@@ -474,15 +530,18 @@ Internet-Draft      TLS Cached Information Extension         August 2015
    inject incorrect information into the cache.  Failure to do so allows
    for man-in-the-middle attacks.
 
-7.  IANA Considerations
+   Security consideratios for the fingerprint calculation are discussed
+   in Section 5.
 
-7.1.  New Entry to the TLS ExtensionType Registry
+8.  IANA Considerations
+
+8.1.  New Entry to the TLS ExtensionType Registry
 
    IANA is requested to add an entry to the existing TLS ExtensionType
    registry, defined in RFC 5246 [RFC5246], for cached_info(TBD) defined
    in this document.
 
-7.2.  New Registry for CachedInformationType
+8.2.  New Registry for CachedInformationType
 
    IANA is requested to establish a registry for TLS
    CachedInformationType values.  The first entries in the registry are
@@ -496,19 +555,18 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
    o  0-63 (decimal): Standards Action
 
-   o  64-223 (decimal): Specification Required
 
 
-
-
-Santesson & Tschofenig  Expires February 25, 2016               [Page 9]
+Santesson & Tschofenig   Expires April 21, 2016                [Page 10]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
+
+   o  64-223 (decimal): Specification Required
 
    o  224-255 (decimal): reserved for Private Use
 
-8.  Acknowledgments
+9.  Acknowledgments
 
    We would like to thank the following persons for your detailed
    document reviews:
@@ -525,13 +583,17 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
    o  Martin Thomson (in August 2015)
 
-   Additionally, we would like to thank the TLS working group chairs,
-   Sean Turner and Joe Salowey, as well as the responsible security area
+   We would also to thank Martin Thomson, Karthikeyan Bhargavan, Sankalp
+   Bagaria and Eric Rescorla for their feedback regarding the
+   fingerprint calculation.
+
+   Finally, we would like to thank the TLS working group chairs, Sean
+   Turner and Joe Salowey, as well as the responsible security area
    director, Stephen Farrell, for their support.
 
-9.  References
+10.  References
 
-9.1.  Normative References
+10.1.  Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/
@@ -547,22 +609,21 @@ Internet-Draft      TLS Cached Information Extension         August 2015
               RFC5246, August 2008,
               <http://www.rfc-editor.org/info/rfc5246>.
 
+
+
+
+
+Santesson & Tschofenig   Expires April 21, 2016                [Page 11]
+
+Internet-Draft      TLS Cached Information Extension        October 2015
+
+
    [RFC6066]  Eastlake 3rd, D., "Transport Layer Security (TLS)
               Extensions: Extension Definitions", RFC 6066, DOI
               10.17487/RFC6066, January 2011,
               <http://www.rfc-editor.org/info/rfc6066>.
 
-
-
-
-
-
-Santesson & Tschofenig  Expires February 25, 2016              [Page 10]
-
-Internet-Draft      TLS Cached Information Extension         August 2015
-
-
-9.2.  Informative References
+10.2.  Informative References
 
    [ASN.1-Dump]
               Gutmann, P., "ASN.1 Object Dump Program", February 2013,
@@ -587,174 +648,174 @@ Appendix A.  Example
 
    Consider a certificate containing an NIST P256 elliptic curve public
    key displayed using Peter Gutmann's ASN.1 decoder [ASN.1-Dump] in
-   Figure 4.
+   Figure 5.
 
 
-   0 556: SEQUENCE {
-   4 434:   SEQUENCE {
-   8   3:     [0] {
-  10   1:       INTEGER 2
-        :       }
-  13   1:     INTEGER 13
-  16  10:     SEQUENCE {
-  18   8:       OBJECT IDENTIFIER ecdsaWithSHA256 (1 2 840 10045 4 3 2)
-        :       }
-  28  62:     SEQUENCE {
-  30  11:       SET {
-  32   9:         SEQUENCE {
-  34   3:           OBJECT IDENTIFIER countryName (2 5 4 6)
-  39   2:           PrintableString 'NL'
-        :           }
-        :         }
-  43  17:       SET {
-  45  15:         SEQUENCE {
-  47   3:           OBJECT IDENTIFIER organizationName (2 5 4 10)
-  52   8:           PrintableString 'PolarSSL'
+    0 556: SEQUENCE {
+    4 434:   SEQUENCE {
+    8   3:     [0] {
+   10   1:       INTEGER 2
+         :       }
+   13   1:     INTEGER 13
+   16  10:     SEQUENCE {
+   18   8:      OBJECT IDENTIFIER ecdsaWithSHA256 (1 2 840 10045 4 3 2)
+         :       }
+   28  62:     SEQUENCE {
+   30  11:       SET {
+   32   9:         SEQUENCE {
+   34   3:           OBJECT IDENTIFIER countryName (2 5 4 6)
+   39   2:           PrintableString 'NL'
+         :           }
 
 
 
-Santesson & Tschofenig  Expires February 25, 2016              [Page 11]
+Santesson & Tschofenig   Expires April 21, 2016                [Page 12]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
-        :           }
-        :         }
-  62  28:       SET {
-  64  26:         SEQUENCE {
-  66   3:           OBJECT IDENTIFIER commonName (2 5 4 3)
-  71  19:           PrintableString 'Polarssl Test EC CA'
-        :           }
-        :         }
-        :       }
-  92  30:     SEQUENCE {
-  94  13:       UTCTime 24/09/2013 15:52:04 GMT
- 109  13:       UTCTime 22/09/2023 15:52:04 GMT
-        :       }
- 124  65:     SEQUENCE {
- 126  11:       SET {
- 128   9:         SEQUENCE {
- 130   3:           OBJECT IDENTIFIER countryName (2 5 4 6)
- 135   2:           PrintableString 'NL'
-        :           }
-        :         }
- 139  17:       SET {
- 141  15:         SEQUENCE {
- 143   3:           OBJECT IDENTIFIER organizationName (2 5 4 10)
- 148   8:           PrintableString 'PolarSSL'
-        :           }
-        :         }
- 158  31:       SET {
- 160  29:         SEQUENCE {
- 162   3:           OBJECT IDENTIFIER commonName (2 5 4 3)
- 167  22:           PrintableString 'PolarSSL Test Client 2'
-        :           }
-        :         }
-        :       }
- 191  89:     SEQUENCE {
- 193  19:       SEQUENCE {
- 195   7:         OBJECT IDENTIFIER ecPublicKey (1 2 840 10045 2 1)
- 204   8:         OBJECT IDENTIFIER prime256v1 (1 2 840 10045 3 1 7)
-        :         }
- 214  66:       BIT STRING
-        :         04 57 E5 AE B1 73 DF D3 AC BB 93 B8 81 FF 12 AE
-        :         EE E6 53 AC CE 55 53 F6 34 0E CC 2E E3 63 25 0B
-        :         DF 98 E2 F3 5C 60 36 96 C0 D5 18 14 70 E5 7F 9F
-        :         D5 4B 45 18 E5 B0 6C D5 5C F8 96 8F 87 70 A3 E4
-        :         C7
-        :       }
- 282 157:     [3] {
- 285 154:       SEQUENCE {
- 288   9:         SEQUENCE {
+         :         }
+   43  17:       SET {
+   45  15:         SEQUENCE {
+   47   3:           OBJECT IDENTIFIER organizationName (2 5 4 10)
+   52   8:           PrintableString 'PolarSSL'
+         :           }
+         :         }
+   62  28:       SET {
+   64  26:         SEQUENCE {
+   66   3:           OBJECT IDENTIFIER commonName (2 5 4 3)
+   71  19:           PrintableString 'Polarssl Test EC CA'
+         :           }
+         :         }
+         :       }
+   92  30:     SEQUENCE {
+   94  13:       UTCTime 24/09/2013 15:52:04 GMT
+  109  13:       UTCTime 22/09/2023 15:52:04 GMT
+         :       }
+  124  65:     SEQUENCE {
+  126  11:       SET {
+  128   9:         SEQUENCE {
+  130   3:           OBJECT IDENTIFIER countryName (2 5 4 6)
+  135   2:           PrintableString 'NL'
+         :           }
+         :         }
+  139  17:       SET {
+  141  15:         SEQUENCE {
+  143   3:           OBJECT IDENTIFIER organizationName (2 5 4 10)
+  148   8:           PrintableString 'PolarSSL'
+         :           }
+         :         }
+  158  31:       SET {
+  160  29:         SEQUENCE {
+  162   3:           OBJECT IDENTIFIER commonName (2 5 4 3)
+  167  22:           PrintableString 'PolarSSL Test Client 2'
+         :           }
+         :         }
+         :       }
+  191  89:     SEQUENCE {
+  193  19:       SEQUENCE {
+  195   7:         OBJECT IDENTIFIER ecPublicKey (1 2 840 10045 2 1)
+  204   8:         OBJECT IDENTIFIER prime256v1 (1 2 840 10045 3 1 7)
+         :         }
+  214  66:       BIT STRING
+         :         04 57 E5 AE B1 73 DF D3 AC BB 93 B8 81 FF 12 AE
+         :         EE E6 53 AC CE 55 53 F6 34 0E CC 2E E3 63 25 0B
+         :         DF 98 E2 F3 5C 60 36 96 C0 D5 18 14 70 E5 7F 9F
+         :         D5 4B 45 18 E5 B0 6C D5 5C F8 96 8F 87 70 A3 E4
 
 
 
-Santesson & Tschofenig  Expires February 25, 2016              [Page 12]
+Santesson & Tschofenig   Expires April 21, 2016                [Page 13]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
- 290   3:           OBJECT IDENTIFIER basicConstraints (2 5 29 19)
- 295   2:           OCTET STRING, encapsulates {
- 297   0:             SEQUENCE {}
-        :             }
-        :           }
- 299  29:         SEQUENCE {
- 301   3:           OBJECT IDENTIFIER subjectKeyIdentifier (2 5 29 14)
- 306  22:           OCTET STRING, encapsulates {
- 308  20:             OCTET STRING
-        :               7A 00 5F 86 64 FC E0 5D E5 11 10 3B B2 E6 3B C4
-        :               26 3F CF E2
-        :             }
-        :           }
- 330 110:         SEQUENCE {
- 332   3:           OBJECT IDENTIFIER authorityKeyIdentifier (2 5 29 35)
- 337 103:           OCTET STRING, encapsulates {
- 339 101:             SEQUENCE {
- 341  20:               [0]
-        :               9D 6D 20 24 49 01 3F 2B CB 78 B5 19 BC 7E 24 C9
-        :               DB FB 36 7C
- 363  66:               [1] {
- 365  64:                 [4] {
- 367  62:                   SEQUENCE {
- 369  11:                     SET {
- 371   9:                       SEQUENCE {
- 373   3:                        OBJECT IDENTIFIER countryName (2 5 4 6)
- 378   2:                        PrintableString 'NL'
-        :                        }
-        :                       }
- 382  17:                     SET {
- 384  15:                       SEQUENCE {
- 386   3:                         OBJECT IDENTIFIER organizationName
-        :                                (2 5 4 10)
- 391   8:                         PrintableString 'PolarSSL'
-        :                         }
-        :                       }
- 401  28:                     SET {
- 403  26:                       SEQUENCE {
- 405   3:                        OBJECT IDENTIFIER commonName (2 5 4 3)
- 410  19:                        PrintableString 'Polarssl Test EC CA'
-        :                         }
-        :                       }
-        :                     }
-        :                   }
-        :                 }
- 431   9:               [2] 00 C1 43 E2 7E 62 43 CC E8
-        :               }
-        :             }
+         :         C7
+         :       }
+  282 157:     [3] {
+  285 154:       SEQUENCE {
+  288   9:         SEQUENCE {
+  290   3:           OBJECT IDENTIFIER basicConstraints (2 5 29 19)
+  295   2:           OCTET STRING, encapsulates {
+  297   0:             SEQUENCE {}
+         :             }
+         :           }
+  299  29:         SEQUENCE {
+  301   3:           OBJECT IDENTIFIER subjectKeyIdentifier (2 5 29 14)
+  306  22:           OCTET STRING, encapsulates {
+  308  20:             OCTET STRING
+         :              7A 00 5F 86 64 FC E0 5D E5 11 10 3B B2 E6 3B C4
+         :              26 3F CF E2
+         :             }
+         :           }
+  330 110:         SEQUENCE {
+  332   3:          OBJECT IDENTIFIER authorityKeyIdentifier (2 5 29 35)
+  337 103:          OCTET STRING, encapsulates {
+  339 101:             SEQUENCE {
+  341  20:               [0]
+         :               9D 6D 20 24 49 01 3F 2B CB 78 B5 19 BC 7E 24 C9
+         :               DB FB 36 7C
+  363  66:               [1] {
+  365  64:                 [4] {
+  367  62:                   SEQUENCE {
+  369  11:                     SET {
+  371   9:                      SEQUENCE {
+  373   3:                       OBJECT IDENTIFIER countryName (2 5 4 6)
+  378   2:                       PrintableString 'NL'
+         :                       }
+         :                      }
+  382  17:                     SET {
+  384  15:                      SEQUENCE {
+  386   3:                        OBJECT IDENTIFIER organizationName
+         :                               (2 5 4 10)
+  391   8:                        PrintableString 'PolarSSL'
+         :                        }
+         :                      }
+  401  28:                     SET {
+  403  26:                      SEQUENCE {
+  405   3:                       OBJECT IDENTIFIER commonName (2 5 4 3)
+  410  19:                       PrintableString 'Polarssl Test EC CA'
+         :                        }
+         :                      }
+         :                     }
 
 
 
-Santesson & Tschofenig  Expires February 25, 2016              [Page 13]
+Santesson & Tschofenig   Expires April 21, 2016                [Page 14]
 
-Internet-Draft      TLS Cached Information Extension         August 2015
+Internet-Draft      TLS Cached Information Extension        October 2015
 
 
-        :           }
-        :         }
-        :       }
-        :     }
- 442  10:   SEQUENCE {
- 444   8:     OBJECT IDENTIFIER ecdsaWithSHA256 (1 2 840 10045 4 3 2)
-        :     }
- 454 104:   BIT STRING, encapsulates {
- 457 101:     SEQUENCE {
- 459  48:       INTEGER
-        :         4A 65 0D 7B 20 83 A2 99 B9 A8 0F FC 8D EE 8F 3D
-        :         BB 70 4C 96 03 AC 8E 78 70 DD F2 0E A0 B2 16 CB
-        :         65 8E 1A C9 3F 2C 61 7E F8 3C EF AD 1C EE 36 20
- 509  49:       INTEGER
-        :         00 9D F2 27 A6 D5 74 B8 24 AE E1 6A 3F 31 A1 CA
-        :         54 2F 08 D0 8D EE 4F 0C 61 DF 77 78 7D B4 FD FC
-        :         42 49 EE E5 B2 6A C2 CD 26 77 62 8E 28 7C 9E 57
-        :         45
-        :       }
-        :     }
-        :   }
+         :                   }
+         :                 }
+  431   9:               [2] 00 C1 43 E2 7E 62 43 CC E8
+         :               }
+         :             }
+         :           }
+         :         }
+         :       }
+         :     }
+  442  10:   SEQUENCE {
+  444   8:     OBJECT IDENTIFIER ecdsaWithSHA256 (1 2 840 10045 4 3 2)
+         :     }
+  454 104:   BIT STRING, encapsulates {
+  457 101:     SEQUENCE {
+  459  48:       INTEGER
+         :         4A 65 0D 7B 20 83 A2 99 B9 A8 0F FC 8D EE 8F 3D
+         :         BB 70 4C 96 03 AC 8E 78 70 DD F2 0E A0 B2 16 CB
+         :         65 8E 1A C9 3F 2C 61 7E F8 3C EF AD 1C EE 36 20
+  509  49:       INTEGER
+         :         00 9D F2 27 A6 D5 74 B8 24 AE E1 6A 3F 31 A1 CA
+         :         54 2F 08 D0 8D EE 4F 0C 61 DF 77 78 7D B4 FD FC
+         :         42 49 EE E5 B2 6A C2 CD 26 77 62 8E 28 7C 9E 57
+         :         45
+         :       }
+         :     }
+         :   }
 
-                Figure 4: ASN.1-based Certificate: Example.
+                Figure 5: ASN.1-based Certificate: Example.
 
-   To include the certificate shown in Figure 4 in a TLS/DTLS
+   To include the certificate shown in Figure 5 in a TLS/DTLS
    Certificate message it is prepended with a message header.  This
    Certificate message header in our example is 0b 00 02 36 00 02 33 00
    02 00 02 30, which indicates:
@@ -762,7 +823,7 @@ Internet-Draft      TLS Cached Information Extension         August 2015
    Message Type:  0b -- 1 byte type field indicating a Certificate
       message
 
-   Length  00 02 36 -- 3 byte length field indicating a 566 bytes
+   Length:  00 02 36 -- 3 byte length field indicating a 566 bytes
       payload
 
    Certificates Length:  00 02 33 -- 3 byte length field indicating 563
@@ -772,18 +833,20 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
    Certificate Length:  00 02 30 -- 3 byte length field indicating 560
       bytes of the actual certificate following immediately afterwards.
+
+
+
+
+Santesson & Tschofenig   Expires April 21, 2016                [Page 15]
+
+Internet-Draft      TLS Cached Information Extension        October 2015
+
+
       In our example, this is the certificate content with 30 82 02 ....
-      9E 57 45 shown in Figure 5.
+      9E 57 45 shown in Figure 6.
 
    The hex encoding of the ASN.1 encoded certificate payload shown in
-   Figure 4 leads to the following encoding.
-
-
-
-
-Santesson & Tschofenig  Expires February 25, 2016              [Page 14]
-
-Internet-Draft      TLS Cached Information Extension         August 2015
+   Figure 5 leads to the following encoding.
 
 
              30 82 02 2C 30 82 01 B2  A0 03 02 01 02 02 01 0D
@@ -822,25 +885,23 @@ Internet-Draft      TLS Cached Information Extension         August 2015
              2F 08 D0 8D EE 4F 0C 61  DF 77 78 7D B4 FD FC 42
              49 EE E5 B2 6A C2 CD 26  77 62 8E 28 7C 9E 57 45
 
-            Figure 5: Hex Encoding of the Example Certificate.
+            Figure 6: Hex Encoding of the Example Certificate.
 
-   The fingerprint is computed by applying the SHA-256 function to the
-   Certificate message, which is starts with 0b 00 02 and ends with 9E
-   57 45.  The resulting SHA-256 fingerprint is
-   086eefb4859adfe977defac494fff6b73033b4ce1f86b8f2a9fc0c6bf98605af.
+   Applying the SHA-256 hash function to the Certificate message, which
+   is starts with 0b 00 02 and ends with 9E 57 45, produces
+   0x086eefb4859adfe977defac494fff6b73033b4ce1f86b8f2a9fc0c6bf98605af.
+
+
+
+Santesson & Tschofenig   Expires April 21, 2016                [Page 16]
+
+Internet-Draft      TLS Cached Information Extension        October 2015
+
+
+   Subsequently, this output is truncated to 32 bits, which leads to a
+   fingerpint of 0x086eefb4.
 
 Authors' Addresses
-
-
-
-
-
-
-
-Santesson & Tschofenig  Expires February 25, 2016              [Page 15]
-
-Internet-Draft      TLS Cached Information Extension         August 2015
-
 
    Stefan Santesson
    3xA Security AB
@@ -888,9 +949,4 @@ Internet-Draft      TLS Cached Information Extension         August 2015
 
 
 
-
-
-
-
-
-Santesson & Tschofenig  Expires February 25, 2016              [Page 16]
+Santesson & Tschofenig   Expires April 21, 2016                [Page 17]
