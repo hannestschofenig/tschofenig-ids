@@ -92,20 +92,20 @@ Table of Contents
    Security handshake to a minimum helps to improve performance in
    environments where devices are connected to a network with a low
    bandwidth, and lossy radio technology.  With Internet of Things such
-   environments exist, for example, when devices use IEEE 802.15.4 or
-   Bluetooth Smart.  For more information about the challenges with
-   smart object deployments please see [RFC6574].
+   environments exist, for example, when devices use IEEE 802.15.4,
+   Bluetooth Low Energy, or low power wide area networks.  For more
+   information about the challenges with smart object deployments please
+   see [RFC6574].
 
    This specification defines a TLS extension that allows a client and a
-   server to exclude transmission information cached in an earlier TLS
-   handshake.
+   server to exclude information cached in an earlier TLS handshake.
 
    A typical example exchange may therefore look as follows.  First, the
    client and the server executes the full TLS handshake.  The client
    then caches the certificate provided by the server.  When the TLS
-   client connects to the TLS server some time in the future, without
-   using session resumption, it then attaches the cached_info extension
-   defined in this document to the client hello message to indicate that
+   client connects to the TLS server again, some time in the future
+   (without using session resumption), it attaches the cached_info
+   extension defined in this document to the client hello message to
 
 
 
@@ -114,12 +114,13 @@ Santesson & Tschofenig  Expires November 19, 2016               [Page 2]
 Internet-Draft      TLS Cached Information Extension            May 2016
 
 
-   it had cached the certificate, and it provides the fingerprint of it.
-   If the server's certificate has not changed then the TLS server does
-   not need to send its certificate and the corresponding certificate
-   chain again.  In case information has changed, which can be seen from
-   the fingerprint provided by the client, the certificate payload is
-   transmitted to the client to allow the client to update the cache.
+   indicate that it had cached the certificate, and it provides the
+   fingerprint of it.  If the server's certificate has not changed then
+   the TLS server does not need to send its certificate and the
+   corresponding certificate chain again.  In case information has
+   changed, which can be seen from the fingerprint provided by the
+   client, the certificate payload is transmitted to the client to allow
+   the client to update the cache.
 
 2.  Terminology
 
@@ -146,7 +147,6 @@ Internet-Draft      TLS Cached Information Extension            May 2016
    client MAY send multiple CachedObjects of the same
    CachedInformationType.  This may, for example, be the case when the
    client has cached multiple certificates from a server.
-
 
 
 
@@ -237,12 +237,15 @@ Internet-Draft      TLS Cached Information Extension            May 2016
    "cached_info" extension the server indicates what cached info types
    it supports.  For each indicated cached info type the server MAY
    alter the transmission of respective payloads, according to the rules
-   outlined with each type.  If the server includes the "cached_info"
-   extension it MUST only include CachedObjects of a type also supported
-   by the client (as expressed in the client hello).  For example, if a
-   client indicates support for 'cert' and 'cert_req' then the server
-   cannot respond with a "cached_info" attribute containing support for
-   ('foo-bar').
+   outlined with each type.  Whether the server actually alters the
+   transmission of the payload depends on outcome of the comparison of
+   the comparison between the fingerprint provided by the client and the
+   information the server would normally send.  In any case, if the
+   server includes the "cached_info" extension it MUST only include
+   CachedObjects of a type also supported by the client (as expressed in
+   the client hello).  For example, if a client indicates support for
+   'cert' and 'cert_req' then the server cannot respond with a
+   "cached_info" attribute containing support for ('foo-bar').
 
    Since the client includes a fingerprint of information it cached (for
    each indicated type) the server is able to determine whether cached
@@ -267,12 +270,9 @@ Internet-Draft      TLS Cached Information Extension            May 2016
    from one that contains the full, unaltered payload.  This can be
    accomplished by utilizing the length field of the message.  Shorter
    payloads contain hashes whereas longer payloads contain the unaltered
-   payloads.
-
-   Appendix A shows an example hash calculation and Section 6
-   illustrates an example protocol exchange.
-
-
+   payloads.  For example, a server may send a fingerprint in a
+   Certificate message (as explained in Section 4.1) rather than the
+   full certificate payload.
 
 
 
@@ -281,6 +281,9 @@ Santesson & Tschofenig  Expires November 19, 2016               [Page 5]
 
 Internet-Draft      TLS Cached Information Extension            May 2016
 
+
+   Appendix A shows an example hash calculation and Section 6
+   illustrates an example protocol exchange.
 
 4.1.  Server Certificate Message
 
@@ -314,8 +317,9 @@ Internet-Draft      TLS Cached Information Extension            May 2016
    Certificate structure with the included SubjectPublicKeyInfo rather
    than the full certificate chain.  As such, this extension is
    compatible with the raw public key extension defined in RFC 7250.
-   Note: We assume that the server implementation is able to select the
-   appropriate certificate or SubjectPublicKeyInfo from the received
+
+   Note that we assume that the server implementation is able to select
+   the appropriate certificate or SubjectPublicKeyInfo from the received
    hash value.  If the SNI extension is used by the client then the
    server has additional information to guide the selection of the
    appropriate cached info.
@@ -325,11 +329,7 @@ Internet-Draft      TLS Cached Information Extension            May 2016
    message is exchanged.  The modified structure is shown in Figure 1.
 
 
-         struct {
-             opaque hash_value<1..255>;
-         } Certificate;
 
-                Figure 1: Cached Info Certificate Message.
 
 
 
@@ -338,11 +338,17 @@ Santesson & Tschofenig  Expires November 19, 2016               [Page 6]
 Internet-Draft      TLS Cached Information Extension            May 2016
 
 
+         struct {
+             opaque hash_value<1..255>;
+         } Certificate;
+
+                Figure 1: Cached Info Certificate Message.
+
 4.2.  CertificateRequest Message
 
    When a fingerprint for an object of type 'cert_req' is provided in
    the client hello, the server MAY send the CertificateRequest message
-   shown in Figure 2 message under the following conditions:
+   shown in Figure 2 under the following conditions:
 
    o  The server software implements the "cached_info" extension defined
       in this specification.
@@ -380,12 +386,6 @@ Internet-Draft      TLS Cached Information Extension            May 2016
 
    1.  Compute the SHA-256 [RFC6234] hash of the input data.  The input
        data depends on the cached info type.  This document defines two
-       cached info types, described in Section 4.1 and in Section 4.2.
-       Note that the computed hash only covers the input data structure
-       (and not any type and length information of the record layer).
-       Appendix A shows an example.
-
-   2.  Use the output of the SHA-256 hash.
 
 
 
@@ -394,26 +394,36 @@ Santesson & Tschofenig  Expires November 19, 2016               [Page 7]
 Internet-Draft      TLS Cached Information Extension            May 2016
 
 
+       cached info types, described in Section 4.1 and in Section 4.2.
+       Note that the computed hash only covers the input data structure
+       (and not any type and length information of the record layer).
+       Appendix A shows an example.
+
+   2.  Use the output of the SHA-256 hash.
+
    The purpose of the fingerprint provided by the client is to help the
    server select the correct information.  For example, in case of the
    certificate message the fingerprint identifies the server certificate
-   (and the corresponding private key) for use for with the rest of the
-   handshake.  Servers may have more than one certificate and therefore
-   a hash needs to be long enough to keep the probably of hash
-   collisions low.  On the other hand, the cached info design aims to
-   reduce the amount of data being exchanged.  The security of the
-   handshake depends on the private key and not on the size of the
-   fingerprint.  Hence, the fingerprint is a way to prevent the server
-   from accidentally selecting the wrong information.  If an attacker
-   injects an incorrect fingerprint then two outcomes are possible: (1)
-   The fingerprint does not relate to any cached state and the server
-   has to fall back to a full exchange. (2) If the attacker manages to
-   inject a fingerprint that refers to data the client has not cached
-   then the exchange will fail later when the client continues with the
-   handshake and aims to verify the digital signature.  The signature
-   verification will fail since the public key cached by the client will
-   not correspond to the private key that was used by server to sign the
-   message.
+   (and consequently the corresponding private key) for use with the
+   rest of the handshake.  Servers may have, for example, more than one
+   certificate and therefore the fingerprint needs to be long enough to
+   keep the probably of hash collisions low.  On the other hand, the
+   cached info design aims to reduce the amount of data being exchanged.
+   The security of the handshake depends on the private key and not on
+   the size of the fingerprint.  Hence, the fingerprint is a way to
+   prevent the server from accidentally selecting the wrong information.
+   If an attacker injects an incorrect fingerprint then two outcomes are
+   possible:
+
+      (1) The fingerprint does not relate to any cached state and the
+      server has to fall back to a full exchange.
+
+      (2) If the attacker manages to inject a fingerprint that refers to
+      data the client has not cached then the exchange will fail later
+      when the client continues with the handshake and aims to verify
+      the digital signature.  The signature verification will fail since
+      the public key cached by the client will not correspond to the
+      private key that was used by server to sign the message.
 
 6.  Example
 
@@ -429,18 +439,8 @@ Internet-Draft      TLS Cached Information Extension            May 2016
    TLS server acknowledges the supports of the 'cert' type and by
    including the value in the server hello informs the client that the
    content of the certificate payload contains the fingerprint of the
-   certificate instead of the RFC 5246-defined payload of the
+   certificate instead of the RFC 5246 defined payload of the
    certificate message in step (4).
-
-
-
-
-
-
-
-
-
-
 
 
 
