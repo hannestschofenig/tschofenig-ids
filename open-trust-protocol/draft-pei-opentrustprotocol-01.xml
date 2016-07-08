@@ -238,6 +238,14 @@ Windows, or iOS  application,
               <vspace blankLines="1" />
             </t>
 
+            <t hangText="Service Provider (SP):">
+              An entity that wishes to supply Trusted 
+              Applications to remote devices. A Service 
+              Provider requires the help of a TSM in order 
+              to provision the Trusted Applications to the devices.
+              <vspace blankLines="1" />
+            </t>
+
             <t hangText="Trust Anchor:">
               A root certificate that a module
               trusts. It is usually embedded in
@@ -351,7 +359,7 @@ In the context of this specification, the term Trusted Application Manager (TAM)
               device
               communications to be established between the TEE and TSM.
               OTrP
-              must not require the device OS to be secure.
+              does not require the device OS to be secure.
             </t>
             <t hangText="OTrP Agent:">An application in the REE that
               can relay
@@ -472,9 +480,7 @@ In the context of this specification, the term Trusted Application Manager (TAM)
 
             <t hangText="2. TEE keypair and Certificate:">It is used for device
               attestation to remote TSM and
-              SP. A TEE
-              certificate is expected to be long lived that doesn't
-              need to renew.
+              SP.
             </t>
 
             <t>This key pair is burned into the device at device manufacturer.
@@ -776,7 +782,7 @@ OTrP    |    -- TEE                           TSM-------
           current entity section along with SD identificaton discussion. -->
         <t>A sample Security Domain hierarchy for the TEE is shown below.
         </t>
-        <t>TBD diagram</t>
+        <t>[[TBD diagram]]</t>
         <t>The OTrP assumes that a SP managed by TSM1 cannot be managed by
           TSM2.
           Explicit permission grant should happen. SP can authorize TSM.
@@ -816,13 +822,13 @@ OTrP    |    -- TEE                           TSM-------
           with an application or TSM.
         </t>
         <t>
-          OTrP Agent only needs to return an OTrP Agent error message if TEE
-          isn't reachable for some reason.
+          OTrP Agent only needs to return an OTrP Agent error message if the TEE
+          is not reachable for some reason. Other errors are represented as response messages returned from the TEE which will then be passed to the TSM. 
         </t>
       </section>
 
       <section anchor="agentgp" title="OTrP Agent and Global Platform TEE Client API">
-        <t>A Client Application will rely on Global Platform (GP) TEE API for TA communication.
+        <t>A Client Application may rely on Global Platform (GP) TEE API for TA communication.
           OTrP may use the GP TEE Client API but it is internal to OTrP
           implementation that converts given messages from TSM. More details can be found at 
 <xref target="GPTEE"/>.
@@ -895,20 +901,22 @@ OTrP    |    -- TEE                           TSM-------
       </section>
 
       <section anchor="agentapi" title="OTrP Agent API for Client Applications">
-        <t>
+        <t>The client application shall be responsible for relaying messages between the OTrP agent and the TSM.
+<!-- 
           A Client Application may commonly used to include target TSM contact
           information for the Trusted Applications it need to use. The
           application will rely on some TSM provided functions to communicate
           with its TSM.
+-->
         </t>
         <t>
           OTrP Agent APIs are defined below. An OTrP Agent in the form of an
           Android bound service can take this to be the functionality it
-          provides via service call.
+          provides via service call. The OTrP Agent implements this interface.
         </t>
         <t>
           If a failure is occured during calling API, an error message
-          described in "Common Errors" section (<xref target="commerr"></xref>)
+          described in "Common Errors" section (see <xref target="commerr"></xref>)
           will be returned.
         </t>
 
@@ -939,8 +947,8 @@ String processMessage(String tsmInMsg) throws OTrPAgentException;
               <t>
                 A Client Application will use this method of the OTrP Agent in
                 a device to pass OTrP messages from a TSM. The method is
-                responsible to interact with a TEE and forward the input
-                message to the TEE. It also returns TEE generated response
+                responsible for interation with the TEE and for forwarding the 
+                input message to the TEE. It also returns TEE generated response
                 message back to the Client Application.
               </t>
             </list>
@@ -958,10 +966,12 @@ String processMessage(String tsmInMsg) throws OTrPAgentException;
           <t>
             Output
             <list hangIndent="4" style="empty">
-              <t>
-                A TEE generated OTrP message or an error message created by
-                OTrP Agent when it fails to interact with a TEE. This message
-                is forwarded to TSM.
+              <t>A TEE generated OTrP response message (which may be a 
+                 successful response or be a response message containing 
+                 an error raised within the TEE) for the client application 
+                 to forward to the TSM. In the event of the OTrP agent not 
+                 being able to communicate with the TEE, a 
+                 OTrPAgentException shall be thrown. 
               </t>
             </list>
           </t>
@@ -980,7 +990,8 @@ String getTAInformation(String spid, String taid)
             <list hangIndent="4" style="empty">
               <t>
                 A Client Application calls this method to query a TA's
-                information. This method carries out locally by OTrP Agent
+                information. This method is carried out locally by the 
+                OTrP Agent
                 without relying on a TSM if it has had the TEE SP AIK.
               </t>
             </list>
@@ -1125,7 +1136,7 @@ String getTAInformation(String spid, String taid)
                     the TSM could have
                     stored the state when a TA is installed,
                     updated and deleted.
-                    There is possibility that an update
+                    There is also the possibility that an update
                     command is carried out
                     inside TEE but a response is never
                     received in TSM. There is
@@ -1204,9 +1215,10 @@ String getTAInformation(String spid, String taid)
               <t>The Client Application shall store the TEEspaik for future
                 loaded TA trust check purpose.
               </t>
-              <t>Assume TSM finds that this is a fresh device that doesn't
-                have
-                any SD for the SP yet. TSM may move on to create a SD for the
+              <t>If the TSM finds that this is a fresh device that does not 
+                have any SD for the SP yet, then the TSM may move on to 
+                create a SD for the SP next.
+                The TSM may move on to create a SD for the
                 SP
                 next.
               </t>
@@ -1257,7 +1269,7 @@ String getTAInformation(String spid, String taid)
         respond to TSM OTrP Messages.
       </t>
       <t>
-        An OTrP Message is designed to provide end-to-end security. It always
+        An OTrP Message is designed to provide end-to-end security. It is always
         signed
         by its creator. In addition, an OTrP Message is typically
         encrypted
@@ -1416,7 +1428,7 @@ String getTAInformation(String spid, String taid)
           a quick reference for reading and method invocation.
         </t>
         <t>Furthermore, most properties in an unsigned OTrP messages are
-          encrypted to provide end-to-end confidentiality. Only OTrP Message
+          encrypted to provide end-to-end confidentiality. The only OTrP message
           that isn't encrypted is the initial device query message that asks
           for the device state information.
         </t>
@@ -1461,9 +1473,8 @@ String getTAInformation(String spid, String taid)
             described in the "Detailed Message Specification" section. Any
             subsequent messages in the conversation that follow on from this
             are implicitly using the same certificates for signing/encryption,
-            and as a result the certificates or references to the
-            certificates/signer may not be exchanged in those subsequent
-            messages.
+            and as a result the certificates or references 
+            may be ommitted in those subsequent messages.
           </t>
           <t>
             In other words, the signing key identifier in the use of JWS and
@@ -1480,7 +1491,7 @@ String getTAInformation(String spid, String taid)
             device's capability to decide whether it should include its
             TSM signer certificate and OCSP data in each subsequent
             request message. The device's caching capability is reported
-            in GetDeviceStateResponse.
+            reported in GetDeviceStateResponse signerreq parameter.
           </t>
         </section>
       </section>
@@ -1590,25 +1601,40 @@ String getTAInformation(String spid, String taid)
 
         <section anchor="signalgs" title="Supported JSON Signing Algorithms">
           <t>
-            The following JSON signature algorithms are mandate support in TEE
-            and TSM.
+            The following JSON signature algorithm are mandatory support in TEE
+            and TSM:
             <list hangIndent="4" style="symbols">
               <t>RS256</t>
-              <t>ES256</t>
+
             </list>
           </t>
+<t>ES256 is optional to support. </t>
         </section>
 
         <section anchor="encalgs" title="Support JSON Encryption Algorithms">
           <t>
-            The following JSON authenticated encryption algorithms are mandate
+            The following JSON authenticated encryption algorithm is mandatory
             support in TEE and TSM.
             <list hangIndent="4" style="symbols">
               <t>A128CBC-HS256</t>
-              <t>A256CBC-HS512</t>
+
             </list>
           </t>
+              <t>A256CBC-HS512 is optional to support.</t>
         </section>
+
+        <section anchor="kmalgs" title="Supported JSON Key Management Algorithms">
+          <t>
+            The following JSON key management algorithm is mandatory
+            support in TEE and TSM.
+            <list hangIndent="4" style="symbols">
+              <t>RSA1_5</t>
+            </list>
+          </t>
+
+          <t>ECDH-ES+A128KW and ECDH-ES+A256KW are optional to support.</t>
+        </section>
+
       </section>
 
       <section anchor="commerr" title="Common Errors">
@@ -1626,8 +1652,8 @@ String getTAInformation(String spid, String taid)
  "reason": {
      "error-code": "<error code if there is any>",
      "error-message": "<error message>"
-    }
-}
+  }
+
 
 "ver": "<version string>"
            ]]></artwork>
@@ -2080,6 +2106,7 @@ String getTAInformation(String spid, String taid)
     "status": "pass | fail",
     "rid": "<the request ID from the request message>",
     "tid": "<the transaction ID from the request message>",
+    "signerreq": "true | false", 
     "edsi": {
       "protected": "<BASE64URL encoding of encryption algorithm 
                      header JSON data>",
@@ -2186,8 +2213,8 @@ String getTAInformation(String spid, String taid)
           <t>where
             <list hangIndent="4" style="hanging">
               <t hangText="supportedsigalgs -">an optional property to
-              list the signing algorithms that the active TEE is able to
-              support. When a TSM sends a signed message that TEE isn't
+              list the JWS signing algorithms that the active TEE 
+              supports. When a TSM sends a signed message that the TEE isn't
               able to validate, it can include signature algorithms that
               it is able to consume in this status report. A TSM can
               generate a new request message to retry the management task
@@ -2247,8 +2274,8 @@ String getTAInformation(String spid, String taid)
             </list></t>
           <t>A Trusted Application that is signed by a matching SP signer
           certificate for a SD is eligible to be installed into that SD.
-          The TA installation into a SD may be instructed from TSM or a
-          Client Application.
+           The TA installation into a SD by a subsequent InstallTARequest 
+           message may be instructed from TSM or a Client Application.
           </t>
 
           <section anchor="createsdreq" title="CreateSDRequest Message">
@@ -2321,8 +2348,9 @@ String getTAInformation(String spid, String taid)
               vetted by the TSM signer issuing CA. With this trusted
               identifier, SD query at TEE can be fast upon TSM signer
               verification.</t>
-              <t hangText="did -"> The SHA256 hash of the device TEE
-              certificate. The encryption key CEK will be encrypted the
+              <t hangText="did -"> 
+              The SHA256 hash of the binary encoded device TEE certificate. 
+              The encryption key CEK will be encrypted the
               recipient TEE's public key. This hash value in the "did"
               property allows the recipient TEE to check whether it is
               the expected target to receive such a request. If this
@@ -2398,7 +2426,7 @@ String getTAInformation(String spid, String taid)
                 <list hangIndent="2" style="symbols">
                   <t>Create raw content
                     <list hangIndent="2" style="symbols">
-                        <t>Operation status +</t>
+                        <t>Operation status</t>
                         <t>"did" or full signer certificate information,
                         </t>
                         <t>TEE SP AIK public key if DSI isn't going to be
@@ -2755,7 +2783,7 @@ String getTAInformation(String spid, String taid)
                 <list hangIndent="2" style="symbols">
                   <t>Create raw content
                     <list hangIndent="2" style="symbols">
-                        <t>Operation status +</t>
+                        <t>Operation status</t>
                         <t>"did" or full signer certificate information,
                         </t>
                         <t>TEE SP AIK public key if DSI isn't going to be
@@ -2827,7 +2855,7 @@ String getTAInformation(String spid, String taid)
              </list>
             </t>
 
-            <t>Similar to the similar template for the creation of
+            <t>Similar to the template for the creation of the
             encrypted and signed CreateSDResponse, the final
             UpdateSDResponse looks like the following.</t>
 
@@ -3045,7 +3073,7 @@ String getTAInformation(String spid, String taid)
                 <list hangIndent="2" style="symbols">
                   <t>Create response content
                     <list hangIndent="2" style="symbols">
-                        <t>Operation status +</t>
+                        <t>Operation status</t>
                         <t>"did" or full signer certificate information,
                         </t>
                         <t>Updated DSI data if requested if the request
@@ -4373,8 +4401,9 @@ Email: tkkim@sola-cia.com
       <t>
         A SP or TSM can supply personalization data for a TA to initialize for
         a device. Such data is passed through InstallTA command from TSM. The
-        personalization data itself is (or can be) opaque to the TSM. The data can be from SP
-        without revealing to TSM. The data is sent in encrypted manner in a
+        personalization data itself is (or can be) opaque to the TSM. 
+        The data can be from the SP without being revealed to the TSM. 
+        The data is sent in encrypted manner in a
         request to a device such that only the device can decrypt. A device's
         TEE SP AIK public key for a SP is used to encrypt the data.
       </t>
@@ -4472,7 +4501,7 @@ Email: tkkim@sola-cia.com
         the protocol for Client Applications. This provides a way for the
         Client Application to validate data sent from the TEE without requiring
         the TEE device certificate to be released to the client device rich O/S
-        , and to optionally allow as SP to encrypt a TA for a target device
+        , and to optionally allow an SP to encrypt a TA for a target device
         without the SP needing to be supplied the TEE device certificate. </t>
       </section>
 
@@ -4530,7 +4559,7 @@ Email: tkkim@sola-cia.com
       <section title="Certificate renewal">
         <t> TFW and TEE device certificates are expected to be long lived, longer than the
         lifetime of a device. A TSM certificate usually has a moderate 
-        lifetime of 2 to 5 years. TSM should get renewed certificates. The root CA
+        lifetime of 2 to 5 years. TSM should get renewed or rekeyed certificates.The root CA
         certificates for TSM, which is embedded into the trust anchor store in
         a device, should have long lifetime that don't require device trust
         anchor update. On the other hand, it is imperative that OEM or device
