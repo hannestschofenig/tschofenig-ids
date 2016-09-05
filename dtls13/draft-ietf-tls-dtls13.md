@@ -30,8 +30,15 @@ author:
        organization: RTFM, Inc.
        email: ekr@rtfm.com
 
+ -
+       ins: H. Tschofenig
+       name: Hannes Tschofenig
+       organization: ARM Limited
+       email: hannes.tschofenig@arm.com
+
+
 normative:
-  RFC2104:
+
   RFC2119:
   RFC2434:
   RFC3447:
@@ -473,27 +480,33 @@ verify the TLS MAC.  The DTLS record format is shown below:
            opaque fragment[DTLSPlaintext.length];
          } DTLSPlaintext;
 
-type
+type: 
+
 : Identical to the type field in a TLS 1.3 record.
 
-version
+version: 
+
 : This specification re-uses the DTLS version 1.2 version number, namely
 { 254, 253 }. This field is deprecated and MUST be ignored for all purposes.
 
-epoch
+epoch: 
+
 : A counter value that is incremented on every cipher state change.
 
-sequence_number
+sequence_number: 
+
 : The sequence number for this record.
 
-length
+length: 
+
 : Identical to the length field in a TLS 1.3 record.
 
-fragment
-: Identical to the fragment field in a TLS 1.3 record.
+fragment:
 
-   DTLS uses an explicit sequence number, rather than an implicit one,
-   carried in the sequence_number field of the record.  Sequence numbers
+:  Identical to the fragment field in a TLS 1.3 record.
+
+DTLS uses an explicit sequence number, rather than an implicit one,
+  carried in the sequence_number field of the record.  Sequence numbers
    are maintained separately for each epoch, with each sequence_number
    initially being 0 for each epoch.  For instance, if a handshake
    message from epoch 0 is retransmitted, it might have a sequence
@@ -716,19 +729,20 @@ fragment
 DTLS 1.3 re-uses the TLS 1.3 handshake messages and flows, with
 the following changes:
 
-1. Modifications to the handshake header to handle message loss,
-   reordering, and DTLS message fragmentation (in order to avoid
-   IP fragmentation). Additionally, a new ACK message is introduced. 
+1. To handle message loss, reordering, and fragmentation modifications to 
+   the handshake header are necessary. 
 
-2. Retransmission timers to handle message loss.
+2. Retransmission timers are introduced to handle message loss.
 
 3. The TLS 1.3 KeyUpdate message is not used in DTLS 1.3 for re-keying. 
 
+4. A new ACK message is introduced to more robustness in message delivery.  
+
 Note that TLS 1.3 already supports a cookie extension, which used to 
 prevent denial-of-service attacks. This DoS prevention mechanism is
-described in more detail below since it is more dangerous than with 
-a connection-oriented transport like TCP that performs return-routability
-checks as part of the connection establishment. 
+described in more detail below since UDP-based protocols are more vulnerable 
+to amplification attacks than a connection-oriented transport like TCP 
+that performs return-routability checks as part of the connection establishment. 
 
 With these exceptions, the DTLS message formats, flows, and logic are
 the same as those of TLS 1.3.
@@ -749,7 +763,7 @@ DoS attacks.  Two attacks are of particular concern:
    Certificate message, which can be quite large) to the victim
    machine, thus flooding it.
 
-   In order to counter both of these attacks, DTLS borrows the stateless
+In order to counter both of these attacks, DTLS borrows the stateless
    cookie technique used by Photuris {{RFC2522}} and IKE {{RFC5996}}.  When
    the client sends its ClientHello message to the server, the server
    MAY respond with a HelloRetryRequest message. The HelloRetryRequest message 
@@ -763,9 +777,9 @@ DoS attacks.  Two attacks are of particular concern:
    addresses difficult.  This mechanism does not provide any defence
    against DoS attacks mounted from valid IP addresses.
 
-   The exchange is shown in {{dtls-cookie-exchange}}. Note that 
-   the figure focuses on the cookie exchange; all other extensions 
-   are omitted. 
+The exchange is shown in {{dtls-cookie-exchange}}. Note that 
+the figure focuses on the cookie exchange; all other extensions 
+are omitted. 
 
 ~~~~
       Client                                   Server
@@ -783,45 +797,50 @@ DoS attacks.  Two attacks are of particular concern:
 {: #dtls-cookie-exchange title="DTLS Exchange with HelloRetryRequest contain the Cookie Extension"}
 
 The cookie extension is defined in Section 4.2.1 of {{TLS13}}. When sending the 
-first ClientHello, the client does not have a cookie yet. In this case, 
+initial ClientHello, the client does not have a cookie yet. In this case, 
 the cookie extension is omitted and the legacy_cookie field in the ClientHello 
-message SHOULD be set as a zero length vector (i.e., a single zero byte length field) 
+message SHOULD be set to a zero length vector (i.e., a single zero byte length field) 
 and MUST be ignored by a server negotiating DTLS 1.3. 
 
-   When responding to a HelloRetryRequest, the client MUST use the same
+When responding to a HelloRetryRequest, the client MUST use the same
    parameter values (version, random, cipher_suites) as it 
    did in the original ClientHello. 
 
-   The
+The
    server SHOULD use those values to generate its cookie and verify that
    they are correct upon cookie receipt.  The server MUST use the same
    version number in the HelloRetryRequest that it would use when
    sending a ServerHello.  Upon receipt of the ServerHello, the client
-   MUST verify that the server version values match.  In order to avoid
+   MUST verify that the server version values match.  
+
+In order to avoid
    sequence number duplication in case of multiple HelloRetryRequests,
    the server MUST use the record sequence number in the ClientHello as
    the record sequence number in the HelloRetryRequest.
 
-   When the second ClientHello is received, the server can verify that
-   the Cookie is valid and that the client can receive packets at the
+ When the second ClientHello is received, the server can verify that
+   the cookie is valid and that the client can receive packets at the
    given IP address.  In order to avoid sequence number duplication in
    case of multiple cookie exchanges, the server MUST use the record
    sequence number in the ClientHello as the record sequence number in
    its initial ServerHello.  Subsequent ServerHellos will only be sent
    after the server has created state and MUST increment normally.
 
-   One potential attack on this scheme is for the attacker to collect a
+ One potential attack on this scheme is for the attacker to collect a
    number of cookies from different addresses and then reuse them to
    attack the server.  The server can defend against this attack by
-   changing the Secret value frequently, thus invalidating those
+   changing the secret value frequently, thus invalidating those
    cookies.  If the server wishes that legitimate clients be able to
    handshake through the transition (e.g., they received a cookie with
    Secret 1 and then sent the second ClientHello after the server has
    changed to Secret 2), the server can have a limited window during
-   which it accepts both secrets.  {{RFC5996}} suggests adding a version
-   number to cookies to detect this case.  An alternative approach is
+   which it accepts both secrets.  {{RFC5996}} suggests adding a key 
+   identifier to cookies to detect this case.  An alternative approach is
    simply to try verifying with both secrets.
 
+   Servers MUST implement a key rotation scheme that allows the server 
+   to manage keys with overlapping lifetime. 
+ 
    DTLS servers SHOULD perform a cookie exchange whenever a new
    handshake is being performed.  If the server is being operated in an
    environment where amplification is not a problem, the server MAY be
@@ -836,15 +855,12 @@ and MUST be ignored by a server negotiating DTLS 1.3.
    handshake_messages (for the CertificateVerify message) and
    verify_data (for the Finished message).
 
-   If a server receives a ClientHello with an invalid cookie, it SHOULD
-   treat it the same as a ClientHello with no cookie.  This avoids
-   race/deadlock conditions if the client somehow gets a bad cookie
-   (e.g., because the server changes its cookie signing key).
-
-   Note to implementers: This may result in clients receiving multiple
-   HelloRetryRequest messages with different cookies.  Clients SHOULD
-   handle this by sending a new ClientHello with a cookie in response to
-   the new HelloRetryRequest.
+   If a server receives a ClientHello with an invalid cookie, it 
+   MUST respond with a HelloRetryRequest. To avoid repeatly entering a 
+   ClientHello (+ cookie) / HelloRetryRequests exchange interaction a client 
+   MUST reject a second HelloRetryRequest. Restarting the handshake from 
+   scratch allows the client to recover from a situation where it obtained 
+   a cookie that cannot be verified by the server. 
 
 ##  DTLS Handshake Message Format
 
@@ -912,46 +928,46 @@ TLS 1.3 ClientHello format as shown below.
        ProtocolVersion client_version = { 254,252 };    /* DTLS v1.3 */
        Random random;
        opaque legacy_session_id<0..32>;
-       opaque legacy_cookie<0..2^8-1>;                  // DTLS       
+       opaque legacy_cookie<0..2^8-1>;                  // DTLS
        CipherSuite cipher_suites<2..2^16-2>;
        opaque legacy_compression_methods<1..2^8-1>;
        Extension extensions<0..2^16-1>;
    } ClientHello;
 ~~~~
 
-client_version
+client_version: 
 : The version of the DTLS protocol by which the client wishes to 
 communicate during this session. This SHOULD be the latest (highest 
 valued) version supported by the client. For the DTLS 1.3 version of the 
 specification, the version will be { 254,252 }.
 
-random
+random: 
 : Same as for TLS 1.3
 
-legacy_session_id
+legacy_session_id: 
 : Same as for TLS 1.3
 
-legacy_cookie
+legacy_cookie: 
 : A DTLS 1.3-only client MUST set the legacy_cookie field to zero length.
 
-cipher_suites
+cipher_suites: 
 : Same as for TLS 1.3
 
-legacy_compression_methods
+legacy_compression_methods: 
 : Same as for TLS 1.3
 
-extensions
+extensions: 
 : Same as for TLS 1.3
 {:br } 
 
-   The first message each side transmits in each handshake always has
+The first message each side transmits in each handshake always has
    message_seq = 0.  Whenever each new message is generated, the
    message_seq value is incremented by one.  Note that in the case of a
-   rehandshake, this implies that the HelloRequest will have message_seq
+   rehandshake, this implies that the HelloRetryRequest  will have message_seq
    = 0 and the ServerHello will have message_seq = 1.  When a message is
    retransmitted, the same message_seq value is used.  
 
-   Here is an example:
+Here is an example:
 
 ~~~~
          Client                             Server
@@ -990,6 +1006,18 @@ extensions
    next_receive_seq, the implementation SHOULD queue the message but MAY
    discard it.  (This is a simple space/bandwidth tradeoff).
 
+## ACK Message
+
+~~~~
+struct {} ACK;
+~~~~
+
+The ACK handshake message is used by a server to return a response to a 
+client-provided message where the TLS 1.3 handshake does not foresee a 
+return message. With the use of the ACK message the client is able to 
+determine whether a transmitted request has been lost and needs to be 
+retransmitted.
+
 ##  Handshake Message Fragmentation and Reassembly
 
    Each DTLS message MUST fit within a single
@@ -1002,7 +1030,7 @@ extensions
    When transmitting the handshake message, the sender divides the
    message into a series of N contiguous data ranges.  These ranges MUST
    NOT be larger than the maximum handshake fragment size and MUST
-   jointly contain the entire handshake message.  The ranges SHOULD NOT
+   jointly contain the entire handshake message.  The ranges MUST NOT
    overlap.  The sender then creates N handshake messages, all with the
    same message_seq value as the original handshake message.  Each new
    message is labeled with the fragment_offset (the number of bytes
@@ -1244,7 +1272,7 @@ timeout and retransmission calculation.
    of the timer can lead to serious congestion problems; for example, if
    many instances of a DTLS time out early and retransmit too quickly on
    a congested link.  Implementations SHOULD use an initial timer value
-   of 1 second (the minimum defined in RFC 6298 {{RFC6298}}) and double
+   of 100 msec (the minimum defined in RFC 6298 {{RFC6298}}) and double
    the value at each retransmission, up to no less than the RFC 6298
    maximum of 60 seconds.  Note that we recommend a 1-second timer
    rather than the 3-second RFC 6298 default in order to improve latency
@@ -1262,11 +1290,12 @@ timeout and retransmission calculation.
 ##  CertificateVerify and Finished Messages
 
    CertificateVerify and Finished messages have the same format as in
-   TLS.  Hash calculations include entire handshake messages, including
+   TLS 1.3.  Hash calculations include entire handshake messages, including
    DTLS-specific fields: message_seq, fragment_offset, and
    fragment_length.  However, in order to remove sensitivity to
-   handshake message fragmentation, the Finished MAC MUST be computed as
-   if each handshake message had been sent as a single fragment.  
+   handshake message fragmentation, the CertificateVerify and the Finished messages MUST be computed as
+   if each handshake message had been sent as a single fragment following 
+   the algorithm described in Section 4.4.1 and Section 4.4.3 of {{TLS13}}, respectively.
 
 ##  Alert Messages
 
@@ -1372,12 +1401,16 @@ Since TLS 1.3 introduce a large number of changes to TLS 1.2, the list of change
 
 # Open Issues
 
-  * Add description for ACK message
-  * More description for the retransmission behavior regarding 
+  * Description for the retransmission behavior regarding 
     Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is needed.
+  * Define message sequence number pattern for the use with the handshake messages. 
+  * Handling of the handshake sequence numbers (i.e., Handshake.message_seq) when 0-RTT is rejected. Proposal: keep pushing the numbers forward	
+  * Explore whether the record layer header can be simplified (to 2 octets for epoch & sequence number) 
   * Do we need the HelloRequest message in DTLS 1.3?
-  * The cookie computation for the HelloRetryRequest may need more description since it has a secondary purpose (besides DoS protection) where the server can tell the client that the provided KeyShare did not contain an acceptable offer. Hence, it may be useful to indicate what parameters the client has to re-send as it did in the original ClientHello.
+  * Use ACK message to simplify the retransmission state machine. 
+  * Document the hash exporting hack that makes HRR stateless.
   * Update text in the appendix regarding backwards compatibility. 
+  * Clean up references. 
 
 #  IANA Considerations
 
@@ -1413,12 +1446,15 @@ in prior versions of DTLS specifications.
 
 For this version of the document we would like to thank:  
 
-* Nagendra Modadugu (co-author of {{RFC6347}})\\
-  Google, Inc.\\
+~~~ 
+* Nagendra Modadugu (co-author of {{RFC6347}})
+  Google, Inc.
   nagendra@cs.stanford.edu
+~~~
 
-* Hannes Tschofenig\\
-  ARM Limited\\
-  hannes.tschofenig@arm.com
-
+~~~ 
+* Ilari Liusvaara 
+  Independent
+  ilariliusvaara@welho.com
+~~~
 
