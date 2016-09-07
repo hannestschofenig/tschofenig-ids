@@ -1,6 +1,6 @@
 ---
 title: The Datagram Transport Layer Security (DTLS) Protocol Version 1.3
-abbrev: DTLS
+abbrev: DTLS 1.3
 docname: draft-ietf-tls-dtls13-00
 category: std
 obsoletes: 6347
@@ -68,6 +68,7 @@ the underlying transport are preserved by the DTLS protocol.
 #  Introduction
 
 RFC EDITOR: PLEASE REMOVE THE FOLLOWING PARAGRAPH
+
 The source for this draft is maintained in GitHub. Suggested changes
 should be submitted as pull requests at https://github.com/tlswg/dtls13-spec. 
 Instructions are on that page as well. Editorial changes can be managed in GitHub, 
@@ -140,40 +141,33 @@ The basic design philosophy of DTLS is to construct "TLS over
    secure communication, since the DTLS protocol does not compensate for
    lost or re-ordered data traffic.
 
-The reason that TLS cannot be used directly in
-   datagram environments is simply that payloads may be lost or
-   reordered.  Unreliability and reordering creates problems for TLS 
-   at four levels:
+   TLS cannot be used directly in datagram environments for the following 
+   five reasons:
 
-1. TLS does not allow independent decryption of individual
-         records.  Because the integrity check depends on the sequence
-         number, if record N is not received, then the integrity check
-         on record N+1 will be based on the wrong sequence number and
-         thus will fail. DTLS solves this problem by adding explicit 
-         sequence numbers.
+1. TLS does not allow independent decryption of individual records.
+   Because the integrity check indirectly depends on a sequence number, 
+   if record N is not received, then the integrity check
+   on record N+1 will be based on the wrong sequence number and
+   thus will fail. DTLS solves this problem by adding explicit 
+   sequence numbers.
 
 2. The TLS handshake is a lock-step cryptographic handshake. 
    Messages must be transmitted and received in a defined order; any other order
-   is an error.  Clearly, this is incompatible with reordering and
+   is an error. Clearly, this is incompatible with reordering and
    message loss.
 
-3. In addition, TLS handshake messages are potentially
+3. Not all TLS 1.3 handshake messages (such as the NewSessionTicket message)
+   are acknowledged. Hence, a new acknowledgement message has to be added 
+   to detect message loss. 
+
+4. Handshake messages are potentially
    larger than any given datagram, thus creating the problem of IP
    fragmentation.
 
-4. Not all TLS 1.3 handshake messages (such as the NewSessionTicket message)
-   are acknowledged. Hence, a new acknowledgement message has to be integrated 
-   to detect message loss. 
-
-The DTLS 1.3 specification changes the way how cookies are exchanged
-   compared to DTLS 1.2. DTLS 1.3 re-uses the HelloRetryRequest message
-   and conveys the cookie to the client via an extension. The client 
-   then uses the same extension to place the cookie into a ClientHello message. 
-   DTLS 1.2 on the other hand used a separate message, namely the HelloVerifyRequest, 
-   to pass a cookie to the client and did not utilize the extension mechanism. 
-   For backwards compatibility reason the cookie field in the ClientHello
-   is present in DTLS 1.3 but is ignored by a DTLS 1.3 compliant server 
-   implementation. 
+5. Datagram transport protocols, like UDP, are more vulnerable to denial of 
+   service attacks and require a return-routability check with the help of 
+   cookies to be integrated into the handshake. A detailed discussion of 
+   countermeasures can be found in {{dos}}.
    
 ###  Packet Loss
 
@@ -224,7 +218,7 @@ In DTLS, each handshake message is assigned a specific sequence
 
 TLS and DTLS handshake messages can be quite large (in theory up to
    2^24-1 bytes, in practice many kilobytes).  By contrast, UDP
-   datagrams are often limited to <1500 bytes if IP fragmentation is not
+   datagrams are often limited to less than 1500 bytes if IP fragmentation is not
    desired.  In order to compensate for this limitation, each DTLS
    handshake message may be fragmented over several DTLS records, each
    of which is intended to fit in a single IP datagram.  Each DTLS
@@ -251,6 +245,7 @@ only change is the inclusion of an explicit epoch and sequence number
 in the record.  This sequence number allows the recipient to correctly
 verify the TLS MAC.  The DTLS record format is shown below:
 
+~~~~
       struct {
            ContentType type;
            ProtocolVersion version = { 254, 253 };
@@ -259,6 +254,7 @@ verify the TLS MAC.  The DTLS record format is shown below:
            uint16 length;
            opaque fragment[DTLSPlaintext.length];
          } DTLSPlaintext;
+~~~~
 
 type: 
 
@@ -527,7 +523,7 @@ that performs return-routability checks as part of the connection establishment.
 With these exceptions, the DTLS message formats, flows, and logic are
 the same as those of TLS 1.3.
 
-## Denial-of-Service Countermeasures
+## Denial-of-Service Countermeasures {#dos}
 
 Datagram security protocols are extremely susceptible to a variety of
 DoS attacks.  Two attacks are of particular concern:
@@ -556,6 +552,16 @@ In order to counter both of these attacks, DTLS borrows the stateless
    to receive the cookie, which makes DoS attacks with spoofed IP
    addresses difficult.  This mechanism does not provide any defence
    against DoS attacks mounted from valid IP addresses.
+
+The DTLS 1.3 specification changes the way how cookies are exchanged
+   compared to DTLS 1.2. DTLS 1.3 re-uses the HelloRetryRequest message
+   and conveys the cookie to the client via an extension. The client 
+   then uses the same extension to place the cookie into a ClientHello message. 
+   DTLS 1.2 on the other hand used a separate message, namely the HelloVerifyRequest, 
+   to pass a cookie to the client and did not utilize the extension mechanism. 
+   For backwards compatibility reason the cookie field in the ClientHello
+   is present in DTLS 1.3 but is ignored by a DTLS 1.3 compliant server 
+   implementation. 
 
 The exchange is shown in {{dtls-cookie-exchange}}. Note that 
 the figure focuses on the cookie exchange; all other extensions 
@@ -775,6 +781,8 @@ ClientHello (seq=1)     -------->
 Certificate (seq=2)     -------->
 CertificateVerify (seq=3)
 Finished (seq=4)
+
+                        <--------                    Ack (seq=6)
 ~~~~
 {: #dtls-msg-loss title="Example DTLS Exchange illustrating Message Loss"}
 
@@ -996,7 +1004,7 @@ timeout and retransmission calculation.
 ### State Machine
          
    DTLS uses a simple timeout and retransmission scheme with the
-   state machine shown in {{dtls-timeout-state-machine}. 
+   state machine shown in {{dtls-timeout-state-machine}}. 
    Because DTLS clients send the first message
    (ClientHello), they start in the PREPARING state.  DTLS servers start
    in the WAITING state, but with empty buffers and no retransmit timer.
@@ -1200,12 +1208,9 @@ identification of the correct cipher state:
 
    * epoch value (0) for use with unencrypted messages, namely ClientHello, 
 ServerHello, and HelloRetryRequest.
-   * epoch value (1) for the Finished message protected using the 0-RTT 
-handshake key.
-   * epoch value (2) for 0-RTT 'Application Data' protected using keys derived from the  
-early_traffic_secret.
-   * epoch value (3) for messages protected using keys derived from the 
-handshake_traffic_secret, namely the EncryptedExtensions to the Finished message sent by the client).
+   * epoch value (1) for messages protected using keys derived from early_traffic_secret.
+   * epoch value (2) for 0-RTT 'Application Data' protected using keys derived from the early_traffic_secret.
+   * epoch value (3) for messages protected using keys derived from the handshake_traffic_secret, namely the EncryptedExtensions to the Finished message sent by the client).
    * epoch value (4) for application data payloads protected using keys derived from the initial traffic_secret_0.
    * epoch value (5 to 2^16-1) for application data payloads protected using keys from the traffic_secret_N (N>0).
 

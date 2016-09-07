@@ -19,7 +19,7 @@
 <rfc ipr="pre5378Trust200902" docName="draft-ietf-tls-dtls13-00" category="std" obsoletes="6347">
 
   <front>
-    <title abbrev="DTLS">The Datagram Transport Layer Security (DTLS) Protocol Version 1.3</title>
+    <title abbrev="DTLS 1.3">The Datagram Transport Layer Security (DTLS) Protocol Version 1.3</title>
 
     <author initials="E." surname="Rescorla" fullname="Eric Rescorla">
       <organization>RTFM, Inc.</organization>
@@ -64,8 +64,9 @@ the underlying transport are preserved by the DTLS protocol.</t>
 
 <section anchor="introduction" title="Introduction">
 
-<t>RFC EDITOR: PLEASE REMOVE THE FOLLOWING PARAGRAPH
-The source for this draft is maintained in GitHub. Suggested changes
+<t>RFC EDITOR: PLEASE REMOVE THE FOLLOWING PARAGRAPH</t>
+
+<t>The source for this draft is maintained in GitHub. Suggested changes
 should be submitted as pull requests at https://github.com/tlswg/dtls13-spec. 
 Instructions are on that page as well. Editorial changes can be managed in GitHub, 
 but any substantive change should be discussed on the TLS mailing list.</t>
@@ -133,39 +134,31 @@ document defined as a delta from TLS 1.3.</t>
    secure communication, since the DTLS protocol does not compensate for
    lost or re-ordered data traffic.</t>
 
-<t>The reason that TLS cannot be used directly in
-   datagram environments is simply that payloads may be lost or
-   reordered.  Unreliability and reordering creates problems for TLS 
-   at four levels:</t>
+<t>TLS cannot be used directly in datagram environments for the following 
+   five reasons:</t>
 
 <t><list style="numbers">
-  <t>TLS does not allow independent decryption of individual
-      records.  Because the integrity check depends on the sequence
-      number, if record N is not received, then the integrity check
-      on record N+1 will be based on the wrong sequence number and
-      thus will fail. DTLS solves this problem by adding explicit 
-      sequence numbers.</t>
+  <t>TLS does not allow independent decryption of individual records.
+Because the integrity check indirectly depends on a sequence number, 
+if record N is not received, then the integrity check
+on record N+1 will be based on the wrong sequence number and
+thus will fail. DTLS solves this problem by adding explicit 
+sequence numbers.</t>
   <t>The TLS handshake is a lock-step cryptographic handshake. 
 Messages must be transmitted and received in a defined order; any other order
-is an error.  Clearly, this is incompatible with reordering and
+is an error. Clearly, this is incompatible with reordering and
 message loss.</t>
-  <t>In addition, TLS handshake messages are potentially
+  <t>Not all TLS 1.3 handshake messages (such as the NewSessionTicket message)
+are acknowledged. Hence, a new acknowledgement message has to be added 
+to detect message loss.</t>
+  <t>Handshake messages are potentially
 larger than any given datagram, thus creating the problem of IP
 fragmentation.</t>
-  <t>Not all TLS 1.3 handshake messages (such as the NewSessionTicket message)
-are acknowledged. Hence, a new acknowledgement message has to be integrated 
-to detect message loss.</t>
+  <t>Datagram transport protocols, like UDP, are more vulnerable to denial of 
+service attacks and require a return-routability check with the help of 
+cookies to be integrated into the handshake. A detailed discussion of 
+countermeasures can be found in <xref target="dos"/>.</t>
 </list></t>
-
-<t>The DTLS 1.3 specification changes the way how cookies are exchanged
-   compared to DTLS 1.2. DTLS 1.3 re-uses the HelloRetryRequest message
-   and conveys the cookie to the client via an extension. The client 
-   then uses the same extension to place the cookie into a ClientHello message. 
-   DTLS 1.2 on the other hand used a separate message, namely the HelloVerifyRequest, 
-   to pass a cookie to the client and did not utilize the extension mechanism. 
-   For backwards compatibility reason the cookie field in the ClientHello
-   is present in DTLS 1.3 but is ignored by a DTLS 1.3 compliant server 
-   implementation.</t>
 
 <section anchor="packet-loss" title="Packet Loss">
 
@@ -216,7 +209,7 @@ phase of the DTLS handshake:</t>
 
 <t>TLS and DTLS handshake messages can be quite large (in theory up to
    2^24-1 bytes, in practice many kilobytes).  By contrast, UDP
-   datagrams are often limited to &lt;1500 bytes if IP fragmentation is not
+   datagrams are often limited to less than 1500 bytes if IP fragmentation is not
    desired.  In order to compensate for this limitation, each DTLS
    handshake message may be fragmented over several DTLS records, each
    of which is intended to fit in a single IP datagram.  Each DTLS
@@ -247,14 +240,14 @@ in the record.  This sequence number allows the recipient to correctly
 verify the TLS MAC.  The DTLS record format is shown below:</t>
 
 <figure><artwork><![CDATA[
-  struct {
-       ContentType type;
-       ProtocolVersion version = { 254, 253 };
-       uint16 epoch;                         // DTLS-related field
-       uint48 sequence_number;               // DTLS-related field
-       uint16 length;
-       opaque fragment[DTLSPlaintext.length];
-     } DTLSPlaintext;
+      struct {
+           ContentType type;
+           ProtocolVersion version = { 254, 253 };
+           uint16 epoch;                         // DTLS-related field
+           uint48 sequence_number;               // DTLS-related field
+           uint16 length;
+           opaque fragment[DTLSPlaintext.length];
+         } DTLSPlaintext;
 ]]></artwork></figure>
 
 <t><list style="hanging">
@@ -507,7 +500,7 @@ that performs return-routability checks as part of the connection establishment.
 <t>With these exceptions, the DTLS message formats, flows, and logic are
 the same as those of TLS 1.3.</t>
 
-<section anchor="denial-of-service-countermeasures" title="Denial-of-Service Countermeasures">
+<section anchor="dos" title="Denial-of-Service Countermeasures">
 
 <t>Datagram security protocols are extremely susceptible to a variety of
 DoS attacks.  Two attacks are of particular concern:</t>
@@ -537,6 +530,16 @@ machine, thus flooding it.</t>
    to receive the cookie, which makes DoS attacks with spoofed IP
    addresses difficult.  This mechanism does not provide any defence
    against DoS attacks mounted from valid IP addresses.</t>
+
+<t>The DTLS 1.3 specification changes the way how cookies are exchanged
+   compared to DTLS 1.2. DTLS 1.3 re-uses the HelloRetryRequest message
+   and conveys the cookie to the client via an extension. The client 
+   then uses the same extension to place the cookie into a ClientHello message. 
+   DTLS 1.2 on the other hand used a separate message, namely the HelloVerifyRequest, 
+   to pass a cookie to the client and did not utilize the extension mechanism. 
+   For backwards compatibility reason the cookie field in the ClientHello
+   is present in DTLS 1.3 but is ignored by a DTLS 1.3 compliant server 
+   implementation.</t>
 
 <t>The exchange is shown in <xref target="dtls-cookie-exchange"/>. Note that 
 the figure focuses on the cookie exchange; all other extensions 
@@ -751,6 +754,8 @@ ClientHello (seq=1)     -------->
 Certificate (seq=2)     -------->
 CertificateVerify (seq=3)
 Finished (seq=4)
+
+                        <--------                    Ack (seq=6)
 ]]></artwork></figure>
 
 <t>From the perspective of the DTLS record layer,
@@ -963,7 +968,7 @@ timeout and retransmission calculation.</t>
 <section anchor="state-machine" title="State Machine">
 
 <t>DTLS uses a simple timeout and retransmission scheme with the
-   state machine shown in {{dtls-timeout-state-machine}. 
+   state machine shown in <xref target="dtls-timeout-state-machine"/>. 
    Because DTLS clients send the first message
    (ClientHello), they start in the PREPARING state.  DTLS servers start
    in the WAITING state, but with empty buffers and no retransmit timer.</t>
@@ -1169,12 +1174,9 @@ identification of the correct cipher state:</t>
 <t><list style="symbols">
   <t>epoch value (0) for use with unencrypted messages, namely ClientHello, 
 ServerHello, and HelloRetryRequest.</t>
-  <t>epoch value (1) for the Finished message protected using the 0-RTT 
-handshake key.</t>
-  <t>epoch value (2) for 0-RTT ‘Application Data’ protected using keys derived from the<vspace />
-early_traffic_secret.</t>
-  <t>epoch value (3) for messages protected using keys derived from the 
-handshake_traffic_secret, namely the EncryptedExtensions to the Finished message sent by the client).</t>
+  <t>epoch value (1) for messages protected using keys derived from early_traffic_secret.</t>
+  <t>epoch value (2) for 0-RTT ‘Application Data’ protected using keys derived from the early_traffic_secret.</t>
+  <t>epoch value (3) for messages protected using keys derived from the handshake_traffic_secret, namely the EncryptedExtensions to the Finished message sent by the client).</t>
   <t>epoch value (4) for application data payloads protected using keys derived from the initial traffic_secret_0.</t>
   <t>epoch value (5 to 2^16-1) for application data payloads protected using keys from the traffic_secret_N (N&gt;0).</t>
 </list></t>
