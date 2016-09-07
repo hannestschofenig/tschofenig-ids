@@ -16,10 +16,10 @@
 <?rfc text-list-symbols="-o*+"?>
 <?rfc docmapping="yes"?>
 
-<rfc ipr="pre5378Trust200902" docName="draft-ietf-tls-dtls13-latest" category="std" obsoletes="6347" updates="4492, 6066, 6961">
+<rfc ipr="pre5378Trust200902" docName="draft-ietf-tls-dtls13-00" category="std" obsoletes="6347">
 
   <front>
-    <title abbrev="TLS">The Datagram Transport Layer Security (DTLS) Protocol Version 1.3</title>
+    <title abbrev="DTLS">The Datagram Transport Layer Security (DTLS) Protocol Version 1.3</title>
 
     <author initials="E." surname="Rescorla" fullname="Eric Rescorla">
       <organization>RTFM, Inc.</organization>
@@ -34,10 +34,10 @@
       </address>
     </author>
 
-    <date year="2016" month="September" day="05"/>
+    <date year="2016" month="September" day="07"/>
 
-    <area>General</area>
-    
+    <area>Security</area>
+    <workgroup>TLS</workgroup>
     <keyword>Internet-Draft</keyword>
 
     <abstract>
@@ -89,7 +89,7 @@ around TLS 1.3.</t>
 
 <t>Implementations that speak both DTLS 1.2 and DTLS 1.3 can interoperate with those 
 that speak only DTLS 1.2 (using DTLS 1.2 of course), just as TLS 1.3 implementations 
-can interoperate with TLS 1.2 (see Appendix C of <xref target="TLS13"/> for details). While 
+can interoperate with TLS 1.2 (see Appendix C of <xref target="I-D.ietf-tls-tls13"/> for details). While 
 backwards compatibility with DTLS 1.0 is possible the use of DTLS 1.0 is not 
 recommended as explained in Section 3.1.2 of RFC 7525 <xref target="RFC7525"/>.</t>
 
@@ -136,7 +136,7 @@ document defined as a delta from TLS 1.3.</t>
 <t>The reason that TLS cannot be used directly in
    datagram environments is simply that payloads may be lost or
    reordered.  Unreliability and reordering creates problems for TLS 
-   at three levels:</t>
+   at four levels:</t>
 
 <t><list style="numbers">
   <t>TLS does not allow independent decryption of individual
@@ -148,10 +148,10 @@ document defined as a delta from TLS 1.3.</t>
   <t>The TLS handshake is a lock-step cryptographic handshake. 
 Messages must be transmitted and received in a defined order; any other order
 is an error.  Clearly, this is incompatible with reordering and
-message loss.  In addition, TLS handshake messages are potentially
+message loss.</t>
+  <t>In addition, TLS handshake messages are potentially
 larger than any given datagram, thus creating the problem of IP
-fragmentation.  DTLS provides fixes for both of these problems, 
-as described in the subsections below.</t>
+fragmentation.</t>
   <t>Not all TLS 1.3 handshake messages (such as the NewSessionTicket message)
 are acknowledged. Hence, a new acknowledgement message has to be integrated 
 to detect message loss.</t>
@@ -170,7 +170,7 @@ to detect message loss.</t>
 <section anchor="packet-loss" title="Packet Loss">
 
 <t>DTLS uses a simple retransmission timer to handle packet loss. 
-{{dtls-retransmission} demonstrates the basic concept, using the first
+<xref target="dtls-retransmission"/> demonstrates the basic concept, using the first
 phase of the DTLS handshake:</t>
 
 <figure title="DTLS Retransmission Example." anchor="dtls-retransmission"><artwork><![CDATA[
@@ -298,7 +298,7 @@ verify the TLS MAC.  The DTLS record format is shown below:</t>
    implementations SHOULD discard packets from earlier epochs, but if
    packet loss causes noticeable problems they MAY choose to retain
    keying material from previous epochs for up to the default MSL
-   specified for TCP <xref target="TCP"/> to allow for packet reordering.  (Note that
+   specified for TCP <xref target="RFC0793"/> to allow for packet reordering.  (Note that
    the intention here is that implementers use the current guidance from
    the IETF for MSL, not that they attempt to interrogate the MSL that
    the system TCP stack is using.)  Until the handshake has completed,
@@ -556,7 +556,7 @@ are omitted.</t>
       [Rest of handshake]
 ]]></artwork></figure>
 
-<t>The cookie extension is defined in Section 4.2.1 of <xref target="TLS13"/>. When sending the 
+<t>The cookie extension is defined in Section 4.2.1 of <xref target="I-D.ietf-tls-tls13"/>. When sending the 
 initial ClientHello, the client does not have a cookie yet. In this case, 
 the cookie extension is omitted and the legacy_cookie field in the ClientHello 
 message SHOULD be set to a zero length vector (i.e., a single zero byte length field) 
@@ -629,45 +629,45 @@ and MUST be ignored by a server negotiating DTLS 1.3.</t>
    fragmentation, DTLS modifies the TLS 1.3 handshake header:</t>
 
 <figure><artwork><![CDATA[
-       enum {
-           hello_request_RESERVED(0),
-           client_hello(1),
-           server_hello(2),
-           hello_verify_request_RESERVED(3),
-           new_session_ticket(4),
-           hello_retry_request(6),
-           encrypted_extensions(8),
-           certificate(11),
-           server_key_exchange_RESERVED(12),
-           certificate_request(13),
-           server_hello_done_RESERVED(14),
-           certificate_verify(15),
-           client_key_exchange_RESERVED(16),
-           finished(20),
-           key_update_RESERVED(24),
-           (255)
-       } HandshakeType;
+  enum {
+      hello_request_RESERVED(0),
+      client_hello(1),
+      server_hello(2),
+      hello_verify_request_RESERVED(3),
+      new_session_ticket(4),
+      hello_retry_request(6),
+      encrypted_extensions(8),
+      certificate(11),
+      server_key_exchange_RESERVED(12),
+      certificate_request(13),
+      server_hello_done_RESERVED(14),
+      certificate_verify(15),
+      client_key_exchange_RESERVED(16),
+      finished(20),
+      key_update_RESERVED(24),
+      (255)
+  } HandshakeType;
 
-       struct {
-           HandshakeType msg_type;    /* handshake type */
-           uint24 length;             /* bytes in message */
-           uint16 message_seq;        /* DTLS-required field */
-           uint24 fragment_offset;    /* DTLS-required field */
-           uint24 fragment_length;    /* DTLS-required field */           
-           select (HandshakeType) {
-               case client_hello:          ClientHello;
-               case server_hello:          ServerHello;
-               case hello_retry_request:   HelloRetryRequest;
-               case encrypted_extensions:  EncryptedExtensions;
-               case certificate_request:   CertificateRequest;
-               case certificate:           Certificate;
-               case certificate_verify:    CertificateVerify;
-               case finished:              Finished;
-               case new_session_ticket:    NewSessionTicket;
-               case key_update:            KeyUpdate; /* reserved */
-               case ack:                   ACK; /* DTLS-required field */
-           } body;
-       } Handshake;
+  struct {
+      HandshakeType msg_type;    /* handshake type */
+      uint24 length;             /* bytes in message */
+      uint16 message_seq;        /* DTLS-required field */
+      uint24 fragment_offset;    /* DTLS-required field */
+      uint24 fragment_length;    /* DTLS-required field */      
+      select (HandshakeType) {
+          case client_hello:          ClientHello;
+          case server_hello:          ServerHello;
+          case hello_retry_request:   HelloRetryRequest;
+          case encrypted_extensions:  EncryptedExtensions;
+          case certificate_request:   CertificateRequest;
+          case certificate:           Certificate;
+          case certificate_verify:    CertificateVerify;
+          case finished:              Finished;
+          case new_session_ticket:    NewSessionTicket;
+          case key_update:            KeyUpdate; /* reserved */
+          case ack:                   ACK; /* DTLS-required field */
+      } body;
+  } Handshake;
 ]]></artwork></figure>
 
 <t>In addition to the handshake messages that are deprecated by the TLS 1.3
@@ -718,37 +718,42 @@ specification, the version will be { 254,252 }.</t>
 
 <t>The first message each side transmits in each handshake always has
    message_seq = 0.  Whenever each new message is generated, the
-   message_seq value is incremented by one.  Note that in the case of a
-   rehandshake, this implies that the HelloRetryRequest  will have message_seq
-   = 0 and the ServerHello will have message_seq = 1.  When a message is
+   message_seq value is incremented by one. When a message is
    retransmitted, the same message_seq value is used.</t>
 
 <t>Here is an example:</t>
 
 <figure title="Example DTLS Exchange illustrating Message Loss" anchor="dtls-msg-loss"><artwork><![CDATA[
-         Client                             Server
-         ------                             ------
-         ClientHello (seq=0)  ------>
+Client                                             Server
+------                                             ------
 
-                                 X<-- HelloRetryRequest (seq=0)
-                                                 (lost)
+ClientHello (seq=0)     -------->
 
-         [Timer Expires]
+                           X<----      HelloRetryRequest (seq=0)
+                                               (lost)
 
-         ClientHello (seq=0)  ------>
-         (retransmit)
+[Timer Expires]
 
-                              <------ HelloRetryRequest (seq=0)
+ClientHello (seq=0)     -------->
+   (retransmit)
 
-         ClientHello (seq=1)  ------>
-         (with cookie)
+                        <--------      HelloRetryRequest (seq=0)
 
-                              <------        ServerHello (seq=1)
+ClientHello (seq=1)     -------->
+   +cookie
 
-                          [Rest of handshake]
+                        <--------            ServerHello (seq=1)
+                                     EncryptedExtensions (seq=2)
+                                             Certificate (seq=3)
+                                       CertificateVerify (seq=4)
+                                                Finished (seq=5)
+
+Certificate (seq=2)     -------->
+CertificateVerify (seq=3)
+Finished (seq=4)
 ]]></artwork></figure>
 
-<t>Note, however, that from the perspective of the DTLS record layer,
+<t>From the perspective of the DTLS record layer,
    the retransmission is a new record.  This record will have a new
    DTLSPlaintext.sequence_number value.</t>
 
@@ -762,7 +767,7 @@ specification, the version will be { 254,252 }.</t>
    discard it.  (This is a simple space/bandwidth tradeoff).</t>
 
 </section>
-<section anchor="ack-message" title="ACK Message">
+<section anchor="ack-msg" title="ACK Message">
 
 <figure><artwork><![CDATA[
 struct {} ACK;
@@ -841,15 +846,24 @@ ClientHello                                                 +----------+
                                             {Certificate*}
                                       {CertificateVerify*}
                         <--------               {Finished}
+                                       [Application Data*]
 
 
  {Certificate*}                                             +----------+
  {CertificateVerify*}                                       | Flight 5 |
  {Finished}             -------->                           +----------+
+ [Application Data]
+
+                                                            +----------+
+                        <--------                    {Ack}  | Flight 6 |
+                                       [Application Data*]  +----------+
+
+ [Application Data]     <------->      [Application Data]
+
 ]]></artwork></figure>
 
 <figure title="Message Flights for Resumption and PSK Handshake (without Cookie Exchange)" anchor="dtls-psk"><artwork><![CDATA[
-ClientHello                                               +----------+
+ ClientHello                                              +----------+
   + pre_shared_key                                        | Flight 1 |
   + key_share*         -------->                          +----------+
 
@@ -859,10 +873,17 @@ ClientHello                                               +----------+
                                             + key_share*  | Flight 2 |
                                    {EncryptedExtensions}  +----------+
                        <--------              {Finished}
+                                     [Application Data*]
+                                                          +----------+
+ {Finished}            -------->                          | Flight 3 |
+ [Application Data*]                                      +----------+
 
                                                           +----------+
-{Finished}             -------->                          | Flight 3 |
-                                                          +----------+
+                       <--------                   {Ack}  | Flight 4 |
+                                     [Application Data*]  +----------+
+
+ [Application Data]    <------->      [Application Data]
+
 ]]></artwork></figure>
 
 <figure title="Message Flights for a zero round trip handshake" anchor="dtls-zero-rtt"><artwork><![CDATA[
@@ -884,10 +905,56 @@ ClientHello
                                    {EncryptedExtensions}  +----------+
                                    {CertificateRequest*}
                        <--------              {Finished}
+                                     [Application Data*] 
 
-{Certificate*}                                            +----------+
-{CertificateVerify*}                                      | Flight 3 |
+                                                          +----------+
+                                                          | Flight 3 |
+ {Finished}            -------->                          +----------+ 
+ [Application Data*]
+                                                          +----------+
+                       <--------                   {Ack}  | Flight 4 |
+                                     [Application Data*]  +----------+
+
+ [Application Data]    <------->      [Application Data]
+]]></artwork></figure>
+
+<figure title="Message Flights for New Session Ticket Message" anchor="dtls-post-handshake-ticket"><artwork><![CDATA[
+Client                                            Server
+
+                                                          +----------+
+                       <--------       {NewSessionTicket} | Flight 1 |
+                                                          +----------+
+
+                                                          +----------+
+{Ack}                  -------->                          | Flight 2 |
+                                                          +----------+
+
+]]></artwork></figure>
+
+<figure title="Message Flights for Post-Handshake Authentication (Success)" anchor="dtls-post-handshake-auth-success"><artwork><![CDATA[
+Client                                            Server
+
+                                                          +----------+
+                       <--------     {CertificateRequest} | Flight 1 |
+                                                          +----------+
+
+{Certificate}                                             +----------+
+{CertificateVerify}                                       | Flight 2 |
 {Finished}             -------->                          +----------+
+
+]]></artwork></figure>
+
+<figure title="Message Flights for Post-Handshake Authentication (Decline)" anchor="dtls-post-handshake-auth-failure"><artwork><![CDATA[
+Client                                            Server
+
+                                                          +----------+
+                       <--------     {CertificateRequest} | Flight 1 |
+                                                          +----------+
+
+{Certificate}                                             +----------+
+{Finished}             -------->                          | Flight 2 |
+                                                          +----------+
+
 ]]></artwork></figure>
 
 <t>Note: The application data sent by the client is not included in the 
@@ -991,7 +1058,7 @@ FINISHED state to the PREPARING state to transmit the HelloRequest.
 When the client receives a HelloRequest, it transitions from FINISHED
 to PREPARING to transmit the ClientHello.  <vspace blankLines='1'/>
 In addition, for at least twice the default Maximum Segment Lifetime 
-(MSL) defined for <xref target="TCP"/>,
+(MSL) defined for <xref target="RFC0793"/>,
 when in the FINISHED state, the node that transmits the last flight
 (the server in an ordinary handshake or the client in a resumed
 handshake) MUST respond to a retransmit of the peer’s last flight
@@ -1025,7 +1092,9 @@ flight immediately, shortcutting the retransmission timer.</t>
    a congested link.  Implementations SHOULD use an initial timer value
    of 100 msec (the minimum defined in RFC 6298 <xref target="RFC6298"/>) and double
    the value at each retransmission, up to no less than the RFC 6298
-   maximum of 60 seconds.  Note that we recommend a 1-second timer
+   maximum of 60 seconds. Application specific profiles, such as those 
+   used for the Internet of Things environment, may recommend longer 
+   timer values. Note that we recommend a 100 msec timer
    rather than the 3-second RFC 6298 default in order to improve latency
    for time-sensitive applications.  Because DTLS only uses
    retransmission for handshake and not dataflow, the effect on
@@ -1048,7 +1117,7 @@ flight immediately, shortcutting the retransmission timer.</t>
    fragment_length.  However, in order to remove sensitivity to
    handshake message fragmentation, the CertificateVerify and the Finished messages MUST be computed as
    if each handshake message had been sent as a single fragment following 
-   the algorithm described in Section 4.4.1 and Section 4.4.3 of <xref target="TLS13"/>, respectively.</t>
+   the algorithm described in Section 4.4.1 and Section 4.4.3 of <xref target="I-D.ietf-tls-tls13"/>, respectively.</t>
 
 </section>
 <section anchor="alert-messages" title="Alert Messages">
@@ -1089,7 +1158,7 @@ in order to process an incoming message. With the possibility of message
  loss and re-order an identifier is needed to determine which cipher state 
 has been used to protect the record payload. The epoch value fulfills this 
 role in DTLS. In addition to the key derivation steps described in 
-Section 7 of <xref target="TLS13"/> triggered by the states during the handshake
+Section 7 of <xref target="I-D.ietf-tls-tls13"/> triggered by the states during the handshake
 a sender may want to rekey at any time during 
 the lifetime of the connection and has to have a way to indicate that it is 
 updating its sending cryptographic keys.</t>
@@ -1112,11 +1181,11 @@ handshake_traffic_secret, namely the EncryptedExtensions to the Finished message
 
 <t>Using these reserved epoch values a receiver knows what cipher state has been used to encrypt and integrity protect a message. Implementations that receive a payload with an epoch value for which no corresponding cipher state can be determined MUST generate a fatal “unexpected_message” alert. For example, client incorrectly uses epoch value 5 when sending application data in a 0-RTT exchange with the first message. A server will not be able to compute the appropriate keys and will therefore have to respond with a fatal alert.</t>
 
-<t>Increasing the epoch value by a sender (starting with value 5 upwards) corresponds semantically to rekeying using the KeyUpdate message in TLS 1.3. Instead of utilizing an dedicated message in DTLS 1.3 the sender uses an increase in the epoch value to signal rekeying. Hence, a sender that decides to increment the epoch value (with value starting at 5) MUST send all its traffic using the next generation of keys, computed as described in Section 7.2 of <xref target="TLS13"/>. Upon receiving a payload with such a new epoch value, the receiver MUST update their receiving keys and if they have not already updated their sending state up to or past the then current receiving generation MUST send messages with the new epoch value prior to sending any other messages. For epoch values lower than 5 the key schedule described in Section 7.1 of <xref target="TLS13"/> is applicable.</t>
+<t>Increasing the epoch value by a sender (starting with value 5 upwards) corresponds semantically to rekeying using the KeyUpdate message in TLS 1.3. Instead of utilizing an dedicated message in DTLS 1.3 the sender uses an increase in the epoch value to signal rekeying. Hence, a sender that decides to increment the epoch value (with value starting at 5) MUST send all its traffic using the next generation of keys, computed as described in Section 7.2 of <xref target="I-D.ietf-tls-tls13"/>. Upon receiving a payload with such a new epoch value, the receiver MUST update their receiving keys and if they have not already updated their sending state up to or past the then current receiving generation MUST send messages with the new epoch value prior to sending any other messages. For epoch values lower than 5 the key schedule described in Section 7.1 of <xref target="I-D.ietf-tls-tls13"/> is applicable.</t>
 
 <t>Note that epoch values do not wrap. If a DTLS implementation would need to wrap the epoch value, it MUST terminate the connection.</t>
 
-<t>The traffic key calculation is described in Section 7.3 of <xref target="TLS13"/>.</t>
+<t>The traffic key calculation is described in Section 7.3 of <xref target="I-D.ietf-tls-tls13"/>.</t>
 
 </section>
 </section>
@@ -1129,7 +1198,7 @@ are treated as transparent data to the record layer.</t>
 </section>
 <section anchor="security-considerations" title="Security Considerations">
 
-<t>Security issues are discussed primarily in <xref target="TLS13"/>.</t>
+<t>Security issues are discussed primarily in <xref target="I-D.ietf-tls-tls13"/>.</t>
 
 <t>The primary additional security consideration raised by DTLS is that
    of denial of service.  DTLS includes a cookie exchange designed to
@@ -1165,22 +1234,20 @@ are treated as transparent data to the record layer.</t>
 <section anchor="open-issues" title="Open Issues">
 
 <t><list style="symbols">
-  <t>Description for the retransmission behavior regarding 
-Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is needed.</t>
+  <t>Description for the retransmission behavior regarding Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is needed.</t>
   <t>Define message sequence number pattern for the use with the handshake messages.</t>
-  <t>Handling of the handshake sequence numbers (i.e., Handshake.message_seq) when 0-RTT is rejected. Proposal: keep pushing the numbers forward</t>
+  <t>Handling of the handshake sequence numbers (i.e., Handshake.message_seq) when 0-RTT is rejected. 
+Proposal: keep pushing the numbers forward</t>
   <t>Explore whether the record layer header can be simplified (to 2 octets for epoch &amp; sequence number)</t>
   <t>Do we need the HelloRequest message in DTLS 1.3?</t>
-  <t>Use ACK message to simplify the retransmission state machine.</t>
   <t>Document the hash exporting hack that makes HRR stateless.</t>
   <t>Update text in the appendix regarding backwards compatibility.</t>
-  <t>Clean up references.</t>
 </list></t>
 
 </section>
 <section anchor="iana-considerations" title="IANA Considerations">
 
-<t>[[Editor’s Note: Add extension for ACK message]]</t>
+<t>IANA is requested to allocate a new value in the TLS HandshakeType Registry for the ACK message defined in <xref target="ack-msg"/>.</t>
 
 </section>
 
@@ -1209,232 +1276,16 @@ Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is ne
 
 
 
-<reference  anchor='RFC2434' target='http://www.rfc-editor.org/info/rfc2434'>
+<reference  anchor='RFC1191' target='http://www.rfc-editor.org/info/rfc1191'>
 <front>
-<title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
-<author initials='T.' surname='Narten' fullname='T. Narten'><organization /></author>
-<author initials='H.' surname='Alvestrand' fullname='H. Alvestrand'><organization /></author>
-<date year='1998' month='October' />
-<abstract><t>This document discusses issues that should be considered in formulating a policy for assigning values to a name space and provides guidelines to document authors on the specific text that must be included in documents that place demands on the IANA.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t></abstract>
+<title>Path MTU discovery</title>
+<author initials='J.C.' surname='Mogul' fullname='J.C. Mogul'><organization /></author>
+<author initials='S.E.' surname='Deering' fullname='S.E. Deering'><organization /></author>
+<date year='1990' month='November' />
+<abstract><t>This memo describes a technique for dynamically discovering the maximum transmission unit (MTU) of an arbitrary internet path.  It specifies a small change to the way routers generate one type of ICMP message.  For a path that passes through a router that has not been so changed, this technique might not discover the correct Path MTU, but it will always choose a Path MTU as accurate as, and in many cases more accurate than, the Path MTU that would be chosen by current practice.  [STANDARDS-TRACK]</t></abstract>
 </front>
-<seriesInfo name='RFC' value='2434'/>
-<seriesInfo name='DOI' value='10.17487/RFC2434'/>
-</reference>
-
-
-
-<reference  anchor='RFC3447' target='http://www.rfc-editor.org/info/rfc3447'>
-<front>
-<title>Public-Key Cryptography Standards (PKCS) #1: RSA Cryptography Specifications Version 2.1</title>
-<author initials='J.' surname='Jonsson' fullname='J. Jonsson'><organization /></author>
-<author initials='B.' surname='Kaliski' fullname='B. Kaliski'><organization /></author>
-<date year='2003' month='February' />
-<abstract><t>This memo represents a republication of PKCS #1 v2.1 from RSA Laboratories' Public-Key Cryptography Standards (PKCS) series, and change control is retained within the PKCS process.  The body of this document is taken directly from the PKCS #1 v2.1 document, with certain corrections made during the publication process.  This memo provides information for the Internet community.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='3447'/>
-<seriesInfo name='DOI' value='10.17487/RFC3447'/>
-</reference>
-
-
-
-<reference  anchor='RFC5280' target='http://www.rfc-editor.org/info/rfc5280'>
-<front>
-<title>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</title>
-<author initials='D.' surname='Cooper' fullname='D. Cooper'><organization /></author>
-<author initials='S.' surname='Santesson' fullname='S. Santesson'><organization /></author>
-<author initials='S.' surname='Farrell' fullname='S. Farrell'><organization /></author>
-<author initials='S.' surname='Boeyen' fullname='S. Boeyen'><organization /></author>
-<author initials='R.' surname='Housley' fullname='R. Housley'><organization /></author>
-<author initials='W.' surname='Polk' fullname='W. Polk'><organization /></author>
-<date year='2008' month='May' />
-<abstract><t>This memo profiles the X.509 v3 certificate and X.509 v2 certificate revocation list (CRL) for use in the Internet.  An overview of this approach and model is provided as an introduction.  The X.509 v3 certificate format is described in detail, with additional information regarding the format and semantics of Internet name forms.  Standard certificate extensions are described and two Internet-specific extensions are defined.  A set of required certificate extensions is specified.  The X.509 v2 CRL format is described in detail along with standard and Internet-specific extensions.  An algorithm for X.509 certification path validation is described.  An ASN.1 module and examples are provided in the appendices.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5280'/>
-<seriesInfo name='DOI' value='10.17487/RFC5280'/>
-</reference>
-
-
-
-<reference  anchor='RFC5288' target='http://www.rfc-editor.org/info/rfc5288'>
-<front>
-<title>AES Galois Counter Mode (GCM) Cipher Suites for TLS</title>
-<author initials='J.' surname='Salowey' fullname='J. Salowey'><organization /></author>
-<author initials='A.' surname='Choudhury' fullname='A. Choudhury'><organization /></author>
-<author initials='D.' surname='McGrew' fullname='D. McGrew'><organization /></author>
-<date year='2008' month='August' />
-<abstract><t>This memo describes the use of the Advanced Encryption Standard (AES) in Galois/Counter Mode (GCM) as a Transport Layer Security (TLS) authenticated encryption operation.  GCM provides both confidentiality and data origin authentication, can be efficiently implemented in hardware for speeds of 10 gigabits per second and above, and is also well-suited to software implementations.  This memo defines TLS cipher suites that use AES-GCM with RSA, DSA, and Diffie-Hellman-based key exchange mechanisms.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5288'/>
-<seriesInfo name='DOI' value='10.17487/RFC5288'/>
-</reference>
-
-
-
-<reference  anchor='RFC5289' target='http://www.rfc-editor.org/info/rfc5289'>
-<front>
-<title>TLS Elliptic Curve Cipher Suites with SHA-256/384 and AES Galois Counter Mode (GCM)</title>
-<author initials='E.' surname='Rescorla' fullname='E. Rescorla'><organization /></author>
-<date year='2008' month='August' />
-<abstract><t>RFC 4492 describes elliptic curve cipher suites for Transport Layer Security (TLS).  However, all those cipher suites use HMAC-SHA-1 as their Message Authentication Code (MAC) algorithm.  This document describes sixteen new cipher suites for TLS that specify stronger MAC algorithms.  Eight use Hashed Message Authentication Code (HMAC) with SHA-256 or SHA-384, and eight use AES in Galois Counter Mode (GCM).   This memo provides information for the Internet community.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5289'/>
-<seriesInfo name='DOI' value='10.17487/RFC5289'/>
-</reference>
-
-
-
-<reference  anchor='RFC5487' target='http://www.rfc-editor.org/info/rfc5487'>
-<front>
-<title>Pre-Shared Key Cipher Suites for TLS with SHA-256/384 and AES Galois Counter Mode</title>
-<author initials='M.' surname='Badra' fullname='M. Badra'><organization /></author>
-<date year='2009' month='March' />
-<abstract><t>RFC 4279 and RFC 4785 describe pre-shared key cipher suites for Transport Layer Security (TLS).  However, all those cipher suites use SHA-1 in their Message Authentication Code (MAC) algorithm.  This document describes a set of pre-shared key cipher suites for TLS that uses stronger digest algorithms (i.e., SHA-256 or SHA-384) and another set that uses the Advanced Encryption Standard (AES) in Galois Counter Mode (GCM).  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5487'/>
-<seriesInfo name='DOI' value='10.17487/RFC5487'/>
-</reference>
-
-
-
-<reference  anchor='RFC5869' target='http://www.rfc-editor.org/info/rfc5869'>
-<front>
-<title>HMAC-based Extract-and-Expand Key Derivation Function (HKDF)</title>
-<author initials='H.' surname='Krawczyk' fullname='H. Krawczyk'><organization /></author>
-<author initials='P.' surname='Eronen' fullname='P. Eronen'><organization /></author>
-<date year='2010' month='May' />
-<abstract><t>This document specifies a simple Hashed Message Authentication Code (HMAC)-based key derivation function (HKDF), which can be used as a building block in various protocols and applications.  The key derivation function (KDF) is intended to support a wide range of applications and requirements, and is conservative in its use of cryptographic hash functions.  This document is not an Internet  Standards Track specification; it is published for informational  purposes.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5869'/>
-<seriesInfo name='DOI' value='10.17487/RFC5869'/>
-</reference>
-
-
-
-<reference  anchor='RFC6066' target='http://www.rfc-editor.org/info/rfc6066'>
-<front>
-<title>Transport Layer Security (TLS) Extensions: Extension Definitions</title>
-<author initials='D.' surname='Eastlake 3rd' fullname='D. Eastlake 3rd'><organization /></author>
-<date year='2011' month='January' />
-<abstract><t>This document provides specifications for existing TLS extensions.  It is a companion document for RFC 5246, &quot;The Transport Layer Security (TLS) Protocol Version 1.2&quot;.  The extensions specified are server_name, max_fragment_length, client_certificate_url, trusted_ca_keys, truncated_hmac, and status_request.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='6066'/>
-<seriesInfo name='DOI' value='10.17487/RFC6066'/>
-</reference>
-
-
-
-<reference  anchor='RFC6655' target='http://www.rfc-editor.org/info/rfc6655'>
-<front>
-<title>AES-CCM Cipher Suites for Transport Layer Security (TLS)</title>
-<author initials='D.' surname='McGrew' fullname='D. McGrew'><organization /></author>
-<author initials='D.' surname='Bailey' fullname='D. Bailey'><organization /></author>
-<date year='2012' month='July' />
-<abstract><t>This memo describes the use of the Advanced Encryption Standard (AES) in the Counter with Cipher Block Chaining - Message Authentication Code (CBC-MAC) Mode (CCM) of operation within Transport Layer Security (TLS) and Datagram TLS (DTLS) to provide confidentiality and data origin authentication.  The AES-CCM algorithm is amenable to compact implementations, making it suitable for constrained environments.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='6655'/>
-<seriesInfo name='DOI' value='10.17487/RFC6655'/>
-</reference>
-
-
-
-<reference  anchor='RFC7748' target='http://www.rfc-editor.org/info/rfc7748'>
-<front>
-<title>Elliptic Curves for Security</title>
-<author initials='A.' surname='Langley' fullname='A. Langley'><organization /></author>
-<author initials='M.' surname='Hamburg' fullname='M. Hamburg'><organization /></author>
-<author initials='S.' surname='Turner' fullname='S. Turner'><organization /></author>
-<date year='2016' month='January' />
-<abstract><t>This memo specifies two elliptic curves over prime fields that offer a high level of practical security in cryptographic applications, including Transport Layer Security (TLS).  These curves are intended to operate at the ~128-bit and ~224-bit security level, respectively, and are generated deterministically based on a list of required properties.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7748'/>
-<seriesInfo name='DOI' value='10.17487/RFC7748'/>
-</reference>
-
-
-
-<reference anchor='I-D.mattsson-tls-ecdhe-psk-aead'>
-<front>
-<title>ECDHE_PSK with AES-GCM and AES-CCM Cipher Suites for Transport Layer Security (TLS)</title>
-
-<author initials='J' surname='Mattsson' fullname='John Mattsson'>
-    <organization />
-</author>
-
-<author initials='D' surname='Migault' fullname='Daniel Migault'>
-    <organization />
-</author>
-
-<date month='April' day='18' year='2016' />
-
-<abstract><t>This document defines several new cipher suites for the Transport Layer Security (TLS) protocol.  The cipher suites are all based on the Ephemeral Elliptic Curve Diffie-Hellman with Pre-Shared Key (ECDHE_PSK) key exchange together with the Authenticated Encryption with Associated Data (AEAD) algorithms AES-GCM and AES-CCM.  PSK provides light and efficient authentication, ECDHE provides perfect forward secrecy, and AES-GCM and AES-CCM provides encryption and integrity protection.</t></abstract>
-
-</front>
-
-<seriesInfo name='Internet-Draft' value='draft-mattsson-tls-ecdhe-psk-aead-05' />
-<format type='TXT'
-        target='http://www.ietf.org/internet-drafts/draft-mattsson-tls-ecdhe-psk-aead-05.txt' />
-</reference>
-
-
-
-<reference anchor='I-D.ietf-tls-chacha20-poly1305'>
-<front>
-<title>ChaCha20-Poly1305 Cipher Suites for Transport Layer Security (TLS)</title>
-
-<author initials='A' surname='Langley' fullname='Adam Langley'>
-    <organization />
-</author>
-
-<author initials='W' surname='Chang' fullname='Wan-Teh Chang'>
-    <organization />
-</author>
-
-<author initials='N' surname='Mavrogiannopoulos' fullname='Nikos Mavrogiannopoulos'>
-    <organization />
-</author>
-
-<author initials='J' surname='Strombergson' fullname='Joachim Strombergson'>
-    <organization />
-</author>
-
-<author initials='S' surname='Josefsson' fullname='Simon Josefsson'>
-    <organization />
-</author>
-
-<date month='December' day='16' year='2015' />
-
-<abstract><t>This document describes the use of the ChaCha stream cipher and Poly1305 authenticator in the Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS) protocols.</t></abstract>
-
-</front>
-
-<seriesInfo name='Internet-Draft' value='draft-ietf-tls-chacha20-poly1305-04' />
-<format type='TXT'
-        target='http://www.ietf.org/internet-drafts/draft-ietf-tls-chacha20-poly1305-04.txt' />
-</reference>
-
-
-
-<reference anchor='I-D.irtf-cfrg-eddsa'>
-<front>
-<title>Edwards-curve Digital Signature Algorithm (EdDSA)</title>
-
-<author initials='S' surname='Josefsson' fullname='Simon Josefsson'>
-    <organization />
-</author>
-
-<author initials='I' surname='Liusvaara' fullname='Ilari Liusvaara'>
-    <organization />
-</author>
-
-<date month='August' day='19' year='2016' />
-
-<abstract><t>The elliptic curve signature scheme Edwards-curve Digital Signature Algorithm (EdDSA) is described.  The algorithm is instantiated with recommended parameters for the edwards25519 and edwards448 curves. An example implementation and test vectors are provided.</t></abstract>
-
-</front>
-
-<seriesInfo name='Internet-Draft' value='draft-irtf-cfrg-eddsa-08' />
-<format type='TXT'
-        target='http://www.ietf.org/internet-drafts/draft-irtf-cfrg-eddsa-08.txt' />
+<seriesInfo name='RFC' value='1191'/>
+<seriesInfo name='DOI' value='10.17487/RFC1191'/>
 </reference>
 
 
@@ -1468,6 +1319,19 @@ Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is ne
 
 
 
+<reference  anchor='RFC0793' target='http://www.rfc-editor.org/info/rfc793'>
+<front>
+<title>Transmission Control Protocol</title>
+<author initials='J.' surname='Postel' fullname='J. Postel'><organization /></author>
+<date year='1981' month='September' />
+</front>
+<seriesInfo name='STD' value='7'/>
+<seriesInfo name='RFC' value='793'/>
+<seriesInfo name='DOI' value='10.17487/RFC0793'/>
+</reference>
+
+
+
 <reference  anchor='RFC6298' target='http://www.rfc-editor.org/info/rfc6298'>
 <front>
 <title>Computing TCP's Retransmission Timer</title>
@@ -1484,96 +1348,26 @@ Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is ne
 
 
 
-<reference  anchor='RFC1191' target='http://www.rfc-editor.org/info/rfc1191'>
+<reference anchor='I-D.ietf-tls-tls13'>
 <front>
-<title>Path MTU discovery</title>
-<author initials='J.C.' surname='Mogul' fullname='J.C. Mogul'><organization /></author>
-<author initials='S.E.' surname='Deering' fullname='S.E. Deering'><organization /></author>
-<date year='1990' month='November' />
-<abstract><t>This memo describes a technique for dynamically discovering the maximum transmission unit (MTU) of an arbitrary internet path.  It specifies a small change to the way routers generate one type of ICMP message.  For a path that passes through a router that has not been so changed, this technique might not discover the correct Path MTU, but it will always choose a Path MTU as accurate as, and in many cases more accurate than, the Path MTU that would be chosen by current practice.  [STANDARDS-TRACK]</t></abstract>
+<title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
+
+<author initials='E' surname='Rescorla' fullname='Eric Rescorla'>
+    <organization />
+</author>
+
+<date month='August' day='17' year='2016' />
+
+<abstract><t>This document specifies version 1.3 of the Transport Layer Security (TLS) protocol.  TLS allows client/server applications to communicate over the Internet in a way that is designed to prevent eavesdropping, tampering, and message forgery.</t></abstract>
+
 </front>
-<seriesInfo name='RFC' value='1191'/>
-<seriesInfo name='DOI' value='10.17487/RFC1191'/>
+
+<seriesInfo name='Internet-Draft' value='draft-ietf-tls-tls13-15' />
+<format type='TXT'
+        target='http://www.ietf.org/internet-drafts/draft-ietf-tls-tls13-15.txt' />
 </reference>
 
 
-
-<reference  anchor='RFC6347' target='http://www.rfc-editor.org/info/rfc6347'>
-<front>
-<title>Datagram Transport Layer Security Version 1.2</title>
-<author initials='E.' surname='Rescorla' fullname='E. Rescorla'><organization /></author>
-<author initials='N.' surname='Modadugu' fullname='N. Modadugu'><organization /></author>
-<date year='2012' month='January' />
-<abstract><t>This document specifies version 1.2 of the Datagram Transport Layer Security (DTLS) protocol.  The DTLS protocol provides communications privacy for datagram protocols.  The protocol allows client/server applications to communicate in a way that is designed to prevent eavesdropping, tampering, or message forgery.  The DTLS protocol is based on the Transport Layer Security (TLS) protocol and provides equivalent security guarantees.  Datagram semantics of the underlying transport are preserved by the DTLS protocol.  This document updates DTLS 1.0 to work with TLS version 1.2.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='6347'/>
-<seriesInfo name='DOI' value='10.17487/RFC6347'/>
-</reference>
-
-
-<reference anchor="TCP" >
-  <front>
-    <title>Transmission Control Protocol (TCP)</title>
-    <author initials="J." surname="Postel">
-      <organization></organization>
-    </author>
-    <date year="1981" month="September"/>
-  </front>
-  <seriesInfo name="IETF" value="RFC 793"/>
-</reference>
-<reference anchor="AES" >
-  <front>
-    <title>Specification for the Advanced Encryption Standard (AES)</title>
-    <author >
-      <organization>National Institute of Standards and Technology</organization>
-    </author>
-    <date year="2001" month="November" day="26"/>
-  </front>
-  <seriesInfo name="NIST" value="FIPS 197"/>
-</reference>
-<reference anchor="SHS" >
-  <front>
-    <title>Secure Hash Standard</title>
-    <author >
-      <organization>National Institute of Standards and Technology, U.S. Department of Commerce</organization>
-    </author>
-    <date year="2012" month="March"/>
-  </front>
-  <seriesInfo name="NIST" value="FIPS PUB 180-4"/>
-</reference>
-<reference anchor="X690" >
-  <front>
-    <title>Information technology - ASN.1 encoding Rules: Specification of Basic Encoding Rules (BER), Canonical Encoding Rules (CER) and Distinguished Encoding Rules (DER)</title>
-    <author >
-      <organization>ITU-T</organization>
-    </author>
-    <date year="2002"/>
-  </front>
-  <seriesInfo name="ISO/IEC" value="8825-1:2002"/>
-</reference>
-<reference anchor="X962" >
-  <front>
-    <title>Public Key Cryptography For The Financial Services Industry: The Elliptic Curve Digital Signature Algorithm (ECDSA)</title>
-    <author >
-      <organization>ANSI</organization>
-    </author>
-    <date year="1998"/>
-  </front>
-  <seriesInfo name="ANSI" value="X9.62"/>
-</reference>
-<reference anchor="DH" >
-  <front>
-    <title>New Directions in Cryptography</title>
-    <author initials="W." surname="Diffie">
-      <organization></organization>
-    </author>
-    <author initials="M." surname="Hellman">
-      <organization></organization>
-    </author>
-    <date year="1977" month="June"/>
-  </front>
-  <seriesInfo name="IEEE Transactions on Information Theory, V.IT-22 n.6" value=""/>
-</reference>
 
 
     </references>
@@ -1581,474 +1375,6 @@ Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is ne
     <references title='Informative References'>
 
 
-
-
-
-<reference  anchor='RFC0793' target='http://www.rfc-editor.org/info/rfc793'>
-<front>
-<title>Transmission Control Protocol</title>
-<author initials='J.' surname='Postel' fullname='J. Postel'><organization /></author>
-<date year='1981' month='September' />
-</front>
-<seriesInfo name='STD' value='7'/>
-<seriesInfo name='RFC' value='793'/>
-<seriesInfo name='DOI' value='10.17487/RFC0793'/>
-</reference>
-
-
-
-<reference  anchor='RFC1948' target='http://www.rfc-editor.org/info/rfc1948'>
-<front>
-<title>Defending Against Sequence Number Attacks</title>
-<author initials='S.' surname='Bellovin' fullname='S. Bellovin'><organization /></author>
-<date year='1996' month='May' />
-<abstract><t>IP spoofing attacks based on sequence number spoofing have become a serious threat on the Internet (CERT Advisory CA-95:01).  While ubiquitous crypgraphic authentication is the right answer, we propose a simple modification to TCP implementations that should be a very substantial block to the current wave of attacks.  This memo provides information for the Internet community.  This memo does not specify an Internet standard of any kind.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='1948'/>
-<seriesInfo name='DOI' value='10.17487/RFC1948'/>
-</reference>
-
-
-
-<reference  anchor='RFC4086' target='http://www.rfc-editor.org/info/rfc4086'>
-<front>
-<title>Randomness Requirements for Security</title>
-<author initials='D.' surname='Eastlake 3rd' fullname='D. Eastlake 3rd'><organization /></author>
-<author initials='J.' surname='Schiller' fullname='J. Schiller'><organization /></author>
-<author initials='S.' surname='Crocker' fullname='S. Crocker'><organization /></author>
-<date year='2005' month='June' />
-<abstract><t>Security systems are built on strong cryptographic algorithms that foil pattern analysis attempts.  However, the security of these systems is dependent on generating secret quantities for passwords, cryptographic keys, and similar quantities.  The use of pseudo-random processes to generate secret quantities can result in pseudo-security. A sophisticated attacker may find it easier to reproduce the environment that produced the secret quantities and to search the resulting small set of possibilities than to locate the quantities in the whole of the potential number space.</t><t>Choosing random quantities to foil a resourceful and motivated adversary is surprisingly difficult.  This document points out many pitfalls in using poor entropy sources or traditional pseudo-random number generation techniques for generating such quantities.  It recommends the use of truly random hardware techniques and shows that the existing hardware on many systems can be used for this purpose. It provides suggestions to ameliorate the problem when a hardware solution is not available, and it gives examples of how large such quantities need to be for some applications.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t></abstract>
-</front>
-<seriesInfo name='BCP' value='106'/>
-<seriesInfo name='RFC' value='4086'/>
-<seriesInfo name='DOI' value='10.17487/RFC4086'/>
-</reference>
-
-
-
-<reference  anchor='RFC4279' target='http://www.rfc-editor.org/info/rfc4279'>
-<front>
-<title>Pre-Shared Key Ciphersuites for Transport Layer Security (TLS)</title>
-<author initials='P.' surname='Eronen' fullname='P. Eronen' role='editor'><organization /></author>
-<author initials='H.' surname='Tschofenig' fullname='H. Tschofenig' role='editor'><organization /></author>
-<date year='2005' month='December' />
-<abstract><t>This document specifies three sets of new ciphersuites for the Transport Layer Security (TLS) protocol to support authentication based on pre-shared keys (PSKs).  These pre-shared keys are symmetric keys, shared in advance among the communicating parties.  The first set of ciphersuites uses only symmetric key operations for authentication. The second set uses a Diffie-Hellman exchange authenticated with a pre-shared key, and the third set combines public key authentication of the server with pre-shared key authentication of the client.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4279'/>
-<seriesInfo name='DOI' value='10.17487/RFC4279'/>
-</reference>
-
-
-
-<reference  anchor='RFC4302' target='http://www.rfc-editor.org/info/rfc4302'>
-<front>
-<title>IP Authentication Header</title>
-<author initials='S.' surname='Kent' fullname='S. Kent'><organization /></author>
-<date year='2005' month='December' />
-<abstract><t>This document describes an updated version of the IP Authentication Header (AH), which is designed to provide authentication services in IPv4 and IPv6.  This document obsoletes RFC 2402 (November 1998).  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4302'/>
-<seriesInfo name='DOI' value='10.17487/RFC4302'/>
-</reference>
-
-
-
-<reference  anchor='RFC4303' target='http://www.rfc-editor.org/info/rfc4303'>
-<front>
-<title>IP Encapsulating Security Payload (ESP)</title>
-<author initials='S.' surname='Kent' fullname='S. Kent'><organization /></author>
-<date year='2005' month='December' />
-<abstract><t>This document describes an updated version of the Encapsulating Security Payload (ESP) protocol, which is designed to provide a mix of security services in IPv4 and IPv6.  ESP is used to provide confidentiality, data origin authentication, connectionless integrity, an anti-replay service (a form of partial sequence integrity), and limited traffic flow confidentiality.  This document obsoletes RFC 2406 (November 1998).  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4303'/>
-<seriesInfo name='DOI' value='10.17487/RFC4303'/>
-</reference>
-
-
-
-<reference  anchor='RFC4346' target='http://www.rfc-editor.org/info/rfc4346'>
-<front>
-<title>The Transport Layer Security (TLS) Protocol Version 1.1</title>
-<author initials='T.' surname='Dierks' fullname='T. Dierks'><organization /></author>
-<author initials='E.' surname='Rescorla' fullname='E. Rescorla'><organization /></author>
-<date year='2006' month='April' />
-<abstract><t>This document specifies Version 1.1 of the Transport Layer Security (TLS) protocol.  The TLS protocol provides communications security over the Internet.  The protocol allows client/server applications to communicate in a way that is designed to prevent eavesdropping, tampering, or message forgery.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4346'/>
-<seriesInfo name='DOI' value='10.17487/RFC4346'/>
-</reference>
-
-
-
-<reference  anchor='RFC4366' target='http://www.rfc-editor.org/info/rfc4366'>
-<front>
-<title>Transport Layer Security (TLS) Extensions</title>
-<author initials='S.' surname='Blake-Wilson' fullname='S. Blake-Wilson'><organization /></author>
-<author initials='M.' surname='Nystrom' fullname='M. Nystrom'><organization /></author>
-<author initials='D.' surname='Hopwood' fullname='D. Hopwood'><organization /></author>
-<author initials='J.' surname='Mikkelsen' fullname='J. Mikkelsen'><organization /></author>
-<author initials='T.' surname='Wright' fullname='T. Wright'><organization /></author>
-<date year='2006' month='April' />
-<abstract><t>This document describes extensions that may be used to add functionality to Transport Layer Security (TLS).  It provides both generic extension mechanisms for the TLS handshake client and server hellos, and specific extensions using these generic mechanisms.</t><t>The extensions may be used by TLS clients and servers.  The extensions are backwards compatible: communication is possible between TLS clients that support the extensions and TLS servers that do not support the extensions, and vice versa.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4366'/>
-<seriesInfo name='DOI' value='10.17487/RFC4366'/>
-</reference>
-
-
-
-<reference  anchor='RFC4492' target='http://www.rfc-editor.org/info/rfc4492'>
-<front>
-<title>Elliptic Curve Cryptography (ECC) Cipher Suites for Transport Layer Security (TLS)</title>
-<author initials='S.' surname='Blake-Wilson' fullname='S. Blake-Wilson'><organization /></author>
-<author initials='N.' surname='Bolyard' fullname='N. Bolyard'><organization /></author>
-<author initials='V.' surname='Gupta' fullname='V. Gupta'><organization /></author>
-<author initials='C.' surname='Hawk' fullname='C. Hawk'><organization /></author>
-<author initials='B.' surname='Moeller' fullname='B. Moeller'><organization /></author>
-<date year='2006' month='May' />
-<abstract><t>This document describes new key exchange algorithms based on Elliptic Curve Cryptography (ECC) for the Transport Layer Security (TLS) protocol.  In particular, it specifies the use of Elliptic Curve Diffie-Hellman (ECDH) key agreement in a TLS handshake and the use of Elliptic Curve Digital Signature Algorithm (ECDSA) as a new authentication mechanism.  This memo provides information for the Internet community.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4492'/>
-<seriesInfo name='DOI' value='10.17487/RFC4492'/>
-</reference>
-
-
-
-<reference  anchor='RFC4506' target='http://www.rfc-editor.org/info/rfc4506'>
-<front>
-<title>XDR: External Data Representation Standard</title>
-<author initials='M.' surname='Eisler' fullname='M. Eisler' role='editor'><organization /></author>
-<date year='2006' month='May' />
-<abstract><t>This document describes the External Data Representation Standard (XDR) protocol as it is currently deployed and accepted.  This document obsoletes RFC 1832.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='STD' value='67'/>
-<seriesInfo name='RFC' value='4506'/>
-<seriesInfo name='DOI' value='10.17487/RFC4506'/>
-</reference>
-
-
-
-<reference  anchor='RFC4507' target='http://www.rfc-editor.org/info/rfc4507'>
-<front>
-<title>Transport Layer Security (TLS) Session Resumption without Server-Side State</title>
-<author initials='J.' surname='Salowey' fullname='J. Salowey'><organization /></author>
-<author initials='H.' surname='Zhou' fullname='H. Zhou'><organization /></author>
-<author initials='P.' surname='Eronen' fullname='P. Eronen'><organization /></author>
-<author initials='H.' surname='Tschofenig' fullname='H. Tschofenig'><organization /></author>
-<date year='2006' month='May' />
-<abstract><t>This document describes a mechanism that enables the Transport Layer Security (TLS) server to resume sessions and avoid keeping \%per-client session state.  The TLS server encapsulates the session state into a ticket and forwards it to the client.  The client can subsequently resume a session using the obtained ticket.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4507'/>
-<seriesInfo name='DOI' value='10.17487/RFC4507'/>
-</reference>
-
-
-
-<reference  anchor='RFC4681' target='http://www.rfc-editor.org/info/rfc4681'>
-<front>
-<title>TLS User Mapping Extension</title>
-<author initials='S.' surname='Santesson' fullname='S. Santesson'><organization /></author>
-<author initials='A.' surname='Medvinsky' fullname='A. Medvinsky'><organization /></author>
-<author initials='J.' surname='Ball' fullname='J. Ball'><organization /></author>
-<date year='2006' month='October' />
-<abstract><t>This document specifies a TLS extension that enables clients to send generic user mapping hints in a supplemental data handshake message defined in RFC 4680.  One such mapping hint is defined in an informative section, the UpnDomainHint, which may be used by a server to locate a user in a directory database.  Other mapping hints may be defined in other documents in the future.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='4681'/>
-<seriesInfo name='DOI' value='10.17487/RFC4681'/>
-</reference>
-
-
-
-<reference  anchor='RFC5054' target='http://www.rfc-editor.org/info/rfc5054'>
-<front>
-<title>Using the Secure Remote Password (SRP) Protocol for TLS Authentication</title>
-<author initials='D.' surname='Taylor' fullname='D. Taylor'><organization /></author>
-<author initials='T.' surname='Wu' fullname='T. Wu'><organization /></author>
-<author initials='N.' surname='Mavrogiannopoulos' fullname='N. Mavrogiannopoulos'><organization /></author>
-<author initials='T.' surname='Perrin' fullname='T. Perrin'><organization /></author>
-<date year='2007' month='November' />
-<abstract><t>This memo presents a technique for using the Secure Remote Password protocol as an authentication method for the Transport Layer Security protocol.  This memo provides information for the Internet community.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5054'/>
-<seriesInfo name='DOI' value='10.17487/RFC5054'/>
-</reference>
-
-
-
-<reference  anchor='RFC5077' target='http://www.rfc-editor.org/info/rfc5077'>
-<front>
-<title>Transport Layer Security (TLS) Session Resumption without Server-Side State</title>
-<author initials='J.' surname='Salowey' fullname='J. Salowey'><organization /></author>
-<author initials='H.' surname='Zhou' fullname='H. Zhou'><organization /></author>
-<author initials='P.' surname='Eronen' fullname='P. Eronen'><organization /></author>
-<author initials='H.' surname='Tschofenig' fullname='H. Tschofenig'><organization /></author>
-<date year='2008' month='January' />
-<abstract><t>This document describes a mechanism that enables the Transport Layer Security (TLS) server to resume sessions and avoid keeping per-client session state.  The TLS server encapsulates the session state into a ticket and forwards it to the client.  The client can subsequently resume a session using the obtained ticket.  This document obsoletes RFC 4507.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5077'/>
-<seriesInfo name='DOI' value='10.17487/RFC5077'/>
-</reference>
-
-
-
-<reference  anchor='RFC5081' target='http://www.rfc-editor.org/info/rfc5081'>
-<front>
-<title>Using OpenPGP Keys for Transport Layer Security (TLS) Authentication</title>
-<author initials='N.' surname='Mavrogiannopoulos' fullname='N. Mavrogiannopoulos'><organization /></author>
-<date year='2007' month='November' />
-<abstract><t>This memo proposes extensions to the Transport Layer Security (TLS) protocol to support the OpenPGP key format.  The extensions discussed here include a certificate type negotiation mechanism, and the required modifications to the TLS Handshake Protocol.  This memo defines an Experimental Protocol for the Internet community.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5081'/>
-<seriesInfo name='DOI' value='10.17487/RFC5081'/>
-</reference>
-
-
-
-<reference  anchor='RFC5116' target='http://www.rfc-editor.org/info/rfc5116'>
-<front>
-<title>An Interface and Algorithms for Authenticated Encryption</title>
-<author initials='D.' surname='McGrew' fullname='D. McGrew'><organization /></author>
-<date year='2008' month='January' />
-<abstract><t>This document defines algorithms for Authenticated Encryption with Associated Data (AEAD), and defines a uniform interface and a registry for such algorithms.  The interface and registry can be used as an application-independent set of cryptoalgorithm suites.  This approach provides advantages in efficiency and security, and promotes the reuse of crypto implementations.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5116'/>
-<seriesInfo name='DOI' value='10.17487/RFC5116'/>
-</reference>
-
-
-
-<reference  anchor='RFC5246' target='http://www.rfc-editor.org/info/rfc5246'>
-<front>
-<title>The Transport Layer Security (TLS) Protocol Version 1.2</title>
-<author initials='T.' surname='Dierks' fullname='T. Dierks'><organization /></author>
-<author initials='E.' surname='Rescorla' fullname='E. Rescorla'><organization /></author>
-<date year='2008' month='August' />
-<abstract><t>This document specifies Version 1.2 of the Transport Layer Security (TLS) protocol.  The TLS protocol provides communications security over the Internet.  The protocol allows client/server applications to communicate in a way that is designed to prevent eavesdropping, tampering, or message forgery.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5246'/>
-<seriesInfo name='DOI' value='10.17487/RFC5246'/>
-</reference>
-
-
-
-<reference  anchor='RFC5746' target='http://www.rfc-editor.org/info/rfc5746'>
-<front>
-<title>Transport Layer Security (TLS) Renegotiation Indication Extension</title>
-<author initials='E.' surname='Rescorla' fullname='E. Rescorla'><organization /></author>
-<author initials='M.' surname='Ray' fullname='M. Ray'><organization /></author>
-<author initials='S.' surname='Dispensa' fullname='S. Dispensa'><organization /></author>
-<author initials='N.' surname='Oskov' fullname='N. Oskov'><organization /></author>
-<date year='2010' month='February' />
-<abstract><t>Secure Socket Layer (SSL) and Transport Layer Security (TLS) renegotiation are vulnerable to an attack in which the attacker forms a TLS connection with the target server, injects content of his choice, and then splices in a new TLS connection from a client.  The server treats the client's initial TLS handshake as a renegotiation and thus believes that the initial data transmitted by the attacker is from the same entity as the subsequent client data.  This specification defines a TLS extension to cryptographically tie renegotiations to the TLS connections they are being performed over, thus preventing this attack.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5746'/>
-<seriesInfo name='DOI' value='10.17487/RFC5746'/>
-</reference>
-
-
-
-<reference  anchor='RFC5764' target='http://www.rfc-editor.org/info/rfc5764'>
-<front>
-<title>Datagram Transport Layer Security (DTLS) Extension to Establish Keys for the Secure Real-time Transport Protocol (SRTP)</title>
-<author initials='D.' surname='McGrew' fullname='D. McGrew'><organization /></author>
-<author initials='E.' surname='Rescorla' fullname='E. Rescorla'><organization /></author>
-<date year='2010' month='May' />
-<abstract><t>This document describes a Datagram Transport Layer Security (DTLS) extension to establish keys for Secure RTP (SRTP) and Secure RTP Control Protocol (SRTCP) flows.  DTLS keying happens on the media path, independent of any out-of-band signalling channel present. [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5764'/>
-<seriesInfo name='DOI' value='10.17487/RFC5764'/>
-</reference>
-
-
-
-<reference  anchor='RFC5878' target='http://www.rfc-editor.org/info/rfc5878'>
-<front>
-<title>Transport Layer Security (TLS) Authorization Extensions</title>
-<author initials='M.' surname='Brown' fullname='M. Brown'><organization /></author>
-<author initials='R.' surname='Housley' fullname='R. Housley'><organization /></author>
-<date year='2010' month='May' />
-<abstract><t>This document specifies authorization extensions to the Transport Layer Security (TLS) Handshake Protocol.  Extensions are carried in the client and server hello messages to confirm that both parties support the desired authorization data types.  Then, if supported by both the client and the server, authorization information, such as attribute certificates (ACs) or Security Assertion Markup Language (SAML)  assertions, is exchanged in the supplemental data handshake message. This document defines an Experimental Protocol for the Internet community.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5878'/>
-<seriesInfo name='DOI' value='10.17487/RFC5878'/>
-</reference>
-
-
-
-<reference  anchor='RFC5929' target='http://www.rfc-editor.org/info/rfc5929'>
-<front>
-<title>Channel Bindings for TLS</title>
-<author initials='J.' surname='Altman' fullname='J. Altman'><organization /></author>
-<author initials='N.' surname='Williams' fullname='N. Williams'><organization /></author>
-<author initials='L.' surname='Zhu' fullname='L. Zhu'><organization /></author>
-<date year='2010' month='July' />
-<abstract><t>This document defines three channel binding types for Transport Layer Security (TLS), tls-unique, tls-server-end-point, and tls-unique-for-telnet, in accordance with RFC 5056 (On Channel Binding).</t><t>Note that based on implementation experience, this document changes the original definition of 'tls-unique' channel binding type in the channel binding type IANA registry.  [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='5929'/>
-<seriesInfo name='DOI' value='10.17487/RFC5929'/>
-</reference>
-
-
-
-<reference  anchor='RFC6176' target='http://www.rfc-editor.org/info/rfc6176'>
-<front>
-<title>Prohibiting Secure Sockets Layer (SSL) Version 2.0</title>
-<author initials='S.' surname='Turner' fullname='S. Turner'><organization /></author>
-<author initials='T.' surname='Polk' fullname='T. Polk'><organization /></author>
-<date year='2011' month='March' />
-<abstract><t>This document requires that when Transport Layer Security (TLS) clients and servers establish connections, they never negotiate the use of  Secure Sockets Layer (SSL) version 2.0.  This document updates the  backward compatibility sections found in the Transport Layer Security (TLS). [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='6176'/>
-<seriesInfo name='DOI' value='10.17487/RFC6176'/>
-</reference>
-
-
-
-<reference  anchor='RFC6091' target='http://www.rfc-editor.org/info/rfc6091'>
-<front>
-<title>Using OpenPGP Keys for Transport Layer Security (TLS) Authentication</title>
-<author initials='N.' surname='Mavrogiannopoulos' fullname='N. Mavrogiannopoulos'><organization /></author>
-<author initials='D.' surname='Gillmor' fullname='D. Gillmor'><organization /></author>
-<date year='2011' month='February' />
-<abstract><t>This memo defines Transport Layer Security (TLS) extensions and associated semantics that allow clients and servers to negotiate the use of OpenPGP certificates for a TLS session, and specifies how to transport OpenPGP certificates via TLS.  It also defines the registry for non-X.509 certificate types.  This document is not an Internet  Standards Track specification; it is published for informational purposes.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='6091'/>
-<seriesInfo name='DOI' value='10.17487/RFC6091'/>
-</reference>
-
-
-
-<reference  anchor='RFC6520' target='http://www.rfc-editor.org/info/rfc6520'>
-<front>
-<title>Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS) Heartbeat Extension</title>
-<author initials='R.' surname='Seggelmann' fullname='R. Seggelmann'><organization /></author>
-<author initials='M.' surname='Tuexen' fullname='M. Tuexen'><organization /></author>
-<author initials='M.' surname='Williams' fullname='M. Williams'><organization /></author>
-<date year='2012' month='February' />
-<abstract><t>This document describes the Heartbeat Extension for the Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS) protocols.</t><t>The Heartbeat Extension provides a new protocol for TLS/DTLS allowing the usage of keep-alive functionality without performing a renegotiation and a basis for path MTU (PMTU) discovery for DTLS.   [STANDARDS-TRACK]</t></abstract>
-</front>
-<seriesInfo name='RFC' value='6520'/>
-<seriesInfo name='DOI' value='10.17487/RFC6520'/>
-</reference>
-
-
-
-<reference  anchor='RFC7301' target='http://www.rfc-editor.org/info/rfc7301'>
-<front>
-<title>Transport Layer Security (TLS) Application-Layer Protocol Negotiation Extension</title>
-<author initials='S.' surname='Friedl' fullname='S. Friedl'><organization /></author>
-<author initials='A.' surname='Popov' fullname='A. Popov'><organization /></author>
-<author initials='A.' surname='Langley' fullname='A. Langley'><organization /></author>
-<author initials='E.' surname='Stephan' fullname='E. Stephan'><organization /></author>
-<date year='2014' month='July' />
-<abstract><t>This document describes a Transport Layer Security (TLS) extension for application-layer protocol negotiation within the TLS handshake. For instances in which multiple application protocols are supported on the same TCP or UDP port, this extension allows the application layer to negotiate which protocol will be used within the TLS connection.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7301'/>
-<seriesInfo name='DOI' value='10.17487/RFC7301'/>
-</reference>
-
-
-
-<reference  anchor='RFC7230' target='http://www.rfc-editor.org/info/rfc7230'>
-<front>
-<title>Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing</title>
-<author initials='R.' surname='Fielding' fullname='R. Fielding' role='editor'><organization /></author>
-<author initials='J.' surname='Reschke' fullname='J. Reschke' role='editor'><organization /></author>
-<date year='2014' month='June' />
-<abstract><t>The Hypertext Transfer Protocol (HTTP) is a stateless application-level protocol for distributed, collaborative, hypertext information systems.  This document provides an overview of HTTP architecture and its associated terminology, defines the &quot;http&quot; and &quot;https&quot; Uniform Resource Identifier (URI) schemes, defines the HTTP/1.1 message syntax and parsing requirements, and describes related security concerns for implementations.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7230'/>
-<seriesInfo name='DOI' value='10.17487/RFC7230'/>
-</reference>
-
-
-
-<reference  anchor='RFC7250' target='http://www.rfc-editor.org/info/rfc7250'>
-<front>
-<title>Using Raw Public Keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)</title>
-<author initials='P.' surname='Wouters' fullname='P. Wouters' role='editor'><organization /></author>
-<author initials='H.' surname='Tschofenig' fullname='H. Tschofenig' role='editor'><organization /></author>
-<author initials='J.' surname='Gilmore' fullname='J. Gilmore'><organization /></author>
-<author initials='S.' surname='Weiler' fullname='S. Weiler'><organization /></author>
-<author initials='T.' surname='Kivinen' fullname='T. Kivinen'><organization /></author>
-<date year='2014' month='June' />
-<abstract><t>This document specifies a new certificate type and two TLS extensions for exchanging raw public keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS).  The new certificate type allows raw public keys to be used for authentication.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7250'/>
-<seriesInfo name='DOI' value='10.17487/RFC7250'/>
-</reference>
-
-
-
-<reference  anchor='RFC7366' target='http://www.rfc-editor.org/info/rfc7366'>
-<front>
-<title>Encrypt-then-MAC for Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)</title>
-<author initials='P.' surname='Gutmann' fullname='P. Gutmann'><organization /></author>
-<date year='2014' month='September' />
-<abstract><t>This document describes a means of negotiating the use of the encrypt-then-MAC security mechanism in place of the existing MAC-then-encrypt mechanism in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS).  The MAC-then-encrypt mechanism has been the subject of a number of security vulnerabilities over a period of many years.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7366'/>
-<seriesInfo name='DOI' value='10.17487/RFC7366'/>
-</reference>
-
-
-
-<reference  anchor='RFC7465' target='http://www.rfc-editor.org/info/rfc7465'>
-<front>
-<title>Prohibiting RC4 Cipher Suites</title>
-<author initials='A.' surname='Popov' fullname='A. Popov'><organization /></author>
-<date year='2015' month='February' />
-<abstract><t>This document requires that Transport Layer Security (TLS) clients and servers never negotiate the use of RC4 cipher suites when they establish connections.  This applies to all TLS versions.  This document updates RFCs 5246, 4346, and 2246.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7465'/>
-<seriesInfo name='DOI' value='10.17487/RFC7465'/>
-</reference>
-
-
-
-<reference  anchor='RFC7568' target='http://www.rfc-editor.org/info/rfc7568'>
-<front>
-<title>Deprecating Secure Sockets Layer Version 3.0</title>
-<author initials='R.' surname='Barnes' fullname='R. Barnes'><organization /></author>
-<author initials='M.' surname='Thomson' fullname='M. Thomson'><organization /></author>
-<author initials='A.' surname='Pironti' fullname='A. Pironti'><organization /></author>
-<author initials='A.' surname='Langley' fullname='A. Langley'><organization /></author>
-<date year='2015' month='June' />
-<abstract><t>The Secure Sockets Layer version 3.0 (SSLv3), as specified in RFC 6101, is not sufficiently secure.  This document requires that SSLv3 not be used.  The replacement versions, in particular, Transport Layer Security (TLS) 1.2 (RFC 5246), are considerably more secure and capable protocols.</t><t>This document updates the backward compatibility section of RFC 5246 and its predecessors to prohibit fallback to SSLv3.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7568'/>
-<seriesInfo name='DOI' value='10.17487/RFC7568'/>
-</reference>
-
-
-
-<reference  anchor='RFC7627' target='http://www.rfc-editor.org/info/rfc7627'>
-<front>
-<title>Transport Layer Security (TLS) Session Hash and Extended Master Secret Extension</title>
-<author initials='K.' surname='Bhargavan' fullname='K. Bhargavan' role='editor'><organization /></author>
-<author initials='A.' surname='Delignat-Lavaud' fullname='A. Delignat-Lavaud'><organization /></author>
-<author initials='A.' surname='Pironti' fullname='A. Pironti'><organization /></author>
-<author initials='A.' surname='Langley' fullname='A. Langley'><organization /></author>
-<author initials='M.' surname='Ray' fullname='M. Ray'><organization /></author>
-<date year='2015' month='September' />
-<abstract><t>The Transport Layer Security (TLS) master secret is not cryptographically bound to important session parameters such as the server certificate.  Consequently, it is possible for an active attacker to set up two sessions, one with a client and another with a server, such that the master secrets on the two sessions are the same.  Thereafter, any mechanism that relies on the master secret for authentication, including session resumption, becomes vulnerable to a man-in-the-middle attack, where the attacker can simply forward messages back and forth between the client and server.  This specification defines a TLS extension that contextually binds the master secret to a log of the full handshake that computes it, thus preventing such attacks.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7627'/>
-<seriesInfo name='DOI' value='10.17487/RFC7627'/>
-</reference>
-
-
-
-<reference  anchor='RFC7685' target='http://www.rfc-editor.org/info/rfc7685'>
-<front>
-<title>A Transport Layer Security (TLS) ClientHello Padding Extension</title>
-<author initials='A.' surname='Langley' fullname='A. Langley'><organization /></author>
-<date year='2015' month='October' />
-<abstract><t>This memo describes a Transport Layer Security (TLS) extension that can be used to pad ClientHello messages to a desired size.</t></abstract>
-</front>
-<seriesInfo name='RFC' value='7685'/>
-<seriesInfo name='DOI' value='10.17487/RFC7685'/>
-</reference>
 
 
 
@@ -2078,6 +1404,19 @@ Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is ne
 </front>
 <seriesInfo name='RFC' value='2522'/>
 <seriesInfo name='DOI' value='10.17487/RFC2522'/>
+</reference>
+
+
+
+<reference  anchor='RFC4303' target='http://www.rfc-editor.org/info/rfc4303'>
+<front>
+<title>IP Encapsulating Security Payload (ESP)</title>
+<author initials='S.' surname='Kent' fullname='S. Kent'><organization /></author>
+<date year='2005' month='December' />
+<abstract><t>This document describes an updated version of the Encapsulating Security Payload (ESP) protocol, which is designed to provide a mix of security services in IPv4 and IPv6.  ESP is used to provide confidentiality, data origin authentication, connectionless integrity, an anti-replay service (a form of partial sequence integrity), and limited traffic flow confidentiality.  This document obsoletes RFC 2406 (November 1998).  [STANDARDS-TRACK]</t></abstract>
+</front>
+<seriesInfo name='RFC' value='4303'/>
+<seriesInfo name='DOI' value='10.17487/RFC4303'/>
 </reference>
 
 
@@ -2126,198 +1465,6 @@ Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is ne
 
 
 
-<reference anchor='I-D.ietf-tls-negotiated-ff-dhe'>
-<front>
-<title>Negotiated Finite Field Diffie-Hellman Ephemeral Parameters for TLS</title>
-
-<author initials='D' surname='Gillmor' fullname='Daniel Kahn Gillmor'>
-    <organization />
-</author>
-
-<date month='June' day='1' year='2015' />
-
-<abstract><t>Traditional finite-field-based Diffie-Hellman (DH) key exchange during the TLS handshake suffers from a number of security, interoperability, and efficiency shortcomings.  These shortcomings arise from lack of clarity about which DH group parameters TLS servers should offer and clients should accept.  This document offers a solution to these shortcomings for compatible peers by using a section of the TLS "EC Named Curve Registry" to establish common finite-field DH parameters with known structure and a mechanism for peers to negotiate support for these groups.  This draft updates TLS versions 1.0 [RFC2246], 1.1 [RFC4346], and 1.2 [RFC5246], as well as the TLS ECC extensions [RFC4492].</t></abstract>
-
-</front>
-
-<seriesInfo name='Internet-Draft' value='draft-ietf-tls-negotiated-ff-dhe-10' />
-<format type='TXT'
-        target='http://www.ietf.org/internet-drafts/draft-ietf-tls-negotiated-ff-dhe-10.txt' />
-</reference>
-
-
-<reference anchor="DSS" >
-  <front>
-    <title>Digital Signature Standard, version 4</title>
-    <author >
-      <organization>National Institute of Standards and Technology, U.S. Department of Commerce</organization>
-    </author>
-    <date year="2013"/>
-  </front>
-  <seriesInfo name="NIST" value="FIPS PUB 186-4"/>
-</reference>
-<reference anchor="ECDSA" >
-  <front>
-    <title>Public Key Cryptography for the Financial Services Industry: The Elliptic Curve Digital Signature Algorithm (ECDSA)</title>
-    <author >
-      <organization>American National Standards Institute</organization>
-    </author>
-    <date year="2005" month="November"/>
-  </front>
-  <seriesInfo name="ANSI" value="ANS X9.62-2005"/>
-</reference>
-<reference anchor="FI06" target="https://www.ietf.org/mail-archive/web/openpgp/current/msg00999.html">
-  <front>
-    <title>Bleichenbacher's RSA signature forgery based on implementation error</title>
-    <author initials="H." surname="Finney" fullname="Hal Finney">
-      <organization></organization>
-    </author>
-    <date year="2006" month="August" day="27"/>
-  </front>
-</reference>
-<reference anchor="GCM" >
-  <front>
-    <title>Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC</title>
-    <author initials="M." surname="Dworkin">
-      <organization></organization>
-    </author>
-    <date year="2007" month="November"/>
-  </front>
-  <seriesInfo name="NIST" value="Special Publication 800-38D"/>
-</reference>
-<reference anchor="PKCS6" >
-  <front>
-    <title>PKCS #6: RSA Extended Certificate Syntax Standard, version 1.5</title>
-    <author >
-      <organization>RSA Laboratories</organization>
-    </author>
-    <date year="1993" month="November"/>
-  </front>
-</reference>
-<reference anchor="PKCS7" >
-  <front>
-    <title>PKCS #7: RSA Cryptographic Message Syntax Standard, version 1.5</title>
-    <author >
-      <organization>RSA Laboratories</organization>
-    </author>
-    <date year="1993" month="November"/>
-  </front>
-</reference>
-<reference anchor="RSA" >
-  <front>
-    <title>A Method for Obtaining Digital Signatures and Public-Key Cryptosystems</title>
-    <author initials="R." surname="Rivest">
-      <organization></organization>
-    </author>
-    <author initials="A." surname="Shamir">
-      <organization></organization>
-    </author>
-    <author initials="L.M." surname="Adleman">
-      <organization></organization>
-    </author>
-    <date year="1978" month="February"/>
-  </front>
-  <seriesInfo name="Communications of the ACM" value="v. 21, n. 2, pp. 120-126."/>
-</reference>
-<reference anchor="SSL2" >
-  <front>
-    <title>The SSL Protocol</title>
-    <author initials="K." surname="Hickman" fullname="Kipp Hickman">
-      <organization>Netscape Communications Corp.</organization>
-    </author>
-    <date year="1995" month="February" day="09"/>
-  </front>
-</reference>
-<reference anchor="SSL3" >
-  <front>
-    <title>The SSL 3.0 Protocol</title>
-    <author initials="A." surname="Freier">
-      <organization>Netscape Communications Corp.</organization>
-    </author>
-    <author initials="P." surname="Karlton">
-      <organization>Netscape Communications Corp.</organization>
-    </author>
-    <author initials="P." surname="Kocher">
-      <organization>Netscape Communications Corp.</organization>
-    </author>
-    <date year="1996" month="November" day="18"/>
-  </front>
-</reference>
-<reference anchor="TIMING" >
-  <front>
-    <title>Remote timing attacks are practical</title>
-    <author initials="D." surname="Boneh">
-      <organization></organization>
-    </author>
-    <author initials="D." surname="Brumley">
-      <organization></organization>
-    </author>
-    <date year="2003"/>
-  </front>
-  <seriesInfo name="USENIX" value="Security Symposium"/>
-</reference>
-<reference anchor="X501" >
-  <front>
-    <title>Information Technology - Open Systems Interconnection - The Directory: Models</title>
-    <author >
-      <organization></organization>
-    </author>
-    <date year="1993"/>
-  </front>
-  <seriesInfo name="ITU-T" value="X.501"/>
-</reference>
-<reference anchor="IEEE1363" >
-  <front>
-    <title>Standard Specifications for Public Key Cryptography</title>
-    <author >
-      <organization>IEEE</organization>
-    </author>
-    <date year="2000"/>
-  </front>
-  <seriesInfo name="IEEE 1363" value=""/>
-</reference>
-<reference anchor="PSK-FINISHED" target="https://www.ietf.org/mail-archive/web/tls/current/msg18215.html">
-  <front>
-    <title>Revision 10: possible attack if client authentication is allowed during PSK</title>
-    <author initials="C." surname="Cremers">
-      <organization></organization>
-    </author>
-    <author initials="M." surname="Horvat">
-      <organization></organization>
-    </author>
-    <author initials="T." surname="van der Merwe">
-      <organization></organization>
-    </author>
-    <author initials="S." surname="Scott">
-      <organization></organization>
-    </author>
-    <date year="2015"/>
-  </front>
-</reference>
-<reference anchor="SLOTH" >
-  <front>
-    <title>Transcript Collision Attacks: Breaking Authentication in TLS, IKE, and SSH</title>
-    <author initials="K." surname="Bhargavan">
-      <organization></organization>
-    </author>
-    <author initials="G." surname="Leurent">
-      <organization></organization>
-    </author>
-    <date year="2016"/>
-  </front>
-  <seriesInfo name="Network and Distributed System Security Symposium (NDSS 2016)" value=""/>
-</reference>
-<reference anchor="TLS13" >
-  <front>
-    <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
-    <author initials="E." surname="Rescorla">
-      <organization></organization>
-    </author>
-    <date year="2016" month="July" day="11"/>
-  </front>
-  <seriesInfo name="IETF" value="draft-ietf-tls-tls13-14"/>
-</reference>
-
 
     </references>
 
@@ -2333,6 +1480,7 @@ Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is ne
   <t>Use of epoch values instead of KeyUpdate message</t>
   <t>Use of cookie extension instead of cookie field in 
 ClientHello and HelloVerifyRequest messages</t>
+  <t>Added ACK message</t>
 </list></t>
 
 </section>
@@ -2363,6 +1511,12 @@ in prior versions of DTLS specifications.</t>
 * Ilari Liusvaara 
   Independent
   ilariliusvaara@welho.com
+]]></artwork></figure>
+
+<figure><artwork><![CDATA[
+* Martin Thomson
+  Mozilla
+  martin.thomson@gmail.com
 ]]></artwork></figure>
 
 </section>
