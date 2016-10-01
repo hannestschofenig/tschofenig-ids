@@ -276,6 +276,10 @@ recommended as a best current practice? This question also raised the question
 about the use of symmetric key cryptography since not all low end IoT devices
 are currently using asymmetric crypto.</t>
 
+  <t>Firmware update signing key requirements. Since devices have a rather long
+lifetime there has to be a way to change the signing key during the lifetime of
+the device.</t>
+
   <t>Should a firmware update mechanism support multiple signatures of firmware
 images? Is a device expected to verify the different types of signatures
 to verify the different sources or is this rather a service provided by some
@@ -290,6 +294,19 @@ signs the software it creates but then the software is again signed by the
 enterprise that approves the distribution within the company. 
 Other examples include regulatory
 signatures. Medical device SW may be signed as approved by a regulator.</t>
+
+  <t>There is also a need for secure storage.  This includes at least the need
+to protect the integrity of the public key of the update service on the
+device (if signature based DAO is in use). Symmetric schemes clearly need
+even more secure storage (with confidentiality as well as data integrity).
+</t>
+
+  <t>There was also a discussion about the need to
+allow the update infrastructure-side to authenticate the IoT device before
+distributing an update and questions about the identifier used for such an
+authentication action was rasied. The idea to re-use MAC addresses was raised
+and lead to concerns about the significant privacy implications of such
+identifier re-use.</t>
 
 <t>Are applications from a range of sources allowed to run on a device? Or only
 those from the OEM?  If the device is a “closed” device that only supports/runs
@@ -307,8 +324,7 @@ if some advanced services are unavailable for a short time.
 Whether an update can be done
 without rebooting the device (hitless update) depends on the software being
 installed, on the OS architecture, and potentially even on the hardware
-architecture. Is this an issue of larger A-class devices or should this
-functionality also be supported by M-class devices?
+architecture. 
 </t>
 
 <t>
@@ -327,21 +343,25 @@ other cases, it is acceptable if devices much more slowly converge to the
 current release level.
 </t>
 
-<t>SF GOT HERE</t>
-
-  <t>Requirement for minimizing user interaction. Do not disrupt other activity
+  <t>Updates must minimize user interaction and not disrupt other activity
 (e.g., car should not distract the driver).</t>
 
-  <t>Firmware update signing key requirements. Since devices have a rather long
-lifetime there has to be a way to change the signing key during the lifetime of
-the device.</t>
+<!-- 
+SF: I don't recall this being presented? And I'm not even sure
+what'd be needed from the net that could interfere with the
+production line?
 
-  <t>Requirements during manufacturing. During the manufacturing process there
-is no desire to depend on Internet connectivity to stall the factory. In one
+  <t>During the manufacturing process it is preferable to 
+not depend on Internet connectivity that could stall the factory in failure
+cases. In one
 presented solution HTTP with the caching capabilities was used in the factory
-to avoid creating such a dependency. In addition to the Internet connectivity
-requirement there is also the security requirement; it should not be possible
-for a factory worker to steal secrets during the manufacturing process. There
+to avoid creating such a dependency. </t>
+-->
+
+<t>It ought not be possible
+for a factory worker to compromise the update process (e.g. copy signing keys,
+install new public keys/trust anchors) during the 
+manufacturing process. There
 are typically two factories involved, first the factory that produces
 microcontrollers and other components. The second factory produces the complete
 product, such as a fridge. This fridge contains many of the components
@@ -355,87 +375,162 @@ process.</t>
 How is the compromise detected?</t>
 
   <t>Time synchronization was seen as a chicken-and-egg problem since relying
-synchronized clocks is difficult for many IoT-based deployments. Participants
+on synchronized clocks is difficult for some deployments. Participants
 argued that there is rarely a checking of the expiry of certificates and that
 certification revocation checking is also rarely done.</t>
 
   <t>How do devices learn about a firmware update? Push or Pull? What should be
 required functionality for a firmware update protocol?</t>
 
-  <t>We need to find out whether the software update was successful. Breaking
-the device is sometimes hard to determine. In one discussed solution the
-bootloader analyses the performance of the running image to determine which
-image to run (rather than just verifying the integrity of the received image).
-One of the key criteria is that the  updated system is able to make a
-connection to the device management/software update infrastructure. As long as
-it is able to talk to the cloud it can receive another update. As alternative
-perspective the argument was made that one needs to have a way to update the
-system without have the full system running.</t>
-
-  <t>Authentication and integrity protection of the firmware distribution must
-be supported, at a minimum. The requirement for authentication primarily
-referred to an IoT device receiving a firmware update to authenticate the
-source of that firmware image. There was also a discussion about the need to
-allow the server-/infrastructure-side to authenticate the IoT device before
-distributing an update and questions about the identifier used for such an
-authentication action was rasied. The idea to re-use MAC addresses was raised
-and lead to concerns about the possible privacy implications.</t>
+  <t>There is a need to find out whether a software update was successful.  In
+one discussed solution the bootloader analyses the performance of the running
+image to determine which image to run (rather than just verifying the integrity
+of the received image).  One of the key criteria is that the  updated system is
+able to make a connection to the device management/software update
+infrastructure. As long as it is able to talk to the update infrastructure it
+can receive another update. As alternative perspective the argument was made
+that one needs to have a way to update the system without have the full system
+running.</t>
 
   <t>Gateway requirements. In some deployments gateways terminate the IP-based
-protocol communication and use non-IP to communicate with other
-microcontrollers internally within a systems, such as within a car. The gateway
-is the end point of the IP communication. The group itself had a mixed feelings
-about the use of gateways and the use of IP communication to every
-microcontrollers. Participants argued that there is a lack of awareness of IPv6
-header compression (with the 6lowpan standards) and how beneficial the use of
-IPv6 in those environments is to lower the complexity of the overall
-system.</t>
+protocol communication and use non-IP mechanisms to communicate with other
+micro-controllers, for example, within a car. The gateway
+in such a system is the end point of the IP communication. The group had mixed feelings
+about the use of gateways vs the use of IP communication to every
+micro-controller. Participants argued that there is a lack of awareness of IPv6
+header compression (with the 6lowpan standards) and of the possible benefits of
+IPv6 in those environments in terms of lowering the complexity of the overall
+system. </t>
 
-  <t>There is also a need for secure storage.  This includes at least the need
-to protect the integrity of the public key of the update service on the
-device.</t>
+  <t>The amount of energy consumed due to sofware update needs to be
+minimized. For example, awakening a sleepy device regularly only to 
+check for new software would seem wasteful if the device cannot feasibly
+be exploited whilst asleep. Howwever, the trade-off is that once the
+device awakens with old software, there may be a window  
+of vulnerability, if some relevant exploit has been discovered.</t>
+
+<t>The amount of storage required for update ought be minimized and can 
+sometimes be significant. However, there are also benefits to schemes
+that store two or three different software images for robustness, e.g.,
+if one has space for separate current, last-known-good and being-updated 
+images then devices can better survice the buggy occasional updates that are
+also inevitable.</t>
 
 </list></t>
 
-<t>Which of these are nice to have? Which are required?
-Not all of these are required to achieve improvement. What are most important?</t>
+<t>Which of these are nice to have? Which are required?  Not all of these are
+required to achieve improvement. What are most important?</t>
 
-<t>Among the participants there was consensus that supporting signatures (for integrity and authentication) of the firmware image itself and the need for partial updates was seen as important.</t>
+<t>Among the participants there was consensus that supporting signatures (for
+integrity and authentication) of the firmware image itself and the need for
+partial updates was seen as important.</t>
 
-<t>There were, however, also concerns regarding the performance implications since certain device categories may not utilize public key cryptography at all and hence only a symmetric key approach seems viable. This aspect raised concerns and trigger a discussions around the use of device management infrastructure, which similar to Kerberos, manages keys and distributes them to the appropriate parties. As such, in this set-up there is a unique key share with the key distribution center but for use with specific services (such as a software update service) a fresh and unique secret would be distributed.</t>
+<t>There were, however, also concerns regarding the performance implications
+since certain device categories may not utilize public key cryptography at all
+and hence only a symmetric key approach seems viable. This aspect raised
+concerns and trigger a discussions around the use of device management
+infrastructure, similar to Kerberos, that manages keys and distributes them to
+the appropriate parties. As such, in this set-up there could be a unique key shared
+with the key distribution center but for use with specific services (such as a
+software update service) a fresh and unique secret would be distributed.</t>
 
-<t>In addition to the requirements for the end devices there are also infrastructure-related requirements. The infrastructure may consist of servers in the local network and/or various servers deployed on the Internet. It may also consist of some application layer gateways.</t>
+<t>In addition to the requirements for the end devices there are also
+infrastructure-related requirements. The infrastructure may consist of servers
+in the local network and/or various servers deployed on the Internet. It may
+also consist of some application layer gateways. The potential benefits of
+having such a local server might include:</t>
 
 <t><list style="symbols">
-  <t>Local server acts for neighbouring nodes. For example, in a vehicle one dedicated entity can process all firmware updates and redistributes them to interconnected microcontrollers.</t>
-  <t>Infrastructure may perform some digital signature checks on behalf of the devices (e.g., certificate revocation checking)</t>
-  <t>Use multicast to transmit same update to many similar devices</t>
-  <t>Hide complexity associated with NAT and Firewalls from the device</t>
-  <t>Since many IoT devices will not be (directly) connected to the internet, but only through a gateway there is the need to develop a software / firmware update mechanism that works in such environments where no end-to-end Internet connectivity exists and where connectivity may be intermittent.</t>
+
+  <t>The local server acting for neighbouring nodes. For example, in a vehicle one
+micro-controller can process all firmware updates and redistribute the
+relevant parts of those to
+interconnected micro-controllers.</t>
+
+  <t>Local infrastructure could perform some digital signature checks on behalf of the
+devices, e.g., certificate revocation checking.</t>
+
+  <t>Local multicast can enable transmission of the same update to many devices</t>
+
+  <t>Local servers can hide complexity associated with NAT and Firewalls from the device</t>
+
 </list></t>
 
-<t>A firmware update mechanism may demand the ability to identify devices. Different design approaches are possible.</t>
+  <t>Another point related to local infrastructure is that since many IoT devices will not be (directly) connected to the Internet,
+but only through a gateway, there may in any case be a need to develop a software / firmware
+update mechanism that works in environments where no end-to-end Internet
+connectivity exists.</t>
+
+<t>Some current firmware update schemes need to identify devices.
+Different design approaches are possible.</t>
 
 <t><list style="symbols">
-  <t>In an extreme form in one case the decision about updating a device is made by the infrastructure based on the unique device identification. The operator of the firmware update infrastructure knows about the hardware and software requirements for the IoT devices, knows about the policy for updating the device, etc. The device itself is provisioned with credentials so that it can verify a firmware update coming from an authorized device.</t>
-  <t>In another extreme the device has knowledge about the software and hardware configuration and possible dependencies. It consults software repositories to obtain those software packages that are most appropriate. Verifying the authenticity of the software packages/firmware images will still be required.</t>
+
+  <t>In an extreme form in one case the decision about updating a device is
+made by the infrastructure based on the unique device identification. The
+operator of the firmware update infrastructure knows about the hardware and
+software requirements for the IoT devices, knows about the policy for updating
+the device, etc. The device itself is provisioned with credentials so that it
+can verify a firmware update coming from an authorized device.</t>
+
+  <t>In another extreme the device has knowledge about the software and
+hardware configuration and possible dependencies. It consults software
+repositories to obtain those software packages that are most appropriate.
+Verifying the authenticity of the software packages/firmware images will still
+be required.</t>
+
 </list></t>
 
-<t>Hence, in some deployed software update mechanisms there is no desire for the device to be identified beyond the need to exchange information about most recent software versions. For other devices, it is important to identify the device itself in order to provide the appropriate firmware image/software packages.</t>
+<t>Hence, in some deployed software update mechanisms there is no desire for
+the device to be identified beyond the need to exchange information about most
+recent software versions. For other devices, it is seen as important to identify the
+device itself in order to provide the appropriate firmware image/software
+packages.</t>
 
-<t>Related to device identification various privacy concerns arise, such as the need to determine what information is provided to whom and what this information is used for. For a certain class of IoT devices where there is a close relationship to a user the privacy concerns may be higher than for devices where such a relationship does not exist (e.g., a sensor measuring concrete). The software / firmware update mechanism should, however, not make the privacy situation of IoT devices worse. The proposal from the group was to introduce a minimal requirement of not sending any new identifiers over an unencrypted channel as part of SW/FW update protocol.</t>
+<t>Related to device identification various privacy concerns arise, such as the
+need to determine what information is provided to whom and the uses to
+which this
+information is put. For a certain class of IoT devices where there is a
+close relationship to a user the privacy concerns may be higher than for
+devices where such a relationship does not exist (e.g., a sensor measuring
+concrete). The software / firmware update mechanism should, however, not make
+the privacy situation of IoT devices worse. The proposal from the group was to
+introduce a minimal requirement of not sending any new identifiers over an
+unencrypted channel as part of an update protocol. 
+</t>
+
+<t>Software update will however provide yet another venue in which the  
+tension between those advocating better privacy and those
+seeking to monetize information will play out. It is in the nature of
+software update that it requires devices to sometimes "call home" and
+such interactions provide fertile ground for monetization. 
+</t>
 
 </section>
+
+<!-- 
+SF: Not clear to me what this section adds. I think it's all 
+repetetive other than the energy and storage points (which I've now 
+added above.
+
 <section anchor="performance" title="Performance">
 
 <t><list style="symbols">
+
   <t>Not just sending updates to each device individually</t>
-  <t>Differential updates, examples are bsdiff <xref target="bsdiff"/> and courgette <xref target="courgette"/></t>
+
+  <t>Differential updates, examples are bsdiff <xref target="bsdiff"/> and
+courgette <xref target="courgette"/></t>
+
   <t>firmware update consumes a lot of energy</t>
+
   <t>requires sufficient amount of flash for storing a backup image</t>
+
 </list></t>
 
+
 </section>
+-->
 <section anchor="authz" title="Authorizing a Software / Firmware Update">
 
 <t><list style="symbols">
@@ -542,6 +637,10 @@ include knowledge that software installed is up-to-date.</t>
 </section>
 <section anchor="appendix-b-accepted-position-papers" title="Appendix B: Accepted Position Papers">
 
+<t>The list of accepted position papers is below. Links to these,
+and to the workshop agenda and raw minutes are accessible at:
+<eref target="https://down.dsg.cs.tcd.ie/iotsu/"/>.</t>
+
 <t><list style="symbols">
   <t>R. Housley, ‘Position Paper for Internet of Things Software Update Workshop (IoTSU)’</t>
   <t>D. Thomas and A. Beresford, ‘Incentivising software updates’</t>
@@ -585,14 +684,15 @@ Constitute the Internet of Things’</t>
   <t>Ben Campbell, Oracle</t>
   <t>Carsten Bormann, TZI University Bremen</t>
   <t>Daniel Thomas, University of Cambridge</t>
-  <t>David Bosschaert</t>
-  <t>David Malone</t>
-  <t>David Plonka</t>
-  <t>Doug Leith</t>
+  <t>David Bosschaert, Adobe</t>
+  <t>David Malone, Maynooth University</t>
+  <t>David Plonka, Akamai</t>
+  <t>Doug Leith, Trinity College Dublin</t>
   <t>Emmanuel Baccelli, Inria</t>
   <t>Eric Smith, SpinDance</t>
   <t>Jean-Philippe Fassino, Schneider Electric</t>
   <t>Jørgen Karkov, Grundfos</t>
+  <t>Jonathon Dukes, Trinity College Dublin</t>
   <t>Joseph Birr-Pixton, Electric Imp</t>
   <t>Kaspar Schleiser, Freie Universität Berlin</t>
   <t>Luca Zappaterra, Philips Lighting Research</t>
