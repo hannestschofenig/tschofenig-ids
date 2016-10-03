@@ -4,7 +4,7 @@ UPLOADHOST=down.dsg.cs.tcd.ie
 
 DATE=`date +%s`
 
-all: core upload
+all: core 
 
 core:
 	$(XML2RFC) draft-iab-iotsu-workshop-latest.xml draft-iab-iotsu-workshop-latest.txt
