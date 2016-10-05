@@ -141,7 +141,7 @@ e.g. at or after the end-of-support of a product or component.</t>
 <t>There are various (often proprietary) software update mechanisms in use
 today and the functionality of those varies significantly with the envisioned
 use of the IoT devices. More powerful IoT devices, such as those running
-general purpose operating systems (like GNI/Linux), can make use of
+general purpose operating systems (like Linux), can make use of
 sophisticated software update mechanisms known from the desktop and the mobile
 world. This workshop focused on more constrained IoT devices that often run
 dedicated real-time operating systems or potentially no operating system at
@@ -167,15 +167,15 @@ gaps. In particular, the call for position papers asked for</t>
   <t>Implications of device ownership and control for software update.</t>
 </list></t>
 
-<t>The rest of the document is organized as follows: <xref
-target="terminology"/> introduces terminology useful in this context as
-discussed at the workshop…</t>
+<t>The rest of the document is organized as follows: Basic terminology is provided in <xref
+target="terminology"/> followed by a longer section discussing requirements. Subsequent sections explore 
+selected topics, such as incentives, and measurements, in more detail. Most of the writeup does raise more questions than it answers. Nevertheless, we tried to synthesise possible conclusions and offer a few next steps. </t>
 
 </section>
 <section anchor="terminology" title="Terminology">
 
 <t>As is typical with people from different backgrounds,
-workshop participants discussed terminology. This section is more intended
+workshop participants started the workshop with a discussions of terminology. This section is more intended
 to reflect those discussions than to present canonical definitions of
 terms.</t>
 
@@ -185,23 +185,22 @@ terms.</t>
 (such as size of RAM, or size of flash memory). With these configurations
 devices are limited in what they can support in terms of operating system
 features, cryptographic algorithms, and protocol stacks. For this reason, the
-group differentiated two types of classes, namely ARM Cortex A-class (or Intel
-Atom) and Cortex M-class (or Intel Quark) type of devices. A-class devices are
+group differentiated two types of classes, namely ARM Cortex A-class / Intel
+Atom and Cortex M-class / Intel Quark types of devices. A-class devices are
 equipped with powerful processors typically found in set-top boxes and home
-gateways. The Raspberry Pi is an example of a A-class device, which is able to
-run a regular desktop operating system, such as GNU/Linux. There are differences
-between the Intel and the ARM-based CPUs in terms of micro-code and who is allowed to
+routers. The Raspberry Pi is an example of a A-class device, which is capable of
+running a regular desktop operating system, such as Linux. There are differences
+between the Intel and the ARM-based CPUs in terms of architecture, micro-code and who is allowed to
 update a BIOS (if available) and the micro-code. A detailed discussion of these
 hardware architectural differences were, however, outside the scope of the
-workshop.</t>
+workshop. The implication is that lower-end microcontrollers have 
+constraints that put restrictions on the amount of software that can be put on them.
+While it is easy require support of a wide range of features those may not necessarily fit on these devices.</t>
 
   <t hangText='Software Update and Firmware Update:'> Based on the device
 classes it was observed that regular operating systems come with
-sophisticated software update mechanisms (such as rpm 
-<eref target="http://rpm.org/"/> or 
-Pacman
-<eref target="https://www.archlinux.org/pacman/"/>
-) that make use
+sophisticated software update mechanisms (such as RPM <xref target="rpm"/> or 
+Pacman <xref target="pacman"/>) that make use
 of the operating system to install and run each application in a
 compartmentalized fashion. Firmware updates typically do not provide such a
 fine-grained granularity for software updates and instead distribute the entire
@@ -235,10 +234,12 @@ As with the previous section we aim to present the discussion as it was.</t>
 <t><list style="symbols">
 
   <t>There may be a need to be support partial (differential) updates, that
-do not change the entire image. This may mean that techniques like bsdiff 
+do not require the entire firmware image to be sent. This may mean that techniques like bsdiff 
 <xref target="bsdiff"/> and courgette <xref target="courgette"/> are used but might
 also mean devices supporting download of applications and libraries alone. The
-latter feature may require dynamic linking and position independent code.</t>
+latter feature may require dynamic linking and position independent code. 
+It was unclear whether position independent code should be recommended for low-end IoT
+devices.</t>
 
   <t>The relative importance of dynamic linkers for low-end IoT devices is unclear. Some operating
 systems used with M-class devices, such as Contiki, provide support for a
@@ -246,18 +247,17 @@ dynamic linker according to <xref target="OS-Support"/>. This could help to
 minimize the amount of data transmitted during updates since only the
 modified application or library needs to be transmitted.</t>
 
-  <t>Should position independent code be recommended for low-end IoT
-devices?</t>
-
   <t>How should dependencies among various software updates be handled? 
 These dependencies may include information about the hardware platform
 and configuration as well as other software components
-running on a system.</t>
+running on a system. For firmware updates the problem of dependencies are often solved by the manufacturer or OEM 
+rather than on the device itself.</t>
 
-  <t>Support for devices with multiple micro-controllers implies that one
+  <t>Support for devices with multiple micro-controllers may required an architecture where one
 micro-controller is responsible for interacting with the update service and then
 dispatching software images to the attached micro-controllers within its local
-realm.</t>
+realm. The alternative of letting each microcontroller interact with an update service 
+appeared less practical.</t>
 
   <t>Support may be required for devices with multiple owners/stakeholders where the question
 arises about who is authorized to push a firmware/software update.</t>
@@ -272,47 +272,52 @@ scenarios, any DAO mechanism is onerous, possibly to the point where
 it may be hard to convince a device-maker to include the functionality.</t>
 
   <t>Should digital signatures and encryption for software updates be
-recommended as a best current practice? This question also raised the question
+recommended as a best current practice? This question particualrly raises the question
 about the use of symmetric key cryptography since not all low end IoT devices
 are currently using asymmetric crypto.</t>
 
-  <t>Firmware update signing key requirements. Since devices have a rather long
+  <t>What are the firmware update signing key requirements? Since devices have a rather long
 lifetime there has to be a way to change the signing key during the lifetime of
 the device.</t>
 
   <t>Should a firmware update mechanism support multiple signatures of firmware
-images? Is a device expected to verify the different types of signatures
-to verify the different sources or is this rather a service provided by some
-non-constrained device? This raises the question about who the IoT device
-should trust for what and whether transitive trust is accepted for some types of
-devices? Multiple signatures can come in two different flavours, namely (a) a
-single firmware image may be signed by multiple different parties or (b) a
-software image may contain libraries that are each signed by their
-developers. In the former case one could imagine an environment where an 
+images? Multiple signatures can come in two different flavours, namely <list style="number"> 
+<t>a
+single firmware image may be signed by multiple different parties. In this case one could imagine an environment where an 
 Original Equipment Manufacturer (OEM) 
 signs the software it creates but then the software is again signed by the
 enterprise that approves the distribution within the company. 
 Other examples include regulatory
-signatures. Medical device SW may be signed as approved by a regulator.</t>
+signatures where a the software for a medical device may be signed as approved by a certification body.</t>
+<t>a
+software image may contain libraries that are each signed by their
+developers.</t> 
+</list>  
 
-  <t>There is also a need for secure storage.  This includes at least the need
-to protect the integrity of the public key of the update service on the
-device (if signature based DAO is in use). Symmetric schemes clearly need
-even more secure storage (with confidentiality as well as data integrity).
-</t>
+Is a device expected to verify the different types of signatures
+or is this rather a service provided by some
+non-constrained device? This raises the question about who the IoT device
+should trust for what and whether transitive trust is acceptable for some types of
+devices? </t>
 
-  <t>There was also a discussion about the need to
-allow the update infrastructure-side to authenticate the IoT device before
-distributing an update and questions about the identifier used for such an
-authentication action was raised. The idea to re-use MAC addresses was raised
-and lead to concerns about the significant privacy implications of such
-identifier re-use.</t>
-
-<t>Are applications from a range of sources allowed to run on a device? Or only
+<t>Are applications from a range of sources allowed to run on a device or only
 those from the OEM?  If the device is a “closed” device that only supports/runs
 software from the OEM then a single signature may be sufficient.  In any more
 “open” system, 3rd party applications may require support of multiple
 signatures.</t> 
+
+  <t>There is a need for some form of secure storage, at least for those IoT devices that are exposed 
+to physical attacks. This includes at least the need
+to protect the integrity of the public key of the update service on the
+device (if signature based DAO is in use). The use of symmetric key cryptography requires improved confidentiality protection (in addition to integrity protection).
+</t>
+
+  <t>Is there a need to
+allow the update infrastructure-side to authenticate the IoT device before
+distributing an update? Questions about the identifier used for such an
+authentication action were raised. The idea of re-use MAC addresses lead 
+to concerns about the significant privacy implications of such
+identifier re-use.</t>
 
   <t>It is important to minimize device/service downtime due to update processing. 
 While it may not be possible to avoid all downtime,
@@ -334,6 +339,9 @@ In some systems with many devices (e.g. industrial lighting) this
 can be a challenge if updates need to be unicasted. 
 </t>
 
+  <t>Updates must minimize user interaction and not disrupt other activity
+(e.g., car should not distract the driver).</t>
+
 <t>In some systems
 with multiple devices, it can be a challenge to ensure that all
 devices are at the same release level, especially if some devices
@@ -343,8 +351,7 @@ other cases, it is acceptable if devices much more slowly converge to the
 current release level.
 </t>
 
-  <t>Updates must minimize user interaction and not disrupt other activity
-(e.g., car should not distract the driver).</t>
+
 
 <!-- 
 SF: I don't recall this being presented? And I'm not even sure
@@ -359,7 +366,7 @@ to avoid creating such a dependency. </t>
 -->
 
 <t>It ought not be possible
-for a factory worker to compromise the update process (e.g. copy signing keys,
+for a factory worker to compromise the update process (e.g., copy signing keys,
 install new public keys/trust anchors) during the 
 manufacturing process. There
 are typically two factories involved, first the factory that produces
@@ -374,10 +381,19 @@ process.</t>
   <t>Should devices have a recovery procedure when the device gets compromised?
 How is the compromise detected?</t>
 
-  <t>Time synchronization was seen as a chicken-and-egg problem since relying
-on synchronized clocks is difficult for some deployments. Participants
-argued that there is rarely a checking of the expiry of certificates and that
-certification revocation checking is also rarely done.</t>
+  <t>There was a bit of discussion about the importance for IoT devices to know the current time for the purpose of checking certificates lifetimes, what the use of a “real-time clock” actually meant and what constituted ‘good enough’ time. There are, however, cost, power, size, or environmental constraints that 
+make the addition of a real-time clock into an IoT device complex: 
+
+<list style="symbols"> 
+<t>Cost: battery- or supercap-backed RTC modules might be several times the cost of the rest of the bill of materials.</t>
+<t>Size: the battery and other companies are often several times larger than the rest of the material. </t>
+<t>Manufacturing: some modules require an extra assembly step, because the battery is damaged/explodes at high temperatures during the reflow process.</t>
+<t>Supply chain: devices containing fitted batteries need additional supply chain management to account for storage temperature and to avoid shipping aged devices.</t>
+<t>Environmental: Real-time-clock modules are typically not rated at industrial temperature ranges. Those that are have extremely reduced lifetime at high temperatures.</t>
+<t>Lifetime: some of these modules last only a few years at the top of their environmental range.</t> 
+</list> 
+
+While a good solution is needed, it is not clear whether the is one true solution. A recent proposal from Google called Roughtime <xref target="RT"/> may be worthwhile to explore.</t>
 
   <t>How do devices learn about a firmware update? Push or Pull? What should be
 required functionality for a firmware update protocol?</t>
@@ -418,7 +434,7 @@ also inevitable.</t>
 
 </list></t>
 
-<t>Which of these are nice to have? Which are required?  Not all of these are
+<t>Which of the features discussed in the list above are nice to have? Which are required?  Not all of these are
 required to achieve improvement. What are most important?</t>
 
 <t>Among the participants there was consensus that supporting signatures (for
@@ -575,7 +591,8 @@ products/devices and how to handle that.</t>
   <t>How should end-of-support, or end-of-features be treated? Devices are often
 deployed for 10+ years (or even longer in some verticals). Device-makers 
 may not
-want or be able to support  software and services for such an extended period of time.</t> 
+want or be able to support software and services for such an extended period of time.
+Will these devices stop working after a certain, previously unannounced period of time, such as Eye-Fi cards <xref target="eyefi"/>.</t> 
 
 <t>There will be a broad range of device-makers involved in IoT, who
 may differ substantially in terms of how well they can handle the 
@@ -878,14 +895,14 @@ possible next steps:</t>
 
 <t><list style="symbols">
 
-  <t>There was good agreement that having some secure (authorized and
+  <t>There was good agreement that having some standardized secure (authorized and
 authenticated) software update would be an improvement over having none.</t>
 
   <t>It would be valuable to find agreement on the right scope for a
 standardized software/firmware update mechanism. It is not clear that an entire
 update system can or should be standardised but there may be some aspects of
 such solutions where standards would be beneficial, e.g. (meta-)data formats
-and/or APIs. More discussion is needed to identify which parts of the problem
+and/or protocols for distributing firmware updates. More discussion is needed to identify which parts of the problem
 space could benefit from standardisation.</t>
 
   <t>It will be useful to investigate solutions to install updates with no
@@ -895,14 +912,14 @@ including the development of a multicast transfer mechanism (with appropriate
 security).</t>
 
   <t>There will almost certainly be a need for a way to transfer
-authority/responsibility for updates, particularly considering end-of-support.
+authority/responsibility for updates, particularly considering end-of-support cases.
 This is very close to calling for a standard way to "root" devices as a
-standard feature of all devices. While this would be a dangerous implement, it
-is hard to see how to address end-of-support with some such functionality.</t>
+feature of all devices.<!-- While this would be a dangerous implement, it
+is hard to see how to address end-of-support without some such functionality.--></t>
 
   <t>We would benefit from documentation of proofs-of-concept of
 software/firmware updates for constrained devices on different operating system
-architectures.  The IETF lwig working group may be a good venue for such
+architectures.  The IETF Light-Weight Implementation Guidance (lwig) working group may be a good venue for such
 documents.</t>
 
 </list></t>
@@ -913,9 +930,7 @@ documents.</t>
 <t>This document summarizes an IAB workshop on software/firmware updates and
 the entire content is therefore security related. Standardizing and deploying a
 software/firmware update mechanism for use with IoT devices could help to fix
-security vulnerabilities. Getting update mechanisms (whether standardised
-or not) deployed will definitely help mitigate the risks of unpatched
-vulnerabilities.</t>
+security vulnerabilities faster and in some cases the only via to get vulnerability patched at all.</t>
 </section>
 
 <section anchor="iana-considerations" title="IANA Considerations">
@@ -925,12 +940,12 @@ vulnerabilities.</t>
 </section>
 <section anchor="acknowledgements" title="Acknowledgements">
 
-<t>We would like to thank all paper authors and participants for their contributions. The IoTSU workshop is co-sponsored by the Internet Architecture Board and the Science Foundation Ireland funded CONNECT Centre for future networks and communications. The programme committee would like to express our thanks to Comcast for sponsoring the social event.</t>
+<t>We would like to thank all paper authors and participants for their contributions. The IoTSU workshop is co-sponsored by the Internet Architecture Board and the Science Foundation Ireland funded CONNECT Centre for future networks and communications. The programme committee would like to express their thanks to Comcast for sponsoring the social event.</t>
 
 </section>
 <section anchor="appendix-a-program-committee" title="Appendix A: Program Committee">
 
-<t>This workshop was organized by the IAB with the help of the following individuals: Stephen Farrell, Arnar Birgisson, Ned Smith, Jari Arkko, Carsten Bormann, Hannes Tschofenig, Robert Sparks, and Russ Housley.</t>
+<t>The following individuals helped to organize the workshop: Jari Arkko, Arnar Birgisson, Carsten Bormann, Stephen Farrell, Russ Housley, Ned Smith, Robert Sparks, and Hannes Tschofenig.</t>
 
 </section>
 <section anchor="appendix-b-accepted-position-papers" title="Appendix B: Accepted Position Papers">
@@ -1168,6 +1183,27 @@ Constitute the Internet of Things’</t>
     <date year="2016"/>
   </front>
 </reference>
+
+<reference anchor="rpm" target="http://rpm.org/">
+  <front>
+    <title>Red Hat Package Manager (RPM)</title>
+    <author >
+      <organization>-</organization>
+    </author>
+    <date year="2016"/>
+  </front>
+</reference>
+
+<reference anchor="pacman" target="https://www.archlinux.org/pacman/">
+  <front>
+    <title>Pacman</title>
+    <author >
+      <organization>-</organization>
+    </author>
+    <date year="2016"/>
+  </front>
+</reference>
+
 <reference anchor="HP-Firmware" target="http://boingboing.net/2016/09/19/hp-detonates-its-timebomb-pri.html">
   <front>
     <title>HP detonates its timebomb - printers stop accepting third party ink en masse</title>
@@ -1258,10 +1294,27 @@ Constitute the Internet of Things’</t>
   </front>
 </reference>
 
+<reference anchor="eyefi" target="http://www.diyphotography.net/eyefi-drop-support-cards-will-magically-stop-working-september-16-2016/">
+  <front>
+	<title>EYEFI TO DROP SUPPORT FOR SOME CARDS. THEY WILL ‘MAGICALLY’ STOP WORKING ON SEPTEMBER 16, 2016
+</title>
+	<author initials="J." surname="Aldred"> <organization></organization> </author>
+
+	<date year="2016" month="June"/>
+  </front>
+</reference>
+
+<reference anchor="RT" target="https://roughtime.googlesource.com/roughtime">
+  <front>
+	<title>Roughtime</title>
+
+<author> <organization>Google</organization> </author>
+
+	<date year="2016" month="September"/>
+  </front>
+</reference>
 
     </references>
-
-
 
   </back>
 </rfc>
