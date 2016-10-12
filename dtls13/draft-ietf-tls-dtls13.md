@@ -747,9 +747,10 @@ extensions:
 {:br } 
 
 The first message each side transmits in each handshake always has
-   message_seq = 0.  Whenever each new message is generated, the
+   message_seq = 0.  Whenever a new message is generated, the
    message_seq value is incremented by one. When a message is
-   retransmitted, the same message_seq value is used.  
+   retransmitted, the old message_seq value is re-used, i.e., not 
+   incremented.
 
 Here is an example:
 
@@ -757,32 +758,48 @@ Here is an example:
 Client                                             Server
 ------                                             ------
 
-ClientHello (seq=0)     -------->
+ClientHello 
+(message_seq=0)
+                             -------->
 
-                           X<----      HelloRetryRequest (seq=0)
-                                               (lost)
+                                X<----      HelloRetryRequest 
+                                (lost)        (message_seq=0)
+                                                  
 
 [Timer Expires]
 
-ClientHello (seq=0)     -------->
-   (retransmit)
+ClientHello
+(message_seq=0)
+ (retransmit)               -------->
 
-                        <--------      HelloRetryRequest (seq=0)
 
-ClientHello (seq=1)     -------->
-   +cookie
+                            <--------       HelloRetryRequest
+                                              (message_seq=0)
 
-                        <--------            ServerHello (seq=1)
-                                     EncryptedExtensions (seq=2)
-                                             Certificate (seq=3)
-                                       CertificateVerify (seq=4)
-                                                Finished (seq=5)
+ClientHello                 -------->
+(message_seq=1)
+  +cookie
 
-Certificate (seq=2)     -------->
-CertificateVerify (seq=3)
-Finished (seq=4)
+                            <--------             ServerHello
+                                              (message_seq=1)
+                                          EncryptedExtensions
+                                              (message_seq=2)
+                                                  Certificate 
+                                              (message_seq=3)
+                                            CertificateVerify 
+                                              (message_seq=4)
+                                                     Finished
+                                              (message_seq=5)
 
-                        <--------                    Ack (seq=6)
+Certificate                -------->
+(message_seq=2)
+CertificateVerify
+(message_seq=3)
+Finished 
+(message_seq=4)
+
+                        <--------                         Ack 
+                                              (message_seq=6)
 ~~~~
 {: #dtls-msg-loss title="Example DTLS Exchange illustrating Message Loss"}
 
