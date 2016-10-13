@@ -823,10 +823,11 @@ struct {} ACK;
 ~~~~
 
 The ACK handshake message is used by a server to return a response to a 
-client-provided message where the TLS 1.3 handshake does not foresee a 
+client-provided message where the TLS 1.3 handshake does not foresee such 
 return message. With the use of the ACK message the client is able to 
 determine whether a transmitted request has been lost and needs to be 
-retransmitted.
+retransmitted. Since the ACK message does not contain any correlation information 
+the server MUST only have one message outstanding at a time. 
 
 ##  Handshake Message Fragmentation and Reassembly
 
