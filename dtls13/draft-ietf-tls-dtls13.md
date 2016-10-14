@@ -588,29 +588,38 @@ the cookie extension is omitted and the legacy_cookie field in the ClientHello
 message SHOULD be set to a zero length vector (i.e., a single zero byte length field) 
 and MUST be ignored by a server negotiating DTLS 1.3. 
 
-When responding to a HelloRetryRequest, the client MUST use the same
-   parameter values (version, random, cipher_suites) as it 
-   did in the original ClientHello. 
+When responding to a HelloRetryRequest, the client MUST create a new 
+ClientHello message following the description in Section 4.1 of {{I-D.ietf-tls-tls13}}.
 
-The
-   server SHOULD use those values to generate its cookie and verify that
-   they are correct upon cookie receipt.  The server MUST use the same
+The server SHOULD use information received in the ClientHello to generate its cookie, 
+such as version, random, ciphersuites. The server MUST use the same
    version number in the HelloRetryRequest that it would use when
    sending a ServerHello.  Upon receipt of the ServerHello, the client
-   MUST verify that the server version values match.  
+   MUST verify that the server version values match.
 
-In order to avoid
-   sequence number duplication in case of multiple HelloRetryRequests,
-   the server MUST use the record sequence number in the ClientHello as
-   the record sequence number in the HelloRetryRequest.
+% In order to avoid
+%   sequence number duplication in case of multiple HelloRetryRequests,
+%   the server MUST use the record sequence number in the ClientHello as
+%   the record sequence number in the HelloRetryRequest.
+% In order to avoid sequence number duplication in
+%   case of multiple cookie exchanges, the server MUST use the record
+%   sequence number in the ClientHello as the record sequence number in
+%   its initial ServerHello. 
+% A subsequent ServerHello will only be sent
+%   after the server has created state and MUST increment normally. 
+
+   If the HelloRetryRequest message is used, the initial ClientHello and
+   the HelloRetryRequest are included in the calculation of the
+   handshake_messages (for the CertificateVerify message) and
+   verify_data (for the Finished message).
+
+   As such, the handshake transcript is not reset with the second ClientHello 
+   and a stateless server-cookie implementation requires the transcript 
+   of the HelloRetryRequest to be stored in the cookie.
 
  When the second ClientHello is received, the server can verify that
    the cookie is valid and that the client can receive packets at the
-   given IP address.  In order to avoid sequence number duplication in
-   case of multiple cookie exchanges, the server MUST use the record
-   sequence number in the ClientHello as the record sequence number in
-   its initial ServerHello.  Subsequent ServerHellos will only be sent
-   after the server has created state and MUST increment normally.
+   given IP address. 
 
  One potential attack on this scheme is for the attacker to collect a
    number of cookies from different addresses and then reuse them to
@@ -635,11 +644,6 @@ In order to avoid
    choose not to do a cookie exchange when a session is resumed.
    Clients MUST be prepared to do a cookie exchange with every
    handshake.
-
-   If the HelloRetryRequest message is used, the initial ClientHello and
-   the HelloRetryRequest are included in the calculation of the
-   handshake_messages (for the CertificateVerify message) and
-   verify_data (for the Finished message).
 
    If a server receives a ClientHello with an invalid cookie, it 
    MUST respond with a HelloRetryRequest. To avoid repeatly entering a 
@@ -1228,7 +1232,7 @@ identification of the correct cipher state:
 ServerHello, and HelloRetryRequest.
    * epoch value (1) for messages protected using keys derived from early_traffic_secret.
    * epoch value (2) for 0-RTT 'Application Data' protected using keys derived from the early_traffic_secret.
-   * epoch value (3) for messages protected using keys derived from the handshake_traffic_secret, namely the EncryptedExtensions to the Finished message sent by the client).
+   * epoch value (3) for messages protected using keys derived from the handshake_traffic_secret, namely the EncryptedExtensions, CertificateRequest, Certificate, CertificateVerify, Finished, ACK, and NewSessionTicket messages).
    * epoch value (4) for application data payloads protected using keys derived from the initial traffic_secret_0.
    * epoch value (5 to 2^16-1) for application data payloads protected using keys from the traffic_secret_N (N>0).
 
@@ -1281,13 +1285,10 @@ Since TLS 1.3 introduce a large number of changes to TLS 1.2, the list of change
 
 # Open Issues
 
-  * Description for the retransmission behavior regarding Post-Handshake messages, such as CertificateRequest, and NewSessionTicket, is needed.
-  * Define message sequence number pattern for the use with the handshake messages. 
   * Handling of the handshake sequence numbers (i.e., Handshake.message_seq) when 0-RTT is rejected. 
     Proposal: keep pushing the numbers forward
   * Explore whether the record layer header can be simplified (to 2 octets for epoch & sequence number) 
   * Do we need the HelloRequest message in DTLS 1.3?
-  * Document the hash exporting hack that makes HRR stateless.
   * Update text in the appendix regarding backwards compatibility. 
 
 #  IANA Considerations
@@ -1307,6 +1308,7 @@ draft-00
   - Use of cookie extension instead of cookie field in 
     ClientHello and HelloVerifyRequest messages
   - Added ACK message
+  - Text about sequence number handling
 
 # Working Group Information
 
