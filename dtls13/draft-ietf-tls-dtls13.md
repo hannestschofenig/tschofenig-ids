@@ -597,17 +597,6 @@ such as version, random, ciphersuites. The server MUST use the same
    sending a ServerHello.  Upon receipt of the ServerHello, the client
    MUST verify that the server version values match.
 
-% In order to avoid
-%   sequence number duplication in case of multiple HelloRetryRequests,
-%   the server MUST use the record sequence number in the ClientHello as
-%   the record sequence number in the HelloRetryRequest.
-% In order to avoid sequence number duplication in
-%   case of multiple cookie exchanges, the server MUST use the record
-%   sequence number in the ClientHello as the record sequence number in
-%   its initial ServerHello. 
-% A subsequent ServerHello will only be sent
-%   after the server has created state and MUST increment normally. 
-
    If the HelloRetryRequest message is used, the initial ClientHello and
    the HelloRetryRequest are included in the calculation of the
    handshake_messages (for the CertificateVerify message) and
