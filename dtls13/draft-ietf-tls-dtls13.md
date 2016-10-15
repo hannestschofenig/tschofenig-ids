@@ -604,7 +604,11 @@ such as version, random, ciphersuites. The server MUST use the same
 
    As such, the handshake transcript is not reset with the second ClientHello 
    and a stateless server-cookie implementation requires the transcript 
-   of the HelloRetryRequest to be stored in the cookie.
+   of the HelloRetryRequest to be stored in the cookie or the internal state 
+   of the hash algorithm, since only the hash of the transcript is required 
+   for the handshake to complete.
+
+
 
  When the second ClientHello is received, the server can verify that
    the cookie is valid and that the client can receive packets at the
@@ -612,19 +616,22 @@ such as version, random, ciphersuites. The server MUST use the same
 
  One potential attack on this scheme is for the attacker to collect a
    number of cookies from different addresses and then reuse them to
-   attack the server.  The server can defend against this attack by
+   attack the server. The server can defend against this attack by
    changing the secret value frequently, thus invalidating those
-   cookies.  If the server wishes that legitimate clients be able to
+   cookies. If the server wishes that legitimate clients be able to
    handshake through the transition (e.g., they received a cookie with
    Secret 1 and then sent the second ClientHello after the server has
    changed to Secret 2), the server can have a limited window during
    which it accepts both secrets.  {{RFC5996}} suggests adding a key 
-   identifier to cookies to detect this case.  An alternative approach is
-   simply to try verifying with both secrets.
-
-   Servers MUST implement a key rotation scheme that allows the server 
+   identifier to cookies to detect this case. An alternative approach is
+   simply to try verifying with both secrets. It is RECOMMENDED that 
+   servers implement a key rotation scheme that allows the server 
    to manage keys with overlapping lifetime. 
  
+   Alternatively, the server can store timestamps in the cookie and 
+   reject those cookies that were not generated within a certain 
+   amount of time.
+
    DTLS servers SHOULD perform a cookie exchange whenever a new
    handshake is being performed.  If the server is being operated in an
    environment where amplification is not a problem, the server MAY be
@@ -635,11 +642,14 @@ such as version, random, ciphersuites. The server MUST use the same
    handshake.
 
    If a server receives a ClientHello with an invalid cookie, it 
-   MUST respond with a HelloRetryRequest. To avoid repeatly entering a 
-   ClientHello (+ cookie) / HelloRetryRequests exchange interaction a client 
-   MUST reject a second HelloRetryRequest. Restarting the handshake from 
-   scratch allows the client to recover from a situation where it obtained 
-   a cookie that cannot be verified by the server. 
+   MUST NOT respond with a HelloRetryRequest. Restarting the handshake from 
+   scratch, without a cookie, allows the client to recover from a situation 
+   where it obtained a cookie that cannot be verified by the server. 
+   As described in Section 4.1.4 of {{I-D.ietf-tls-tls13}},clients SHOULD 
+   also abort the handshake with an “unexpected_message” alert in response 
+   to any second HelloRetryRequest which was sent in the same connection 
+   (i.e., where the ClientHello was itself in response to a HelloRetryRequest).
+
 
 ##  DTLS Handshake Message Format
 
