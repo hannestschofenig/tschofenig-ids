@@ -154,23 +154,25 @@ The basic design philosophy of DTLS is to construct "TLS over
    thus will fail. DTLS solves this problem by adding explicit
    sequence numbers.
 
-2. The TLS handshake is a lock-step cryptographic handshake.
-   Messages must be transmitted and received in a defined order; any other order
-   is an error. Clearly, this is incompatible with reordering and
-   message loss.
+2. The TLS handshake is a lock-step cryptographic handshake.  Messages must be
+   transmitted and received in a defined order; any other order is an
+   error. Clearly, this is incompatible with reordering and message loss.  DTLS
+   solves this problem by adding an additional sequence number to handshake
+   messages.
 
-3. Not all TLS 1.3 handshake messages (such as the NewSessionTicket message)
-   are acknowledged. Hence, a new acknowledgement message has to be added
-   to detect message loss.
+3. Not all TLS 1.3 handshake messages (such as the NewSessionTicket message) are
+   acknowledged. DTLS solves this problem by adding a new acknowledgement
+   message that allows a sender to detect loss.
 
-4. Handshake messages are potentially
-   larger than any given datagram, thus creating the problem of IP
-   fragmentation.
+4. Handshake messages are potentially larger than any given datagram.  DTLS
+   solves this problem by adding the ability to fragment and reassemble
+   handshake messages.
 
-5. Datagram transport protocols, like UDP, are more vulnerable to denial of
-   service attacks and require a return-routability check with the help of
-   cookies to be integrated into the handshake. A detailed discussion of
-   countermeasures can be found in {{dos}}.
+5. UDP does not natively provide any mitigation against some of the types of
+   denial-of-service attacks that TCP provides some protection against. DTLS
+   solves this problem by including an optional return-routability check in the
+   handshake. A detailed discussion of denial-of-service countermeasures can be
+   found in {{dos}}.
 
 ###  Packet Loss
 
