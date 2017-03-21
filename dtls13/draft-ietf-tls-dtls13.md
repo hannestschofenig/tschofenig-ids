@@ -174,7 +174,7 @@ The basic design philosophy of DTLS is to construct "TLS over
    handshake. A detailed discussion of denial-of-service countermeasures can be
    found in {{dos}}.
 
-###  Packet Loss
+##  Packet Loss
 
 DTLS uses a simple retransmission timer to handle packet loss.
 {{dtls-retransmission}} demonstrates the basic concept, using the first
@@ -210,7 +210,7 @@ phase of the DTLS handshake:
    it will not itself be fragmented, thus avoiding concerns about
    interleaving multiple HelloRetryRequests.
 
-###  Reordering
+##  Reordering
 
 In DTLS, each handshake message is assigned a specific sequence
    number within that handshake.  When a peer receives a handshake
@@ -219,7 +219,7 @@ In DTLS, each handshake message is assigned a specific sequence
    queues it for future handling once all previous messages have been
    received.
 
-###  Message Size
+##  Message Size
 
 TLS and DTLS handshake messages can be quite large (in theory up to
    2^24-1 bytes, in practice many kilobytes).  By contrast, UDP
