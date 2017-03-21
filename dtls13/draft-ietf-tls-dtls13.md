@@ -246,9 +246,13 @@ DTLS optionally supports record replay detection.  The technique used
 # The DTLS Record Layer
 
 The DTLS record layer is similar to that of TLS 1.3 unless noted otherwise. The
-only change is the inclusion of an explicit epoch and sequence number
-in the record.  This sequence number allows the recipient to correctly
-verify the TLS MAC.  The DTLS record format is shown below:
+only change is the inclusion of an explicit epoch and sequence number in the
+record.  These fields allow the recipient to correctly remove record protection
+even when packets are lost or reordered.  The epoch allows a recipient to
+identify the correct keys; the sequence number allows the recipient to construct
+the nonce.
+
+The DTLS record format is shown below:
 
 ~~~~
   struct {
