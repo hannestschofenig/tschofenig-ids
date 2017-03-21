@@ -131,7 +131,7 @@ The following terms are used:
 The reader is assumed to be familiar with the TLS 1.3 specification since this
 document defined as a delta from TLS 1.3.
 
-# DTLS Design Rational and Overview {#dtls-rational}
+# DTLS Design Rationale and Overview {#dtls-rationale}
 
 The basic design philosophy of DTLS is to construct "TLS over
    datagram transport". Datagram transport does not require or provide
