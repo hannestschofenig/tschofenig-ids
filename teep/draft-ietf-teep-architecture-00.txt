@@ -82,21 +82,22 @@ Table of Contents
      6.3.  Trusted Anchors in TEE  . . . . . . . . . . . . . . . . .  10
      6.4.  Trusted Anchors in TAM  . . . . . . . . . . . . . . . . .  10
      6.5.  Keys and Certificate Types  . . . . . . . . . . . . . . .  10
-     6.6.  Message Security  . . . . . . . . . . . . . . . . . . . .  13
-     6.7.  Security Domain Hierarchy and Ownership . . . . . . . . .  13
-     6.8.  SD Owner Identification and TAM Certificate Requirements   14
-     6.9.  Service Provider Container  . . . . . . . . . . . . . . .  14
-     6.10. A Sample Device Setup Flow  . . . . . . . . . . . . . . .  15
+     6.6.  Scalability . . . . . . . . . . . . . . . . . . . . . . .  13
+     6.7.  Message Security  . . . . . . . . . . . . . . . . . . . .  13
+     6.8.  Security Domain Hierarchy and Ownership . . . . . . . . .  13
+     6.9.  SD Owner Identification and TAM Certificate Requirements   14
+     6.10. Service Provider Container  . . . . . . . . . . . . . . .  15
+     6.11. A Sample Device Setup Flow  . . . . . . . . . . . . . . .  15
    7.  OTrP Agent  . . . . . . . . . . . . . . . . . . . . . . . . .  16
      7.1.  Role of OTrP Agent  . . . . . . . . . . . . . . . . . . .  16
      7.2.  OTrP Agent Implementation Consideration . . . . . . . . .  17
        7.2.1.  OTrP Agent Distribution . . . . . . . . . . . . . . .  17
        7.2.2.  Number of OTrP Agent  . . . . . . . . . . . . . . . .  17
-   8.  Attestation . . . . . . . . . . . . . . . . . . . . . . . . .  17
-     8.1.  Attestation Hierarchy . . . . . . . . . . . . . . . . . .  17
+   8.  Attestation . . . . . . . . . . . . . . . . . . . . . . . . .  18
+     8.1.  Attestation Hierarchy . . . . . . . . . . . . . . . . . .  18
        8.1.1.  Attestation Hierarchy Establishment: Manufacture  . .  18
        8.1.2.  Attestation Hierarchy Establishment: Device Boot  . .  18
-       8.1.3.  Attestation Hierarchy Establishment: TAM  . . . . . .  18
+       8.1.3.  Attestation Hierarchy Establishment: TAM  . . . . . .  19
    9.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  19
    10. Security Consideration  . . . . . . . . . . . . . . . . . . .  19
      10.1.  TA Trust Check at TEE  . . . . . . . . . . . . . . . . .  19
@@ -105,7 +106,6 @@ Table of Contents
      10.4.  Data Protection at TAM and TEE . . . . . . . . . . . . .  20
      10.5.  Compromised CA . . . . . . . . . . . . . . . . . . . . .  20
      10.6.  Compromised TAM  . . . . . . . . . . . . . . . . . . . .  20
-     10.7.  Certificate Renewal  . . . . . . . . . . . . . . . . . .  20
 
 
 
@@ -114,8 +114,9 @@ Pei, et al.              Expires October 3, 2018                [Page 2]
 Internet-Draft                    OTrP                        April 2018
 
 
-   11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  20
-     11.1.  Normative References . . . . . . . . . . . . . . . . . .  20
+     10.7.  Certificate Renewal  . . . . . . . . . . . . . . . . . .  20
+   11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  21
+     11.1.  Normative References . . . . . . . . . . . . . . . . . .  21
      11.2.  Informative References . . . . . . . . . . . . . . . . .  21
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  21
 
@@ -158,7 +159,6 @@ Internet-Draft                    OTrP                        April 2018
    first in section Section 4.  We introduce uses cases next in section
    Section 5, and then trust model and architecture in section
    Section 6.
-
 
 
 
@@ -674,7 +674,25 @@ Pei, et al.              Expires October 3, 2018               [Page 12]
 Internet-Draft                    OTrP                        April 2018
 
 
-6.6.  Message Security
+6.6.  Scalability
+
+   OTrP uses PKI to establish trust.  Trust anchors (root certificates)
+   exist on the devices to enable the TEE to determine which TAMs can be
+   trusted, and TAMs use trust anchors (root certificates) to determine
+   which TEEs can be trusted.  Since PKI is used, many intermediate CAs
+   can chain to a root certificate, each of which can issue many
+   certificates.  This makes the protocol highly scalable.  New
+   factories that produce TEEs can join the ecosystem.  In this case,
+   such a factory can get an intermediate CA certificate from one of the
+   existing roots without requiring that TAMs are updated with
+   information about the new device factory.  Likewise, new TAMs can
+   join the ecosystem, providing they are issued a TAM certificate that
+   chains to an existing root whereby existing TEEs will be allowed to
+   be personalized by the TAM without requiring changes to the TEE
+   itself.  This enables the ecosystem to scale, and avoids the need for
+   centralized databases of all TEEs produced or all TAMs that exist.
+
+6.7.  Message Security
 
    The main OTrP component is the set of standard OTrP messages created
    by a TAM to deliver device SD and TA management commands to a device,
@@ -686,7 +704,7 @@ Internet-Draft                    OTrP                        April 2018
    typically encrypted such that only the targeted device TEE or TAM is
    able to decrypt and view the actual content.
 
-6.7.  Security Domain Hierarchy and Ownership
+6.8.  Security Domain Hierarchy and Ownership
 
    The primary job of a TAM is to help an SP to manage its trusted
    applications.  A TA is typically installed in an SD.  An SD is
@@ -704,6 +722,14 @@ Internet-Draft                    OTrP                        April 2018
 
    From an SD ownership perspective, the SD tree is flat and there is
    only one level.  An SD is associated with its owner.  It is up to TEE
+
+
+
+Pei, et al.              Expires October 3, 2018               [Page 13]
+
+Internet-Draft                    OTrP                        April 2018
+
+
    implementation how it maintains SD binding information for a TAM and
    different SPs under the same TAM.
 
@@ -721,19 +747,10 @@ Internet-Draft                    OTrP                        April 2018
    cannot delete a Security Domain on its own with a TAM if a TAM
    decides to introduce such sharing.  There are cases where multiple
    virtual SPs belong to the same organization, and a TAM chooses to use
-
-
-
-
-Pei, et al.              Expires October 3, 2018               [Page 13]
-
-Internet-Draft                    OTrP                        April 2018
-
-
    the same SD name for those SPs.  This is totally up to the TAM
    implementation and out of scope of this specification.
 
-6.8.  SD Owner Identification and TAM Certificate Requirements
+6.9.  SD Owner Identification and TAM Certificate Requirements
 
    There is a need of cryptographically binding proof about the owner of
    an SD in a device.  When an SD is created on behalf of a TAM, a
@@ -761,23 +778,6 @@ Internet-Draft                    OTrP                        April 2018
    A TEE can assign this certificate attribute value as the TAM owner ID
    for the SDs that are created for the TAM.
 
-   An alternative way to represent an SD ownership by a TAM is to have a
-   unique secret key upon SD creation such that only the creator TAM is
-   able to produce a Proof-of-Possession (POP) data with the secret.
-
-6.9.  Service Provider Container
-
-   A sample Security Domain hierarchy for the TEE is shown below.
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -785,6 +785,14 @@ Pei, et al.              Expires October 3, 2018               [Page 14]
 
 Internet-Draft                    OTrP                        April 2018
 
+
+   An alternative way to represent an SD ownership by a TAM is to have a
+   unique secret key upon SD creation such that only the creator TAM is
+   able to produce a Proof-of-Possession (POP) data with the secret.
+
+6.10.  Service Provider Container
+
+   A sample Security Domain hierarchy for the TEE is shown below.
 
        ----------
        |  TEE   |
@@ -804,7 +812,7 @@ Internet-Draft                    OTrP                        April 2018
    retrieve data for SDs and TAs that it previously created for the SPs
    it represents.
 
-6.10.  A Sample Device Setup Flow
+6.11.  A Sample Device Setup Flow
 
    Step 1: Prepare Images for Devices
 
@@ -827,6 +835,13 @@ Internet-Draft                    OTrP                        April 2018
    1.  [OEM]  Flash Secure Boot Public Key and eFuse Key (eFuse key is
        unique per device)
 
+
+
+Pei, et al.              Expires October 3, 2018               [Page 15]
+
+Internet-Draft                    OTrP                        April 2018
+
+
    2.  [TFW/TEE] Generate a unique attestation key pair and get a
        certificate for the device.
 
@@ -834,13 +849,6 @@ Internet-Draft                    OTrP                        April 2018
 
    1.  [TFW/TEE] Store the key and certificate encrypted with the eFuse
        key
-
-
-
-Pei, et al.              Expires October 3, 2018               [Page 15]
-
-Internet-Draft                    OTrP                        April 2018
-
 
    2.  [TEE vendor or OEM] Store trusted CA certificate list into
        devices
@@ -883,14 +891,6 @@ Internet-Draft                    OTrP                        April 2018
    needs to know where to route a message, e.g.  TEE instance.  It
    doesn't need to process or verify message content.
 
-   OTrP Agent returns TEE / TFW generated response messages to the
-   caller.  OTrP Agent isn't expected to handle any network connection
-   with an application or TAM.
-
-   OTrP Agent only needs to return an OTrP Agent error message if the
-   TEE is not reachable for some reason.  Other errors are represented
-
-
 
 
 Pei, et al.              Expires October 3, 2018               [Page 16]
@@ -898,6 +898,12 @@ Pei, et al.              Expires October 3, 2018               [Page 16]
 Internet-Draft                    OTrP                        April 2018
 
 
+   OTrP Agent returns TEE / TFW generated response messages to the
+   caller.  OTrP Agent isn't expected to handle any network connection
+   with an application or TAM.
+
+   OTrP Agent only needs to return an OTrP Agent error message if the
+   TEE is not reachable for some reason.  Other errors are represented
    as response messages returned from the TEE which will then be passed
    to the TAM.
 
@@ -938,6 +944,16 @@ Internet-Draft                    OTrP                        April 2018
    applications to interact with an OTrP Agent for the TAM and TEE
    interaction.
 
+
+
+
+
+
+Pei, et al.              Expires October 3, 2018               [Page 17]
+
+Internet-Draft                    OTrP                        April 2018
+
+
 8.  Attestation
 
 8.1.  Attestation Hierarchy
@@ -946,13 +962,6 @@ Internet-Draft                    OTrP                        April 2018
    operation must be built into the device at manufacture.  Additional
    TEEs can be added post-manufacture using the scheme proposed, but it
    is outside of the current scope of this document to detail that.
-
-
-
-Pei, et al.              Expires October 3, 2018               [Page 17]
-
-Internet-Draft                    OTrP                        April 2018
-
 
    It should be noted that the attestation scheme described is based on
    signatures.  The only encryption that takes place is with eFuse to
@@ -993,15 +1002,6 @@ Internet-Draft                    OTrP                        April 2018
        up their own signed buffer containing subordinate TEE
        information.
 
-8.1.3.  Attestation Hierarchy Establishment: TAM
-
-   Before a TAM can begin operation in the marketplace to support
-   devices of a given TEE, it must obtain a TAM certificate from a CA
-   that is registered in the trust store of devices with that TEE.  In
-   this way, the TEE can check the intermediate and root CA and verify
-   that it trusts this TAM to perform operations on the TEE.
-
-
 
 
 
@@ -1009,6 +1009,14 @@ Pei, et al.              Expires October 3, 2018               [Page 18]
 
 Internet-Draft                    OTrP                        April 2018
 
+
+8.1.3.  Attestation Hierarchy Establishment: TAM
+
+   Before a TAM can begin operation in the marketplace to support
+   devices of a given TEE, it must obtain a TAM certificate from a CA
+   that is registered in the trust store of devices with that TEE.  In
+   this way, the TEE can check the intermediate and root CA and verify
+   that it trusts this TAM to perform operations on the TEE.
 
 9.  Acknowledgements
 
@@ -1049,14 +1057,6 @@ Internet-Draft                    OTrP                        April 2018
    installation.  It gets command messages from the TAM, and passes the
    message to the OTrP Agent.
 
-   The OTrP is a conduit for enabling the TAM to communicate with the
-   device's TEE to manage SDs and TAs.  All TAM messages are signed and
-   sensitive data is encrypted such that the OTrP Agent cannot modify or
-   capture sensitive data.
-
-
-
-
 
 
 
@@ -1065,6 +1065,11 @@ Pei, et al.              Expires October 3, 2018               [Page 19]
 
 Internet-Draft                    OTrP                        April 2018
 
+
+   The OTrP is a conduit for enabling the TAM to communicate with the
+   device's TEE to manage SDs and TAs.  All TAM messages are signed and
+   sensitive data is encrypted such that the OTrP Agent cannot modify or
+   capture sensitive data.
 
 10.4.  Data Protection at TAM and TEE
 
@@ -1107,11 +1112,6 @@ Internet-Draft                    OTrP                        April 2018
    other hand, it is imperative that OEMs or device providers plan for
    support of trust anchor update in their shipped devices.
 
-11.  References
-
-11.1.  Normative References
-
-
 
 
 
@@ -1121,6 +1121,10 @@ Pei, et al.              Expires October 3, 2018               [Page 20]
 
 Internet-Draft                    OTrP                        April 2018
 
+
+11.  References
+
+11.1.  Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -1165,10 +1169,6 @@ Authors' Addresses
    USA
 
    Email: mingliang_pei@symantec.com
-
-
-
-
 
 
 
