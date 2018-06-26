@@ -14,7 +14,7 @@
 <?rfc subcompact="no"?>
 
 <rfc category="std" ipr="trust200902"
-docName="draft-ietf-oauth-pop-key-distribution-03">
+docName="draft-ietf-oauth-pop-key-distribution-04">
 
   <front>
   <title abbrev="OAuth 2.0 PoP: AS-Client Key Distribution">OAuth 2.0 Proof-of-Possession: Authorization Server to Client Key Distribution</title>   
@@ -48,12 +48,12 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
 
 
     <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
-      <organization>ARM Limited</organization>
+      <organization>Arm Ltd.</organization>
       <address>
         <postal>
           <street></street>
-          <city></city>
-          <code></code>
+          <city>Absam</city>
+          <code>6067</code>
           <country>Austria</country>
         </postal>
         <phone></phone>
@@ -62,7 +62,7 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
       </address>
     </author>
 
-    <date year="2017"/>
+    <date year="2018"/>
     <keyword>Internet-Draft</keyword>
     <keyword>OAuth</keyword>
     <keyword>Security</keyword>
@@ -76,7 +76,7 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
   
   <t>The OAuth 2.0 Proof-of-Possession security concept extends bearer token security and requires the client to demonstrate possession of a key when accessing a protected resource.</t>
   
-  <t>This document describes how the client obtains this keying material from the authorization server.</t>
+  <t>This document describes how the client requests and obtains a PoP access token from the authorization server for use with HTTPS-based transport. Alternative transports, for example using the Constrained Application Protocol (CoAP), have been specified in companion specifications.</t>
 
 </abstract>
 
@@ -87,31 +87,33 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
 
 <section anchor="introduction" title="Introduction">
 
-   <t>The work on additional security mechanisms beyond OAuth 2.0 bearer tokens <xref target="RFC6750"/> is motivated in <xref target="I-D.ietf-oauth-pop-architecture"/>, which also outlines use cases, requirements and an architecture. This document defines the ability for the client indicate support for this functionality and to obtain keying material from the authorization server. As an outcome of the exchange between the client and the authorization server is an access token that is bound to keying material. Clients that access protected resources then need to demonstrate knowledge of the secret key that is bound to the access token.</t>
+   <t>The work on proof-of-possession tokens, an extended token security mechanisms for OAuth 2.0, is motivated in <xref target="I-D.ietf-oauth-pop-architecture"/>. This document defines the ability for the client request and to obtain PoP tokens from the authorization server. After successfully completing the exchange the client is in possession of a PoP token and the keying material bound to it. Clients that access protected resources then need to demonstrate knowledge of the secret key that is bound to the PoP token.</t>
 
   <t>To best describe the scope of this specification, the OAuth 2.0 protocol exchange sequence is shown in <xref target="oauth-flow"/>.
-	  The extension defined in this document piggybacks on the message exchange marked with (C) and (D).</t>
+	  The extension defined in this document piggybacks on the message exchange marked with (C) and (D). To demonstrate possession of the private/secret key to the resource server protocol mechanisms outside the scope of this document are used.</t>
   
   	  <t>
-        <figure anchor="oauth-flow" title="Abstract OAuth 2.0 Protocol Flow">
+        <figure anchor="oauth-flow" title="Augmented OAuth 2.0 Protocol Flow">
           <artwork><![CDATA[
-     +--------+                               +---------------+
-     |        |--(A)- Authorization Request ->|   Resource    |
-     |        |                               |     Owner     |
-     |        |<-(B)-- Authorization Grant ---|               |
-     |        |                               +---------------+
-     |        |
-     |        |                               +---------------+
-     |        |--(C)-- Authorization Grant -->| Authorization |
-     | Client |                               |     Server    |
-     |        |<-(D)----- Access Token -------|               |
-     |        |                               +---------------+
-     |        |
-     |        |                               +---------------+
-     |        |--(E)----- Access Token ------>|    Resource   |
-     |        |                               |     Server    |
-     |        |<-(F)--- Protected Resource ---|               |
-     +--------+                               +---------------+		  
++--------+                               +---------------+
+|        |--(A)- Authorization Request ->|   Resource    |
+|        |                               |     Owner     |
+|        |<-(B)-- Authorization Grant ---|               |
+|        |                               +---------------+
+|        |
+|        |                               +---------------+
+|        |--(C)-- Authorization Grant -->|               |
+| Client |        (aud, cnf)             | Authorization |
+|        |                               |     Server    |
+|        |<-(D)-- PoP Access Token ------|               |
+|        |    (profile, cnf, rs_cnf,     +---------------+
+|        |        token_type)
+|        |                               +---------------+
+|        |--(E)-- PoP Access Token ----->|               |
+|        |   (with proof of private key) |    Resource   |
+|        |                               |     Server    |
+|        |<-(F)--- Protected Resource ---|               |
++--------+                               +---------------+
 ]]></artwork>
         </figure>
 	  </t>
@@ -124,12 +126,8 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
    endpoint, which is described in Section 3.2 of <xref target="RFC6749"/>, is used with every authorization grant except for the implicit grant type. In the implicit grant type the access token is issued directly.</t>
    
    <t>This document extends the functionality of the token endpoint, i.e., the protocol exchange between the client and the authorization server, to allow keying material to be bound to an access token. Two types of keying material can be bound to an access token, namely symmetric keys and asymmetric keys. Conveying symmetric keys from the authorization server to the client is described in <xref target="symmetric"/> and the procedure for dealing with asymmetric keys is described in <xref target="asymmetric"/>. </t>
-   
-   <!--
-    <t>QUESTION: This document focuses on binding the keys to access tokens only. Keys can, however, also be bound to refresh tokens and to the authorization code, as described in <xref target="RFC7636"/>. Should the scope of this document be extended?</t>
-	--> 
-	
-</section>
+   	
+</section> <!-- Introduction --> 
 
 <!-- ************************************************************************************** --> 
 
@@ -141,47 +139,28 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
   <t><list style="hanging">
 		
 		<t hangText="Session Key:"><vspace blankLines="1"/>
-		The term session key refers to fresh and unique keying material established between the client and the resource server. This session key has a lifetime that corresponds to the lifetime of the access token, is generated by the authorization server and bound to the access token.<vspace blankLines="1"/></t> 
-	   </list>
-	  </t>
+		In the context of this specification 'session key' refers to fresh and unique keying material established between the client and the resource server. This session key has a lifetime that corresponds to the lifetime of the access token, is generated by the authorization server and bound to the access token.</t> 
+	</list>
+   </t>
 	  
-	  <t>This document uses the following abbreviations:</t>
+	<t>This document uses the following abbreviations:</t>
 	  
-	  <t>
+	<t>
 	  <list style="hanging">
-	    <t hangText="JWA:">JSON Web Algorithms (JWA) <xref target="RFC7518"/></t>
-	    <t hangText="JWT:">JSON Web Token (JWT)	<xref target="RFC7519"/></t>
-	    <t hangText="JWS:">JSON Web Signature (JWS)	<xref target="RFC7515"/></t>	    
-	    <t hangText="JWK:">JSON Web Key (JWK)	<xref target="RFC7517"/></t>
-	    <t hangText="JWE:">JSON Web Encryption (JWE) <xref target="RFC7516"/></t>
+	    <t hangText="JWA:">JSON Web Algorithms<xref target="RFC7518"/></t>
+	    <t hangText="JWT:">JSON Web Token<xref target="RFC7519"/></t>
+	    <t hangText="JWS:">JSON Web Signature<xref target="RFC7515"/></t>	    
+	    <t hangText="JWK:">JSON Web Key<xref target="RFC7517"/></t>
+	    <t hangText="JWE:">JSON Web Encryption<xref target="RFC7516"/></t>
+	    <t hangText="CWT:">CBOR Web Token<xref target="RFC8392"/></t>
+		<t hangText="COSE:">CBOR Object Signing and Encryption<xref target="RFC8152"/></t>
 	  </list> 	  
-	  </t>
+	</t>
 	   
-	  </section>
+</section> <!-- Terminology --> 
 	  
 <!-- ************************************************************************************** --> 
 
-<section anchor="audience" title="Audience"> 
-
- <t>When an authorization server creates an access token, according to the PoP security architecture <xref target="I-D.ietf-oauth-pop-architecture"/>, it may need to know which resource server will process it. This information is necessary when the authorization server applies integrity protection to the JWT using a symmetric key and has to selected the key of the resource server that has to verify it. The authorization server also requires this audience information if it has to encrypt a symmetric session key inside the access token using a long-term symmetric key.</t>
- 
-<t>This section defines a new header that is used by the client to indicate what protected resource at which resource server it wants to access. This information may subsequently also communicated by the authorization server securely to the resource server, for example within the audience field of the access token.</t>
- 
- <t>QUESTION: A benefit of asymmetric cryptography is to allow clients to request a PoP token for use with multiple resource servers. The downside of that approach is linkability since different resource servers will be able to link individual requests to the same client. (The same is true if the a single public key is linked with PoP tokens used with different resource servers.) Nevertheless, to support the functionality the audience parameter could carry an array of values. Is this desirable?</t>
-	
-	   <section title='Audience Parameter'>
-	
-	<t>The client constructs the access token request to the token endpoint by adding the 'aud' parameter using the "application/x-www-form-urlencoded" format with a character encoding of UTF-8 in the HTTP request entity-body.</t>
-	
-	<t>The URI included in the aud parameter MUST be an absolute URI as defined by Section 4.3 of <xref target="RFC3986"/>. It MAY include an
-   "application/x-www-form-urlencoded" formatted query component (Section 3.4 of <xref target="RFC3986"/> ). The URI MUST NOT include a
-   fragment component.</t>
-   
-   <t>The ABNF syntax for the 'aud' element is defined in <xref target="ABNF"/>.</t> 
-   
-   </section>
-   
-   
    <section title="Processing Instructions">
 
     <t><list style="empty">
@@ -190,43 +169,31 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
 	 
 	   <t>Step (1): The client starts the OAuth 2.0 protocol interaction based on the selected grant type. </t>
 	  
-	    <t>Step (2): When the client interacts with the token endpoint to obtain an access token it MUST populate the newly defined 'audience' parameter with the information obtained in step (0).</t>
+	    <t>Step (2): When the client interacts with the token endpoint to obtain an access token it MUST follow the processing steps for the HTTPS-based transport described in Section 5.6.1 of <xref target="I-D.ietf-ace-oauth-authz"/>. This includes determining whether to use the 'aud' and the 'cnf' parameters. </t>
      
-      <t>Step (2): The authorization server who obtains the request from the client needs to parse it to determine whether the provided audience value matches any of the resource servers it has a relationship with. If the authorization server fails to parse the provided value it MUST reject the request using an error response with the error code "invalid_request". If the authorization server does not consider the resource server acceptable it MUST return an error response with the error code "access_denied". In both cases additional error information may be provided via the error_description, and the error_uri parameters. If the request has, however, been verified successfully then the authorization server MUST include the audience claim into the access token with the value copied from the audience field provided by the client. In case the access token is encoded using the JSON Web Token format <xref target="RFC7519"/> the "aud" claim MUST be used. The access token, if passed per value, MUST be protected against modification by either using a digital signature or a keyed message digest. Access tokens can also be passed by reference, which then requires the token introspection endpoint (or a similiar, proprietary protocol mechanism) to be used. The authorization server returns the access token to the client, as specified in <xref target="RFC6749"/>.</t>
-     
+      <t>Step (2): The authorization server parses the request from the server and determines the suitable response based on the description in Section 5.6.2 of <xref target="I-D.ietf-ace-oauth-authz"/>. In case of an error the procedure in Section 5.6.3 of <xref target="I-D.ietf-ace-oauth-authz"/> is applicable. </t>
+	       
    </list></t>
+	 
+    <t> Note that PoP access tokens may be encoded in a variety of ways. In case the access token is encoded using the JSON Web Token (JWT) format <xref target="RFC7519"/> it MUST be protected against modification by either using a digital signature or a keyed message digest, as described in <xref target="RFC7515"/>. The JWT may also be encrypted using <xref target="RFC7516"/>. <xref target="RFC8392"/> defines an alternative token format based on CBOR. The proof-of-possession token functionality is defined in <xref target="I-D.ietf-ace-cwt-proof-of-possession"/>. Finally, access tokens can also be passed by reference, which then requires the token introspection endpoint (or a similiar, proprietary protocol mechanism) to be used. This specification does not mandate a specific PoP token format.</t>
+
 	 
 	 <t>Subsequent steps for the interaction between the client and the resource server are beyond the scope of this document.</t> 
 	
-   </section> 
+   </section> <!-- Processing Instructions -->
    
-</section> 
-  	  
 <!-- ************************************************************************************** --> 
 
+   <section title="Examples"> 
+  
+<t>This section provides a number of examples.</t> 
+  
    <section anchor="symmetric" title="Symmetric Key Transport"> 
    
    <section title="Client-to-AS Request">
-   <t>In case a symmetric key shall be bound to an PoP token the following procedure is applicable. In the request message from the OAuth client to the OAuth authorization server the following parameters MAY be included:  
-        </t>
-        
-        <t>
-          <list style='hanging' hangIndent='6'>
-            <t hangText='token_type:'>
-              OPTIONAL.  See <xref target="algorithm"/> for more details. 
-            </t>
-            <t hangText='alg:'>
-              OPTIONAL.  See <xref target="algorithm"/> for more details. 
-            </t>              
-          </list>
-        </t>
-   
-   <t>These two new parameters are optional in the case where the authorization server has prior knowledge of the capabilities of the client otherwise these two parameters are required. This prior knowledge may, for example, be set by the use of a dynamic client registration protocol exchange.
-   </t> 
-
-   <t>QUESTION: Should we register these two parameters for use with the dynamic client registration protocol?</t>   
-      <t>For example, the client makes the following HTTP request using TLS
-   (extra line breaks are for display purposes only).</t>
+  
+  <t>The client starts with a request to the authorization server indicating that it is interested to obtain 
+   a token for example-server.</t> 
 
    <t>
           <figure title="Example Request to the Authorization Server">
@@ -240,8 +207,7 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
      grant_type=authorization_code
      &code=SplxlOBeZQQYbYS6WxSbIA
      &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
-     &token_type=pop
-     &alg=HS256
+     &aud=example-server
 ]]>
           </artwork>
         </figure>
@@ -253,22 +219,11 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
     
       <t>If the access token request has been successfully verified by the authorization server and the client is authorized to obtain a PoP token for the indicated resource server, the
    authorization server issues an access token and optionally a refresh
-   token. If client authentication failed or is invalid, the authorization server returns
-   an error response as described in Section 5.2 of <xref target="RFC6749"/>.</t>
+   token.</t>
 
-      <t>The authorization server MUST include an access token and a 'key' element in a successful response. The 'key' parameter either contains a plain JWK structure or a JWK encrypted with a JWE. The difference between the two approaches is the following:
-         
-         <list style="hanging"> 
-         
-          <t hangText="Plain JWK:">If the JWK container is placed in the 'key' element then the security of the overall PoP architecture relies on Transport Layer Security (TLS) between the authorization server and the client. <xref target="symmetric-response"/> illustrates an example response using a plain JWK for key transport from the authorization server to the client. </t>
-         
-          <t hangText="JWK protected by a JWE:">If the JWK container is protected by a JWE then additional security protection at the application layer is provided between the authorization server and the client beyond the use of TLS. This approach is a reasonable choice, for example, when a hardware security module is available on the client device and confidentiality protection can be offered directly to this hardware security module.</t>         
-      </list> 
-      </t>
-
-<t>Note that there are potentially two JSON-encoded structures in the response, namely the access token (with the recommended JWT encoding) and the actual key transport mechanism itself. Note, however, that the two structures serve a different purpose and are consumed by different parites. The access token is created by the authorization server and processed by the resource server (and opaque to the client) whereas the key transport payload is created by the authorization server and processed by the client; it is never forwarded to the resource server.
-        </t>
-       
+   <t><xref target="symmetric-response"/> shows a response containing a token and a "cnf" parameter
+   with a symmetric proof-of-possession key. </t> 
+   
         <t>
         <figure title="Example: Response from the Authorization Server (Symmetric Variant)" anchor="symmetric-response">
           <artwork>
@@ -284,15 +239,46 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
     "token_type":"pop",
     "expires_in":3600,
     "refresh_token":"8xLOxBtZp8",
-    "key":"eyJhbGciOiJSU0ExXzUi ...
-     (remainder of plain JWK omitted for brevity)"
+    "cnf":{
+       "keys" : {
+         "kty" : "Symmetric",
+         "kid" : b64'39Gqlw',
+         "k" : b64'hJtXhkV8FJG+Onbc6mxCcQh'
+       }
+	}
   }
 ]]>
 </artwork>
 </figure>
 </t>
 
-<t>The content of the key parameter, which is a JWK in our example, is shown in <xref target="symmetric-JWK"/>.</t>
+<t>Note that the cnf payload in <xref target="symmetric-response"/> is not encrypted at the application layer since Transport Layer Security is used between the AS and the client and the content of the cnf payload is consumed by the client itself. Alternatively, a JWE could be used to encrypt the key distribution, as shown in <xref target="key-encryption"/>.
+</t>
+        <t>
+        <figure title="Example: Encrypted Symmmetric Key" anchor="key-encryption">
+          <artwork>
+            <![CDATA[
+  {
+    "access_token":"SlAV32hkKG ... 
+     (remainder of JWT omitted for brevity;
+     JWT contains JWK in the cnf claim)",
+    "token_type":"pop",
+    "expires_in":3600,
+    "refresh_token":"8xLOxBtZp8",
+    "cnf":{
+        "jwe":
+          "eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkExMjhDQkMtSFMyNTYifQ.
+          (remainder of JWE omitted for brevity)"
+        }
+	}
+  }
+]]>
+</artwork>
+</figure>
+</t>
+
+<t>
+The content of the key parameter, which is a JWK in our example, is shown in <xref target="symmetric-JWK"/>.</t>
 
 <t>
  <figure title="Example: Key Transport to Client via a JWK" anchor="symmetric-JWK">
@@ -313,7 +299,7 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
   the 'cnf' (confirmation) claim, as shown in <xref target="symmetric-JWT"/>. The confirmation claim is defined in <xref target="RFC7800"/>. 
   The digital signature or the 
   keyed message digest offering integrity protection
-  is not shown in this example but MUST be present in a real deployment to mitigate a number of security threats. Those security threats are described in <xref target="I-D.ietf-oauth-pop-architecture"/>.</t>
+  is not shown in this example but has to be present in a real deployment to mitigate a number of security threats.</t>
 
 <t>The JWK in the key element of the response from the authorization server, as shown in <xref target="symmetric-response"/>, contains 
   the same session key as the JWK inside the access token, as shown in <xref target="symmetric-JWT"/>. It is, in this example, protected 
@@ -342,13 +328,12 @@ docName="draft-ietf-oauth-pop-key-distribution-03">
 </t>
 
 <t>Note: When the JWK inside the access token contains a symmetric key it 
-  MUST be confidentiality protected using a JWE to maintain the security goals of 
+  must be confidentiality protected using a JWE to maintain the security goals of 
   the PoP architecture, as described in <xref target="I-D.ietf-oauth-pop-architecture"/>
 since content is meant for consumption by the selected resource server only.</t>
     
 <t>Note: This document does not impose requirements on the encoding of the access token. 
-The examples used in this document make use of the JWT structure since this is the only 
-standardized format.</t>
+The examples used in this document make use of the JWT structure but the CWT format is an equally appropriate format to use.</t>
 
 <t>If the access token is only a reference then a look-up by 
   the resource server is needed, as described in the token introspection specification <xref target="RFC7662"/>. </t>
@@ -363,26 +348,7 @@ standardized format.</t>
    
    
     <section title="Client-to-AS Request"> 
-   <t>In case an asymmetric key shall be bound to an access token then the following procedure is applicable.  In the request message from the OAuth client to the OAuth authorization server the request MAY include the following parameters:  
-        </t>
-        
-        <t>
-          <list style='hanging' hangIndent='6'>
-            <t hangText='token_type:'>
-              OPTIONAL. See <xref target="algorithm"/> for more details.
-            </t>           
-            <t hangText='alg:'>
-              OPTIONAL. See <xref target="algorithm"/> for more details.
-            </t>
-            <t hangText='key:'>
-              OPTIONAL. This field contains information about the public key the client would like to bind to the access token in the JWK format. If the client does not provide a public key then the authorization server MUST create an ephemeral key pair (considering the information provided by the client) or alternatively respond with an error message. The client may also convey the fingerprint of the public key to the authorization server instead of passing the entire public key along (to conserve bandwidth). <xref target="RFC7638"/> defines a way to compute a thumbprint for a JWK and to embedd it within the JWK format. 
-            </t> 
-          </list>
-        </t>
-
-   <t>The 'token_type' and the 'alg' parameters are optional in the case where the authorization server has prior knowledge of the capabilities of the client otherwise these two parameters are required.</t> 
-
-   <t>For example, the client makes the following HTTP request using TLS (extra line breaks are for display purposes only) shown in <xref target="asymmetric-example"/>.
+   <t>This example illustrates the case where an asymmetric key shall be bound to an access token. The client makes the following HTTPS request shown in <xref target="asymmetric-example"/>. Extra line breaks are for display purposes only.
    </t>
    
    <t>
@@ -398,30 +364,26 @@ standardized format.</t>
      &code=SplxlOBeZQQYbYS6WxSbIA
      &redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
      &token_type=pop
-     &alg=RS256
-     &key=eyJhbGciOiJSU0ExXzUi ...
+     &cnf=eyJhbGciOiJSU0ExXzUi ...
      (remainder of JWK omitted for brevity)
    ]]></artwork>
    </figure>
    </t>
  
-   <t>As shown in <xref target="asymmetric-pk"/> the content of the 'key' parameter contains the RSA public key 
+   <t>As shown in <xref target="asymmetric-pk"/> the content of the 'cnf' parameter contains the ECC public key 
    the client would like to associate with the access token.</t>
    
    <t>
    <figure anchor="asymmetric-pk" title="Client Providing Public Key to Authorization Server">
    <artwork>
    <![CDATA[    
-   {"kty":"RSA",
-    "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
-     4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
-     tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
-     QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
-     SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
-     w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
-     "e":"AQAB",
-     "alg":"RS256",
-     "kid":"id123"}
+        "jwk":{
+          "kty": "EC",
+          "use": "sig",
+          "crv": "P-256",
+          "x": "18wHLeIgW9wVN6VD1Txgpqy2LszYkMf6J8njVAibvhM",
+          "y": "-V4dS4UaLMgP_4fY4j8ir7cl1TXlFdAgcx55o7TkcSA"
+         }
    ]]></artwork>
    </figure>
    </t>
@@ -432,10 +394,7 @@ standardized format.</t>
           
    <t>If the access token request is valid and authorized, the
    authorization server issues an access token and optionally a refresh
-   token.  If the request client authentication failed or is invalid, the authorization server returns
-   an error response as described in Section 5.2 of <xref target="RFC6749"/>.</t>
-   
-   <t>The authorization server also places information 
+   token. The authorization server also places information 
    about the public key used by the client into the access token to create the 
    binding between the two. The new token type "public_key" is placed into the 'token_type' parameter. </t>
 
@@ -453,7 +412,6 @@ standardized format.</t>
      {
        "access_token":"2YotnFZFE....jr1zCsicMWpAA",
        "token_type":"pop",
-       "alg":"RS256",
        "expires_in":3600,
        "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA"
      }   
@@ -462,9 +420,9 @@ standardized format.</t>
    </t>
 
    <t>The content of the 'access_token' field contains an encoded
-    JWT with the following structure, as shown in <xref target="asymmetric-access-token"/>. The digital 
-    signature or the keyed message digest offering integrity protection
-    is not shown (but must be present).</t>
+    JWT, as shown in <xref target="asymmetric-access-token"/>. The digital 
+    signature covering the access token offering authenticity and integrity protection
+    is not shown below (but must be present).</t>
 
    <t>
    <figure title="Example: Access Token Structure (Asymmetric Variant)" anchor="asymmetric-access-token">
@@ -476,16 +434,13 @@ standardized format.</t>
       "exp":"1361398824",
       "nbf":"1360189224",
       "cnf":{
-        "jwk":{"kty":"RSA",
-          "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx
-     4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMs
-     tn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2
-     QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbI
-     SD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqb
-     w0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
-          "e":"AQAB",
-          "alg":"RS256",
-          "kid":"id123"}
+         "jwk" : {
+           "kty" : "EC",
+           "kid" : h'11',
+           "crv" : "P-256",
+           "x" : b64'usWxHK2PmfnHKwXPS54m0kTcGJ90UiglWiGahtagnv8',
+           "y" : b64'IBOL+C3BttVivg+lSreASjpkttcsz+1rb7btKLv8EX4'
+         }
        }
      }
     ]]></artwork>
@@ -494,30 +449,13 @@ standardized format.</t>
      
    <t>Note: In this example there is no need for the authorization server
     to convey further keying material to the client since the client is 
-    already in possession of the private RSA key.</t>
+    already in possession of the private key.</t>
    </section> 
    
   </section> 
-	  
-	  
-<!-- ************************************************************************************** --> 
-
-   <section anchor="algorithm" title="Token Types and Algorithms"> 
-
-    <t>To allow clients to indicate support for specific token types and respective algorithms they need to interact with authorization servers. 
-    They can either provide this information out-of-band, for example, via pre-configuration or up-front via the dynamic client registration protocol <xref target="RFC7591"/>.</t>
-    
-    <t>The value in the 'alg' parameter together with value from the 'token_type' parameter allow the client to indicate the supported algorithms for a given token type. The token type refers to the specification used by the client to interact with the resource server to demonstrate possession of the key. The 'alg' parameter provides further information about the algorithm, such as whether a symmetric or an asymmetric crypto-system is used. Hence, a client supporting a specific token type also knows how to populate the values to the 'alg' parameter.</t>
-    
-    <t>The value for the 'token_type' MUST be taken from the 'OAuth Access Token Types' registry created by <xref target='RFC6749' />.</t>
-
-    <t>This document does not register a new value for the OAuth Access Token Types registry nor does it define values to be used for the 'alg' parameter since this is the responsibility of specifications defining the mechanism for clients interacting with resource servers. An example of such specification can be found in <xref target="I-D.ietf-oauth-signed-http-request"/>.</t>
-
-    <t>The values in the 'alg' parameter are case-sensitive. If the client supports more than one algorithm then each individual value MUST be separated by a space.</t>
-
+	   
 </section> 
- 
- 
+	  
 <!-- ====================================================================== -->
 
 <section anchor="SecurityConsiderations" title="Security Considerations">
@@ -566,45 +504,9 @@ standardized format.</t>
 
 </section> 
 
-
-<!-- ====================================================================== -->
-<!-- 
-<section anchor="PrivacyConsiderations" title="Privacy Considerations">
-  <t>TBD</t>
-</section>
---> 
-<!-- ====================================================================== -->
-
 <section anchor="iana" title="IANA Considerations">
 
-<t>This specification registers the following parameters in the OAuth Parameters Registry established by <xref target="RFC6749"/>.</t>
-
-<t><list style="hanging"> 
-<t hangText="Parameter name:">alg</t>
-<t hangText="Parameter usage location:"> token request, token response, authorization response</t>
-<t hangText="Change controller:"> IETF</t>
-<t hangText="Specification document(s):">  [[ this document ]]</t>
-<t hangText="Related information:">  None</t>
-</list> 
-</t> 
-
-<t><list style="hanging"> 
-<t hangText="Parameter name:">key</t>
-<t hangText="Parameter usage location:"> token request, token response, authorization response</t>
-<t hangText="Change controller:"> IETF</t>
-<t hangText="Specification document(s):">  [[ this document ]]</t>
-<t hangText="Related information:">  None</t>
-</list> 
-</t> 
-
-<t><list style="hanging"> 
-<t hangText="Parameter name:">aud</t>
-<t hangText="Parameter usage location:"> token request</t>
-<t hangText="Change controller:"> IETF</t>
-<t hangText="Specification document(s):"> [[This document.]</t>
-<t hangText="Related information:">  None</t>
-</list> 
-</t>
+<t>This document does not require any actions by IANA.</t> 
 
 </section> 
 
@@ -633,6 +535,11 @@ standardized format.</t>
       <?rfc include="reference.RFC.7519"?>
       <?rfc include="reference.RFC.7800"?>
       <?rfc include="reference.RFC.7638"?>
+	  <?rfc include="reference.I-D.ietf-ace-oauth-authz"?>   
+	  <?rfc include="reference.I-D.ietf-ace-cwt-proof-of-possession"?>  
+	  <?rfc include="reference.RFC.8392"?>
+	  <?rfc include="reference.RFC.8152"?>
+	  
     </references> 
 
     <references title="Informative References"> 
@@ -643,47 +550,23 @@ standardized format.</t>
       <?rfc include="reference.RFC.7591"?>
       <?rfc include="reference.I-D.ietf-oauth-pop-architecture"?>    
       <?rfc include="reference.RFC.7662"?>    
-      <?rfc include="reference.I-D.ietf-oauth-signed-http-request"?>    
-      
-    </references>
+     	  
+	  
+		<reference anchor="IANA-JWT-CLAIMS">
+                <front>
+                    <title>JSON Web Token Claims</title>
+                    <author>
+                        <organization>IANA</organization>
+                    </author>
+
+                    <date month="June" day="26" year="2018"/>
+                </front>
+
+                <format type="HTML" target="https://www.iana.org/assignments/jwt/jwt.xhtml"/>
+        </reference>
+
+	</references>
   
-  <section anchor="ABNF" title="Augmented Backus-Naur Form (ABNF) Syntax"> 
-  
-  <t>This section provides Augmented Backus-Naur Form (ABNF) syntax
-   descriptions for the elements defined in this specification using the
-   notation of <xref target="RFC5234"/>.</t> 
-   
-   
-   <section title="'aud' Syntax">
-  
-   <t>The ABNF syntax is defined as follows where by the "URI-reference" definition is taken from <xref target="RFC3986"/>:</t>
-   
-     <t><list style="empty"> 
-   <t>aud = URI-reference</t>
-</list></t> 
-
-   </section> 
-
-   <section title="'key' Syntax">
-
-    <t>The "key" element is defined in <xref target="symmetric"/> and <xref target="asymmetric"/>:</t>
-    
-    <t><list style="empty"> 
-<t>key = 1*VSCHAR</t>
-</list> 
-</t>
-    </section>
-     
-     <section title="'alg' Syntax">
-     <t>The "alg" element is defined in <xref target="algorithm"/>:</t>
-<t><list style="empty"> 
-<t>alg = alg-token *( SP alg-token )</t>
-<t>alg-token = 1*NQCHAR</t>
-</list>
-</t>
-</section>
-
-</section> 
   </back>
 
 </rfc>
