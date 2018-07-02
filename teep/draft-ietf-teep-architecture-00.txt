@@ -2,28 +2,29 @@
 
 
 
-Internet Engineering Task Force                                   M. Pei
+TEEP                                                              M. Pei
 Internet-Draft                                                  Symantec
 Intended status: Informational                             H. Tschofenig
-Expires: December 3, 2018                                       ARM Ltd.
+Expires: January 3, 2019                                        Arm Ltd.
                                                                 A. Atyeo
                                                                Intercede
                                                                   D. Liu
                                                            Alibaba Group
-                                                               June 2018
+                                                            July 2, 2018
 
 
-    Trusted Execution Environment Provisioning Protocol Architecture
+     Trusted Execution Environment Provisioning (TEEP) Architecture
                   draft-ietf-teep-architecture-00.txt
 
 Abstract
 
-   This document specifies use cases and an architecture for Trusted
-   Execution Environment Provisioning (TEEP), including Open Trust
-   Protocol (OTrP) components.  OTrP is a message protocol that follows
-   the architecture to specify trusted application provisioning and
-   management in a device that runs a Trusted Execution Environment
-   (TEE).
+   A Trusted Execution Environment (TEE) was designed to provide a
+   hardware-isolation mechanism to separate a regular operating system
+   from security- sensitive applications.
+
+   This architecture document motivates the design and standardization
+   of a protocol for managing the lifecyle of trusted applications
+   running inside a TEE.
 
 Status of This Memo
 
@@ -40,7 +41,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on December 3, 2018.
+   This Internet-Draft will expire on January 3, 2019.
 
 Copyright Notice
 
@@ -49,15 +50,15 @@ Copyright Notice
 
    This document is subject to BCP 78 and the IETF Trust's Legal
    Provisions Relating to IETF Documents
-   (http://trustee.ietf.org/license-info) in effect on the date of
 
 
 
-Pei, et al.             Expires December 3, 2018                [Page 1]
+Pei, et al.              Expires January 3, 2019                [Page 1]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
+   (http://trustee.ietf.org/license-info) in effect on the date of
    publication of this document.  Please review these documents
    carefully, as they describe your rights and restrictions with respect
    to this document.  Code Components extracted from this document must
@@ -68,89 +69,77 @@ Internet-Draft                    OTrP                         June 2018
 Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
-   2.  Requirements Language . . . . . . . . . . . . . . . . . . . .   4
-   3.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
-     3.1.  Definitions . . . . . . . . . . . . . . . . . . . . . . .   4
-     3.2.  Abbreviations . . . . . . . . . . . . . . . . . . . . . .   5
-   4.  Scope and Assumptions . . . . . . . . . . . . . . . . . . . .   6
-   5.  Use Cases . . . . . . . . . . . . . . . . . . . . . . . . . .   7
-     5.1.  Payment . . . . . . . . . . . . . . . . . . . . . . . . .   7
-     5.2.  Authentication  . . . . . . . . . . . . . . . . . . . . .   7
-     5.3.  Internet of Things  . . . . . . . . . . . . . . . . . . .   7
-     5.4.  Confidential Cloud Computing  . . . . . . . . . . . . . .   7
-   6.  OTrP System and Trust Model . . . . . . . . . . . . . . . . .   8
-     6.1.  System Components . . . . . . . . . . . . . . . . . . . .   8
-     6.2.  Entity Relations  . . . . . . . . . . . . . . . . . . . .   9
-     6.3.  Trust Anchors in TEE  . . . . . . . . . . . . . . . . . .  13
-     6.4.  Trust Anchors in TAM  . . . . . . . . . . . . . . . . . .  13
-     6.5.  Keys and Certificate Types  . . . . . . . . . . . . . . .  13
-     6.6.  Scalability . . . . . . . . . . . . . . . . . . . . . . .  16
-     6.7.  Message Security  . . . . . . . . . . . . . . . . . . . .  16
-     6.8.  Security Domain Hierarchy and Ownership . . . . . . . . .  16
-     6.9.  SD Owner Identification and TAM Certificate Requirements   17
-     6.10. Service Provider Container  . . . . . . . . . . . . . . .  18
-     6.11. A Sample Device Setup Flow  . . . . . . . . . . . . . . .  18
-   7.  OTrP Agent  . . . . . . . . . . . . . . . . . . . . . . . . .  19
-     7.1.  Role of OTrP Agent  . . . . . . . . . . . . . . . . . . .  19
-     7.2.  OTrP Agent Implementation Consideration . . . . . . . . .  20
-       7.2.1.  OTrP Agent Distribution . . . . . . . . . . . . . . .  20
-       7.2.2.  Number of OTrP Agent  . . . . . . . . . . . . . . . .  20
-   8.  Attestation . . . . . . . . . . . . . . . . . . . . . . . . .  21
-     8.1.  Attestation Hierarchy . . . . . . . . . . . . . . . . . .  21
-       8.1.1.  Attestation Hierarchy Establishment: Manufacture  . .  21
-       8.1.2.  Attestation Hierarchy Establishment: Device Boot  . .  21
-       8.1.3.  Attestation Hierarchy Establishment: TAM  . . . . . .  22
-   9.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  22
-   10. Security Consideration  . . . . . . . . . . . . . . . . . . .  22
-     10.1.  TA Trust Check at TEE  . . . . . . . . . . . . . . . . .  22
-     10.2.  One TA Multiple SP Case  . . . . . . . . . . . . . . . .  22
-     10.3.  OTrP Agent Trust Model . . . . . . . . . . . . . . . . .  23
-     10.4.  Data Protection at TAM and TEE . . . . . . . . . . . . .  23
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Scope and Assumptions . . . . . . . . . . . . . . . . . . . .   6
+   4.  Use Cases . . . . . . . . . . . . . . . . . . . . . . . . . .   6
+     4.1.  Payment . . . . . . . . . . . . . . . . . . . . . . . . .   6
+     4.2.  Authentication  . . . . . . . . . . . . . . . . . . . . .   7
+     4.3.  Internet of Things  . . . . . . . . . . . . . . . . . . .   7
+     4.4.  Confidential Cloud Computing  . . . . . . . . . . . . . .   7
+   5.  Architecture  . . . . . . . . . . . . . . . . . . . . . . . .   7
+     5.1.  System Components . . . . . . . . . . . . . . . . . . . .   7
+     5.2.  Entity Relations  . . . . . . . . . . . . . . . . . . . .   9
+     5.3.  Trust Anchors in TEE  . . . . . . . . . . . . . . . . . .  12
+     5.4.  Trust Anchors in TAM  . . . . . . . . . . . . . . . . . .  12
+     5.5.  Keys and Certificate Types  . . . . . . . . . . . . . . .  12
+     5.6.  Scalability . . . . . . . . . . . . . . . . . . . . . . .  15
+     5.7.  Message Security  . . . . . . . . . . . . . . . . . . . .  15
+     5.8.  Security Domain Hierarchy and Ownership . . . . . . . . .  15
+     5.9.  SD Owner Identification and TAM Certificate Requirements   16
+     5.10. Service Provider Container  . . . . . . . . . . . . . . .  17
+     5.11. A Sample Device Setup Flow  . . . . . . . . . . . . . . .  17
+   6.  Agent . . . . . . . . . . . . . . . . . . . . . . . . . . . .  18
+     6.1.  Role of the Agent . . . . . . . . . . . . . . . . . . . .  18
+     6.2.  Agent Implementation Consideration  . . . . . . . . . . .  19
+       6.2.1.  Agent Distribution  . . . . . . . . . . . . . . . . .  19
+       6.2.2.  Number of Agents  . . . . . . . . . . . . . . . . . .  19
+   7.  Attestation . . . . . . . . . . . . . . . . . . . . . . . . .  20
+     7.1.  Attestation Hierarchy . . . . . . . . . . . . . . . . . .  20
+       7.1.1.  Attestation Hierarchy Establishment: Manufacture  . .  20
+       7.1.2.  Attestation Hierarchy Establishment: Device Boot  . .  20
+       7.1.3.  Attestation Hierarchy Establishment: TAM  . . . . . .  21
+   8.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  21
+   9.  Security Consideration  . . . . . . . . . . . . . . . . . . .  21
+     9.1.  TA Trust Check at TEE . . . . . . . . . . . . . . . . . .  21
+     9.2.  One TA Multiple SP Case . . . . . . . . . . . . . . . . .  21
+     9.3.  Agent Trust Model . . . . . . . . . . . . . . . . . . . .  22
+     9.4.  Data Protection at TAM and TEE  . . . . . . . . . . . . .  22
+     9.5.  Compromised CA  . . . . . . . . . . . . . . . . . . . . .  22
+     9.6.  Compromised TAM . . . . . . . . . . . . . . . . . . . . .  22
 
 
 
-Pei, et al.             Expires December 3, 2018                [Page 2]
+Pei, et al.              Expires January 3, 2019                [Page 2]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
-     10.5.  Compromised CA . . . . . . . . . . . . . . . . . . . . .  23
-     10.6.  Compromised TAM  . . . . . . . . . . . . . . . . . . . .  23
-     10.7.  Certificate Renewal  . . . . . . . . . . . . . . . . . .  23
-   11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  24
-     11.1.  Normative References . . . . . . . . . . . . . . . . . .  24
-     11.2.  Informative References . . . . . . . . . . . . . . . . .  24
+     9.7.  Certificate Renewal . . . . . . . . . . . . . . . . . . .  22
+   10. References  . . . . . . . . . . . . . . . . . . . . . . . . .  23
+     10.1.  Normative References . . . . . . . . . . . . . . . . . .  23
+     10.2.  Informative References . . . . . . . . . . . . . . . . .  23
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  24
 
 1.  Introduction
 
-   The Trusted Execution Environment (TEE) concept has been designed and
-   used to increase security by separating a regular operating system,
-   also referred as a Rich Execution Environment (REE), from security-
-   sensitive applications.  A TEE provides hardware-enforcement that
-   delivers multiple security benefits.  In particular, any code inside
-   the TEE is expected to be authorized code; any data inside the TEE
-   cannot be read by code outside of the TEE; compromising a REE and
-   normal applications in the REE don't affect TEE and code, which is
-   called a Trusted Application (TA), running inside the TEE.
+   The Trusted Execution Environment (TEE) concept has been designed to
+   separate a regular operating system, also referred as a Rich
+   Execution Environment (REE), from security- sensitive applications.
+   A TEE provides hardware-enforcement so that any data inside the TEE
+   cannot be read by code outside of the TEE.  Compromising a REE and
+   normal applications in the REE do not affect code inside the TEE,
+   which is called a Trusted Application (TA), running inside the TEE.
 
-   This calls for the secure provisioning of TAs into a TEE in order to
-   ensure the security integrity.  In an TEE ecosystem, a Trusted
-   Application Manager (TAM) is commonly used to manage keys and TAs
-   that run in a device.  Different device vendors may use different TEE
-   implementations.  Different application providers or device
-   administrators may choose to use different TAM providers.  There
-   arises a need of an open interoperable protocol that establishes
-   mutual trust between different TEE powered devices and TAM providers,
-   and provide management capability for a TAM to manage TAs running in
-   different TEEs of various devices.
+   In an TEE ecosystem, a Trusted Application Manager (TAM) is commonly
+   used to manage keys and TAs that run in a device.  Different device
+   vendors may use different TEE implementations.  Different application
+   providers or device administrators may choose to use different TAM
+   providers.
 
-   In this document, we introduce the use cases and an architecture for
-   an Open Trust Protocol (OTrP) that address the above need.  The
-   protocol specification is defined in an accompanying document basing
-   on the architecture in this document.
+   To simplify the life of developers an interoperable protocol for
+   managing TAs running in different TEEs of various devices is needed.
 
-   The protocol addresses the following main trust problems.
+   The protocol addresses the following problems.
 
    1.  A Device Administrator (DA) or Service Provider (SP) of the
        device users needs to determine security-relevant information of
@@ -160,38 +149,25 @@ Internet-Draft                    OTrP                         June 2018
 
    2.  A TEE in a device needs to determine whether a Device
        Administrator (DA) or a Service Provider (SP) that wants to
-       manage an TA in the device is trustworthy or authorized to manage
-       applications in the TEE.
+       manage an TA in the device is authorized to manage applications
+       in the TEE.
 
+   3.  Attestation must be able to ensure a TEE is genuine.
 
-
-Pei, et al.             Expires December 3, 2018                [Page 3]
-
-Internet-Draft                    OTrP                         June 2018
-
-
-   3.  Secure Boot must be able to ensure a TEE is genuine.
-
-   In the following sections, we introduce the scope of the protocol
-   first in Section 4.  We introduce use cases next in Section 5, and
-   then trust model and architecture in Section 6.
-
-2.  Requirements Language
+2.  Terminology
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
    "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
    document are to be interpreted as described in RFC 2119 [RFC2119].
 
-3.  Terminology
-
-3.1.  Definitions
-
-   The definitions provided below are defined as used in this document.
-   The same terms may be defined differently in other documents.
-
    Client Application:  An application running on a rich OS, such as an
        Android, Windows, or iOS application.
 
+
+
+Pei, et al.              Expires January 3, 2019                [Page 3]
+
+Internet-Draft              TEEP Architecture                  July 2018
 
 
    Device:  A physical piece of hardware that hosts a TEE along with a
@@ -199,10 +175,10 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-   OTrP Agent:  An application running in the rich OS allowing message
-       protocol exchange between a TAM and a TEE in a device.  An OTrP
-       compliant TEE is responsible to process message relaying such an
-       OTrP Agent.
+   Agent:  An application running in the rich OS allowing the message
+       protocol exchange between a TAM and a TEE in a device.  A TEE is
+       responsible to processing relayed messages and for returning an
+       appropriate reponse.
 
 
 
@@ -219,11 +195,6 @@ Internet-Draft                    OTrP                         June 2018
        secure boot functionality.  It is generally signed and can be
        verified whether it can be trusted.
 
-
-
-Pei, et al.             Expires December 3, 2018                [Page 4]
-
-Internet-Draft                    OTrP                         June 2018
 
 
    Service Provider (SP):  An entity that wishes to supply Trusted
@@ -247,15 +218,30 @@ Internet-Draft                    OTrP                         June 2018
    Trusted Execution Environment (TEE):  An execution environment that
        runs alongside of, but is isolated from, an REE.  A TEE has
        security capabilities and meets certain security-related
+
+
+
+Pei, et al.              Expires January 3, 2019                [Page 4]
+
+Internet-Draft              TEEP Architecture                  July 2018
+
+
        requirements.  It protects TEE assets from general software
        attacks, defines rigid safeguards as to data and functions that a
        program can access, and resists a set of defined threats.  It
-       should have at least the following three properties: (a) A unique
-       security identity that cannot be cloned; (b) Assurance that only
-       authorized code can run in the TEE; (c) Memory that cannot be
-       read by code outside of TEE.  There are multiple technologies
-       that can be used to implement a TEE, and the level of security
-       achieved varies accordingly.
+       should have at least the following three properties:
+
+       (a) A device unique credential that cannot be cloned;
+
+
+       (b) Assurance that only authorized code can run in the TEE;
+
+
+       (c) Memory that cannot be read by code outside of TEE.
+
+
+       There are multiple technologies that can be used to implement a
+       TEE, and the level of security achieved varies accordingly.
 
 
 
@@ -264,23 +250,13 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-3.2.  Abbreviations
+   This document uses the following abbreviations:
 
    CA      Certificate Authority
-
-   OTrP    Open Trust Protocol
 
    REE     Rich Execution Environment
 
    SD      Security Domain
-
-
-
-
-Pei, et al.             Expires December 3, 2018                [Page 5]
-
-Internet-Draft                    OTrP                         June 2018
-
 
    SP      Service Provider
 
@@ -294,11 +270,19 @@ Internet-Draft                    OTrP                         June 2018
 
    TAM     Trusted Application Manager
 
-4.  Scope and Assumptions
 
-   This document defines the use cases and architectures of the OTrP.
-   The message payloads exchanged between devices and a TAM are
-   specified in an accompanying protocol document.
+
+
+
+
+
+
+Pei, et al.              Expires January 3, 2019                [Page 5]
+
+Internet-Draft              TEEP Architecture                  July 2018
+
+
+3.  Scope and Assumptions
 
    This specification assumes that an applicable device is equipped with
    one or more TEEs and each TEE is pre-provisioned with a device-unique
@@ -320,27 +304,16 @@ Internet-Draft                    OTrP                         June 2018
 
    2.  A Client Application supplies the TA binary
 
-   The OTrP covers the first case where the TA binary and configuration
-   data are delivered from a TAM.  The second case calls for an OTrP
-   extension when a TAM is absent.
+   The architecture covers the first case where the TA binary and
+   configuration data are delivered from a TAM.  The second case calls
+   for an extension when a TAM is absent.
 
-   OTrP anticipates to provide a transport protocol binding for message
-   exchange with a TAM, at least, the common transport methods such as
-   HTTPS.
+   Messages exchange with a TAM require some transport and HTTPS is one
+   commonly used transport.
 
+4.  Use Cases
 
-
-
-
-
-Pei, et al.             Expires December 3, 2018                [Page 6]
-
-Internet-Draft                    OTrP                         June 2018
-
-
-5.  Use Cases
-
-5.1.  Payment
+4.1.  Payment
 
    A payment application in a mobile device requires high security and
    trust about the hosting device.  Payments initiated from a mobile
@@ -356,13 +329,22 @@ Internet-Draft                    OTrP                         June 2018
    Such an application implementation often relies on TEE for user input
    protection.
 
-5.2.  Authentication
+
+
+
+
+Pei, et al.              Expires January 3, 2019                [Page 6]
+
+Internet-Draft              TEEP Architecture                  July 2018
+
+
+4.2.  Authentication
 
    For better security of authentication, a devices may store its
    sensitive authentication keys inside a TEE of the device, providing
    hardware-protected security key strength and trusted execution code.
 
-5.3.  Internet of Things
+4.3.  Internet of Things
 
    Internet of Things (IoT) has been posing threats to networks and
    national infrastructures because of existing weak security in
@@ -373,35 +355,25 @@ Internet-Draft                    OTrP                         June 2018
 
    TEEs could be used to store variety of sensitive data for IoT
    devices.  For example, a TEE could be used in smart door locks to
-   store a user's biometric information for authentication, and for
+   store a user's biometric information for identification, and for
    protecting access the locking mechanism.  Bike-sharing is another
-   example that shares a similar usage scenario.  TEEs could also be
-   used in drones to store geographical location information of the no-
-   fly zone.
+   example that shares a similar usage scenario.
 
-5.4.  Confidential Cloud Computing
+4.4.  Confidential Cloud Computing
 
    A tenant can store sensitive data in a TEE in a cloud computing
    server such that only the tenant can access the data, preventing the
    cloud host provider from accessing the data.  A tenant can run TAs
    inside a server TEE for secure operation and enhanced data security.
    This provides benefits not only to tenants with better data security
-
-
-
-Pei, et al.             Expires December 3, 2018                [Page 7]
-
-Internet-Draft                    OTrP                         June 2018
-
-
    but also to cloud host provider for reduced liability and increased
    cloud adoption.
 
-6.  OTrP System and Trust Model
+5.  Architecture
 
-6.1.  System Components
+5.1.  System Components
 
-   The following are the main components in an OTrP system.
+   The following are the main components in the system.
 
    TAM:  A TAM is responsible for originating and coordinating lifecycle
        management activity on a particular TEE on behalf of a Service
@@ -414,6 +386,14 @@ Internet-Draft                    OTrP                         June 2018
        user who chooses to download the payment TA into its devices acts
        as the device administrator, authorizing the TA installation via
        the downloading consent.  The device manufacturer is typically
+
+
+
+Pei, et al.              Expires January 3, 2019                [Page 7]
+
+Internet-Draft              TEEP Architecture                  July 2018
+
+
        responsible for embedding the TAM trust verification capability
        in its device TEE.
 
@@ -425,124 +405,87 @@ Internet-Draft                    OTrP                         June 2018
        should be removed.  A TEE administrator or device administrator
        may decide TAMs that it trusts to manage its devices.
 
-   Certificate Authority (CA):  Mutual trust between a device and a TAM
-       as well as an SP is based on certificates.  A device embeds a
-       list of root certificates, called Trust Anchors, from trusted
-       Certificate Authorities that a TAM will be validated against.  A
-       TAM will remotely attest a device by checking whether a device
-       comes with a certificate from a CA that the TAM trusts.  The CAs
-       don't need to be the same; different CAs can be chosen by each
-       TAM, and different device CAs can be used by different device
-       manufacturers.
+   Certification Authority (CA):  Certificate-based credentials used for
+       authenticating a device, a TAM and an SP.  A device embeds a list
+       of root certificates (trust anchors), from trusted CAs that a TAM
+       will be validated against.  A TAM will remotely attest a device
+       by checking whether a device comes with a certificate from a CA
+       that the TAM trusts.  The CAs do not need to be the same;
+       different CAs can be chosen by each TAM, and different device CAs
+       can be used by different device manufacturers.
 
    TEE:  A TEE in a device is responsible for protecting applications
        from attack, enabling the application to perform secure
        operations.
 
    REE:  The REE in a device is responsible for enabling off-device
-       communications to be established between a TEE and TAM.  OTrP
+       communications to be established between a TEE and TAM.  The
+       architecture does not assume or require that the REE or Client
+       Applications is secure.
 
-
-
-
-Pei, et al.             Expires December 3, 2018                [Page 8]
-
-Internet-Draft                    OTrP                         June 2018
-
-
-       does not assume or require that the REE or Client Applications is
-       secure.
-
-   OTrP Agent:  A Client Application is expected to communicate with a
-       TAM to request TAs that it needs to use.  The Client Application
-       needs to pass the OTrP messages from the TAM to TEEs in the
-       device.  This calls for a component in REE that the Client
-       Application can use to pass messages to TEEs.  An OTrP Agent is
-       this component to fill the role.  In other words, an OTrP Agent
-       is an application in the REE or software library that can simply
-       relays OTrP messages from a Client Application to a TEE in the
-       device.  A device usually comes with only one active TEE.  A TEE
-       that supports OTrP may provide such an OTrP Agent to the device
-       manufacturer to be bundled in devices.  Such an OTrP compliant
-       TEE must also include an OTrP Agent counterpart, namely, an OTrP
-       processing module inside the TEE, to process TAM messages sent
-       through the OTrP Agent.  An OTrP Agent is generally acting as a
-       dummy relaying box with just the TEE interacting capability; it
-       doesn't need and shouldn't parse OTrP protocol messages.
+   Agent:  A Client Application is expected to communicate with a TAM to
+       request TAs that it needs to use.  The Client Application needs
+       to pass the messages from the TAM to TEEs in the device.  This
+       calls for a component in REE that the Client Application can use
+       to pass messages to TEEs.  An Agent is this component to fill the
+       role.  In other words, an Agent is an application in the REE or
+       software library that can simply relays messages from a Client
+       Application to a TEE in the device.  A device usually comes with
+       only one active TEE.  A TEE that supports may provide such an
+       Agent to the device manufacturer to be bundled in devices.  Such
+       a compliant TEE must also include an Agent counterpart, namely, a
+       processing module inside the TEE, to parse TAM messages sent
+       through the Agent.  An Agent is generally acting as a dummy
+       relaying box with just the TEE interacting capability; it doesn't
+       need and shouldn't parse protocol messages.
 
    Device Administrator:  A device owner or administrator may want to
        manage what TAs allowed to run in its devices.  A default list of
        allowed TA trust root CA certificates is included in a device by
+
+
+
+Pei, et al.              Expires January 3, 2019                [Page 8]
+
+Internet-Draft              TEEP Architecture                  July 2018
+
+
        the device's manufacturer, which may be governed by the device
        carriers sometimes.  There may be needs to expose overriding
        capability for a device owner to decide the list of allowed TAs
        by updating the list of trusted CA certificates.
 
-   Secure Boot:  Secure boot (for the purposes of OTrP) must enable
-       authenticity checking of TEEs by the TAM.
+   Secure Boot:  Secure boot must enable authenticity checking of TEEs
+       by the TAM.  Note that some TEE implementations do not require
+       secure boot functionality.
 
-   The OTrP uses trust anchors to establish mutual trust between TEEs
-   and TAMs when performing TA lifecycle management.
+5.2.  Entity Relations
 
-6.2.  Entity Relations
-
-   OTrP specifies messages and key properties that can establish mutual
-   trust between a TEE and a TAM.  There could be different ways to
-   establish trust between two entities.  OTrP leverages asymmetric keys
-   and certificates in TAMs and TEEs to achieve this mutual trust,
-   providing a simple protocol and trust model.
-
-   At first, it is the device verification by a TAM.  A TAM can define
-   its own trust certificate CA list that a TEE device key should be
-   signed.
-
-   On the other hand, OTrP provides trust verification by a TEE in a
-   device against a TAM provider and TA signer.  The control of the
-
-
-
-Pei, et al.             Expires December 3, 2018                [Page 9]
-
-Internet-Draft                    OTrP                         June 2018
-
-
-   trust anchors in a device may come with different use case
-   requirements.  The device administrator may want to have the
-   capability to control what TAs are allowed.  A device manufacturer
-   enables verification of the TA signers and TAM providers; it may
-   embed a list of default trust anchors that the signer of an allowed
-   TA's signer certificate should chain to.  A device administrator may
-   choose to accept a subset of the allowed TAs via consent or action of
-   downloading.
-
-   An OTrP protocol provides specifications for the following three
-   entities:
-
-   1.  Key and certificate types required for device firmware, TEEs,
-       TAs, SPs, and TAMs
-
-   2.  Data message formats that should be exchanged between a TEE in a
-       device and a TAM
-
-   3.  An OTrP Agent application in the REE that can relay messages
-       between a Client Application and TEE
-
-   Figure 1: Protocol Scope and Entity Relationship
+   This architecture leverages asymmetric cryptography to authenticate a
+   device towards a TAM.  Additionally, a TEE in a device authenticates
+   a TAM provider and TA signer.  The provisioning of trust anchors to a
+   device may different from one use case to the other.  The device
+   administrator may want to have the capability to control what TAs are
+   allowed.  A device manufacturer enables verification of the TA
+   signers and TAM providers; it may embed a list of default trust
+   anchors that the signer of an allowed TA's signer certificate should
+   chain to.  A device administrator may choose to accept a subset of
+   the allowed TAs via consent or action of downloading.
 
    PKI    CA    -- CA                                 CA --
            |    |                                         |
            |    |                                         |
            |    |                                         |
-   Device  |    |   --- OTrP Agent / Client App ---       |
+   Device  |    |   ---    Agent / Client App   ---       |
    SW      |    |   |                             |       |
            |    |   |                             |       |
            |    |   |                             |       |
-   OTrP    |    -- TEE                           TAM-------
+           |    -- TEE                           TAM-------
            |
            |
           FW
 
-   Figure 2: OTrP Entity Roles and Example Experience
+                            Figure 1: Entities
 
 
 
@@ -557,9 +500,10 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 10]
+
+Pei, et al.              Expires January 3, 2019                [Page 9]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
     (App Developer)    (App Store)    (TAM)     (Device with TEE)  (CAs)
@@ -575,26 +519,26 @@ Internet-Draft                    OTrP                         June 2018
            |
            |
       Client App -- 2a. --> | ----- 3. Install -------> |
-         TA ------- 2b. Supply ------> | -- 4. OTrP --> |
+         TA ------- 2b. Supply ------> | 4. Messaging-->|
            |                |          |                |
 
-   In the previous diagram: 1. an application developer builds two
-   applications: 1) a rich Client Application; 2) a TA that provides
-   some security functions to be run inside a TEE.  At step 2, the
-   application developer uploads the Client Application (2a) to an
-   Application Store.  The Client Application may optionally bundle the
-   TA binary.  Meanwhile, the application developer may provide its TA
-   to a TAM provider that will be managing the TA in various devices. 3.
-   A user will go to an Application Store to download the Client
-   Application.  The Client Application will trigger TA installation by
-   calling TAM.  This is the step 4.  The Client Application will get
-   OTrP messages from TAM, and interacts with device TEE via an OTrP
-   Agent.
+                      Figure 2: Developer Experience
+
+   Figure 2 shows an application developer building two applications: 1)
+   a rich Client Application; 2) a TA that provides some security
+   functions to be run inside a TEE.  At step 2, the application
+   developer uploads the Client Application (2a) to an Application
+   Store.  The Client Application may optionally bundle the TA binary.
+   Meanwhile, the application developer may provide its TA to a TAM
+   provider that will be managing the TA in various devices. 3.  A user
+   will go to an Application Store to download the Client Application.
+   The Client Application will trigger TA installation by calling TAM.
+   This is the step 4.  The Client Application will get messages from
+   TAM, and interacts with device TEE via an Agent.
 
    The following diagram will show a system diagram about the entity
    relationships between CAs, TAM, SP and devices.
 
-   Figure 3: OTrP Key and Certificate Relationships
 
 
 
@@ -613,12 +557,12 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 11]
+Pei, et al.              Expires January 3, 2019               [Page 10]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
-           -------OTrP Message Protocol---
+           ------- Message Protocol  -----
            |                             |
            |                             |
     --------------------           ---------------   ----------
@@ -629,7 +573,7 @@ Internet-Draft                    OTrP                         June 2018
     |  Apps  |         |           |     Mgmt    |   |        |
     |   |    |         |           |             |   |        |
     |   |    |         |           |             |   |        |
-    | OTrP   | Trusted |           |  Trusted    |   |        |
+    |        | Trusted |           |  Trusted    |   |        |
     | Agent  |  TAM/SP |           |   FW/TEE    |   |        |
     |        |   CAs   |           |    CAs      |   |        |
     |        |         |           |             |   |        |
@@ -644,56 +588,50 @@ Internet-Draft                    OTrP                         June 2018
            | TEE CA    |              | TAM CA |      | SP CA |
            -------------              ----------      ---------
 
-   In the previous diagram, different Certificate Authorities can be
-   used respectively for different types of certificates.  OTrP messages
-   are always signed, where the signer key is the message originator's
-   private key such as that of a TAM, the private key of a trusted
-   firmware (TFW), or a TEE's private key.
+                              Figure 3: Keys
 
-   The main OTrP component consists of a set of standard messages
-   created by a TAM to deliver device SD and TA management commands to a
-   device, and device attestation and response messages created by a TEE
-   that responds to a TAM's OTrP message.
+   In the previous diagram, different CAs can be used for different
+   types of certificates.  Messages are always signed, where the signer
+   key is the message originator's private key such as that of a TAM,
+   the private key of a trusted firmware (TFW), or a TEE's private key.
 
-   The communication method of OTrP Messages between a TAM and TEE in a
-   device may vary between TAM and TEE providers.  A mandatory transport
-   protocol is specified for a compliant TAM and a device TEE.
+   The main components consist of a set of standard messages created by
+   a TAM to deliver device SD and TA management commands to a device,
+   and device attestation and response messages created by a TEE that
+   responds to a TAM's message.
 
    It should be noted that network communication capability is generally
    not available in TAs in today's TEE-powered devices.  The networking
    functionality must be delegated to a rich Client Application.  Client
-   Applications will need to rely on OTrP Agent in the REE to interact
+   Applications will need to rely on an agent in the REE to interact
    with a TEE for message exchanges.  Consequently, a TAM generally
-   communicates with a Client Application about how it gets OTrP
-   Messages that originates from TEE inside a device.  Similarly, a TA
+   communicates with a Client Application about how it gets messages
+   that originates from TEE inside a device.  Similarly, a TA or TEE
+   generally gets messages from a TAM via some Client Application,
+   namely, an agent in this protocol architecture, not directly from the
+   internet.
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 12]
+Pei, et al.              Expires January 3, 2019               [Page 11]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
-
-   or TEE generally gets OTrP messages from a TAM via some Client
-   Application, namely, an OTrP Agent in this protocol architecture, not
-   directly from the internet.
 
    It is imperative to have an interoperable protocol to communicate
    with different TEEs in different devices that a Client Application
-   needs to run and access a TA inside a TEE.  This is the role of an
-   OTrP Agent, which is a software component that bridges communication
-   between a TAM and a TEE.  The OTrP Agent doesn't need to know the
-   actual content of OTrP messages except for the TEE routing
-   information.
+   needs to run and access a TA inside a TEE.  This is the role of the
+   agent, which is a software component that bridges communication
+   between a TAM and a TEE.  The agent does not need to know the actual
+   content of messages except for the TEE routing information.
 
-6.3.  Trust Anchors in TEE
+5.3.  Trust Anchors in TEE
 
    Each TEE comes with a trust store that contains a whitelist of root
-   CA certificates that are used to validate a TAM's certificate.  There
-   are called called Trust Anchors.  A TEE will accept a TAM to create
-   new Security Domains and install new TAs on behalf of a SP only if
-   the TAM's certificate is chained to one of the root CA certificates
-   in the TEE's trust store.
+   CA certificates that are used to validate a TAM's certificate.  A TEE
+   will accept a TAM to create new Security Domains and install new TAs
+   on behalf of a SP only if the TAM's certificate is chained to one of
+   the root CA certificates in the TEE's trust store.
 
    A TEE's trust store is typically preloaded at manufacturing time.  It
    is out of the scope in this document to specify how the trust store
@@ -706,28 +644,34 @@ Internet-Draft                    OTrP                         June 2018
    powered devices with a particular TEE, it must obtain a TAM
    certificate from a CA that is listed in the trust store of the TEE.
 
-6.4.  Trust Anchors in TAM
+5.4.  Trust Anchors in TAM
 
-   The Trust Anchor set in a TAM consists of a list of Certificate
-   Authority certificates that sign various device TEE certificates.  A
-   TAM decides what devices it will trust the TEE in.
+   The trust anchor store in a TAM consists of a list of CA certificates
+   that sign various device TEE certificates.  A TAM decides what
+   devices it will trust the TEE in.
 
-6.5.  Keys and Certificate Types
+5.5.  Keys and Certificate Types
 
-   OTrP leverages the following list of trust anchors and identities in
-   generating signed and encrypted command messages that are exchanged
-   between a device's TEE and a TAM.  With these security artifacts,
-   OTrP Messages are able to deliver end-to-end security without relying
-   on any transport security.
+   This architecture leverages the following credentials, which allow
+   delivering end-to-end security without relying on any transport
+   security.
 
 
 
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 13]
+
+
+
+
+
+
+
+
+Pei, et al.              Expires January 3, 2019               [Page 12]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
    +-------------+----------+--------+-------------------+-------------+
@@ -781,9 +725,9 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 14]
+Pei, et al.              Expires January 3, 2019               [Page 13]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
        This key pair is burned into the device at device manufacturer.
@@ -837,19 +781,18 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 15]
+Pei, et al.              Expires January 3, 2019               [Page 14]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
-6.6.  Scalability
+5.6.  Scalability
 
-   OTrP uses PKI to establish trust.  Trust anchors (root certificates)
-   exist on the devices to enable the TEE to determine which TAMs can be
-   trusted, and TAMs use trust anchors (root certificates) to determine
-   which TEEs can be trusted.  Since PKI is used, many intermediate CAs
-   can chain to a root certificate, each of which can issue many
-   certificates.  This makes the protocol highly scalable.  New
+   This architecture uses a PKI.  Trust anchors exist on the devices to
+   enable the TEE to authenticate TAMs, and TAMs use trust anchors to
+   authenticate TEEs.  Since a PKI is used, many intermediate CAs
+   certificates can chain to a root certificate, each of which can issue
+   many certificates.  This makes the protocol highly scalable.  New
    factories that produce TEEs can join the ecosystem.  In this case,
    such a factory can get an intermediate CA certificate from one of the
    existing roots without requiring that TAMs are updated with
@@ -860,19 +803,17 @@ Internet-Draft                    OTrP                         June 2018
    itself.  This enables the ecosystem to scale, and avoids the need for
    centralized databases of all TEEs produced or all TAMs that exist.
 
-6.7.  Message Security
+5.7.  Message Security
 
-   The main OTrP component is the set of standard OTrP messages created
-   by a TAM to deliver device SD and TA management commands to a device,
-   and device attestation and response messages created by TEE to
-   respond to TAM OTrP Messages.
+   Messages created by a TAM are used to deliver device SD and TA
+   management commands to a device, and device attestation and response
+   messages created by the TEE to respond to TAM messages.
 
-   An OTrP Message is designed to provide end-to-end security.  It is
-   always signed by its creator.  In addition, an OTrP Message is
-   typically encrypted such that only the targeted device TEE or TAM is
-   able to decrypt and view the actual content.
+   These messages are signed end-to-end and are typically encrypted such
+   that only the targeted device TEE or TAM is able to decrypt and view
+   the actual content.
 
-6.8.  Security Domain Hierarchy and Ownership
+5.8.  Security Domain Hierarchy and Ownership
 
    The primary job of a TAM is to help an SP to manage its trusted
    applications.  A TA is typically installed in an SD.  An SD is
@@ -890,16 +831,16 @@ Internet-Draft                    OTrP                         June 2018
 
    From an SD ownership perspective, the SD tree is flat and there is
    only one level.  An SD is associated with its owner.  It is up to TEE
-
-
-
-Pei, et al.             Expires December 3, 2018               [Page 16]
-
-Internet-Draft                    OTrP                         June 2018
-
-
    implementation how it maintains SD binding information for a TAM and
    different SPs under the same TAM.
+
+
+
+
+Pei, et al.              Expires January 3, 2019               [Page 15]
+
+Internet-Draft              TEEP Architecture                  July 2018
+
 
    It is an important decision in this protocol specification that a TEE
    doesn't need to know whether a TAM is authorized to manage the SD for
@@ -918,7 +859,7 @@ Internet-Draft                    OTrP                         June 2018
    the same SD name for those SPs.  This is totally up to the TAM
    implementation and out of scope of this specification.
 
-6.9.  SD Owner Identification and TAM Certificate Requirements
+5.9.  SD Owner Identification and TAM Certificate Requirements
 
    There is a need of cryptographically binding proof about the owner of
    an SD in a device.  When an SD is created on behalf of a TAM, a
@@ -946,21 +887,20 @@ Internet-Draft                    OTrP                         June 2018
    A TEE can assign this certificate attribute value as the TAM owner ID
    for the SDs that are created for the TAM.
 
-
-
-
-Pei, et al.             Expires December 3, 2018               [Page 17]
-
-Internet-Draft                    OTrP                         June 2018
-
-
    An alternative way to represent an SD ownership by a TAM is to have a
    unique secret key upon SD creation such that only the creator TAM is
-   able to produce a Proof-of-Possession (POP) data with the secret.
+   able to produce a proof-of-possession (PoP) data with the secret.
 
-6.10.  Service Provider Container
 
-   A sample Security Domain hierarchy for the TEE is shown below.
+
+Pei, et al.              Expires January 3, 2019               [Page 16]
+
+Internet-Draft              TEEP Architecture                  July 2018
+
+
+5.10.  Service Provider Container
+
+   A sample Security Domain hierarchy for the TEE is shown in Figure 4.
 
        ----------
        |  TEE   |
@@ -976,11 +916,13 @@ Internet-Draft                    OTrP                         June 2018
            |----------| SP2 SD1 |
                       ----------
 
-   OTrP segregates SDs and TAs such that a TAM can only manage or
-   retrieve data for SDs and TAs that it previously created for the SPs
-   it represents.
+                    Figure 4: Security Domain Hiearchy
 
-6.11.  A Sample Device Setup Flow
+   The architecture separates SDs and TAs such that a TAM can only
+   manage or retrieve data for SDs and TAs that it previously created
+   for the SPs it represents.
+
+5.11.  A Sample Device Setup Flow
 
    Step 1: Prepare Images for Devices
 
@@ -1005,9 +947,11 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 18]
+
+
+Pei, et al.              Expires January 3, 2019               [Page 17]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
    2.  [TFW/TEE] Generate a unique attestation key pair and get a
@@ -1021,95 +965,93 @@ Internet-Draft                    OTrP                         June 2018
    2.  [TEE vendor or OEM] Store trusted CA certificate list into
        devices
 
-7.  OTrP Agent
+6.  Agent
 
-   A TEE and TAs that run inside the TEE don't generally have capability
-   to communicate to the outside of the hosting device, for example, the
-   TEE specified by Global Platform groups [GPTEE].  This calls for a
-   software module in the REE world to handle the network communication.
-   Each Client Application in REE may carry this communication
-   functionality but it must also interact with the TEE for the message
-   exchange.  The TEE interaction will vary according to different TEEs.
-   In order for a Client Application to transparently support different
-   TEEs, it is imperative to have a common interface for a Client
-   Application to invoke for exchanging messages with TEEs.
+   A TEE and TAs do not generally have capability to communicate to the
+   outside of the hosting device.  For example, the Global Platform
+   [GPTEE] specifies one such architecture.  This calls for a software
+   module in the REE world to handle the network communication.  Each
+   Client Application in REE may carry this communication functionality
+   but it must also interact with the TEE for the message exchange.  The
+   TEE interaction will vary according to different TEEs.  In order for
+   a Client Application to transparently support different TEEs, it is
+   imperative to have a common interface for a Client Application to
+   invoke for exchanging messages with TEEs.
 
-   A shared OTrP Agent comes to meed this need.  An OTrP Agent is an
-   application running in the REE of the device or a SDK that
-   facilitates communication between a TAM and TEE.  It also provides
-   interfaces for TAM SDK or Client Applications to query and trigger TA
-   installation that the application needs to use.
+   A shared agent comes to meed this need.  An agent is an application
+   running in the REE of the device or a SDK that facilitates
+   communication between a TAM and TEE.  It also provides interfaces for
+   TAM SDK or Client Applications to query and trigger TA installation
+   that the application needs to use.
 
    This interface for Client Applications may be commonly an Android
    service call for an Android powered device.  A Client Application
    interacts with a TAM, and turns around to pass messages received from
-   TAM to OTrP Agent.
+   TAM to agent.
 
    In all cases, a Client Application needs to be able to identify an
-   OTrP Agent that it can use.
+   agent that it can use.
 
-7.1.  Role of OTrP Agent
+6.1.  Role of the Agent
 
-   An OTrP Agent abstracts the message exchanges with the TEE in a
-   device.  The input data is originated from a TAM that a Client
-   Application connects.  A Client Application may also directly call
-   OTrP Agent for some TA query functions.
+   An agent abstracts the message exchanges with the TEE in a device.
+   The input data is originated from a TAM that a Client Application
+   connects.  A Client Application may also directly call Agent for some
+   TA query functions.
 
-   OTrP Agent may internally process a request from TAM.  At least, it
-   needs to know where to route a message, e.g.  TEE instance.  It
-   doesn't need to process or verify message content.
+   The agent may internally process a request from TAM.  At least, it
+   needs to know where to route a message, e.g., TEE instance.  It does
+   not need to process or verify message content.
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 19]
+Pei, et al.              Expires January 3, 2019               [Page 18]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
-   OTrP Agent returns TEE / TFW generated response messages to the
-   caller.  OTrP Agent isn't expected to handle any network connection
+   The agent returns TEE / TFW generated response messages to the
+   caller.  The agent is not expected to handle any network connection
    with an application or TAM.
 
-   OTrP Agent only needs to return an OTrP Agent error message if the
-   TEE is not reachable for some reason.  Other errors are represented
-   as response messages returned from the TEE which will then be passed
-   to the TAM.
+   The agent only needs to return an agent error message if the TEE is
+   not reachable for some reason.  Other errors are represented as
+   response messages returned from the TEE which will then be passed to
+   the TAM.
 
-7.2.  OTrP Agent Implementation Consideration
+6.2.  Agent Implementation Consideration
 
    A Provider should consider methods of distribution, scope and
-   concurrency on device and runtime options when implementing an OTrP
-   Agent.  Several non-exhaustive options are discussed below.
-   Providers are encouraged to take advantage of the latest
-   communication and platform capabilities to offer the best user
-   experience.
+   concurrency on device and runtime options when implementing an agent.
+   Several non-exhaustive options are discussed below.  Providers are
+   encouraged to take advantage of the latest communication and platform
+   capabilities to offer the best user experience.
 
-7.2.1.  OTrP Agent Distribution
+6.2.1.  Agent Distribution
 
-   OTrP Agent installation is commonly carried out at OEM time.  A user
-   can dynamically download and install an OTrP Agent on-demand.
+   The agent installation is commonly carried out at OEM time.  A user
+   can dynamically download and install an agent on-demand.
 
-   It is important to ensure a legitimate OTrP Agent is installed and
-   used.  If an OTrP Agent is compromised it may send rogue messages to
-   TAM and TEE and introduce additional risks.
+   It is important to ensure a legitimate agent is installed and used.
+   If an agent is compromised it may drop messages and thereby
+   introducing a denial of service.
 
-7.2.2.  Number of OTrP Agent
+6.2.2.  Number of Agents
 
-   We anticipate only one shared OTrP Agent instance in a device.  The
-   device's TEE vendor will most probably supply one OTrP Agent.
-   Potentially we expect some open source.
+   We anticipate only one shared agent instance in a device.  The
+   device's TEE vendor will most probably supply one aent.
 
-   With one shared OTrP Agent, the OTrP Agent provider is responsible to
-   allow multiple TAMs and TEE providers to achieve interoperability.
-   With a standard OTrP Agent interface, TAM can implement its own SDK
-   for its SP Client Applications to work with this OTrP Agent.
+   With one shared agent, the agent provider is responsible to allow
+   multiple TAMs and TEE providers to achieve interoperability.  With a
+   standard agent interface, TAM can implement its own SDK for its SP
+   Client Applications to work with this agent.
 
-   Multiple independent OTrP Agent providers can be used as long as they
-   have standard interface to a Client Application or TAM SDK.  Only one
-   OTrP Agent is expected in a device.
+   Multiple independent agent providers can be used as long as they have
+   standard interface to a Client Application or TAM SDK.  Only one
+   agent is expected in a device.
 
    TAM providers are generally expected to provide SDK for SP
-   applications to interact with an OTrP Agent for the TAM and TEE
+   applications to interact with an agent for the TAM and TEE
    interaction.
 
 
@@ -1117,14 +1059,16 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 20]
+
+
+Pei, et al.              Expires January 3, 2019               [Page 19]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
-8.  Attestation
+7.  Attestation
 
-8.1.  Attestation Hierarchy
+7.1.  Attestation Hierarchy
 
    The attestation hierarchy and seed required for TAM protocol
    operation must be built into the device at manufacture.  Additional
@@ -1136,7 +1080,7 @@ Internet-Draft                    OTrP                         June 2018
    release the SBM signing key and later during the protocol lifecycle
    management interchange with the TAM.
 
-8.1.1.  Attestation Hierarchy Establishment: Manufacture
+7.1.1.  Attestation Hierarchy Establishment: Manufacture
 
    During manufacture the following steps are required:
 
@@ -1152,7 +1096,7 @@ Internet-Draft                    OTrP                         June 2018
        which are additional TEEs after the root TEE that some devices
        have.
 
-8.1.2.  Attestation Hierarchy Establishment: Device Boot
+7.1.2.  Attestation Hierarchy Establishment: Device Boot
 
    During device boot the following steps are required:
 
@@ -1161,8 +1105,8 @@ Internet-Draft                    OTrP                         June 2018
 
    2.  The SBM verifies the code-signing signature of the active TEE and
        places its TEE public key into a signing buffer, along with its
-       identifier for later access.  For a non-OTrP TEE, the SBM leaves
-       the TEE public key field blank.
+       identifier for later access.  For a TEE non-compliant to this
+       architecture, the SBM leaves the TEE public key field blank.
 
    3.  The SBM signs the signing buffer with the TFW private key.
 
@@ -1173,12 +1117,12 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 21]
+Pei, et al.              Expires January 3, 2019               [Page 20]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
-8.1.3.  Attestation Hierarchy Establishment: TAM
+7.1.3.  Attestation Hierarchy Establishment: TAM
 
    Before a TAM can begin operation in the marketplace to support
    devices of a given TEE, it must obtain a TAM certificate from a CA
@@ -1186,17 +1130,18 @@ Internet-Draft                    OTrP                         June 2018
    this way, the TEE can check the intermediate and root CA and verify
    that it trusts this TAM to perform operations on the TEE.
 
-9.  Acknowledgements
+8.  Acknowledgements
 
    The authors thank Dave Thaler for his very thorough review and many
    important suggestions.  Most content of this document are split from
-   a previously combined OTrP protocol document.  We thank the former
-   co-authors Nick Cook and Minho Yoo for the initial document content,
-   and contributors Brian Witten, Tyler Kim, and Alin Mutu.
+   a previously combined OTrP protocol document
+   [I-D.ietf-teep-opentrustprotocol].  We thank the former co-authors
+   Nick Cook and Minho Yoo for the initial document content, and
+   contributors Brian Witten, Tyler Kim, and Alin Mutu.
 
-10.  Security Consideration
+9.  Security Consideration
 
-10.1.  TA Trust Check at TEE
+9.1.  TA Trust Check at TEE
 
    A TA binary is signed by a TA signer certificate.  This TA signing
    certificate/private key belongs to the SP, and may be self-signed
@@ -1204,10 +1149,10 @@ Internet-Draft                    OTrP                         June 2018
    responsibility of the TAM to only allow verified TAs from trusted SPs
    into the system.  Delivery of that TA to the TEE is then the
    responsibility of the TEE, using the security mechanisms provided by
-   the OTrP.
+   the protocol.
 
    We allow a way for an (untrusted) application to check the
-   trustworthiness of a TA.  OTrP Agent has a function to allow an
+   trustworthiness of a TA.  An agent has a function to allow an
    application to query the information about a TA.
 
    An application in the Rich O/S may perform verification of the TA by
@@ -1217,7 +1162,7 @@ Internet-Draft                    OTrP                         June 2018
    trust checks on the certificate returned for this TA.  It might trust
    the TAM, or require additional SP signer trust chaining.
 
-10.2.  One TA Multiple SP Case
+9.2.  One TA Multiple SP Case
 
    A TA for multiple SPs must have a different identifier per SP.  A TA
    will be installed in a different SD for each respective SP.
@@ -1228,30 +1173,29 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-
-Pei, et al.             Expires December 3, 2018               [Page 22]
+Pei, et al.              Expires January 3, 2019               [Page 21]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
-10.3.  OTrP Agent Trust Model
+9.3.  Agent Trust Model
 
-   An OTrP Agent could be malware in the vulnerable Rich OS.  A Client
+   An agent could be malware in the vulnerable Rich OS.  A Client
    Application will connect its TAM provider for required TA
    installation.  It gets command messages from the TAM, and passes the
-   message to the OTrP Agent.
+   message to the agent.
 
-   The OTrP is a conduit for enabling the TAM to communicate with the
-   device's TEE to manage SDs and TAs.  All TAM messages are signed and
-   sensitive data is encrypted such that the OTrP Agent cannot modify or
-   capture sensitive data.
+   The architecture enables the TAM to communicate with the device's TEE
+   to manage SDs and TAs.  All TAM messages are signed and sensitive
+   data is encrypted such that the agent cannot modify or capture
+   sensitive data.
 
-10.4.  Data Protection at TAM and TEE
+9.4.  Data Protection at TAM and TEE
 
    The TEE implementation provides protection of data on the device.  It
    is the responsibility of the TAM to protect data on its servers.
 
-10.5.  Compromised CA
+9.5.  Compromised CA
 
    A root CA for TAM certificates might get compromised.  Some TEE trust
    anchor update mechanism is expected from device OEM.  A compromised
@@ -1265,7 +1209,7 @@ Internet-Draft                    OTrP                         June 2018
    certificates SHOULD be validated by TAM with a Certificate Revocation
    List (CRL) or Online Certificate Status Protocol (OCSP) method.
 
-10.6.  Compromised TAM
+9.6.  Compromised TAM
 
    The TEE SHOULD use validation of the supplied TAM certificates and
    OCSP stapled data to validate that the TAM is trustworthy.
@@ -1276,7 +1220,7 @@ Internet-Draft                    OTrP                         June 2018
    includes signature generation time, certificate validity dates are
    compared to the current time.
 
-10.7.  Certificate Renewal
+9.7.  Certificate Renewal
 
    TFW and TEE device certificates are expected to be long lived, longer
    than the lifetime of a device.  A TAM certificate usually has a
@@ -1285,9 +1229,9 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-Pei, et al.             Expires December 3, 2018               [Page 23]
+Pei, et al.              Expires January 3, 2019               [Page 22]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
 
    embedded into the trust anchor store in a device, should have long
@@ -1295,9 +1239,9 @@ Internet-Draft                    OTrP                         June 2018
    other hand, it is imperative that OEMs or device providers plan for
    support of trust anchor update in their shipped devices.
 
-11.  References
+10.  References
 
-11.1.  Normative References
+10.1.  Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -1324,7 +1268,7 @@ Internet-Draft                    OTrP                         June 2018
               DOI 10.17487/RFC7518, May 2015, <https://www.rfc-
               editor.org/info/rfc7518>.
 
-11.2.  Informative References
+10.2.  Informative References
 
    [GPTEE]    Global Platform, "Global Platform, GlobalPlatform Device
               Technology: TEE System Architecture, v1.0", 2013.
@@ -1333,18 +1277,20 @@ Internet-Draft                    OTrP                         June 2018
               Global Platform, "Global Platform, GlobalPlatform Device
               Technology: TEE Client API Specification, v1.0", 2013.
 
-Authors' Addresses
+   [I-D.ietf-teep-opentrustprotocol]
+              Pei, M., Atyeo, A., Cook, N., Yoo, M., and H. Tschofenig,
+              "The Open Trust Protocol (OTrP)", draft-ietf-teep-
+              opentrustprotocol-00 (work in progress), May 2018.
 
 
 
 
-
-
-
-Pei, et al.             Expires December 3, 2018               [Page 24]
+Pei, et al.              Expires January 3, 2019               [Page 23]
 
-Internet-Draft                    OTrP                         June 2018
+Internet-Draft              TEEP Architecture                  July 2018
 
+
+Authors' Addresses
 
    Mingliang Pei
    Symantec
@@ -1356,12 +1302,11 @@ Internet-Draft                    OTrP                         June 2018
 
 
    Hannes Tschofenig
-   ARM Ltd.
-   110 Fulbourn Rd
-   Cambridge, CB1  9NJ
-   Great Britain
+   Arm Ltd.
+   Absam, Tirol  6067
+   Austria
 
-   Email: Hannes.tschofenig@arm.com
+   Email: Hannes.Tschofenig@arm.com
 
 
    Andrew Atyeo
@@ -1396,5 +1341,4 @@ Internet-Draft                    OTrP                         June 2018
 
 
 
-
-Pei, et al.             Expires December 3, 2018               [Page 25]
+Pei, et al.              Expires January 3, 2019               [Page 24]
