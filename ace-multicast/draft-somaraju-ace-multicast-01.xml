@@ -1,0 +1,1017 @@
+<?xml version="1.0" encoding="us-ascii"?>
+
+
+
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+
+ <!-- <!ENTITY RFC7516 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7516.xml"> -->
+
+  <!ENTITY RFC7519 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7519.xml">
+
+  <!ENTITY RFC7049 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7049.xml">
+
+  <!ENTITY RFC6749 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6749.xml">
+  
+  <!ENTITY RFC7252 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7252.xml">
+
+  <!ENTITY RFC6750 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6750.xml">
+
+  <!ENTITY I-D.ietf-ace-actors SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-ace-actors.xml">
+
+  <!ENTITY I-D.ietf-oauth-pop-architecture SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-pop-architecture.xml">
+
+  <!ENTITY I-D.selander-ace-object-security SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.selander-ace-object-security.xml">
+
+  <!ENTITY I-D.ietf-cose-msg SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-cose-msg.xml">
+  <!ENTITY I-D.wahlstroem-ace-cbor-web-token SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.wahlstroem-ace-cbor-web-token.xml">
+
+]>
+
+
+
+<?xml-stylesheet type="text/xsl" href="rfc2629.xslt"?>
+
+
+
+<?rfc strict="yes"?>
+
+<?rfc toc="yes"?>
+
+<?rfc tocdepth="2"?>
+
+<?rfc symrefs="yes"?>
+
+<?rfc sortrefs="yes"?>
+
+<?rfc compact="yes"?>
+
+<?rfc subcompact="no"?>
+
+
+
+<rfc category="std" docName="draft-somaraju-ace-multicast-01.txt" ipr="trust200902">
+
+
+
+  <front>
+
+    <title abbrev="IoT Group Communication Security">Security for Low-Latency Group Communication</title>
+
+
+
+<author initials="A.S." surname="Somaraju" fullname="Abhinav Somaraju">
+
+<organization> Tridonic GmbH &amp; Co KG </organization>
+
+<address>
+
+<postal>
+
+<street> Farbergasse 15</street>
+
+<city>Dornbirn </city>
+
+<region/>
+
+<code>6850 </code>
+
+<country>Austria</country>
+
+</postal>
+
+<email>abhinav.somaraju@tridonic.com</email>
+
+</address>
+
+</author>
+
+
+
+<author initials="S.S." surname="Kumar" fullname="Sandeep S. Kumar">
+
+<organization>Philips Research</organization>
+
+<address>
+
+<postal>
+
+<street>High Tech Campus 34</street>
+
+<city>Eindhoven</city>
+
+<region/>
+
+<code>5656 AE</code>
+
+<country>Netherland</country>
+
+</postal>
+
+<email>ietf.author@sandeep-kumar.org</email>
+
+</address>
+
+</author>
+
+
+
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig ">
+
+      <organization>ARM Ltd.</organization>
+
+      <address>
+
+        <postal>
+          <street></street>
+          <city>Hall in Tirol</city>
+          <code> 6060 </code>
+          <country>Austria</country>
+        </postal>
+        <email>Hannes.tschofenig@gmx.net </email>
+
+        <uri>http://www.tschofenig.priv.at</uri>
+
+
+
+      </address>
+
+    </author>
+
+
+<author initials="W. W." surname="Werner" fullname="Walter Werner">
+
+<organization>Werner Management Services e.U.</organization>
+
+<address>
+
+<postal>
+
+<street>Josef-Anton-Herrburgerstr. 10</street>
+
+<city>Dornbirn</city>
+
+<region/>
+
+<code>6850</code>
+
+<country>Austria</country>
+
+</postal>
+
+<email>werner@werner-ms.at</email>
+
+</address>
+
+</author>
+
+
+
+    <date/>
+
+    <area>Security</area>
+
+    <workgroup>ace</workgroup>
+
+
+
+    <abstract>
+
+
+
+<t>Some Internet of Things application domains, such as lighting, have strict requirements on latency for group communication. From a user experience point of view latency less than 200 ms is necessary from an action triggered by a user to the visible effects. This draft describes procedures for authorization, key management, and securing group messages within a low latency application domain with a special emphasis on lighting systems. We specify the usage of object security at the application layer for group communication and assume that CoAP is used as the application layer protocol.</t>
+
+    </abstract>
+
+
+
+  </front>
+
+
+
+  <middle>
+
+
+
+    <!-- **************************************************************** -->
+
+
+
+    <section title="Introduction" anchor="intro">
+
+
+
+<t>There are low latency group communication use cases that require securing communication between a sender, or a group of senders, and a group of receivers. In the lighting use case, a set of lighting nodes (e.g., luminaires, wall-switches, sensors) are grouped together into a single "Application Group" and the following three requirements need to be addressed:
+
+<list style="numbers">
+
+<t>Only authorized members of the application group must be able to read and process messages.</t> <!-- Note: Our solution does not satisfy this requirement (see comment below about security group)-->
+
+<t>Receivers of group messages must be able to verify the integrity of received messages as being generated within the group.</t>
+
+<t>Message communication and processing must happen with a low latency and in synchronous manner. </t>
+
+</list>
+
+</t>
+
+
+
+<t>This document discusses a group communication security solution that satisfies these three requirements. This write-up focuses on the lighting use case but the content is equally applicable to other low-latency application domains, such as blinds control. </t>
+
+</section>
+
+
+
+    <!-- **************************************************************** -->
+
+
+
+<section title="Terminology">
+
+
+
+<t>This document uses the following terms from <xref target="I-D.ietf-ace-actors"/>: Authorization Server, Resource Owner, Client, Resource Server. The terms 'sender' and 'receiver' refer to the application layer messaging used for lighting control; other communication interactions with the supporting infrastructure uses unicast messaging. </t>
+
+
+<t>When nodes are combined into groups there are different layers of those groups with unique characteristics. For clarity we introduce terminology for three different groups:
+
+<list style="hanging">
+
+
+
+<t hangText="Application Group:"><vspace blankLines="1"/>
+An application group consists of the set of all nodes that have been configured to respond to a single application layer request.
+For example, a wall mounted switch and a set of luminaires in a single room might belong to a single group and the switch may be used to turn on/off all the luminaires in the group simultaneously with a single button press. In the remainder of this document we will use GId to identify an application group.</t>
+
+
+
+<t hangText="Multicast Group:"><vspace blankLines="1"/>
+
+A multicast group consists of the set of all nodes that subscribe to the same multicast IP address.</t>
+
+
+
+<t hangText="Security Group:"><vspace blankLines="1"/>
+
+A security group consists of the set of all nodes that have been provisioned with the same keying material. All the nodes within a security group share a security association or a sequence of security associations wherein a single association specifies the keying material, algorithm-specific information, lifetime and a key ID.
+
+</t>
+
+</list>
+</t>
+
+
+
+<t>Typically, the three groups might not coincide due to the memory constraints on the devices and also security considerations. For instance, in a small room with windows, we may have three application groups: "room group", "luminaires close to the window group" and "luminaires far from the window group". However, we may choose to use only one multicast group for all devices in the room and one security group for all the devices in the room. Note that every application group belongs to a unique security group. However, the converse is not always true. This implies that the application group ID maybe used to determine the associated security group but not vice versa.</t>
+
+
+
+<t>The fact that security groups may not coincide with application groups implies that
+<list style="empty">
+<t>(1) an application must be able to specify which resources on a resource server are accessible by a client that has access to the group key, and </t>
+<t>(2) a method is required to associate the group key to the application group(s) for which the group key may be used.</t>
+</list>
+</t>
+
+<t>In this document we provide fields that may be used to specify the "scope of the key" and "application groups for which the key may be used". A commissioner has a lot of flexibility to assign nodes to multicast groups and to security groups while the application groups will be determined by the semantics of the application itself. The exact partitioning of the nodes into security and multicast groups is therefore deployment specific. </t>
+
+</section>
+
+
+
+    <!-- **************************************************************** -->
+
+
+
+<section title="Architecture" anchor="arch">
+
+<t>Each node in a lighting application group might be a sender, a receiver or both sender and receiver (even though in <xref target="Figure1a"/>, we show nodes that are only senders or only receivers for clarity). The low latency requirement implies that most of the communication between senders and receivers of application layer messages is done using multicast IP. On some occasions, a sender in a group will be required to send unicast messages to unique receivers within the same group and these unicast messages also need communication security.</t>
+
+
+
+<t>Two logical entities are introduced and they have the following function:
+
+<list style="hanging">
+
+  <t hangText="Key Distribution Center (KDC):">This logical entity is responsible for generating symmetric keys and distributing them to the nodes authorized to receive them. The KDC ensures that nodes belonging to the same security group receive the same key and that the keys are renewed based on certain events, such as key expiry or change in group membership.</t>
+
+  <t hangText="Authorization Server (AS):">This logical entity stores authorization information about devices, meta-data about them, and their roles in the network. For example, a luminaire is associated with different groups, and may have meta-data about its location in a building. <!--The AS may also need to perform user authentication and authorization since access rights may be associated to specific persons. Directly or indirectly the resource owner specifies authorization policies that define which node is allowed to perform which actions.--></t>
+
+</list>
+
+</t>
+
+
+
+<t>Note that we assume that nodes are pre-configured with device credentials (e.g., a certificate and the corresponding private key) during manufacturing or during an initial provisioning phase. These device credentials are used in the interaction with the authorization server.</t>
+
+
+
+<t><xref target="Figure1a"/> and <xref target="Figure1b"/> provide an architectural overview. The dotted lines illustrate the use of unicast DTLS messages for securing the message exchange between all involved parties. The secured group messages between senders and receivers are indicated using lines with star/asterisk characters. The security of the group messages is accomplished at the application level using OSCOAP - Object Security of CoAP (see <xref target="I-D.selander-ace-object-security"/>).</t>
+
+
+<t><xref target="Figure1a"/> illustrates the information flow between an authorization server and the nodes participating in the lighting network, which includes all nodes that exchange lighting application messages. This step is typically executed during the commissioning phase for nodes that are fixed-mounted in buildings. The authorization server, as a logical function, may in smaller deployments be included in a device carried by the commissioner and only be present during the commissioning phase. Other use cases, such as employees using their smartphones to control lights, may require an authorization server that dynamically executes access control decisions.</t>
+
+
+
+<!-- <t>The described architecture envisions a separation between the authorization server providing authorization and configuration information to all nodes in the network and the Key Distribution Center (KDC) that is responsible to distributing group keying material to support both the static and the dynamic model. In a static model, the authorization is a one time process during the commissioning and the authorization server can be removed while still allowing key updates using the KDC. In the dynamic model, the authorization server and KDC continue to be available online during the operational phase, often both the logical functions physically on a same device.</t>-->
+
+
+
+<t><xref target="Figure1a"/> shows the commissioning phase where the nodes obtain configuration information, which includes the AT-KDC. The AT-KDC is an access token and includes authorization claims for consumption by the key distribution center. We use the access token terminology from <xref target="RFC6749"/>. The AT-KDC in this architecture may be a bearer token or a proof-of-possession (PoP) token. <!-- Note that a PoP token offers a fair amount of flexibility: with the use of symmetric key cryptography it is comparable to a Kerberos ticket and when used with asymmetric cryptography it can play the role of a certificate.--> The bearer token concept is described in <xref target="RFC6750"/> and the PoP token concept is explained in <xref target="I-D.ietf-oauth-pop-architecture"/>. The AT-KDC is created by the authorization server after authenticating the requesting node and contains authorization-relevant information. The AT-KDC is protected against modifications using a digital signature or a message authentication code. It is verified in <xref target="Figure1b"/> by the KDC.</t>
+
+
+
+<!--
+
+
+
+<t>The steps during the commission phase are as follows:
+
+<list style="symbols">
+
+<t>All nodes interact with the authorization server. This step happens during the commissioning process or, dynamically for those cases where authorization decisions changes over time (such as with smartphones or tablets). This interaction is secured using DTLS and the endpoints are authenticated.</t>
+
+
+
+<t>The authorization server evaluates the request and determines what access level each node can be granted. Finally, configuration information, an access token is returned. The PoP access token (AT) is meant for use with the Key Distribution Center (KDC). It is labelled as AT-KDC.</t>
+
+
+
+</list>
+
+</t>
+
+-->
+
+<t>
+<figure title="Architecture: Commissioning Phase." anchor="Figure1a">
+            <artwork>
+              <![CDATA[
+              Config    +-------------+    Config
+            +-----------+Authorization+------------+
+            | .........>|   Server    |<.......... |
+            | .  DTLS   +-------------+   DTLS   . |
+            | .                ^^                . |
+            | .                |.                . |
+            | .                |.                . |
+            v v                |.                v v
+         +-----+         Config|.DTLS          +-----+
+        +-----+|               |.             +-----+|
+       +-----+|+               |.            +-----+|+
+       |  A  |+                vv            |  C  |+
+       +-----+               +-----+         +-----+
+     .  E.g.                +-----+|           E.g.
+        Light              +-----+|+        Luminaires
+       Switches            |  B  |+
+                           +-----+
+                             E.g.
+                           Presence
+                           Sensors
+Legend: 
+
+Config (Configuration Data): Includes configuration 
+parameters, authorization information encapsulated 
+inside the access token (AT-KDC) and other meta-
+data.
+    ]]>
+            </artwork>
+          </figure>
+	    </t>
+
+
+
+<t>In the simplified message exchange shown in <xref target="Figure1b"/> a sender requests a security group key and the access token for use with the receivers (called AT-R). The request contains information about the resource it wants to access, such as the application group and other resource-specific information, if applicable, and the previously obtained AT-KDC access token. Once the sender has successfully obtained the requested information it starts communicating with receivers in that group using group messages. The symmetric key obtained from the KDC is used to secure the groups messages. The AT-R may be attached to the initial request.
+</t>
+
+<!--
+<t><list style="empty"><t>QUESTION: Do we need to exchange the AT-R in the request at all? An alternative communication mechanism would be to just assume that the nodes obtain their AT-R (and their group key) directly from the KDC. </t>
+</list>
+</t>
+-->
+
+<t>Receivers need to perform two steps, namely to obtain the necessary group key to verify the incoming messages and to determine what resource the requestor is authorized to access. Both pieces of information can be found in the AT-R access token.</t>
+
+
+
+<t>Group messages need to be protected such that replay and modification can be detected. The integrity of the message is accomplished using a keyed message digest in combination with the group key. The use of symmetric keys is envisioned in this specification due to latency requirements. For unicast messaging between the group members and the AS or KDC, we assume the use of DTLS for transport security. However, the use of TLS, and application layer security is possible but is outside the scope of this document.</t>
+
+<t><figure title="Architecture: Group Key Distribution Phase." anchor="Figure1b">
+            <artwork>
+              <![CDATA[
+          Request                     Request  
+          +AT-KDC    +------------+   +AT-KDC 
+       +------------>|    Key     |<----------+
+       |+------------|Distribution|----------+|
+       ||Reply       |   Center   |    Reply ||
+       ||+AT-R       +------------+    +AT-R ||
+       ||+Group    ..^           ^..  +Group ||  
+       || Key    ..                 ..   Key ||
+       ||     ...DTLS           DTLS  ..     ||
+       |v    ..                         ..   v|  
+     +-----+<.                            .>+-----+
+    +-----+|                               +-----+|
+   +-----+|+   Secure Multicast Msg       +-----+|+
+   |  A  |+*****************************> |  B  |+
+   +-----+                                +-----+
+   Sender(s)                            Receiver(s)
+e.g. Light Switch                    e.g. Luminaires
+]]>
+            </artwork>
+          </figure>
+	    </t>
+		
+<section title="Assumptions">
+
+
+
+<t>
+
+<list style="numbers">
+
+<t>The AT-KDC is a manifestation of the authorization granted to a specific client (or user running a client). The AT-KDC is longer-lived and can be used to request multiple AT-Rs.</t>
+
+
+<t>Each AT-R is valid for use with one or multiple application groups.</t>
+
+
+<t>The AS and the KDC logical roles may reside in different physical entities.  </t>
+
+
+<t>The AT-KDC as well as the AT-R may be self-contained tokens or references. References are more efficient from a bandwidth point of view but require an additional lookup.</t>
+
+
+<t>The AT-KDC token is opaque to the client. Data that is meant for processing by the client has to be conveyed to the client separately. The AT-R token on the other hand is meant for consumption by the client.
+
+</t>
+
+
+<t>The client requests AT-Rs for different application groups by including additional information in the request to the KDC for what application groups the AT-R(s) have to be requested. The KDC may return multiple AT-Rs in a single response (for performance reasons).</t>
+
+<t>The AT-KDC and the AT-R are encoded as CBOR Web Tokens <xref target="I-D.wahlstroem-ace-cbor-web-token"/> and protected using COSE <xref target="I-D.ietf-cose-msg"/>.</t>
+
+</list>
+
+</t>
+
+</section>
+
+
+<section title="AT-KDC Access Tokens" anchor="atkdc">
+
+<t>The AT-KDC contains
+
+<list style="numbers">
+
+<t>Issuer: Entity creating the access token. This information needs to be cryptographically bound to the digital signature/keyed message digest protecting the content of the token, as provided by the CBOR Web Token (CWT).</t>
+
+<t>Expiry date: Information can be omitted if tokens do not expire (for example, in a small enterprise environment).</t>
+
+<t>Scope: Permissions of the entity holding the token. This includes information about the resources that may be accessed with the token (e.g., access level) and application layer group IDs for the groups for which the tokens may be used.</t>
+
+<t>Recipient/Audience: Indication to whom the AT-KDC was issued to. In this case, it is the KDC. <!-- (Optional for public key cryptography and mandatory for symmetric key cryptography to allow the authorization server to select the right keying material for protecting the AT-KDC for use with the KDC. This information may be included implicitly as part of the security envelope via the key id.)--></t>
+
+<t>Client ID: Information about the client that was authenticated by the authorization server.</t>
+
+<t>Issued at: Indicates date and time when the AT-KDC was created by the authorization server.</t>
+
+</list>
+
+</t>
+
+</section>
+
+
+
+<section title="AT-R Access Tokens" anchor="atr">
+
+
+
+<t>Clients send the AT-KDC to the KDC in order to receive an AT-R.</t>
+
+
+
+<t>The KDC MUST maintain a table consisting of scope values, which includes the application group id. These entries point to a sequence of security associations. A security association specifies the key material, algorithm-specific information, lifetime and a key ID and the key ID may be used to identify this security association.</t>
+
+
+
+<t>The AS/KDC must guarantee the uniqueness of the client ids for its nodes. This may be accomplished by the AS/KDC assigning values to the nodes or by using information that is already unique per device (such as an EUI-64).</t>
+
+
+
+<t>The KDC furthermore needs to be configured with information about the authorization servers it trusts. This may include a provisioned trust anchor store, or shared credentials (similar to a white list).</t>
+
+
+
+<t>The KDC MUST generate new group keys after the
+
+validity period of the current group key expires.</t>
+
+<t>The AT-R contains
+
+<list style="numbers">
+
+<t>Issuer: Entity creating the access token. This information needs to be cryptographically bound to the digital signature/keyed message digest protecting the content of the token, as provided by the CBOR Web Token (CWT).</t>
+
+<t>Expiry date: Information can be omitted if tokens do not expire (for example, in a small enterprise environment).</t>
+
+<t>Scope: Permissions of the entity holding the token. This includes information about the resources that may be accessed with the token (e.g., access level) and application layer group IDs for the groups for which the tokens may be used.</t>
+
+
+<t> Security Group Key: Key to use for the group communication. </t>
+
+<t> Algorithm: Used for secure group communication. </t>
+
+<t> KID: Sequentially increasing ID of the key for the security group (the devices may store an older key to help with key rolling.) </t>
+
+<t>Issued at: Indicates date and time when the AT-R was created by the KDC.</t>
+
+
+</list>
+
+</t>
+
+</section>
+
+
+
+<section title="Multicast Message Content" anchor="multMessage">
+
+
+
+<t>The following information is needed for the cryptographic algorithm, which is assumed to be in the COSE header:
+
+     <list style="numbers">
+
+       <t> Nonce value consisting of
+
+           <list style="symbols">
+
+              <t>Client ID (unencrypted, integrity protected): Every sender managed by a key distribution center MUST have a unique client ID. </t>
+
+              <t>Sequence Number (unencrypted, integrity protected): Used for replay protection. </t>
+
+              <t>An implicit IV that is either derived from the keys at the end-points or fixed to a certain value by standard (not sent in the message)</t>
+
+           </list>
+
+       </t>
+
+       <t>MAC (not integrity protected): For integrity protection.</t>
+
+     </list>
+
+  </t>
+
+
+
+  <t>The following information is additionally required to process the secure message:
+
+     <list style="numbers">
+
+       <t>Destination IP address and port (not encrypted, integrity protected): Integrity protection of the IP address and port ensures that the message content cannot be replayed with a different destination address or on a different port.</t>
+
+       <t>CoAP Path (encrypted, integrity protected): Uniquely identifies the target resource of a CoAP request.</t>
+
+       <t>Application Group id in CoAP header (unencrypted, integrity protected): Is used to identify a sequence of security associations to use to decrypt the message. The CoAP header option is TBD. </t>
+
+       <t>Key ID (unencrypted, integrity protected): Is used to select the current security association from the sequence of security associations identified by the application group id. </t>
+      <t>CoAP Header Options other than application group id (encrypted - if desired, integrity protected)</t>
+
+
+       <t>CoAP Payload (encrypted, integrity protected).</t>
+
+     </list>
+
+  </t>
+
+<!-- <t>Key naming: Walter suggested to take the scope into account. New keys will be needed when the scopes change.</t>-->
+
+
+
+</section>
+
+
+
+
+
+<section title="Receiver Algorithm" anchor="recAlgo">
+
+
+
+<t>All receiving devices MUST maintain a table consisting of mappings of application group id, to a sequence of security associations.</t>
+
+
+
+<t>When a node receives an incoming multicast message it looks up the application group id and the key id (which are both found in the CoAP header) to determine the correct security association.</t>
+
+<t>The key id is used for situations where the group key is updated by the KDC (for example in situations where a device in a group is lost or stolen).</t>
+
+<t>To check for replay attacks the receiver has to consult the state stored with the security association to obtain the current sequence number and to compare it against the sequence number found in the request payload for that sender based on the Sender ID. The receiver needs to store the latest correctly verified nonce values to detect replay attacks</t>
+
+<t>The receiver MUST silently discard an incoming message in the following cases:
+
+<list style="symbols">
+
+  <t>Application Group ID lookup does not return any security association.</t>
+  <t>Key ID lookup among the previously retrieved sequence of security associations does not identify a unique security association.</t>
+
+  <t>Integrity check fails.</t>
+  <t>Decryption fails.</t>
+
+  <t>Replay protection check failed. The (client ID || sequence number), which are both part of the nonce, have already been received in an earlier message. </t>
+
+</list>
+
+</t>
+
+
+<!--
+
+<t>Decide after looking at implementations
+
+<list style="symbols">
+
+  <t>Late joiner problem -> No sender ID + sequence number pair in table.</t>
+
+  <t>How far into the future will we allow sequence no. in the future.</t>
+
+</list>
+
+</t>
+
+
+
+<t>The receiver then uses the keying material together with the algorithm to verify the integrity of the incoming message and to decrypt those parts of the message that are confidentiality protected. To decrypt the corresponding message payloads the receiver has to reconstruct the nonce field, which consists of the Sender ID and the Sequence Number.</t>
+
+-->
+
+
+
+
+<t>Once the cryptographic processing of the message is completed, the receiver must check whether the sender is authorized to access the protected resource, indicated by the CoAP request URI at the right level. For this purpose the receiver consults the locally stored authorization database that was populated with the information obtained via the AT-R token and the static authorization levels described in <xref target="accesslevels"/>.</t>
+
+
+
+<t>Once all verification steps have been successful the receiver executes the CoAP request and returns an appropriate response. Since the response message will also be secured the message protection processing described in <xref target="sendAlg"/> must be executed. Additionally, the nonce value corresponding to the security association MUST be updated to the nonce value in the message.</t>
+
+</section>
+
+
+
+
+
+<section title="Sender Algorithm" anchor="sendAlg">
+
+<t><xref target="Figure2"/> describes the algorithm for obtaining the necessary credentials to transmit a secure group message. When the sender wants to send a message to the application group, it checks if it has the respective group key. If no group key is available then it determines whether it has an access token for use with the KDC (i.e., AT-KDC). If no AT-KDC is found in the cache then it contacts the authorization server to obtain that AT-KDC. Note that this assumes that the authorization server is online, which is only true in scenarios where granting authorization dynamically is supported. In the other case where the AT-KDC is already available the sender contacts the KDC to obtain a group key. If a group key is already available then the sender can transmit a secured message to the group immediately. </t>
+
+<t><figure title="Steps to Transmit Multicast Message (w/o Failure Cases)." anchor="Figure2">
+            <artwork>
+              <![CDATA[
+                                  _______
+                                 /       \
+                                 | Start |
+                                 \_______/
+                                     |
+                                     v
+                                    /\
+                                   /  \
+                                  /    \
+                                 /      \
+                                /        \
+                      ___No____/Group Key \____
+                     |         \Available?/    |
+                     |          \        /     |
+                     v           \      /     Yes
+                    /\            \    /       |
+                   /  \            \  /        v
+                  /    \            \/   +-------------+
+                 /      \            ^   |Transmit     |
+                /        \           |   |multicast    |
+           ____/  AT+KDC  \__        |   |mesg to group|
+          |    \Available?/  |       |   +-------------+
+          |     \        /   |       |
+         No      \      /   Yes      |
+          |       \    /     |       |
+          |        \  /      |       |
+          v         \/       v       |
+    +-----+-----+   ^  +----------+  |
+    |Request    |   |  |Request   |  |
+    |AT-KDC     |   |  |Group Key |  |
+    |from       |---+  |from KDC  |--+
+    |Auth Server|      |          |
+    +-----------+      +----------+
+]]>
+            </artwork>
+          </figure>
+	    </t>
+
+
+
+<t>Note that the sender does not have to wait until it has to transmit a message in order to request a group key; the sender is likely to be pre-configured with information about which application group it belongs to and can therefore pre-fetch the required information.</t>
+
+
+
+<t>Group keys have a lifetime, which is configuration-dependent, but mechanisms need to be provided to update the group keys either via the sender asking for a group key renewal or via the KDC pushing new keys to senders and receivers. The lifetime can be based on time or on the number of transmitted messages. </t>
+
+</section>
+
+
+
+
+
+</section>
+
+
+
+    <!-- **************************************************************** -->
+
+<!--
+
+<section title="Access Tokens">
+
+<t>TBD: Need to specify access token format based on COSE. </t>
+
+</section>
+
+-->
+
+    <!-- **************************************************************** -->
+
+
+
+
+
+<section title="Security Considerations">
+
+
+
+<section title="Token Verification">
+
+
+
+<t>Due to the low latency requirements, token verification needs to be done locally and cannot be outsourced to other parties. For this reason a self-contained token must be used and the receivers are required to follow the steps outlined in Section 7.2 of RFC 7519 <xref target="RFC7519"/>. This includes the verification of the message authentication code protecting the contents of the token and the encryption envelope protecting the contained symmetric group key.</t>
+
+
+
+</section>
+
+
+
+<section title="Token Revocation">
+
+
+
+<t>Tokens have a specific lifetime. Setting the lifetime is a policy decision that involves making a trade-off decision. Allowing a longer lifetime increases the need to introduce a mechanism for token revocation (e.g., a real-time signal from the KDC/Authorization Server to the receivers to blacklist tokens) but lowers the communication overhead during normal operation since new tokens need to be obtained only from time to time. Real-time communication with the receivers to revoke tokens may not be possible in all cases either, particularly when off-line operation is demanded or in small networks where the AS or even the KDC is only present during commissioning time.</t>
+
+
+
+<t>We therefore recommend to issue short-lived tokens for dynamic scenarios like users accessing the lighting infrastructure of buildings using smartphones, tablets and alike to avoid potential security problems when tokens are leaked or where authorization rights are revoked. For senders that are statically mounted (like traditional light switches) we recommend a longer lifetime since re-configurations and token leakage is less likely to happen frequently.</t>
+
+
+
+<t>To limit the authorization rights, tokens should contain an audience restriction, scoping their use to the intended receivers and to their access level.</t>
+
+
+
+</section>
+
+
+
+<section title="Time">
+
+
+
+<t>Senders and receivers are not assumed to be equipped with real-time clocks but these devices are still assumed to interact with a time server. The lack of accurate clocks is likely to lead to clock drifts and limited ability to check for replays. For those cases where no time server is available, such as in small network installations, token verification cannot check for expired tokens and hence it might be necessary to fall-back to tokens that do not expire.</t>
+
+
+
+</section>
+
+
+
+</section>
+
+
+
+    <!-- **************************************************************** -->
+
+
+
+<section title="Operational Considerations">
+
+
+
+<section title="Persistence of State Information">
+
+<t>Devices in the lighting system can often be powered down intentionally or unintentionally. Therefore the devices may need to store the authorization tokens and cryptographic keys (along with replay context) in persistent storage like flash. This is especially required if the authorization server is no more online because it was removed after the commissioning phase. However the decision on the data to be persistently stored is a trade-off between how soon the devices can be back online to normal operational mode and the memory wear caused due to limited program-erase cycles of flash over the 15-20 years life-time of the device. </t>
+
+<t> The different data that may need to be stored are access tokens AT-KDC, AT-R and last seen replay counter.
+
+</t>
+
+</section>
+
+
+
+<section title="Provisioning in Small Networks">
+
+<t>In small networks the authorization server and the KDC may be available only temporarily during the commissioning process and are not available afterwards. </t>
+
+</section>
+
+
+
+<section title="Client IDs">
+
+<t>A single device should not be managed by multiple KDCs. However, a group of devices in a domain (such as a lighting installation within an enterprise) should either be managed by a single KDC or, if there are multiple KDCs serving the devices in a given domain, these KDCs MUST exchange information so that the assigned client id and application group id values are unique within the devices in that domain. We assume that only devices within a given domain communicate with each other using group messages.</t>
+
+
+</section>
+
+<section title="Application Groups vs. Security Groups">
+<t>
+Multiple application groups may use the same key for performance reasons, reducing the number of keys needed to be stored - leading to less RAM needed by each node. This is only a reasonable option if the attack surface is not increased. For example, a room A is configured to use three application groups to address a subset of the device. In addition to configuring all nodes in room A with these three application groups the nodes are configured with a special group that allows them to access all devices in room A, referred as the all-nodes-in-room-A group. In this case, having the nodes to use the same key for the all-nodes-in-room group and the three groups does not increase the attack surface since any node can already use the all-nodes-in-room-A group to control other devices in that room. The three application groups in room A are a subset of the larger all-nodes-in-room-A group.
+</t>
+</section>
+
+
+<section title="Lost/Stolen Device" anchor="lostDev">
+
+<t> The following procedure MUST be implemented if a device is stolen or keys are lost.
+
+<list style="numbers">
+
+  <t>The AS tells the KDC to invalidate the AT-KDC.</t>
+
+  <t> The KDC no longer returns a new group key if the invalidated AT-KDC is presented to it. </t>
+
+  <t> The KDC generates new keys for all security groups to which the compromised device belongs. </t>
+
+</list> </t>
+
+<t>The KDC SHOULD inform all devices in the security group to update their group key. This requires the KDC to maintain a list of all devices that belong to the security group and to be able to contact them reliably. </t>
+
+</section>
+
+
+</section>
+
+
+
+    <!-- **************************************************************** -->
+
+
+
+
+
+    <section title="Acknowledgements">
+
+      <t>The author would like to thank Esko Dijk for his help with this document.</t>
+
+<t>
+Parts of this document are a byproduct of the OpenAIS project,
+   partially funded by the Horizon 2020 programme of the European Commission.  It is provided "as is"
+   and without any express or implied warranties, including, without
+   limitation, the implied warranties of fitness for a particular
+   purpose.  The views and conclusions contained herein are those of the
+   authors and should not be interpreted as necessarily representing the
+   official policies or endorsements, either expressed or implied, of
+   the OpenAIS project or the European Commission.
+</t>
+
+
+    </section>
+
+<section title="IANA Considerations">
+<t>This document defines one CoAP Header Option Application Group ID that MUST be allocated in the Registry "CoAP Option Numbers" of <xref target="RFC6749"/>. IANA is requested to allocation TBD option number to application group ID in this specification. </t>
+
+</section>
+
+    <!-- **************************************************************** -->
+
+
+
+
+
+  </middle>
+
+
+
+  <back>
+
+
+
+      <references title="Normative References">
+
+
+
+
+
+    &I-D.ietf-ace-actors;
+
+
+
+<!--        &RFC7516; -->
+
+	&RFC7252;
+
+
+
+    &I-D.ietf-cose-msg;
+    &I-D.wahlstroem-ace-cbor-web-token;
+
+
+    </references> <!-- Normative Refs -->
+
+
+
+    <references title="Informative References">
+
+
+
+<!--     &RFC7049; -->
+
+     &RFC7519;
+
+     &RFC6749;
+
+     &RFC6750;
+
+     &I-D.ietf-oauth-pop-architecture;
+
+     &I-D.selander-ace-object-security;
+
+
+
+
+
+  </references>
+
+
+
+<section title="Access Levels" anchor="accesslevels">
+
+<t>A characteristic of the lighting domain is that access control decisions are also impacted by the type of operation being performed and those categories are listed below. The following access levels are pre-defined.</t>
+
+
+
+<t><list style="hanging">
+
+<t hangText="Level 0: Service detection only"><vspace blankLines="1"/>
+
+This is a service that is used with broadcast service detection methods. No operational data is accessible at this level. </t>
+
+
+
+<t hangText="Level 1: Reporting only"><vspace blankLines="1"/>
+
+This level allows access to sensor and other (relatively uncritical) operational data and the device error status. The operation of the system cannot be influenced using this level.</t>
+
+
+
+<t hangText="Level 2: Standard use"><vspace blankLines="1"/>
+
+This level allows access to all operational features, including access to operational parameters.
+
+This is the highest level of access that can be obtained using (secure) multicast.</t>
+
+
+
+<t hangText="Level 3: Commissioning use / Parametrization Services"><vspace blankLines="1"/>
+
+This level gives access to certain parameters that change the day-to-day operation of the system, but does not allow structural changes.</t>
+
+
+
+<t hangText="Level 4: Commissioning use / Localization and Addressing Services"><vspace blankLines="1"/>
+
+(including Factory Reset)
+
+This level allows access to all services and parameters including structural settings.  </t>
+
+
+
+<t hangText="Level 5: Software Update and related Services"><vspace blankLines="1"/>
+
+This level allows the change and upgrade of the software of the devices. </t>
+
+</list>
+
+</t>
+
+
+
+<t>Note: The use of group security is disallowed for level higher than Level 2 and unicast communication is used instead.</t>
+
+</section>
+
+
+
+
+
+  </back>
+
+
+
+</rfc>

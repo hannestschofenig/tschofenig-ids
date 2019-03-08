@@ -1,0 +1,1073 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<rfc category="info" docName="draft-ietf-oauth-pop-architecture-07.txt"
+     ipr="trust200902">
+  <?rfc strict='no' ?>
+
+  <?rfc toc='yes' ?>
+
+  <?rfc tocdepth='3' ?>
+
+  <?rfc symrefs='yes' ?>
+
+  <?rfc sortrefs='yes' ?>
+
+  <?rfc compact='no' ?>
+
+  <?rfc subcompact='no' ?>
+
+  <front>
+    <title abbrev="OAuth 2.0 PoP Architecture">OAuth 2.0 Proof-of-Possession
+    (PoP) Security Architecture</title>
+
+    <author fullname="Phil Hunt" initials="P." role="editor" surname="Hunt">
+      <organization>Oracle Corporation</organization>
+
+      <address>
+        <postal>
+          <street/>
+
+          <city/>
+
+          <code/>
+
+          <country/>
+        </postal>
+
+        <phone/>
+
+        <email>phil.hunt@yahoo.com</email>
+      </address>
+    </author>
+
+    <author fullname="Justin Richer" initials="J." surname="Richer">
+      <organization/>
+
+      <address>
+        <postal>
+          <street/>
+
+          <city/>
+
+          <region/>
+
+          <code/>
+
+          <country/>
+        </postal>
+
+        <email>ietf@justin.richer.org</email>
+      </address>
+    </author>
+
+    <author fullname="William Mills" initials="W." surname="Mills">
+      <organization/>
+
+      <address>
+        <postal>
+          <street/>
+
+          <city/>
+
+          <code/>
+
+          <country/>
+        </postal>
+
+        <phone/>
+
+        <email>wmills@yahoo-inc.com</email>
+      </address>
+    </author>
+
+    <author fullname="Prateek Mishra" initials="P." surname="Mishra">
+      <organization>Oracle Corporation</organization>
+
+      <address>
+        <postal>
+          <street/>
+
+          <city/>
+
+          <code/>
+
+          <country/>
+        </postal>
+
+        <phone/>
+
+        <email>prateek.mishra@oracle.com</email>
+      </address>
+    </author>
+
+    <author fullname="Hannes Tschofenig" initials="H." surname="Tschofenig">
+      <organization>ARM Limited</organization>
+
+      <address>
+        <postal>
+          <street/>
+
+          <city>Hall in Tirol</city>
+
+          <code>6060</code>
+
+          <country>Austria</country>
+        </postal>
+
+        <phone/>
+
+        <email>Hannes.Tschofenig@gmx.net</email>
+
+        <uri>http://www.tschofenig.priv.at</uri>
+      </address>
+    </author>
+
+    <date year="2015"/>
+
+    <area>Security</area>
+
+    <workgroup>OAuth</workgroup>
+
+    <keyword>Internet-Draft</keyword>
+
+    <abstract>
+      <t>The OAuth 2.0 bearer token specification, as defined in RFC 6750,
+      allows any party in possession of a bearer token (a "bearer") to get
+      access to the associated resources (without demonstrating possession of
+      a cryptographic key). To prevent misuse, bearer tokens must be protected
+      from disclosure in transit and at rest.</t>
+
+      <t>Some scenarios demand additional security protection whereby a client
+      needs to demonstrate possession of cryptographic keying material when
+      accessing a protected resource. This document motivates the development
+      of the OAuth 2.0 proof-of-possession security mechanism.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Introduction">
+      <t>The OAuth 2.0 protocol family (<xref target="RFC6749"/>, <xref
+      target="RFC6750"/>, and <xref target="RFC6819"/>) offer a single token
+      type known as the "bearer" token to access protected resources. RFC 6750
+      <xref target="RFC6750"/> specifies the bearer token mechanism and
+      defines it as follows: <list style="empty">
+          <t>"A security token with the property that any party in possession
+          of the token (a "bearer") can use the token in any way that any
+          other party in possession of it can. Using a bearer token does not
+          require a bearer to prove possession of cryptographic key
+          material."</t>
+        </list></t>
+
+      <t>The bearer token meets the security needs of a number of use cases
+      the OAuth 2.0 protocol had originally been designed for. There are,
+      however, other scenarios that require stronger security properties and
+      ask for active participation of the OAuth client in form of
+      cryptographic computations when presenting an access token to a resource
+      server.</t>
+
+      <t>This document outlines additional use cases requiring stronger
+      security protection in <xref target="use-cases"/>, identifies threats in
+      <xref target="threats"/>, proposes different ways to mitigate those
+      threats in <xref target="threat-mitigation"/>, outlines an architecture
+      for a solution that builds on top of the existing OAuth 2.0 framework in
+      <xref target="architecture"/>, and concludes with a requirements list in
+      <xref target="requirements"/>.</t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Terminology">
+      <t>The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT',
+      'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'MAY', and 'OPTIONAL' in this
+      specification are to be interpreted as described in <xref
+      target="RFC2119"/>, with the important qualification that, unless
+      otherwise stated, these terms apply to the design of the protocol, not
+      its implementation or application.</t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="use-cases" title="Use Cases">
+      <t>The main use case that motivates improvement upon "bearer" token
+      security is the desire of resource servers to obtain additional
+      assurance that the client is indeed authorized to present an access
+      token. The expectation is that the use of additional credentials
+      (symmetric or asymmetric keying material) will encourage developers to
+      take additional precautions when transferring and storing access token
+      in combination with these credentials.</t>
+
+      <t>Additional use cases listed below provide further requirements for
+      the solution development. Note that a single solution does not
+      necessarily need to offer support for all use cases.</t>
+
+      <section title="Preventing Access Token Re-Use by the Resource Server">
+        <t>In a scenario where a resource server receives a valid access
+        token, the resource server then re-uses it with other resource server.
+        The reason for re-use may be malicious or may well be legitimate. In a
+        legitimate case, the intent is to support chaining of computations
+        whereby a resource server needs to consult other third party resource
+        servers to complete a requested operation. In both cases it may be
+        assumed that the scope and audience of the access token is sufficiently defined that
+        to allow such a re-use. For example, imagine a case where a company
+        operates email services as well as picture sharing services and that
+        company had decided to issue access tokens with a scope and audience that allows
+        access to both services.</t>
+
+        <t>With this use case the desire is to prevent such access token
+        re-use. This also implies that the legitimate use cases require
+        additional enhancements for request chaining.</t>
+      </section>
+
+      <section title="TLS and DTLS Channel Binding Support">
+        <t>In this use case we consider the scenario where an OAuth 2.0
+        request to a protected resource is secured using TLS or DTLS (see <xref target="RFC4347"/>), but the client
+        and the resource server demand that the underlying TLS/DTLS exchange is
+        bound to additional application layer security to prevent cases where
+        the TLS/DTLS connection is terminated at a TLS/DTLS intermediary, which splits
+        the TLS/DTLS connection into two separate connections.</t>
+
+        <t>In this use case additional information should be conveyed to the
+        resource server to ensure that no entity entity has tampered with the
+        TLS/DTLS connection.</t>
+      </section>
+
+      <section title="Access to a Non-TLS Protected Resource">
+        <t>This use case is for a web client that needs to access a resource
+        that makes data available (such as videos) without offering integrity
+        and confidentiality protection using TLS. Still, the initial resource
+        request using OAuth, which includes the access token, must be
+        protected against various threats (e.g., token replay, token
+        modification).</t>
+
+        <t>While it is possible to utilize bearer tokens in this scenario with
+        TLS protection when the request to the protected resource is made, as
+        described in <xref target="RFC6750"/>, there may be the desire to
+        avoid using TLS between the client and the resource server at all. In
+        such a case the bearer token approach is not possible since it relies
+        on TLS for ensuring integrity and confidentiality protection of the
+        access token exchange since otherwise replay attacks are possible:
+        First, an eavesdropper may steal an access token and present it at a
+        different resource server. Second, an eavesdropper may steal an access
+        token and replay it against the same resource server at a later point
+        in time. In both cases, if the attack is successful, the adversary
+        gets access to the resource owners data or may perform an operation
+        selected by the adversary (e.g., sending a message). Note that the
+        adversary may obtain the access token (if the recommendations in <xref
+        target="RFC6749"/> and <xref target="RFC6750"/> are not followed)
+        using a number of ways, including eavesdropping the communication on
+        the wireless link.</t>
+
+        <t>Consequently, the important assumption in this use case is that a
+        resource server does not have TLS support and the security solution
+        should work in such a scenario. Furthermore, it may not be necessary
+        to provide authentication of the resource server towards the
+        client.</t>
+      </section>
+
+      <section title="Offering Application Layer End-to-End Security">
+        <t>In Web deployments resource servers are often placed behind load
+        balancers, which are deployed by the same organization that operates
+        the resource servers. These load balancers may terminate the TLS
+        connection setup and HTTP traffic is transmitted without TLS
+        protection from the load balancer to the resource server. With
+        application layer security in addition to the underlying TLS security
+        it is possible to allow application servers to perform cryptographic
+        verification on an end-to-end basis.</t>
+
+        <t>The key aspect in this use case is therefore to offer end-to-end
+        security in the presence of load balancers via application layer
+        security. Enterprise networks also deploy proxies that inspect traffic
+        and thereby break TLS.</t>
+      </section>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="threats" title="Security and Privacy Threats">
+      <t>The following list presents several common threats against protocols
+      utilizing some form of token. This list of threats is based on NIST
+      Special Publication 800-63 <xref target="NIST800-63"/>. We exclude a
+      discussion of threats related to any form of identity proofing and
+      authentication of the resource owner to the authorization server since
+      these procedures are not part of the OAuth 2.0 protocol specification
+      itself.</t>
+
+      <t><list style="hanging">
+          <t hangText="Token manufacture/modification:"><vspace
+          blankLines="1"/>An attacker may generate a bogus token or modify
+          the token content (such as authentication or attribute statements)
+          of an existing token, causing resource server to grant inappropriate
+          access to the client. For example, an attacker may modify the token
+          to extend the validity period. A client, which MAY be a normal client or MAY be assumed to 
+          be constrained (see <xref target="RFC7252"/>), may modify the token to have
+          access to information that they should not be able to view.</t>
+
+          <t hangText="Token disclosure:"><vspace blankLines="1"/>Tokens may
+          contain personal data, such as real name, age or birthday, payment
+          information, etc.</t>
+
+          <!--    <t hangText="Token repudiation:">A token may be repudiated if the proper mechanisms are not in place.</t> -->
+
+          <t hangText="Token redirect:"><vspace blankLines="1"/>An attacker
+          uses the token generated for consumption by the resource server to
+          obtain access to another resource server.</t>
+
+          <t hangText="Token reuse:"><vspace blankLines="1"/> An attacker
+          attempts to use a token that has already been used once with a
+          resource server. The attacker may be an eavesdropper who observes
+          the communication exchange or, worse, one of the communication end
+          points. A client may, for example, leak access tokens because it
+          cannot keep secrets confidential. A client may also reuse access
+          tokens for some other resource servers. Finally, a resource server
+          may use a token it had obtained from a client and use it with
+          another resource server that the client interacts with. A resource
+          server, offering relatively unimportant application services, may
+          attempt to use an access token obtained from a client to access a
+          high-value service, such as a payment service, on behalf of the
+          client using the same access token.</t>
+
+          <t hangText="Token repudiation:"><vspace blankLines="1"/>Token
+          repudiation refers to a property whereby a resource server is given
+          an assurance that the authorization server cannot deny to have
+          created a token for the client.</t>
+        </list></t>
+    </section>
+
+    <section anchor="requirements" title="Requirements">
+      <t>RFC 4962 <xref target="RFC4962"/> gives useful guidelines for
+      designers of authentication and key management protocols. While RFC 4962
+      was written with the AAA framework used for network access
+      authentication in mind the offered suggestions are useful for the design
+      of other key management systems as well. The following requirements list
+      applies OAuth 2.0 terminology to the requirements outlined in RFC
+      4962.</t>
+
+      <t>These requirements include <list style="hanging">
+          <t hangText="Cryptographic Algorithm Independent:"><vspace
+          blankLines="1"/> The key management protocol MUST be cryptographic
+          algorithm independent.</t>
+
+          <t hangText="Strong, fresh session keys:"><vspace blankLines="1"/>
+          Session keys MUST be strong and fresh. Each session deserves an
+          independent session key, i.e., one that is generated specifically
+          for the intended use. In context of OAuth this means that keying
+          material is created in such a way that can only be used by the
+          combination of a client instance, protected resource, and
+          authorization scope.</t>
+
+          <t hangText="Limit Key Scope:"><vspace blankLines="1"/> Following
+          the principle of least privilege, parties MUST NOT have access to
+          keying material that is not needed to perform their role. Any
+          protocol that is used to establish session keys MUST specify the
+          scope for session keys, clearly identifying the parties to whom the
+          session key is available.</t>
+
+          <t hangText="Replay Detection Mechanism:"><vspace blankLines="1"/>
+          The key management protocol exchanges MUST be replay protected.
+          Replay protection allows a protocol message recipient to discard any
+          message that was recorded during a previous legitimate dialogue and
+          presented as though it belonged to the current dialogue.</t>
+
+          <t hangText="Authenticate All Parties:"><vspace blankLines="1"/>
+          Each party in the key management protocol MUST be authenticated to
+          the other parties with whom they communicate. Authentication
+          mechanisms MUST maintain the confidentiality of any secret values
+          used in the authentication process. Secrets MUST NOT be sent to
+          another party without confidentiality protection.</t>
+
+          <t hangText="Authorization:"><vspace blankLines="1"/> Client and
+          resource server authorization MUST be performed. These entities MUST
+          demonstrate possession of the appropriate keying material, without
+          disclosing it. Authorization is REQUIRED whenever a client interacts
+          with an authorization server. Authorization checking prevents an
+          elevation of privilege attack.</t>
+
+          <t hangText="Keying Material Confidentiality and Integrity:"><vspace
+          blankLines="1"/> While preserving algorithm independence,
+          confidentiality and integrity of all keying material MUST be
+          maintained.</t>
+
+          <t hangText="Confirm Cryptographic Algorithm Selection:"><vspace
+          blankLines="1"/> The selection of the "best" cryptographic
+          algorithms SHOULD be securely confirmed. The mechanism SHOULD detect
+          attempted roll-back attacks.</t>
+
+          <t hangText="Uniquely Named Keys:"><vspace blankLines="1"/> Key
+          management proposals require a robust key naming scheme,
+          particularly where key caching is supported. The key name provides a
+          way to refer to a key in a protocol so that it is clear to all
+          parties which key is being referenced. Objects that cannot be named
+          cannot be managed. All keys MUST be uniquely named, and the key name
+          MUST NOT directly or indirectly disclose the keying material.</t>
+
+          <t hangText="Prevent the Domino Effect:"><vspace blankLines="1"/>
+          Compromise of a single client MUST NOT compromise keying material
+          held by any other client within the system, including session keys
+          and long-term keys. Likewise, compromise of a single resource server
+          MUST NOT compromise keying material held by any other Resource
+          Server within the system. In the context of a key hierarchy, this
+          means that the compromise of one node in the key hierarchy must not
+          disclose the information necessary to compromise other branches in
+          the key hierarchy. Obviously, the compromise of the root of the key
+          hierarchy will compromise all of the keys; however, a compromise in
+          one branch MUST NOT result in the compromise of other branches.
+          There are many implications of this requirement; however, two
+          implications deserve highlighting. First, the scope of the keying
+          material must be defined and understood by all parties that
+          communicate with a party that holds that keying material. Second, a
+          party that holds keying material in a key hierarchy must not share
+          that keying material with parties that are associated with other
+          branches in the key hierarchy.</t>
+
+          <t hangText="Bind Key to its Context:"><vspace blankLines="1"/>
+          Keying material MUST be bound to the appropriate context. The
+          context includes the following.<list style="symbols">
+              <t>The manner in which the keying material is expected to be
+              used.</t>
+
+              <t>The other parties that are expected to have access to the
+              keying material.</t>
+
+              <t>The expected lifetime of the keying material. Lifetime of a
+              child key SHOULD NOT be greater than the lifetime of its parent
+              in the key hierarchy.</t>
+            </list> Any party with legitimate access to keying material can
+          determine its context. In addition, the protocol MUST ensure that
+          all parties with legitimate access to keying material have the same
+          context for the keying material. This requires that the parties are
+          properly identified and authenticated, so that all of the parties
+          that have access to the keying material can be determined. The
+          context will include the client and the resource server identities
+          in more than one form.</t>
+
+          <t hangText="Authorization Restriction:"><vspace blankLines="1"/> If
+          client authorization is restricted, then the client SHOULD be made
+          aware of the restriction.</t>
+
+          <t hangText="Client Identity Confidentiality:"><vspace
+          blankLines="1"/> A client has identity confidentiality when any
+          party other than the resource server and the authorization server
+          cannot sufficiently identify the client within the anonymity set. In
+          comparison to anonymity and pseudonymity, identity confidentiality
+          is concerned with eavesdroppers and intermediaries. A key management
+          protocol SHOULD provide this property.</t>
+
+          <t hangText="Resource Owner Identity Confidentiality:"><vspace
+          blankLines="1"/> Resource servers SHOULD be prevented from knowing
+          the real or pseudonymous identity of the resource owner, since the
+          authorization server is the only entity involved in verifying the
+          resource owner's identity.</t>
+
+          <t hangText="Collusion:"><vspace blankLines="1"/> Resource servers
+          that collude can be prevented from using information related to the
+          resource owner to track the individual. That is, two different
+          resource servers can be prevented from determining that the same
+          resource owner has authenticated to both of them. Authorization
+          servers MUST bind different keying material to access tokens used
+          for resource servers from different origins (or similar concepts in
+          the app world).</t>
+
+          <t hangText="AS-to-RS Relationship Anonymity:"><vspace
+          blankLines="1"/>For solutions using asymmetric key cryptography the
+          client MAY conceal information about the resource server it wants to
+          interact with. The authorization server MAY reject such an attempt
+          since it may not be able to enforce access control decisions.</t>
+
+          <t hangText="Channel Binding:"><vspace blankLines="1"/>A solution
+          MUST enable support for channel bindings. The concept of channel
+          binding, as defined in <xref target="RFC5056"/>, allows applications
+          to establish that the two end-points of a secure channel at one
+          network layer are the same as at a higher layer by binding
+          authentication at the higher layer to the channel at the lower
+          layer.</t>
+        </list></t>
+
+      <t>There are performance concerns with the use of asymmetric
+      cryptography. Although symmetric key cryptography offers better
+      performance asymmetric cryptography offers additional security
+      properties. A solution MUST therefore offer the capability to support
+      both symmetric as well as asymmetric keys.</t>
+
+      <t>There are threats that relate to the experience of the software
+      developer as well as operational practices. Verifying the servers
+      identity in TLS is discussed at length in <xref target="RFC6125"/>.</t>
+
+      <t>A number of the threats listed in <xref target="threats"/> demand
+      protection of the access token content and a standardized solution, for example, 
+      in the form of a JSON-based format, is available with the JWT <xref
+      target="RFC7519"/>.</t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="threat-mitigation" title="Threat Mitigation">
+      <t>A large range of threats can be mitigated by protecting the content
+   of the token, for example using a digital signature or a keyed
+   message digest.  Alternatively, the content of the token could be
+   passed by reference rather than by value (requiring a separate
+   message exchange to resolve the reference to the token content).</t>
+      
+      <t>To simplify discussion in the following example
+   we assume that the token itself 
+   cannot be modified by the client, either due to cryptographic
+   protection (such as signature or encryption) or use of a reference
+   value with sufficient entropy and associated secure lookup.  
+   The token remains opaque to the client. These
+   are characteristics shared with bearer tokens and more information on
+   best practices can be found in <xref target="RFC6819"/> and in the security
+   considerations section of <xref target="RFC6750"/>.</t>
+
+      <t>To deal with token redirect it is important for the authorization
+      server to include the identifier of the intended recipient - the
+      resource server. A resource server must not be allowed to accept access
+      tokens that are not meant for its consumption.</t>
+
+      <t>To provide protection against token disclosure two approaches are
+      possible, namely (a) not to include sensitive information inside the
+      token or (b) to ensure confidentiality protection. The latter approach
+      requires at least the communication interaction between the client and
+      the authorization server as well as the interaction between the client
+      and the resource server to experience confidentiality protection. As an
+      example, TLS with a ciphersuite that offers confidentiality protection
+      has to be applied as per <xref target="RFC7525"/>. Encrypting the token content itself is another alternative. In
+      our scenario the authorization server would, for example, encrypt the
+      token content with a symmetric key shared with the resource server.</t>
+
+      <t>To deal with token reuse more choices are available.</t>
+
+      <section anchor="confidentiality" title="Confidentiality Protection">
+        <t>In this approach confidentiality protection of the exchange is
+        provided on the communication interfaces between the client and the
+        resource server, and between the client and the authorization server.
+        No eavesdropper on the wire is able to observe the token exchange.
+        Consequently, a replay by a third party is not possible. An
+        authorization server wants to ensure that it only hands out tokens to
+        clients it has authenticated first and who are authorized. For this
+        purpose, authentication of the client to the authorization server will
+        be a requirement to ensure adequate protection against a range of
+        attacks. This is, however, true for the description in <xref
+        target="intended"/> and <xref target="confirmation"/> as well.
+        Furthermore, the client has to make sure it does not distribute (or
+        leak) the access token to entities other than the intended the
+        resource server. For that purpose the client will have to authenticate
+        the resource server before transmitting the access token.</t>
+      </section>
+
+      <section anchor="intended" title="Sender Constraint">
+        <t>Instead of providing confidentiality protection, the authorization
+        server could also put the identifier of the client into the protected
+        token with the following semantic: 'This token is only valid when
+        presented by a client with the following identifier.' When the access
+        token is then presented to the resource server how does it know that
+        it was provided by the client? It has to authenticate the client!
+        There are many choices for authenticating the client to the resource
+        server, for example by using client certificates in TLS <xref
+        target="RFC5246"/>, or pre-shared secrets within TLS <xref
+        target="RFC4279"/>. The choice of the preferred authentication
+        mechanism and credential type may depend on a number of factors,
+        including <list style="symbols">
+            <t>security properties</t>
+
+            <t>available infrastructure</t>
+
+            <t>library support</t>
+
+            <t>credential cost (financial)</t>
+
+            <t>performance</t>
+
+            <t>integration into the existing IT infrastructure</t>
+
+            <t>operational overhead for configuration and distribution of
+            credentials</t>
+          </list></t>
+
+        <t>This long list hints to the challenge of selecting at least one
+        mandatory-to-implement client authentication mechanism.</t>
+      </section>
+
+      <section anchor="confirmation" title="Key Confirmation">
+        <t>A variation of the mechanism of sender authentication, described in
+        <xref target="intended"/>, is to replace authentication with the
+        proof-of-possession of a specific (session) key, i.e., key
+        confirmation. In this model the resource server would not authenticate
+        the client itself but would rather verify whether the client knows the
+        session key associated with a specific access token. Examples of this
+        approach can be found with the OAuth 1.0 MAC token <xref
+        target="RFC5849"/>, and Kerberos <xref target="RFC4120"/> when
+        utilizing the AP_REQ/AP_REP exchange (see also <xref
+        target="I-D.hardjono-oauth-kerberos"/> for a comparison between
+        Kerberos and OAuth).</t>
+
+        <t>To illustrate key confirmation, the first example is borrowed from
+        Kerberos and use symmetric key cryptography. Assume that the
+        authorization server shares a long-term secret with the resource
+        server, called K(Authorization Server-Resource Server). This secret
+        would be established between them out-of-band. When the client
+        requests an access token the authorization server creates a fresh and
+        unique session key Ks and places it into the token encrypted with the
+        long term key K(Authorization Server-Resource Server). Additionally,
+        the authorization server attaches Ks to the response message to the
+        client (in addition to the access token itself) over a confidentiality
+        protected channel. When the client sends a request to the resource
+        server it has to use Ks to compute a keyed message digest for the
+        request (in whatever form or whatever layer). The resource server,
+        when receiving the message, retrieves the access token, verifies it
+        and extracts K(Authorization Server-Resource Server) to obtain Ks.
+        This key Ks is then used to verify the keyed message digest of the
+        request message.</t>
+
+        <t>Note that in this example one could imagine that the mechanism to
+        protect the token itself is based on a symmetric key based mechanism
+        to avoid any form of public key infrastructure but this aspect is not
+        further elaborated in the scenario.</t>
+
+        <t>A similar mechanism can also be designed using asymmetric
+        cryptography. When the client requests an access token the
+        authorization server creates an ephemeral public / privacy key pair
+        (PK/SK) and places the public key PK into the protected token. When
+        the authorization server returns the access token to the client it
+        also provides the PK/SK key pair over a confidentiality protected
+        channel. When the client sends a request to the resource server it has
+        to use the privacy key SK to sign the request. The resource server,
+        when receiving the message, retrieves the access token, verifies it
+        and extracts the public key PK. It uses this ephemeral public key to
+        verify the attached signature.</t>
+      </section>
+
+      <section title="Summary">
+        <t>As a high level message, there are various ways the threats can be
+        mitigated. While the details of each solution are somewhat different,
+        they all accomplish the goal of mitigating the threats.</t>
+
+        <t>The three approaches are: <list style="hanging">
+            <t hangText="Confidentiality Protection:"><vspace
+            blankLines="1"/>The weak point with this approach, which is
+            briefly described in <xref target="confidentiality"/>, is that the
+            client has to be careful to whom it discloses the access token.
+            What can be done with the token entirely depends on what rights
+            the token entitles the presenter and what constraints it contains.
+            A token could encode the identifier of the client but there are
+            scenarios where the client is not authenticated to the resource
+            server or where the identifier of the client rather represents an
+            application class rather than a single application instance. As
+            such, it is possible that certain deployments choose a rather
+            liberal approach to security and that everyone who is in
+            possession of the access token is granted access to the data. <!-- <vspace blankLines="1"/> 
+   Furthermore, to secure the access token at rest; unauthorized disclosure could be harmful particularly when the token has a rather long lifetime. Intuitively, one would argue that access tokens are easy to mint and used for a small time duration only to reduce the risk of exposure.--></t>
+
+            <t hangText="Sender Constraint:"><vspace blankLines="1"/>The weak
+            point with this approach, which is briefly described in <xref
+            target="intended"/>, is to setup the authentication infrastructure
+            such that clients can be authenticated towards resource servers.
+            Additionally, the authorization server must encode the identifier
+            of the client in the token for later verification by the resource
+            server. Depending on the chosen layer for providing client-side
+            authentication there may be additional challenges due to Web
+            server load balancing, lack of API access to identity information,
+            etc.</t>
+
+            <t hangText="Key Confirmation:"><vspace blankLines="1"/>The weak
+            point with this approach, see <xref target="confirmation"/>, is
+            the increased complexity: a complete key distribution protocol has
+            to be defined.</t>
+          </list></t>
+
+        <t>In all cases above it has to be ensured that the client is able to
+        keep the credentials secret.</t>
+      </section>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section anchor="architecture" title="Architecture">
+      <t>The proof-of-possession security concept assumes that the
+      authorization server acts as a trusted third party that binds keys to
+      access tokens. These keys are then used by the client to demonstrate the
+      possession of the secret to the resource server when accessing the
+      resource. The resource server, when receiving an access token, needs to
+      verify that the key used by the client matches the one included in the
+      access token.</t>
+
+      <t>There are slight differences between the use of symmetric keys and
+      asymmetric keys when they are bound to the access token and the
+      subsequent interaction between the client and the authorization server
+      when demonstrating possession of these keys. <xref target="arch-symm"/>
+      shows the symmetric key procedure and <xref target="arch-asymm"/>
+      illustrates how asymmetric keys are used. While symmetric cryptography
+      provides better performance properties the use of asymmetric
+      cryptography allows the client to keep the private key locally and never
+      expose it to any other party.</t>
+
+      <t>For example, with the JSON Web Token (JWT) <xref target="RFC7519"/> a standardized
+      format for access tokens is available. The necessary elements to bind
+      symmetric or asymmetric keys to a JWT are described in <xref
+      target="I-D.ietf-oauth-proof-of-possession"/>.</t>
+
+      <t>Note: The negotiation of cryptographic algorithms between the client
+      and the authorization server is not shown in the examples below and
+      assumed to be present in a protocol solution to meet the requirements
+      for crypto-agility.</t>
+
+      <section title="Client and Authorization Server Interaction">
+        <section title="Symmetric Keys">
+          <t><figure anchor="arch-symm"
+              title="Interaction between the Client and the Authorization Server (Symmetric Keys).">
+              <artwork>
+                     +---------------+
+                    ^|               |  
+                  // | Authorization |  
+                 /   | Server        |          
+               //    |               |        
+              /      |               |        
+       (I)  //      /+---------------+        
+Access     /      //                          
+Token     /      /                            
+Request //     //  (II) Access Token          
++Params /      /        +Symmetric Key       
+     //     //                                
+    /      v                                  
+  +-----------+                       +------------+
+  |           |                       |            |
+  |           |                       | Resource   |
+  | Client    |                       | Server     |
+  |           |                       |            |
+  |           |                       |            |
+  +-----------+                       +------------+</artwork>
+            </figure></t>
+
+          <t>In order to request an access token the client interacts with the
+          authorization server as part of the a normal grant exchange, as
+          shown in <xref target="arch-symm"/>. However, it needs to include
+          additional information elements for use with the PoP security
+          mechanism, as depicted in message (I). In message (II) the
+          authorization server then returns the requested access token. In
+          addition to the access token itself, the symmetric key is
+          communicated to the client. This symmetric key is a unique and fresh
+          session key with sufficient entropy for the given lifetime.
+          Furthermore, information within the access token ties it to this
+          specific symmetric key.</t>
+
+          <t>Note: For this security mechanism to work the client as well as
+          the resource server need to have access to the session key. While
+          the key transport mechanism from the authorization server to the
+          client has been explained in the previous paragraph there are three
+          ways for communicating this session key from the authorization
+          server to the resource server, namely <list style="itemize">
+              <t>Embedding the symmetric key inside the access token itself.
+              This requires that the symmetric key is confidentiality
+              protected.</t>
+
+              <t>The resource server queries the authorization server for the
+              symmetric key. This is an approach envisioned by the token
+              introspection endpoint <xref
+              target="RFC7662"/>.</t>
+
+              <t>The authorization server and the resource server both have
+              access to the same back-end database. Smaller, tightly coupled
+              systems might prefer such a deployment strategy.</t>
+            </list></t>
+        </section>
+
+        <section title="Asymmetric Keys">
+          <t><figure anchor="arch-asymm"
+              title="Interaction between the Client and the Authorization Server (Asymmetric Keys).">
+              <artwork>
+                     +---------------+
+                    ^|               |
+Access Token Req. // | Authorization |
++Parameters      /   | Server        |
++[Fingerprint] //    |               |
+              /      |               |
+    (I)     //      /+---------------+
+           /      //
+          /      /     (II)
+        //     //  Access Token
+        /      /   +[ephemeral
+     //     //      asymmetric key pair]
+    /      v
+  +-----------+                       +------------+
+  |           |                       |            |
+  |           |                       | Resource   |
+  | Client    |                       | Server     |
+  |           |                       |            |
+  |           |                       |            |
+  +-----------+                       +------------+</artwork>
+            </figure></t>
+
+          <t>The use of asymmetric keys is slightly different since the client
+          or the server could be involved in the generation of the ephemeral
+          key pair. This exchange is shown in <xref target="arch-symm"/>. If
+          the client generates the key pair it either includes a fingerprint
+          of the public key or the public key in the request to the
+          authorization server. The authorization server would include this
+          fingerprint or public key in the confirmation claim inside the
+          access token and thereby bind the asymmetric key pair to the token.
+          If the client did not provide a fingerprint or a public key in the
+          request then the authorization server is asked to create an
+          ephemeral asymmetric key pair, binds the fingerprint of the public
+          key to the access token, and returns the asymmetric key pair (public
+          and private key) to the client. Note that there is a strong
+          preference for generating the private/public key pair locally at the
+          client rather than at the server.</t>
+        </section>
+      </section>
+
+      <section title="Client and Resource Server Interaction">
+        <t>The specification describing the interaction between the client and
+        the authorization server, as shown in <xref target="arch-symm"/> and
+        in <xref target="arch-asymm"/>, can be found in <xref
+        target="I-D.ietf-oauth-pop-key-distribution"/>.</t>
+
+        <t>Once the client has obtained the necessary access token and keying
+        material it can start to interact with the resource server. To
+        demonstrate possession of the key bound to the access token it needs
+        to apply this key to the request by computing a keyed message digest
+        (i.e., a symmetric key-based cryptographic primitive) or a digital
+        signature (i.e., an asymmetric cryptographic computation). When the
+        resource server receives the request it verifies it and decides
+        whether access to the protected resource can be granted. This exchange
+        is shown in <xref target="architecture-2"/>.</t>
+
+        <t><figure anchor="architecture-2" title="Client Demonstrates PoP.">
+            <artwork>
+                   +---------------+
+                   |               |
+                   | Authorization |
+                   | Server        |
+                   |               |
+                   |               |
+                   +---------------+
+
+
+
+
+
+                 Request
++-----------+  + Signature/MAC (a)  +------------+
+|           |----------------------&gt;|            |
+|           |  [+Access Token]      | Resource   |
+| Client    |                       | Server     |
+|           |    Response (b)       |            |
+|           |&lt;----------------------|            |
++-----------+  [+ Signature/MAC]    +------------+
+
+     ^                                    ^
+     |                                    |
+     |                                    |
+ Symmetric Key                       Symmetric Key
+    or                                   or 
+ Asymmetric Key Pair                Public Key (Client)
+    +                                     +
+  Parameters                          Parameters</artwork>
+          </figure></t>
+
+        <t>The specification describing the ability to sign the HTTP request
+        from the client to the resource server can be found in <xref
+        target="I-D.ietf-oauth-signed-http-request"/>.</t>
+      </section>
+
+      <section title="Resource and Authorization Server Interaction (Token Introspection)">
+        <t>So far the examples talked about access tokens that are passed by
+        value and allow the resource server to make authorization decisions
+        immediately after verifying the request from the client. In some
+        deployments a real-time interaction between the authorization server
+        and the resource server is envisioned that lowers the need to pass
+        self-contained access tokens around. In that case the access token
+        merely serves as a handle or a reference to state stored at the
+        authorization server. As a consequence, the resource server cannot
+        autonomously make an authorization decision when receiving a request
+        from a client but has to consult the authorization server. This can,
+        for example, be done using the token introspection endpoint (see <xref
+        target="RFC7662"/>). <xref
+        target="architecture-3"/> shows the protocol interaction graphically.
+        Despite the additional token exchange previous descriptions about
+        associating symmetric and asymmetric keys to the access token are
+        still applicable to this scenario.</t>
+
+        <t><figure anchor="architecture-3"
+            title="Token Introspection and Access Token Handles.">
+            <artwork>
+                   +---------------+
+     Access       ^|               |
+     Token Req. // | Authorization |^
+       (I)     /   | Server        | \  (IV) Token
+             //    |               |  \ Introspection Req.
+            /      |               |   \     +Access
+          //      /+---------------+    \     Token
+         /      // (II)             \    \\
+        /      /   Access            \     \
+      //     //    Token              \ (V) \
+      /      /                         \Resp.\
+   //     //                            \     \
+  /      v                               V     \
++-----------+ Request +Signature/MAC+------------+
+|           |  (III)  +Access Token |            |
+|           |----------------------&gt;| Resource   |
+| Client    |   (VI) Success or     | Server     |
+|           |        Failure        |            |
+|           |&lt;----------------------|            |
++-----------+                       +------------+</artwork>
+          </figure></t>
+      </section>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Security Considerations">
+      <t>The purpose of this document is to provide use cases, requirements,
+      and motivation for developing an OAuth security solution extending
+      Bearer Tokens. As such, this document is only about security.</t>
+      
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="IANA Considerations">
+      <t>This document does not require actions by IANA.</t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+    <section title="Acknowledgments">
+      <t>This document is the result of conference calls late 2012/early 2013
+      and in design team conference calls February 2013 of the IETF OAuth
+      working group. The following persons (in addition to the OAuth WG
+      chairs, Hannes Tschofenig, and Derek Atkins) provided their input during
+      these calls: Bill Mills, Justin Richer, Phil Hunt, Prateek Mishra, Mike
+      Jones, George Fletcher, Leif Johansson, Lucy Lynch, John Bradley, Tony
+      Nadalin, Klaas Wierenga, Thomas Hardjono, Brian Campbell</t>
+
+      <t>In the appendix of this document we reuse content from <xref
+      target="RFC4962"/> and the authors would like thank Russ Housely and
+      Bernard Aboba for their work on RFC 4962.</t>
+
+      <t>We would like to thank Reddy Tirumaleswar for his review.</t>
+    </section>
+
+    <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml' ?>
+
+      <!-- 			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2045.xml' ?> 
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2104.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2616.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.2617.xml' ?>
+
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.3986.xml' ?>
+
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5226.xml' ?>-->
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5246.xml' ?>
+
+      <!--			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6265.xml' ?>-->
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6749.xml' ?>
+
+      <!--			<?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-httpbis-p1-messaging.xml' ?>
+			<?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.tschofenig-oauth-audience.xml' ?> -->
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.7519.xml' ?>
+      
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.7525.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.7662.xml' ?>
+
+      <!-- <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.7516.xml' ?>-->
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-proof-of-possession.xml' ?>
+
+      <!--			<?rfc include='http://xml.resource.org/public/rfc/bibxml4/reference.W3C.REC-html401-19991224.xml' ?>
+-->
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-pop-key-distribution.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-oauth-signed-http-request.xml' ?>
+    </references>
+
+    <references title="Informative References">
+      <!--			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4086.xml' ?>-->
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4120.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4279.xml' ?>
+      
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4347.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.4962.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5056.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5849.xml' ?>
+
+      <!--			<?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.5929.xml' ?>-->
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6819.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml3/reference.I-D.hardjono-oauth-kerberos.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6125.xml' ?>
+
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.6750.xml' ?>
+      
+      <?rfc include='http://xml.resource.org/public/rfc/bibxml/reference.RFC.7252.xml' ?>
+
+      <!-- 
+			<reference anchor='NIST-FIPS-180-3'>
+				<front>
+					<title>Secure Hash Standard (SHS). FIPS PUB 180-3, October 2008</title>
+					<author>
+						<organization>National Institute of Standards and Technology</organization>
+					</author>
+					<date month="October" year="2008"/>
+				</front>
+				<format type='pdf' target='http://www.nist.gov/itl/upload/fips180-3_final.pdf' />
+			</reference>
+-->
+
+      <reference anchor="NIST800-63">
+        <front>
+          <title>NIST Special Publication 800-63-1, INFORMATION
+          SECURITY</title>
+
+          <author fullname="William E. Burr" initials="W." surname="Burr">
+            <organization>NIST</organization>
+          </author>
+
+          <author fullname="Donna F. Dodson" initials="D." surname="Dodson">
+            <organization>NIST</organization>
+          </author>
+
+          <author fullname="Ray A. Perlner" initials="R." surname="Perlner">
+            <organization>NIST</organization>
+          </author>
+
+          <author fullname="W. Timothy Polk" initials="T." surname="Polk">
+            <organization>NIST</organization>
+          </author>
+
+          <author fullname="Sarbari Gupta" initials="S." surname="Gupta">
+            <organization>NIST</organization>
+          </author>
+
+          <author fullname="Emad A. Nabbus" initials="E." surname="Nabbus">
+            <organization>NIST</organization>
+          </author>
+
+          <date month="December" year="2008"/>
+        </front>
+
+        <format target="http://csrc.nist.gov/publications/PubsDrafts.html#SP-800-63-Rev.%201"
+                type="HTML"/>
+      </reference>
+    </references>
+  </back>
+</rfc>
