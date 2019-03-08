@@ -132,8 +132,8 @@ and those tokens may be presented to network or application services.
                         | |          | |P |  | | TF-M Core|  |
                         | | RTOS and | |I |  | +----------+  |
                         | | Drivers  | +--+--+ +----------+  |
-                        | |          |    |    |          |  |
-                        | +----------+    |    |Bootloader|  |
+                        | |          |    |    |   Boot   |  |
+                        | +----------+    |    |  Loader  |  |
                         |                 |    +----------+  |
                         +-----------------+------------------+
                         |          H A R D|W A R E           |
@@ -182,8 +182,8 @@ The PSA lifecycle states consist of the following values:
 {{software-components}} shows the structure of each software component entry in the Software Components claim. 
 
 | Key ID | Type | Mandatory | Description |
-| ------|:---------:|:---------:-----------|
-| 1 | Measurement Type | No | A short string representing the role of this software component (e.g. 'BL' for bootloader). |
+| ------|:---------:|:---------:|-----------|
+| 1 | Measurement Type | No | A short string representing the role of this software component (e.g. 'BL' for Boot Loader). |
 | 2 | Measurement value | Yes | Represents a hash of the invariant software component in memory at startup time. The value must be a cryptographic hash of 256 bits or stronger. | 
 | 3 | Reserved | No | Reserved | 
 | 4 | Version | No | The issued software version in the form of a text string. The value of this claim will correspond to the entry in the original signed manifest of the component. |
@@ -192,8 +192,8 @@ The PSA lifecycle states consist of the following values:
 {: #software-components title="Software Components Claims."} 
 
 The following measurement types are current defined:
- 
- - BL (a bootloader)
+
+ - BL (a Boot Loader)
  - PRoT (a component of the PSA Root of Trust)
  - ARoT (a component of the Application Root of Trust)
  - App (a component of the NSPE application)
