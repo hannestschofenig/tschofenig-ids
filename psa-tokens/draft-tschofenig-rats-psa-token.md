@@ -71,19 +71,19 @@ informative:
       org: Arm
     title: Platform Security Architecture Resources
     target: https://www.arm.com/why-arm/architecture/platform-security-architecture/psa-resources
-    date: 2019	
+    date: 2019    
   PSA-FF: 
     author:
       org: Arm
     title: Platform Security Architecture Firmware Framework 1.0 (PSA-FF)
     target: https://pages.arm.com/psa-resources-ff.html
-    date: 20. Feb. 2019	
+    date: 20. Feb. 2019    
   PSA-SM: 
     author:
       org: Arm
     title: Platform Security Architecture Security Model 1.0 (PSA-SM)
     target: https://pages.arm.com/psa-resources-sm.html
-    date: 19. Feb. 2019	
+    date: 19. Feb. 2019    
 
 --- abstract
 
