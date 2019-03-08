@@ -157,15 +157,15 @@ document are to be interpreted as described in RFC 2119 {{RFC2119}}.
 | Claim | Mandatory | Description |
 | ------|:---------:|-----------|
 | Challenge | Yes |  Input object from the caller. For example, this can be a cryptographic nonce, a hash of locally attested data, or both. The length must be 32, 48, or 64 bytes. |
-| Instance ID | Yes | Represents the unique identifier of the instance. It is a hash of the public key corresponding to the Initial Attestation Key. | 
+| Instance ID | Yes | Represents the unique identifier of the instance. It is a hash of the public key corresponding to the Initial Attestation Key. |
 | Verification service indicator | No | Information used by a relying party to locate a validation service for the token. The value is a text string that can be used to locate the service or a URL specifying the address of the service. |
-| Profile definition | No | Contains the name of a document that describes the 'profile' of the report. The document name may include versioning. The value for this specification is PSA_IOT_PROFILE_1. | 
+| Profile Definition | No | Contains the name of a document that describes the 'profile' of the report. The document name may include versioning. The value for this specification is PSA_IOT_PROFILE_1. |
 | Implementation ID | Yes | Represents the original implementation signer of the attestation key and identifies the contract between the report and verification. A verification service will use this claim to locate the details of the verification process. |
-| Client ID | Yes | Represents the Partition ID of the caller. It is a signed integer whereby negative values represent callers from the NSPE and where positive IDs represent callers from the SPE. The full definition of the partition ID is defined in the PSA Firmware Framework (PSA-FF) {{PSA-FF}}.  |
-|Security Lifecycle | Yes |  Represents the current lifecycle state of the PSA RoT. The state is represented by a 16-bit unsigned integer that is divided to convey a major state and a minor state. A major state is defined by PSA-SM. A minor state is 'IMPLEMENTATION DEFINED'. The encoding is: version[15:8] - PSA lifecycle state, and version[7:0] - IMPLEMENTATION DEFINED state. The PSA lifecycle states are listed below. For PSA, a remote verifier can only trust reports from the PSA RoT when it is in SECURED, NON_PSA_ROT_DEBUG or RECOVERABLE_PSA_ROT_DEBUG major states. |
+| Client ID | Yes | Represents the Partition ID of the caller. It is a signed integer whereby negative values represent callers from the NSPE and where positive IDs represent callers from the SPE. The full definition of the partition ID is defined in the PSA Firmware Framework (PSA-FF) {{PSA-FF}}. |
+| Security Lifecycle | Yes | Represents the current lifecycle state of the PSA RoT. The state is represented by a 16-bit unsigned integer that is divided to convey a major state and a minor state. A major state is defined by {{PSA-SM}}. A minor state is 'IMPLEMENTATION DEFINED'. The encoding is: version[15:8] - PSA lifecycle state, and version[7:0] - IMPLEMENTATION DEFINED state. The PSA lifecycle states are listed below. For PSA, a remote verifier can only trust reports from the PSA RoT when it is in SECURED, NON_PSA_ROT_DEBUG or RECOVERABLE_PSA_ROT_DEBUG major states. |
 | Hardware version | No | Provides metadata linking the token to the GDSII that went to fabrication for this instance. It can be used to link the class of chip and PSA RoT to the data on a certification website. It must be represented as a thirteen-digit {{EAN-13}} |
-| Boot seed | Yes | Represents a random value created at system boot time that will allow differentiation of reports from different system sessions. |
-| Software components | Yes (unless the No Software Measurements claim is specified) | A list of software components that represent the entire software state of the system. This claim is recommended in order to comply with the rules outlined in the {{PSA-SM}}. The software components are further explained below. |
+| Boot Seed | Yes | Represents a random value created at system boot time that will allow differentiation of reports from different system sessions. |
+| Software Components | Yes (unless the No Software Measurements claim is specified) | A list of software components that represent the entire software state of the system. This claim is recommended in order to comply with the rules outlined in the {{PSA-SM}}. The software components are further explained below. |
 | No Software Measurements | Yes (if no software components specified) | In the event that the implementation does not contain any software measurements then the Software Components claim above can be omitted but instead it will be mandatory to include this claim to indicate this is a deliberate state. |
 {: #info-model title="Information Model of PSA Attestation Claims."} 
 
@@ -178,7 +178,6 @@ The PSA lifecycle states consist of the following values:
 - RECOVERABLE_PSA_ROT_DEBUG (0x5000u)
 - PSA_LIFECYCLE_DECOMMISSIONED (0x6000u)
 
-
 {{software-components}} shows the structure of each software component entry in the Software Components claim. 
 
 | Key ID | Type | Mandatory | Description |
@@ -187,17 +186,17 @@ The PSA lifecycle states consist of the following values:
 | 2 | Measurement value | Yes | Represents a hash of the invariant software component in memory at startup time. The value must be a cryptographic hash of 256 bits or stronger. | 
 | 3 | Reserved | No | Reserved | 
 | 4 | Version | No | The issued software version in the form of a text string. The value of this claim will correspond to the entry in the original signed manifest of the component. |
-|5 | Signer ID | Yes | The hash of a signing authority public key for the software component. The value of this claim will correspond to the entry in the original manifest for the component. |
+| 5 | Signer ID | Yes | The hash of a signing authority public key for the software component. The value of this claim will correspond to the entry in the original manifest for the component. |
 | 6 | Measurement description | No | Description of the software component, which represents the way in which the measurement value of the software component is computed. The value will be a text string containing an abbreviated description (or name) of the measurement method which can be used to lookup the details of the method in a profile document. This claim will normally be excluded, unless there was an exception to the default measurement described in the profile for a specific component. |
 {: #software-components title="Software Components Claims."} 
 
 The following measurement types are current defined:
 
- - BL (a Boot Loader)
- - PRoT (a component of the PSA Root of Trust)
- - ARoT (a component of the Application Root of Trust)
- - App (a component of the NSPE application)
- - TS (a component of a trusted subsystem)
+- 'BL': a Boot Loader
+- 'PRoT': a component of the PSA Root of Trust
+- 'ARoT': a component of the Application Root of Trust
+- 'App': a component of the NSPE application
+- 'TS': a component of a Trusted Subsystem
 
 # Token Encoding
 
@@ -205,7 +204,7 @@ The report is represented as a token, which must be formatted in accordance to t
 
 # Claims {#claims}
 
-The token is modelled to include custom values that correspond to the following claims suggested in the EAT specification. 
+The token is modelled to include custom values that correspond to the following claims suggested in the EAT specification:
 
 - nonce (mandatory); arm_psa_nonce is used instead
 - UEID (mandatory); arm_psa_UEID is used instead
@@ -219,22 +218,22 @@ As noted, some fields must be at least 32 bytes long to provide sufficient crypt
 | -75001 | Client ID | arm_psa_partition_id | Unsigned integer or Negative integer |
 | -75002 | Security Lifecycle | arm_psa_security_lifecycle | Unsigned integer |
 | -75003 | Implementation ID | arm_psa_implementation_id | Byte string (>=32 bytes) |
-| -75004 | Boot seed | arm_psa_boot_seed | Byte string (>=32 bytes) |
-| -75005 | Hardware version | arm_psa_hw_version | Text string |
-| -75006 | Software components - (compound map claim) | arm_psa_sw_components  | Array of map entries. |
-| -75007 | No software measurements | arm_psa_no_sw_measurements  | Unsigned integer |
+| -75004 | Boot Seed | arm_psa_boot_seed | Byte string (>=32 bytes) |
+| -75005 | Hardware Version | arm_psa_hw_version | Text string |
+| -75006 | Software Components | arm_psa_sw_components  | Array of map entries. (compound map claim) |
+| -75007 | No Software Measurements | arm_psa_no_sw_measurements  | Unsigned integer |
 | -75008 | Challenge | arm_psa_nonce  | Byte string |
 | -75009 | UEID | arm_psa_UEID  | Byte string |
 | -75010 |Origination - (Verification service indicator) | "arm\_psa\_origination" | Byte string |
 
 Each map entry of the software components claims MUST have the following types for each key value:
 
- 1. Text string (type)
- 2. Byte string  (measurement, >=32 bytes)
- 3. Reserved
- 4. Text string (version)
- 5. Byte string (signer ID, >=32 bytes)
- 6. Text string (measurement description)
+1. Text string (type)
+2. Byte string (measurement, >=32 bytes)
+3. Reserved
+4. Text string (version)
+5. Byte string (signer ID, >=32 bytes)
+6. Text string (measurement description)
 
 # Example
 
@@ -292,7 +291,7 @@ Attestation tokens contain information that may be unique to a device and
 therefore they may allow single out an individual device for tracking purposes. 
 Implementation must take to ensure that only those claims are included that fulfil 
 the purpose of the application and that users of those devices consent to the 
-data sharing. 
+data sharing.
 
 #  IANA Considerations
 
