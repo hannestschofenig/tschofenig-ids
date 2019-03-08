@@ -210,6 +210,8 @@ The token is modelled to include custom values that correspond to the following 
 - UEID (mandatory); arm_psa_UEID is used instead
 - origination (recommended); arm_psa_origination is used instead
 
+Later revisions of this documents might phase out those custom claims to be replaced by the EAT standard claims.
+
 As noted, some fields must be at least 32 bytes long to provide sufficient cryptographic strength.
 
 | Claim Key | Claim Description | Claim Name | CBOR Value Type |
@@ -223,8 +225,8 @@ As noted, some fields must be at least 32 bytes long to provide sufficient crypt
 | -75006 | Software Components | arm_psa_sw_components  | Array of map entries. (compound map claim) |
 | -75007 | No Software Measurements | arm_psa_no_sw_measurements  | Unsigned integer |
 | -75008 | Challenge | arm_psa_nonce  | Byte string |
-| -75009 | UEID | arm_psa_UEID  | Byte string |
-| -75010 |Origination - (Verification service indicator) | "arm\_psa\_origination" | Byte string |
+| -75009 | Instance ID | arm_psa_UEID  | Byte string |
+| -75010 | Verification Service Indicator | arm_psa_origination | Byte string or StringOrURI |
 
 Each map entry of the software components claims MUST have the following types for each key value:
 
