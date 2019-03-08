@@ -239,44 +239,116 @@ Each map entry of the software components claims MUST have the following types f
 
 # Example
 
-~~~
-{
-  / nonce /  -75008:h'0100010203060708....41516191a1b1c1d1e1f',
-  / UEID /   -75009:h'0100010203060708....41516191a1b1c1d1e1f',
-  / origination / -75010:'psa_verifier',
-  / profile /     -75000:'PSA_IoT_PROFILE_1',
-  / clientID /    -75001:-1,
-  / security lifecycle / -75002:12288,
-  / boot seed /   -75004:h'0100010203060708....41516191a1b1c1d1e1f',
+EC key using curve P-256 with:
+- x: 0xdcf0d0f4bcd5e26a54ee36cad660d283d12abc5f7307de58689e77cd60452e75
+- y: 0x8cbadb5fe9f89a7107e5a2e8ea44ec1b09b7da2a1a82a0252a4c1c26ee1ed7cf
+- d: 0xc74670bcb7e85b3803efb428940492e73e3fe9d4f7b5a8ad5e480cbdbcb554c2
 
-  / software components/ -75006:
-      [
-       {
-/ type /          1: 'BL',
-/ measurement /   2: h'0100010203060708....41516191a1b1c1d1e1f',
-/ version /       4: '3.1.4',
-/ signerID /      5: h'0100010203060708....41516191a1b1c1d1e1f'
-       },
-       {
-/ type /          1: 'PRoT',
-/ measurement /   2: h'0100010203060708....41516191a1b1c1d1e1f',
-/ version /       4: '1.1',
-/ signerID /      5: h'0100010203060708....41516191a1b1c1d1e1f'
-       },
-       {
-/ type /          1: 'ARoT',
-/ measurement /   2: h'0100010203060708....41516191a1b1c1d1e1f',
-/ version /       4: '1.0',
-/ signerID /      5: h'0100010203060708....41516191a1b1c1d1e1f'
-       },
-       {
-/ type /          1: 'App',
-/ measurement /   2: h'0100010203060708....41516191a1b1c1d1e1f',
-/ version /       4: '2.2',
-/ signerID /      5: h'0100010203060708....41516191a1b1c1d1e1f'
-       }
-     ]
-}
+Key using COSE format (base64-encoded):
+
+~~~
+    pSJYIIy621/p+JpxB+Wi6OpE7BsJt9oqGoKgJSpMHCbuHtfPI1ggx0ZwvLfoWzgD77Q
+    olASS5z4/6dT3taitXkgMvby1VMIBAiFYINzw0PS81eJqVO42ytZg0oPRKrxfcwfeWG
+    ied81gRS51IAE=
+~~~
+
+Example of EAT token (base64-encoded):
+
+~~~
+    0oRDoQEmoFkCIqk6AAEk+1ggAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8
+    6AAEk+lggAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh86AAEk/YSkAlggAA
+    ECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8EZTMuMS40BVggAAECAwQFBgcIC
+    QoLDA0ODxAREhMUFRYXGBkaGxwdHh8BYkJMpAJYIAABAgMEBQYHCAkKCwwNDg8QERIT
+    FBUWFxgZGhscHR4fBGMxLjEFWCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0
+    eHwFkUFJvVKQCWCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHwRjMS4wBV
+    ggAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8BZEFSb1SkAlggAAECAwQFB
+    gcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8EYzIuMgVYIAABAgMEBQYHCAkKCwwNDg8Q
+    ERITFBUWFxgZGhscHR4fAWNBcHA6AAEk+RkwADoAAST/WCAAAQIDBAUGBwgJCgsMDQ4
+    PEBESExQVFhcYGRobHB0eHzoAASUBbHBzYV92ZXJpZmllcjoAAST4IDoAASUAWCEBAA
+    ECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh86AAEk93FQU0FfSW9UX1BST0ZJT
+    EVfMVhAWIYFCO5+jMSOuoctu11pSlQrEyKtDVECPBlw30KfBlAcaDqVEIoMztCm6A4J
+    ZvIr1j0cAFaXShG6My14d4f7Tw==
+~~~
+
+Same token using extended CBOR diagnostic format:
+
+~~~
+18(
+  [
+  / protected / h'a10126' / {
+      \ alg \ 1: -7 \ ECDSA 256 \
+    } / ,
+  / unprotected / {},
+  / payload / h'a93a000124fb5820000102030405060708090a0b0c0d0e0f1011121
+  31415161718191a1b1c1d1e1f3a000124fa5820000102030405060708090a0b0c0d0e
+  0f101112131415161718191a1b1c1d1e1f3a000124fd84a4025820000102030405060
+  708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f0465332e312e34055820
+  000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f01624
+  24ca4025820000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c
+  1d1e1f0463312e31055820000102030405060708090a0b0c0d0e0f101112131415161
+  718191a1b1c1d1e1f016450526f54a4025820000102030405060708090a0b0c0d0e0f
+  101112131415161718191a1b1c1d1e1f0463312e30055820000102030405060708090
+  a0b0c0d0e0f101112131415161718191a1b1c1d1e1f016441526f54a4025820000102
+  030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f0463322e320
+  55820000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+  01634170703a000124f91930003a000124ff5820000102030405060708090a0b0c0d0
+  e0f101112131415161718191a1b1c1d1e1f3a000125016c7073615f76657269666965
+  723a000124f8203a00012500582101000102030405060708090a0b0c0d0e0f1011121
+  31415161718191a1b1c1d1e1f3a000124f7715053415f496f545f50524f46494c455f
+  31' / {
+     / arm_psa_boot_seed / -75004: h'000102030405060708090a0b0c0d0e0f10
+     1112131415161718191a1b1c1d1e1f',
+     / arm_psa_implementation_id / -75003: h'000102030405060708090a0b0c
+     0d0e0f101112131415161718191a1b1c1d1e1f',
+     / arm_psa_sw_components / -75006: [
+          {
+            / measurement / 2: h'000102030405060708090a0b0c0d0e0f101112
+            131415161718191a1b1c1d1e1f',
+            / version / 4: "3.1.4",
+            / signerID / 5: h'000102030405060708090a0b0c0d0e0f101112131
+            415161718191a1b1c1d1e1f',
+            / type / 1: "BL"
+          },
+          {
+            / measurement / 2: h'000102030405060708090a0b0c0d0e0f101112
+            131415161718191a1b1c1d1e1f',
+            / version / 4: "1.1",
+            / signerID / 5: h'000102030405060708090a0b0c0d0e0f101112131
+            415161718191a1b1c1d1e1f',
+            / type / 1: "PRoT"
+          },
+          {
+            / measurement / 2: h'000102030405060708090a0b0c0d0e0f101112
+            131415161718191a1b1c1d1e1f',
+            / version / 4: "1.0",
+            / signerID / 5: h'000102030405060708090a0b0c0d0e0f101112131
+            415161718191a1b1c1d1e1f',
+            / type / 1: "ARoT"
+          },
+          {
+            / measurement / 2: h'000102030405060708090a0b0c0d0e0f101112
+            131415161718191a1b1c1d1e1f',
+            / version / 4: "2.2",
+            / signerID / 5: h'000102030405060708090a0b0c0d0e0f101112131
+            415161718191a1b1c1d1e1f',
+            / type / 1: "App"
+          }
+        ],
+      / arm_psa_security_lifecycle / -75002: 12288 / SECURED /,
+      / arm_psa_nonce / -75008: h'000102030405060708090a0b0c0d0e0f10111
+      2131415161718191a1b1c1d1e1f',
+      / arm_psa_origination / -75010: "psa_verifier",
+      / arm_psa_partition_id / -75001: -1,
+      / arm_psa_UEID / -75009: h'01000102030405060708090a0b0c0d0e0f1011
+      12131415161718191a1b1c1d1e1f',
+      / arm_psa_profile_id / -75000: "PSA_IoT_PROFILE_1"
+    }),
+    } / ,
+  / signature / h'58860508ee7e8cc48eba872dbb5d694a542b1322ad0d51023c197
+  0df429f06501c683a95108a0cced0a6e80e0966f22bd63d1c0056974a11ba332d7877
+  87fb4f'
+  ]
+)
 ~~~
 
 #  Security and Privacy Considerations {#sec-cons}
