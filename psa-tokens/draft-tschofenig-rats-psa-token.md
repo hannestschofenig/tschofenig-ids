@@ -101,7 +101,7 @@ describes what claims are used by the PSA and what has been implemented within A
 
 #  Introduction
 
-Modern hardware for Internet of Things devices contain trusted execution environments and in case of the Arm v8-M architecture TrustZone support. TrustZone on these low end microcontrollers allows the separation between a normal world and a secure world where security sensitive code resides in the secure world and is executed by applications running on the normal world using a well-defined API. Various APIs have been developed by Arm as part of the Platform Security Architecture {{PSA}}; this document focuses on the functionality provided by the attestation API. Since the tokens exposed via the attestation API are also consumed by services outside the device interopability needs arise. In this specification these interoperability needs are addressed by a combination of 
+Modern hardware for Internet of Things devices contain trusted execution environments and in case of the Arm v8-M architecture TrustZone support. TrustZone on these low end microcontrollers allows the separation between a normal world and a secure world where security sensitive code resides in the secure world and is executed by applications running on the normal world using a well-defined API. Various APIs have been developed by Arm as part of the Platform Security Architecture {{PSA}}; this document focuses on the functionality provided by the attestation API. Since the tokens exposed via the attestation API are also consumed by services outside the device, interoperability needs arise. In this specification these interoperability needs are addressed by a combination of
 
 - a set of claims encoded in CBOR, 
 - embedded in a CBOR Web Token (CWT), 
@@ -149,6 +149,18 @@ and those tokens may be presented to network or application services.
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
 document are to be interpreted as described in RFC 2119 {{RFC2119}}.
+
+## Glossary
+
+RoT
+: Root of Trust, the minimal set of software, hardware and data that has to be implicitly trusted in the platform - there is no software or hardware at a deeper level that can verify that the Root of Trust is authentic and unmodified.
+
+SPE
+: Secure Processing Environment, a platform's processing environment for software that provides confidentiality and integrity for its runtime state, from software and hardware, outside of the SPE. Contains the Secure Partition Manager, the Secure Partitions and the trusted hardware.
+
+NSPE
+: Non Secure Processing Environment, the security domain outside of the SPE, the Application domain, typically containing the application firmware and hardware.
+
 
 # Information Model
 
