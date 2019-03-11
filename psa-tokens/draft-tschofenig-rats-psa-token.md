@@ -40,7 +40,13 @@ author:
        organization: Arm Limited
        email: Mathias.Brossard@arm.com
 
-
+-
+       ins: A. Shaw
+       name: Adrian Shaw
+       organization: Arm Limited
+       email: Adrian.Shaw@arm.com
+	   
+	   
 normative:
   RFC2119:
   I-D.mandyam-eat:
@@ -88,7 +94,7 @@ informative:
 --- abstract
 
 The insecurity of IoT systems is a widely known and discussed problem. The Arm Platform Security Architecture (PSA) is 
-being developed to address this challenge and make it easier to build secure systems.
+being developed to address this challenge by making it easier to build secure systems.
 
 This document specifies token format and claims used in the attestation 
 API of the Arm Platform Security Architecture (PSA).
@@ -252,6 +258,11 @@ Each map entry of the software component claim MUST have the following types for
 The following key values will be present in the software components claim: 1 (Type), 2 (Measurement Value), 4 (Version) and 5 (Signer ID). Keys 3 (Reserved) and 6 (Measurement Description) will not be present. Instead of a referenced Measurement Description it is defined that all cases, the software measurement value is taken as a SHA256 hash of the software image, prior to it executing in place.
 
 # Example
+
+The following example shows an attestation token that was produced 
+for a device that has a single-stage bootloader, and an RTOS with a device 
+management client. From a code point of view, the RTOS and the device
+management client form a single binary. 
 
 EC key using curve P-256 with:
 - x: 0xdcf0d0f4bcd5e26a54ee36cad660d283d12abc5f7307de58689e77cd60452e75
