@@ -227,7 +227,7 @@ As noted, some fields must be at least 32 bytes long to provide sufficient crypt
 | -75009 | UEID | arm_psa_UEID  | Byte string |
 | -75010 |Origination - (Verification service indicator) | "arm\_psa\_origination" | Byte string |
 
-Each map entry of the software components claims MUST have the following types for each key value:
+Each map entry of the software component compound claim MUST have the following types for each key value:
 
  1. Text string (type)
  2. Byte string  (measurement, >=32 bytes)
