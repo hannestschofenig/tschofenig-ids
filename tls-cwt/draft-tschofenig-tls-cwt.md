@@ -31,6 +31,12 @@ author:
        role: editor
        email: hannes.tschofenig@arm.com
 
+ -
+       ins: M. Brossard
+       name: Mathias Brossard
+       organization: Arm Limited
+       email: Mathias.Brossard@arm.com
+
 normative:
   RFC2119:
   I-D.ietf-tls-dtls13:
