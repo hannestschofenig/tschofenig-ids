@@ -407,7 +407,14 @@ We would like to thank the following supporters for their contributions:
 
 ~~~
 * Laurence Lundblade
+  Security Theory LLC
   lgl@securitytheory.com
+~~~
+
+~~~
+* Tamas Ban
+  Arm Limited
+  Tamas.Ban@arm.com
 ~~~
 
 # Reference Implementation 
