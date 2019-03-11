@@ -1,9 +1,8 @@
 ---
 title: Arm's Platform Security Architecture (PSA) Attestation Token
 abbrev: PSA Attestation Token
-docname: draft-tschofenig-rats-psa-token-latest
+docname: draft-tschofenig-rats-psa-token-00
 category: std
-updates: 6347
 
 ipr: pre5378Trust200902
 area: Security
@@ -22,6 +21,7 @@ pi:
   inline: yes
   text-list-symbols: -o*+
   docmapping: yes
+
 author:
  -
        ins: H. Tschofenig
@@ -39,8 +39,7 @@ author:
        name: Mathias Brossard
        organization: Arm Limited
        email: Mathias.Brossard@arm.com
-
--
+ -
        ins: A. Shaw
        name: Adrian Shaw
        organization: Arm Limited
@@ -173,7 +172,7 @@ NSPE
 {{info-model}} describes the utilized claims.
 
 | Claim | Mandatory | Description |
-| ------|:---------:|-----------|
+|------|:---------:|-----------|
 | Challenge | Yes |  Input object from the caller. For example, this can be a cryptographic nonce, a hash of locally attested data, or both. The length must be 32, 48, or 64 bytes. |
 | Instance ID | Yes | Represents the unique identifier of the instance. It is a hash of the public key corresponding to the Initial Attestation Key. |
 | Verification Service Indicator | No | Information used by a relying party to locate a validation service for the token. The value is a text string that can be used to locate the service or a URL specifying the address of the service. |
@@ -233,11 +232,11 @@ Later revisions of this documents might phase out those custom claims to be repl
 As noted, some fields must be at least 32 bytes long to provide sufficient cryptographic strength.
 
 | Claim Key | Claim Description | Claim Name | CBOR Value Type |
-| ------|:---------:|:---------:|:-----------|
+|:------:|:---------:|:---------:|:-----------|
 | -75000 | Profile Definition | arm_psa_profile_id | Text string |
 | -75001 | Client ID | arm_psa_partition_id | Unsigned integer or Negative integer |
 | -75002 | Security Lifecycle | arm_psa_security_lifecycle | Unsigned integer |
-| -75003 | Implementation ID | arm_psa_implementation_id | Byte string (>=32 bytes) |
+| -75003 | Impl. ID | arm_psa_implementation_id | Byte string (>=32 bytes) |
 | -75004 | Boot Seed | arm_psa_boot_seed | Byte string (>=32 bytes) |
 | -75005 | Hardware Version | arm_psa_hw_version | Text string |
 | -75006 | Software Components | arm_psa_sw_components  | Array of map entries. (compound map claim) |
@@ -265,6 +264,7 @@ management client. From a code point of view, the RTOS and the device
 management client form a single binary. 
 
 EC key using curve P-256 with:
+
 - x: 0xdcf0d0f4bcd5e26a54ee36cad660d283d12abc5f7307de58689e77cd60452e75
 - y: 0x8cbadb5fe9f89a7107e5a2e8ea44ec1b09b7da2a1a82a0252a4c1c26ee1ed7cf
 - d: 0xc74670bcb7e85b3803efb428940492e73e3fe9d4f7b5a8ad5e480cbdbcb554c2
