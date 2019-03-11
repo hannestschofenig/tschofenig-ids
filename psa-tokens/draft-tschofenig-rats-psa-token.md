@@ -158,7 +158,7 @@ document are to be interpreted as described in RFC 2119 {{RFC2119}}.
 | ------|:---------:|-----------|
 | Challenge | Yes |  Input object from the caller. For example, this can be a cryptographic nonce, a hash of locally attested data, or both. The length must be 32, 48, or 64 bytes. |
 | Instance ID | Yes | Represents the unique identifier of the instance. It is a hash of the public key corresponding to the Initial Attestation Key. |
-| Verification service indicator | No | Information used by a relying party to locate a validation service for the token. The value is a text string that can be used to locate the service or a URL specifying the address of the service. |
+| Verification Service Indicator | No | Information used by a relying party to locate a validation service for the token. The value is a text string that can be used to locate the service or a URL specifying the address of the service. |
 | Profile Definition | No | Contains the name of a document that describes the 'profile' of the report. The document name may include versioning. The value for this specification is PSA_IOT_PROFILE_1. |
 | Implementation ID | Yes | Represents the original implementation signer of the attestation key and identifies the contract between the report and verification. A verification service will use this claim to locate the details of the verification process. |
 | Client ID | Yes | Represents the Partition ID of the caller. It is a signed integer whereby negative values represent callers from the NSPE and where positive IDs represent callers from the SPE. The full definition of the partition ID is defined in the PSA Firmware Framework (PSA-FF) {{PSA-FF}}. |
@@ -228,14 +228,16 @@ As noted, some fields must be at least 32 bytes long to provide sufficient crypt
 | -75009 | Instance ID | arm_psa_UEID  | Byte string |
 | -75010 | Verification Service Indicator | arm_psa_origination | Byte string or StringOrURI |
 
-Each map entry of the software components claims MUST have the following types for each key value:
+Each map entry of the software component claim MUST have the following types for each key value:
 
-1. Text string (type)
-2. Byte string (measurement, >=32 bytes)
-3. Reserved
-4. Text string (version)
-5. Byte string (signer ID, >=32 bytes)
-6. Text string (measurement description)
+ 1. Text string (type)
+ 2. Byte string  (measurement, >=32 bytes)
+ 3. Reserved
+ 4. Text string (version)
+ 5. Byte string (signer ID, >=32 bytes)
+ 6. Text string (measurement description)
+ 
+The following key values will be present in the software components claim: 1 (Type), 2 (Measurement Value), 4 (Version) and 5 (Signer ID). Keys 3 (Reserved) and 6 (Measurement Description) will not be present. Instead of a referenced Measurement Description it is defined that all cases, the software measurement value is taken as a SHA256 hash of the software image, prior to it executing in place.
 
 # Example
 
