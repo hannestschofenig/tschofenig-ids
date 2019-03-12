@@ -1,9 +1,8 @@
 ---
 title: Using CBOR Web Tokens (CWTs) in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)
 abbrev: CWTs in TLS/DTLS
-docname: draft-tschofenig-tls-cwt-latest
+docname: draft-tschofenig-tls-cwt-00
 category: std
-obsoletes: 6347
 
 ipr: pre5378Trust200902
 area: Security
@@ -28,7 +27,6 @@ author:
        ins: H. Tschofenig
        name: Hannes Tschofenig
        organization: Arm Limited
-       role: editor
        email: hannes.tschofenig@arm.com
 
  -
