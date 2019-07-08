@@ -419,12 +419,6 @@ We would like to thank the following supporters for their contributions:
   Tamas.Ban@arm.com
 ~~~
 
-~~~
-* Thomas Fossati
-  Arm Limited
-  thomas.fossati@arm.com
-~~~
-
 # Reference Implementation 
 
 Trusted Firmware M (TF-M) {{TF-M}} is the name of the open source project that provides 
