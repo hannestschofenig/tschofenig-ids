@@ -136,7 +136,7 @@ and those tokens may be presented to network or application services.
                         | |Middleware| |A |  | +-+ +-+ +-+   |
                         | +----------+ |  |  | +----------+  |
                         | +----------+ |A |  | |          |  |
-                        | |          | |P |  | | TF-M Core|  |
+                        | |          | |P |  | |   SPM    |  |
                         | | RTOS and | |I |  | +----------+  |
                         | | Drivers  | +--+--+ +----------+  |
                         | |          |    |    |   Boot   |  |
@@ -160,7 +160,7 @@ RoT
 : Root of Trust, the minimal set of software, hardware and data that has to be implicitly trusted in the platform - there is no software or hardware at a deeper level that can verify that the Root of Trust is authentic and unmodified.
 
 SPE
-: Secure Processing Environment, a platform's processing environment for software that provides confidentiality and integrity for its runtime state, from software and hardware, outside of the SPE. Contains the Secure Partition Manager, the Secure Partitions and the trusted hardware.
+: Secure Processing Environment, a platform's processing environment for software that provides confidentiality and integrity for its runtime state, from software and hardware, outside of the SPE. Contains the Secure Partition Manager (SPM), the Secure Partitions and the trusted hardware.
 
 NSPE
 : Non Secure Processing Environment, the security domain outside of the SPE, the Application domain, typically containing the application firmware and hardware.
@@ -245,7 +245,7 @@ As noted, some fields must be at least 32 bytes long to provide sufficient crypt
 | -75009 | Instance ID | arm_psa_UEID  | Byte string |
 | -75010 | Verification Service Indicator | arm_psa_origination | Byte string |
 
-Each map entry of the Software Components claim MUST have the following types for each key value:
+When using the Software Components claim each key value MUST correspond to the following types:
 
  1. Text string (type)
  2. Byte string (measurement, >=32 bytes)
@@ -415,10 +415,16 @@ We would like to thank the following supporters for their contributions:
   Tamas.Ban@arm.com
 ~~~
 
+~~~
+* Thomas Fossati
+  Arm Limited
+  thomas.fossati@arm.com
+~~~
+
 # Reference Implementation 
 
 Trusted Firmware M (TF-M) {{TF-M}} is the name of the open source project that provides 
-a reference implementation of PSA APIs, created for the latest Arm v8-M microcontrollers 
+a reference implementation of PSA APIs and an SPM, created for the latest Arm v8-M microcontrollers
 with TrustZone technology. TF-M provides foundational firmware components that silicon 
 manufacturers and OEMs can build on (including trusted boot, secure device initialisation 
 and secure function invocation).
