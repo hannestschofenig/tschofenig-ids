@@ -112,6 +112,8 @@ Modern hardware for Internet of Things devices contain trusted execution environ
 - embedded in a CBOR Web Token (CWT), 
 - protected by functionality offered by the CBOR Object Signing and Encryption (COSE) specification.
 
+Further details on concepts expressed below can be found within the PSA Security Model documentation {{PSA-SM}}.
+
 {{architecture}} shows the architecture graphically. Apps on the IoT device communicate with services 
 on the secure world using a defined API. The attestation API exposes tokens, as described in this document, 
 and those tokens may be presented to network or application services. 
@@ -147,7 +149,6 @@ and those tokens may be presented to network or application services.
                                Internet of Things Device
 ~~~~
 {: #architecture title="Software Architecture"}
-
 
 # Conventions and Terminology
 
@@ -202,7 +203,7 @@ The PSA lifecycle states consist of the following values:
 | 2 | Measurement value | Yes | Represents a hash of the invariant software component in memory at startup time. The value must be a cryptographic hash of 256 bits or stronger. | 
 | 3 | Reserved | No | Reserved | 
 | 4 | Version | No | The issued software version in the form of a text string. The value of this claim will correspond to the entry in the original signed manifest of the component.|
-| 5 | Signer ID | Yes | The hash of a signing authority public key for the software component. The value of this claim will correspond to the entry in the original manifest for the component. This can be used by a verifier to ensure the components were signed by an expected trusted source.  This field must be present to be compliant with {{PSA-SM}}.|
+| 5 | Signer ID | No | The hash of a signing authority public key for the software component. The value of this claim will correspond to the entry in the original manifest for the component. This can be used by a verifier to ensure the components were signed by an expected trusted source.  This field must be present to be compliant with {{PSA-SM}}.|
 | 6 | Measurement description | No | Description of the software component, which represents the way in which the measurement value of the software component is computed. The value will be a text string containing an abbreviated description (or name) of the measurement method which can be used to lookup the details of the method in a profile document. This claim will normally be excluded, unless there was an exception to the default measurement described in the profile for a specific component. |
 {: #software-components title="Software Components Claims."} 
 
