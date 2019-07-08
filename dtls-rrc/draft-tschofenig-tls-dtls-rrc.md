@@ -50,7 +50,7 @@ normative:
   RFC8446:
   I-D.ietf-tls-dtls13:
   I-D.ietf-tls-dtls-connection-id:
-
+  RFC8174:
 informative:
 
 --- abstract
@@ -63,7 +63,7 @@ This document specifies a return routability check for use in context of the Con
 #  Introduction
 
 In "classical" DTLS, selecting a security context of an incoming DTLS record
-is accomplished with the help of the 5-tuple, i.e. source IP address, source port, transport protocol, destination IP address, and destination port. Changes to this 5 tuple can happen for a varity reasons over the lifetime of the DTLS session. In the IoT content NAT rebinding is a common reason with sleepy devices. Other examples include end host mobility and multi-homing. Without CID, if the source IP address and/or source port changes during the lifetime of an ongoing DTLS session then the receiver will be unable to locate the correct security context. As a result, the DTLS handshake has to be re-run. 
+is accomplished with the help of the 5-tuple, i.e. source IP address, source port, transport protocol, destination IP address, and destination port. Changes to this 5 tuple can happen for a variety reasons over the lifetime of the DTLS session. In the IoT content NAT rebinding is a common reason with sleepy devices. Other examples include end host mobility and multi-homing. Without CID, if the source IP address and/or source port changes during the lifetime of an ongoing DTLS session then the receiver will be unable to locate the correct security context. As a result, the DTLS handshake has to be re-run. 
 
 A CID is an identifier carried in the record layer header of a DTLS datagram that gives the
 receiver additional information for selecting the appropriate security context. The CID mechanism has been specified in {{I-D.ietf-tls-dtls-connection-id}} for DTLS 1.2 and in {{I-D.ietf-tls-dtls13}} for DTLS 1.3. 
@@ -72,26 +72,24 @@ An on-path adversary could intercept and modify the source IP address (and the s
 
 This attack makes strong assumptions on the attacker's abilities, and moreover it only misleads the peer until the next message gets through un-intercepted.
 
-It is possible to mitigate this attack using various ways. 
-
 A return routability check (RRC) is performed by the receiving peer before
-the CID-to-IP address/port is updated in that peer's session state database. This is done in order to provide a certain degree of confidence to the receiving peer that the sending peer is reachable at the indicated address and port.
+the CID-to-IP address/port binding is updated in that peer's session state database. This is done in order to provide a certain degree of confidence to the receiving peer that the sending peer is reachable at the indicated address and port.
 
 Without such a return routability check, an adversary can redirect traffic towards a third party or a black hole.
 
-While such a return routability check can be performed at the application layer it is advantageous to offer this functionality at the DTLS layer, as a generic service. 
-
-This document specifies a new message to perform this return routability check. 
+While an equivalent check can be performed at the application layer (modulo the DTLS API exposing the address update event to the calling application), it is advantageous to offer this functionality at the DTLS layer. {{app-layer-check}} describes the application layer procedure and {{rrc}} specifies a new message to perform this return routability check.
 
 # Conventions and Terminology
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
-document are to be interpreted as described in RFC 2119 {{RFC2119}}.
+document are to be interpreted as described in BCP 14 {{RFC2119}} {{RFC8174}} when, 
+and only when, they appear in all capitals, as shown here.
+       
 
 This document assumes familiarity with the CID solutions defined for DTLS 1.2 {{I-D.ietf-tls-dtls-connection-id}} and for DTLS 1.3 {{I-D.ietf-tls-dtls13}}.
 
-# Application Layer Return Routability Check
+# Application Layer Return Routability Check {#app-layer-check}
 
 When a record with CID is received that has the source address of the enclosing
 UDP datagram different from the one previously associated with that CID, the
@@ -114,7 +112,7 @@ example one that is based on successful exchange of minimal amount of ping-pong
 traffic with the peer.
 
 
-# The Return Routability Check Message
+# The Return Routability Check Message {#rrc}
 
 ~~~~
       enum {
@@ -129,8 +127,35 @@ traffic with the peer.
       } ContentType;
 ~~~~
 
-The newly introduced return_routability_check message contains a cookie. The peer triggering the return routability check places the cookie in the message and the recipient echos it back. The semantic of the cookie is similar to the cookie used in the HelloRetryRequest message defined in TLS 1.3. 
+The newly introduced return_routability_check message contains a cookie. The semantic of the cookie is similar to the cookie used in
+the HelloRetryRequest message defined in {{RFC8446}}.
 
+The return_routability_check message MUST be authenticated and	
+ 	   encrypted using the currently active security context.	
+ 		
+ 	   The endpoint that observes the peer's address update MUST stop	
+ 	   sending any buffered application data (or limit the sending rate to a	
+ 	   TBD threshold) and initiate the return routability check that	
+ 	   proceeds as follows:	
+ 		
+ 	   1.  A cookie is placed in the return_routability_check message;	
+ 		
+ 	   2.  The message is sent to the observed new address and a timeout T	
+ 	       is started;	
+ 		
+ 	   3.  The peer endpoint, after successfully verifying the received	
+ 	       return_routability_check message echoes it back;	
+ 		
+ 	   4.  When the initiator receives and verifies the	
+ 	       return_routability_check message, it updates the peer address	
+ 	       binding;	
+ 		
+ 	   5.  If T expires, or the address confirmation fails, the peer address	
+ 	       binding is not updated.	
+ 		
+ 	   After this point, any pending send operation is resumed to the bound	
+ 	   peer address.
+       
 ~~~~
       struct {
           opaque cookie<1..2^16-1>;
@@ -145,12 +170,13 @@ The newly introduced return_routability_check message contains a cookie. The pee
 # RRC Example
 
 The example shown in {{fig-example}} illustrates a client and a server 
-exchanging application playloads protected by DTLS with the unilaterally 
-used CIDs. At some point in the communication interaction the IP addresses
-used by the client changes and, thanks to the connection id usage, no new
-DTLS handshake is necessary. However, the server wants to test the reachability 
-of the client at his new IP address first before sending any data to the 
-indicated IP address. 
+exchanging application payloads protected by DTLS with an unilaterally 
+used CIDs. At some point in the communication interaction the IP address
+used by the client changes and, thanks to the CID usage, the security 
+context to interpret the record is successfully located by the server. 
+However, the server wants to test the reachability 
+of the client at his new IP address, to avoid being abused (e.g., as 
+an amplifier) by an attacker impersonating the client.
  
 ~~~~
    Client                                             Server
@@ -204,10 +230,10 @@ indicated IP address.
 # Security and Privacy Considerations {#sec-cons}
 
    As all the datagrams in DTLS are authenticated, integrity and confidentiality protected there is no
-   risk that an attacker undetectedly modifies the contents of those
+   risk that an attacker undetectably  modifies the contents of those
    packets.  The IP addresses in the IP header and the port numbers of the transport layer are, however, not
-   authenticated. With the introduction of the connection id, care must be 
-   taken to test reachablity of a peer at a given IP addres and port. 
+   authenticated. With the introduction of the CID, care must be 
+   taken to test reachability  of a peer at a given IP address and port. 
 
    Note that the return routability checks do not protect against third-party
    flooding if the attacker is along the path, as the attacker can
