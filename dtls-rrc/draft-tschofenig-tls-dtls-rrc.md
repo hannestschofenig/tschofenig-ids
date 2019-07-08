@@ -24,12 +24,6 @@ pi:
   docmapping: yes
 author:
  -
-       ins: E. Rescorla
-       name: Eric Rescorla
-       organization: RTFM, Inc.
-       email: ekr@rtfm.com
-
- -
        ins: T. Fossati
        name: Thomas Fossati
        organization: Arm Limited
