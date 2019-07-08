@@ -1,7 +1,7 @@
 ---
 title: Return Routability Check for DTLS 1.2 and DTLS 1.3
 abbrev: DTLS Return Routability Check (RRC)
-docname: draft-tschofenig-tls-dtls-rrc-latest
+docname: draft-tschofenig-tls-dtls-rrc-00
 category: std
 updates: 6347
 
