@@ -1,0 +1,392 @@
+
+
+
+
+TLS                                                            R. Barnes
+Internet-Draft                                                     Cisco
+Intended status: Standards Track                             E. Rescorla
+Expires: May 7, 2020                                             Mozilla
+                                                           H. Tschofenig
+                                                             Arm Limited
+                                                       November 04, 2019
+
+
+ Key IDs in Transport Layer Security (TLS) and Datagram Transport Layer
+                            Security (DTLS)
+                       draft-barnes-tls-key-id-00
+
+Abstract
+
+   In TLS handshakes, certificates often take up the majority of the
+   bytes transmitted.
+
+   This document describes how the size of certificate transmissions can
+   be reduced by utilizing key ids.  This approach is useful when
+   certificates and certificate chains have been pre-provisioned out-of-
+   band between clients and servers.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on May 7, 2020.
+
+Copyright Notice
+
+   Copyright (c) 2019 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (https://trustee.ietf.org/license-info) in effect on the date of
+
+
+
+Barnes, et al.             Expires May 7, 2020                  [Page 1]
+
+Internet-Draft             KeyIDs in TLS/DTLS              November 2019
+
+
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+   This document may contain material from IETF Documents or IETF
+   Contributions published or made publicly available before November
+   10, 2008.  The person(s) controlling the copyright in some of this
+   material may not have granted the IETF Trust the right to allow
+   modifications of such material outside the IETF Standards Process.
+   Without obtaining an adequate license from the person(s) controlling
+   the copyright in such materials, this document may not be modified
+   outside the IETF Standards Process, and derivative works of it may
+   not be created outside the IETF Standards Process, except to format
+   it for publication as an RFC or to translate it into languages other
+   than English.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   3
+   3.  The CWT Certificate Type  . . . . . . . . . . . . . . . . . .   3
+   4.  Security and Privacy Considerations . . . . . . . . . . . . .   4
+   5.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   6.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   5
+     6.1.  Normative References  . . . . . . . . . . . . . . . . . .   5
+     6.2.  Informative References  . . . . . . . . . . . . . . . . .   5
+   Appendix A.  History  . . . . . . . . . . . . . . . . . . . . . .   7
+   Appendix B.  Working Group Information  . . . . . . . . . . . . .   7
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   7
+
+1.  Introduction
+
+   When TLS is used with certificate-based authentication then the
+   exchanged certificates, particularly when mutual certificate-based
+   authentication is used, requires a fair amount of bandwidth.  In
+   certain deployment situations these certificates do, however, not
+   need to be exchanged with every handshake because they rarely change
+   or are known in advance by the communication partners.
+
+   In order to reduce latency and over-the-wire/over-the-air overhead it
+   can be useful to reduce the amount of data exchanged during a TLS
+   handshake.
+
+   There have been prior attempts to reduce the certificate overhead,
+   namely
+
+
+
+Barnes, et al.             Expires May 7, 2020                  [Page 2]
+
+Internet-Draft             KeyIDs in TLS/DTLS              November 2019
+
+
+   -  TLS Cached Info [RFC7924] describes a mechanism that allows a
+      client and a server to avoid transmitting certificates already
+      shared in an earlier handshake.
+
+   -  Certificate compression [I-D.ietf-tls-certificate-compression]
+      specifies a mechanism to compress certificates using zlib, brotli
+      and zstd.
+
+   -  Various specifications have defined alternative certificate
+      formats for use in TLS.  For example, [I-D.tschofenig-tls-cwt]
+      defines how to use a CBOR Web Token (CWT) in TLS as an alternative
+      to an X.5090-based certificate.
+
+   This document describes a mechanism that allows certificates to be
+   referenced using a key id.
+
+2.  Conventions and Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in RFC
+   2119 [RFC2119].
+
+3.  The CWT Certificate Type
+
+   This document defines a new value to the "TLS Certificate Types" sub-
+   registry and the value is defined as follows.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Barnes, et al.             Expires May 7, 2020                  [Page 3]
+
+Internet-Draft             KeyIDs in TLS/DTLS              November 2019
+
+
+        /* Managed by IANA */
+         enum {
+             X509(0),
+             RawPublicKey(2),
+             KeyID(TBD),
+             (255)
+         } CertificateType;
+
+         struct {
+            varint key_id;
+         } KeyIdCertificate;
+
+         struct {
+             select (certificate_type) {
+
+                 /* CWT "certificate type" defined in this document.*/
+                 case KeyID:
+                    opaque cwt_data<1..2^24-1>;
+
+                 case key_id:
+                    KeyIdCertificate;
+
+                  /* RawPublicKey defined in RFC 7250*/
+                 case RawPublicKey:
+                    opaque ASN.1_subjectPublicKeyInfo<1..2^24-1>;
+
+                 /* X.509 certificate defined in RFC 5246*/
+                 case X.509:
+                    opaque cert_data<1..2^24-1>;
+
+                  };
+
+                Extension extensions<0..2^16-1>;
+         } CertificateEntry;
+
+   The varint type is defined in [I-D.rescorla-tls-ctls].
+
+4.  Security and Privacy Considerations
+
+   The transmission of key ids instead of certificates provides benefits
+   by lowering the over-the-air transmission overhead since key ids are
+   significantly smaller than entire certificates.
+
+   This document does not mandate the size of the key ids.  A possible
+   construction is to use a SHA256 hash and truncate it to 64 bits.
+
+   While out-of-band configuration of certificates and key ids are not
+   are not suitable for a generic Web-based environment, key ids are a
+
+
+
+Barnes, et al.             Expires May 7, 2020                  [Page 4]
+
+Internet-Draft             KeyIDs in TLS/DTLS              November 2019
+
+
+   reasonable approach for many Internet of Things deployments where
+   there is a close relationship between the software running on the
+   device and the server-side communication endpoint.
+
+   When Key IDs are used with TLS 1.3 [RFC8446] and DTLS 1.3
+   [I-D.ietf-tls-dtls13] additional privacy properties are provided
+   since most handshake messages are encrypted.  Hence, Key IDs used in
+   version 1.3 provide better privacy benefits than in version 1.2.
+
+5.  IANA Considerations
+
+   IANA is requested to add a new value to the "TLS Certificate Types"
+   sub-registry for Key IDs.
+
+6.  References
+
+6.1.  Normative References
+
+   [I-D.ietf-tls-dtls13]
+              Rescorla, E., Tschofenig, H., and N. Modadugu, "The
+              Datagram Transport Layer Security (DTLS) Protocol Version
+              1.3", draft-ietf-tls-dtls13-33 (work in progress), October
+              2019.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC7250]  Wouters, P., Ed., Tschofenig, H., Ed., Gilmore, J.,
+              Weiler, S., and T. Kivinen, "Using Raw Public Keys in
+              Transport Layer Security (TLS) and Datagram Transport
+              Layer Security (DTLS)", RFC 7250, DOI 10.17487/RFC7250,
+              June 2014, <https://www.rfc-editor.org/info/rfc7250>.
+
+   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
+              <https://www.rfc-editor.org/info/rfc8446>.
+
+6.2.  Informative References
+
+   [I-D.ietf-tls-certificate-compression]
+              Ghedini, A. and V. Vasiliev, "TLS Certificate
+              Compression", draft-ietf-tls-certificate-compression-05
+              (work in progress), April 2019.
+
+
+
+
+
+
+Barnes, et al.             Expires May 7, 2020                  [Page 5]
+
+Internet-Draft             KeyIDs in TLS/DTLS              November 2019
+
+
+   [I-D.rescorla-tls-ctls]
+              Rescorla, E. and R. Barnes, "Compact TLS 1.3", draft-
+              rescorla-tls-ctls-02 (work in progress), July 2019.
+
+   [I-D.tschofenig-tls-cwt]
+              Tschofenig, H. and M. Brossard, "Using CBOR Web Tokens
+              (CWTs) in Transport Layer Security (TLS) and Datagram
+              Transport Layer Security (DTLS)", draft-tschofenig-tls-
+              cwt-00 (work in progress), March 2019.
+
+   [RFC7924]  Santesson, S. and H. Tschofenig, "Transport Layer Security
+              (TLS) Cached Information Extension", RFC 7924,
+              DOI 10.17487/RFC7924, July 2016,
+              <https://www.rfc-editor.org/info/rfc7924>.
+
+6.3.  URIs
+
+   [1] mailto:tls@ietf.org
+
+   [2] https://www1.ietf.org/mailman/listinfo/tls
+
+   [3] https://www.ietf.org/mail-archive/web/tls/current/index.html
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Barnes, et al.             Expires May 7, 2020                  [Page 6]
+
+Internet-Draft             KeyIDs in TLS/DTLS              November 2019
+
+
+Appendix A.  History
+
+   RFC EDITOR: PLEASE REMOVE THE THIS SECTION
+
+   -  -00: Initial version
+
+Appendix B.  Working Group Information
+
+   The discussion list for the IETF TLS working group is located at the
+   e-mail address tls@ietf.org [1].  Information on the group and
+   information on how to subscribe to the list is at
+   https://www1.ietf.org/mailman/listinfo/tls [2]
+
+   Archives of the list can be found at: https://www.ietf.org/mail-
+   archive/web/tls/current/index.html [3]
+
+Authors' Addresses
+
+   Richard Barnes
+   Cisco
+
+   EMail: rlb@ipv.sx
+
+
+   Eric Rescorla
+   Mozilla
+
+   EMail: ekr@mozilla.com
+
+
+   Hannes Tschofenig
+   Arm Limited
+
+   EMail: hannes.tschofenig@arm.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Barnes, et al.             Expires May 7, 2020                  [Page 7]
