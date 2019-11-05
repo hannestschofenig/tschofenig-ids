@@ -52,11 +52,11 @@ author:
 	   
 normative:
   RFC2119:
-  I-D.ietf-rats-eat:
   RFC8392: 
   RFC8152: 
   RFC7049: 
 informative:
+  I-D.ietf-rats-eat:
   TF-M:
     author:
       org: Linaro
@@ -221,7 +221,7 @@ The following measurement types are current defined:
 
 # Token Encoding
 
-The report is represented as a token, which must be formatted in accordance to the Entity Attestation Token (EAT) {{I-D.ietf-rats-eat}}. The token consists of a series of claims declaring evidence as to the nature of the instance of hardware and software. The claims are encoded in CBOR {{RFC7049}} format.
+The report is encoded as a COSE Web Token (CWT) {{RFC8392}}, similar to the Entity Attestation Token (EAT) {{I-D.ietf-rats-eat}}. The token consists of a series of claims declaring evidence as to the nature of the instance of hardware and software. The claims are encoded in CBOR {{RFC7049}} format.
 
 # Claims {#claims}
 
