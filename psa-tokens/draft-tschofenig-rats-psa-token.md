@@ -52,11 +52,11 @@ author:
 	   
 normative:
   RFC2119:
-  I-D.ietf-rats-eat:
   RFC8392: 
   RFC8152: 
   RFC7049: 
 informative:
+  I-D.ietf-rats-eat:
   TF-M:
     author:
       org: Linaro
@@ -221,7 +221,7 @@ The following measurement types are current defined:
 
 # Token Encoding
 
-The report is represented as a token, which must be formatted in accordance to the Entity Attestation Token (EAT) {{I-D.ietf-rats-eat}}. The token consists of a series of claims declaring evidence as to the nature of the instance of hardware and software. The claims are encoded in CBOR {{RFC7049}} format.
+The report is encoded as a COSE Web Token (CWT) {{RFC8392}}, similar to the Entity Attestation Token (EAT) {{I-D.ietf-rats-eat}}. The token consists of a series of claims declaring evidence as to the nature of the instance of hardware and software. The claims are encoded in CBOR {{RFC7049}} format.
 
 # Claims {#claims}
 
@@ -229,7 +229,6 @@ The token is modelled to include custom values that correspond to the following 
 
 - nonce (mandatory); arm_psa_nonce is used instead
 - UEID (mandatory); arm_psa_UEID is used instead
-- origination (recommended); arm_psa_origination is used instead
 
 Later revisions of this documents might phase out those custom claims to be replaced by the EAT standard claims.
 
@@ -246,7 +245,7 @@ As noted, some fields must be at least 32 bytes long to provide sufficient crypt
 | -75006 | Software Components | arm_psa_sw_components  | Array of map entries (compound map claim). See below for allowed key-values. |
 | -75007 | No Software Measurements | arm_psa_no_sw_measurements  | Unsigned integer |
 | -75008 | Auth Challenge | arm_psa_nonce  | Byte string |
-| -75009 | Instance ID | arm_psa_UEID  | Byte string |
+| -75009 | Instance ID | arm_psa_UEID  | Byte string (the type byte of the UEID should be set to 0x01. The type byte is described in {{I-D.ietf-rats-eat}}.) |
 | -75010 | Verification Service Indicator | arm_psa_origination | Byte string |
 
 When using the Software Components claim each key value MUST correspond to the following types:
