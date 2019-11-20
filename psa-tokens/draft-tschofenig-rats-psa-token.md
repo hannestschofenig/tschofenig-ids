@@ -48,13 +48,13 @@ author:
        ins: T. Fossati
        name: Thomas Fossati
        organization: Arm Limited
-       email: thomas.fossati@arm.com	  	   
-	   
+       email: thomas.fossati@arm.com
+
 normative:
   RFC2119:
-  RFC8392: 
-  RFC8152: 
-  RFC7049: 
+  RFC8392:
+  RFC8152:
+  RFC7049:
 informative:
   I-D.ietf-rats-eat:
   TF-M:
@@ -69,88 +69,52 @@ informative:
     title: CBOR Web Token (CWT) Claims
     target: https://www.iana.org/assignments/cwt/cwt.xhtml
     date: 2019
-  EAN-13: 
+  EAN-13:
     author:
       org: GS1
     title: International Article Number - EAN/UPC barcodes
     target: https://www.gs1.org/standards/barcodes/ean-upc
     date: 2019
-  PSA: 
+  PSA:
     author:
       org: Arm
     title: Platform Security Architecture Resources
     target: https://www.arm.com/why-arm/architecture/platform-security-architecture/psa-resources
-    date: 2019    
-  PSA-FF: 
+    date: 2019
+  PSA-FF:
     author:
       org: Arm
     title: Platform Security Architecture Firmware Framework 1.0 (PSA-FF)
     target: https://pages.arm.com/psa-resources-ff.html
-    date: 20. Feb. 2019    
-  PSA-SM: 
+    date: 20. Feb. 2019
+  PSA-SM:
     author:
       org: Arm
     title: Platform Security Architecture Security Model 1.0 (PSA-SM)
     target: https://pages.arm.com/psa-resources-sm.html
-    date: 19. Feb. 2019    
+    date: 19. Feb. 2019
 
 --- abstract
 
-The insecurity of IoT systems is a widely known and discussed problem. The Arm Platform Security Architecture (PSA) is 
-being developed to address this challenge by making it easier to build secure systems.
+The insecurity of IoT systems is a widely known and discussed problem. The Arm Platform Security Architecture (PSA) is being developed to address this challenge by making it easier to build secure IoT systems.
 
-This document specifies token format and claims used in the attestation 
-API of the Arm Platform Security Architecture (PSA).
+This document specifies token format and claims used in the attestation API of the Arm Platform Security Architecture (PSA).
 
-At its core, the Entity Attestation Token (EAT) format is used and populated with a set of claims. This specification
-describes what claims are used by the PSA and what has been implemented within Arm Trusted Firmware-M. 
+At its core, the CWT (COSE Web Token) format is used and populated with a set of claims, in a way similar to EAT (Entity Attestation Token). This specification describes what claims are used by PSA compliant systems and what has been implemented within Arm Trusted Firmware-M.
 
 --- middle
 
 
-#  Introduction
+# Introduction
 
-Modern hardware for Internet of Things devices contain trusted execution environments and in case of the Arm v8-M architecture TrustZone support. TrustZone on these low end microcontrollers allows the separation between a normal world and a secure world where security sensitive code resides in the secure world and is executed by applications running on the normal world using a well-defined API. Various APIs have been developed by Arm as part of the Platform Security Architecture {{PSA}}; this document focuses on the functionality provided by the attestation API. Since the tokens exposed via the attestation API are also consumed by services outside the device, interoperability needs arise. In this specification these interoperability needs are addressed by a combination of
+Modern hardware for Internet of Things devices contain trusted execution environments and in case of the Arm v8-M architecture TrustZone support. On these low end microcontrollers, TrustZone enables the separation between a "normal world" and a "secure world" where security sensitive code resides in the "secure world" and applications running in the "normal world" request secure services using a well-defined API. Various APIs have been developed by Arm as part of the Platform Security Architecture {{PSA}} programme; this document focuses on the functionality provided by the attestation API. Since the tokens exposed via the attestation API are also consumed by services outside the device, there is an actual need for making them interoperable. In this specification these interoperability needs are addressed by describing the exact syntax and semantics of the attestation claims, and defining the way these claims are encoded and cryptographically protected.
 
-- a set of claims encoded in CBOR, 
-- embedded in a CBOR Web Token (CWT), 
-- protected by functionality offered by the CBOR Object Signing and Encryption (COSE) specification.
+Further details on concepts expressed below can be found in the PSA Security Model documentation {{PSA-SM}}.
 
-Further details on concepts expressed below can be found within the PSA Security Model documentation {{PSA-SM}}.
-
-{{architecture}} shows the architecture graphically. Apps on the IoT device communicate with services 
-on the secure world using a defined API. The attestation API exposes tokens, as described in this document, 
-and those tokens may be presented to network or application services. 
+{{architecture}} provides a view of the architectural components and how they interact. Applications on the IoT device communicate with services residing in the "secure world" by means of a well-defined API. The attestation API produces tokens, as described in this document, and those tokens may be presented to network or application services.
 
 ~~~~
-                        +-----------------+------------------+
-                        |  Normal World   |   Secure World   |
-                        |                 |        +-+       |
-                        |                 |        |A|       |
-                        |                 |        |T|       |
-                        |                 |        |T|       |
-                        |                 |        |E| +-+   |
-                        |                 |    +-+ |S| |S|   |
-                        |                 |    |C| |T| |T|   |
-+----------+            |                 |    |R| |A| |O|   |
-| Network  |            | +----------+    |    |Y| |T| |R|   |
-| and App  |<=============| Apps     | +--+--+ |P| |I| |A|   |
-| Services |            | +----------+ |P |  | |T| |O| |G|   |
-+----------+            | +----------+ |S |  | |O| |N| |E|   |
-                        | |Middleware| |A |  | +-+ +-+ +-+   |
-                        | +----------+ |  |  | +----------+  |
-                        | +----------+ |A |  | |          |  |
-                        | |          | |P |  | |   SPM    |  |
-                        | | RTOS and | |I |  | +----------+  |
-                        | | Drivers  | +--+--+ +----------+  |
-                        | |          |    |    |   Boot   |  |
-                        | +----------+    |    |  Loader  |  |
-                        |                 |    +----------+  |
-                        +-----------------+------------------+
-                        |          H A R D|W A R E           |
-                        +-----------------+------------------+
-
-                               Internet of Things Device
+{::include arch-diag.txt}
 ~~~~
 {: #architecture title="Software Architecture"}
 
@@ -169,10 +133,9 @@ SPE
 NSPE
 : Non Secure Processing Environment, the security domain outside of the SPE, the Application domain, typically containing the application firmware and hardware.
 
-
 # Information Model
 
-{{info-model}} describes the utilized claims.
+{{info-model}} describes the mandatory and optional claims in the report.
 
 | Claim | Mandatory | Description |
 |------|:---------:|-----------|
@@ -182,12 +145,15 @@ NSPE
 | Profile Definition | No | Contains the name of a document that describes the 'profile' of the report. The document name may include versioning. The value for this specification is PSA_IOT_PROFILE_1. |
 | Implementation ID | Yes | Uniquely identifies the underlying immutable PSA RoT. A verification service can use this claim to locate the details of the verification process. Such details include the implementation's origin and associated certification state. |
 | Client ID | Yes | Represents the Partition ID of the caller. It is a signed integer whereby negative values represent callers from the NSPE and where positive IDs represent callers from the SPE. The full definition of the partition ID is given in {{PSA-FF}}. |
-| Security Lifecycle | Yes | Represents the current lifecycle state of the PSA RoT. The state is represented by an integer that is divided to convey a major state and a minor state. A major state is mandatory and defined by {{PSA-SM}}. A minor state is optional and 'IMPLEMENTATION DEFINED'. The encoding is: version[15:8] - PSA security lifecycle state, and version[7:0] - IMPLEMENTATION DEFINED state. The PSA lifecycle states are listed below. For PSA, a remote verifier can only trust reports from the PSA RoT when it is in SECURED or NON_PSA_ROT_DEBUG major states. |
+| Security Lifecycle | Yes | Represents the current lifecycle state of the PSA RoT. The state is represented by an integer that is divided to convey a major state and a minor state. A major state is mandatory and defined by {{PSA-SM}}. A minor state is optional and 'IMPLEMENTATION DEFINED'. The encoding is: version\[15:8\] - PSA security lifecycle state, and version\[7:0\] - IMPLEMENTATION DEFINED state. The PSA lifecycle states are listed in {{sec-lifecycle-states}}. For PSA, a remote verifier can only trust reports from the PSA RoT when it is in SECURED or NON_PSA_ROT_DEBUG major states. |
 | Hardware version | No | Provides metadata linking the token to the GDSII that went to fabrication for this instance. It can be used to link the class of chip and PSA RoT to the data on a certification website. It must be represented as a thirteen-digit {{EAN-13}} |
 | Boot Seed | Yes | Represents a random value created at system boot time that will allow differentiation of reports from different boot sessions. |
-| Software Components | Yes (unless the No Software Measurements claim is specified) | A list of software components that represent all the software loaded by the PSA Root of Trust. This claim is needed for the rules outlined in {{PSA-SM}}. The software components are further explained below. |
+| Software Components | Yes (unless the No Software Measurements claim is specified) | A list of software components that represent all the software loaded by the PSA Root of Trust. This claim is needed for the rules outlined in {{PSA-SM}}. The software components are further detailed in {{sec-software-components}}. |
 | No Software Measurements | Yes (if no software components specified) | In the event that the implementation does not contain any software measurements then the Software Components claim above can be omitted but instead it will be mandatory to include this claim to indicate this is a deliberate state. This claim is intended for devices that are not compliant with {{PSA-SM}}.|
-{: #info-model title="Information Model of PSA Attestation Claims."} 
+{: #info-model title="Information Model of PSA Attestation Claims."}
+
+## PSA Lifecycle States
+{: #sec-lifecycle-states}
 
 The PSA lifecycle states consist of the following values:
 
@@ -199,17 +165,20 @@ The PSA lifecycle states consist of the following values:
 - PSA_LIFECYCLE_RECOVERABLE_PSA_ROT_DEBUG (0x5000u)
 - PSA_LIFECYCLE_DECOMMISSIONED (0x6000u)
 
-{{software-components}} shows the structure of each software component entry in the Software Components claim. 
+## PSA Software Components
+{: #sec-software-components}
+
+Each software component in the Software Components claim MUST include the required properties of {{software-components}}.
 
 | Key ID | Type | Mandatory | Description |
 | ------|:---------:|:---------:|-----------|
 | 1 | Measurement Type | No | A short string representing the role of this software component (e.g. 'BL' for Boot Loader). |
-| 2 | Measurement value | Yes | Represents a hash of the invariant software component in memory at startup time. The value must be a cryptographic hash of 256 bits or stronger. | 
-| 3 | Reserved | No | Reserved | 
+| 2 | Measurement value | Yes | Represents a hash of the invariant software component in memory at startup time. The value must be a cryptographic hash of 256 bits or stronger. |
+| 3 | Reserved | No | Reserved |
 | 4 | Version | No | The issued software version in the form of a text string. The value of this claim will correspond to the entry in the original signed manifest of the component.|
 | 5 | Signer ID | No | The hash of a signing authority public key for the software component. The value of this claim will correspond to the entry in the original manifest for the component. This can be used by a verifier to ensure the components were signed by an expected trusted source.  This field must be present to be compliant with {{PSA-SM}}.|
-| 6 | Measurement description | No | Description of the software component, which represents the way in which the measurement value of the software component is computed. The value will be a text string containing an abbreviated description (or name) of the measurement method which can be used to lookup the details of the method in a profile document. This claim will normally be excluded, unless there was an exception to the default measurement described in the profile for a specific component. |
-{: #software-components title="Software Components Claims."} 
+| 6 | Measurement description | No | Description of the way in which the measurement value of the software component is computed. The value will be a text string containing an abbreviated description (or name) of the measurement method which can be used to lookup the details of the method in a profile document. This claim will normally be excluded, unless there was an exception to the default measurement described in the profile for a specific component. |
+{: #software-components title="Software Components Claims."}
 
 The following measurement types are current defined:
 
@@ -256,13 +225,13 @@ When using the Software Components claim each key value MUST correspond to the f
  4. Text string (version)
  5. Byte string (signer ID, >=32 bytes)
  6. Text string (measurement description)
- 
+
 # Example
 
-The following example shows an attestation token that was produced 
-for a device that has a single-stage bootloader, and an RTOS with a device 
+The following example shows an attestation token that was produced
+for a device that has a single-stage bootloader, and an RTOS with a device
 management client. From a code point of view, the RTOS and the device
-management client form a single binary. 
+management client form a single binary.
 
 EC key using curve P-256 with:
 
@@ -379,32 +348,22 @@ Same token using extended CBOR diagnostic format:
 
 #  Security and Privacy Considerations {#sec-cons}
 
-This specification re-uses the CWT and the EAT specification. Hence, the 
-security and privacy considerations of those specifications apply here as well. 
+This specification re-uses the CWT and the EAT specification. Hence, the security and privacy considerations of those specifications apply here as well.
 
-Since CWTs offer different ways to protect the token this specification profiles those
-options and only uses public key cryptography. The token MUST be signed following 
-the structure of the COSE specification {{RFC8152}}. 
-The COSE type MUST be COSE-Sign1.
+Since CWTs offer different ways to protect the token this specification profiles those options and only uses public key cryptography. The token MUST be signed following the structure of the COSE specification {{RFC8152}}.  The COSE type MUST be COSE-Sign1.
 
-Attestation tokens contain information that may be unique to a device and 
-therefore they may allow single out an individual device for tracking purposes. 
-Implementation must take to ensure that only those claims are included that fulfil 
-the purpose of the application and that users of those devices consent to the 
-data sharing.
+Attestation tokens contain information that may be unique to a device and therefore they may allow to single out an individual device for tracking purposes.  Implementation must take appropriate measures to ensure that only those claims are included that fulfil the purpose of the application and that users of those devices consent to the data sharing.
 
 #  IANA Considerations
 
-IANA is requested to allocate the claims defined in {{claims}} to the {{RFC8392}}
-created CBOR Web Token (CWT) Claims registry {{IANA-CWT}}. The change controller 
-are the authors and the reference is this document. 
+IANA is requested to allocate the claims defined in {{claims}} to the CBOR Web Token (CWT) Claims registry {{IANA-CWT}}. The change controller are the authors and the reference is this document.
 
 --- back
 
 
 # Contributors
 
-We would like to thank the following supporters for their contributions: 
+We would like to thank the following supporters for their contributions:
 
 ~~~
 * Laurence Lundblade
@@ -418,11 +377,11 @@ We would like to thank the following supporters for their contributions:
   Tamas.Ban@arm.com
 ~~~
 
-# Reference Implementation 
+# Reference Implementation
 
-Trusted Firmware M (TF-M) {{TF-M}} is the name of the open source project that provides 
+Trusted Firmware M (TF-M) {{TF-M}} is the name of the open source project that provides
 a reference implementation of PSA APIs and an SPM, created for the latest Arm v8-M microcontrollers
-with TrustZone technology. TF-M provides foundational firmware components that silicon 
-manufacturers and OEMs can build on (including trusted boot, secure device initialisation 
+with TrustZone technology. TF-M provides foundational firmware components that silicon
+manufacturers and OEMs can build on (including trusted boot, secure device initialisation
 and secure function invocation).
 
