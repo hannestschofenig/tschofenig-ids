@@ -48,7 +48,7 @@ normative:
   RFC2119:
   RFC8174:
   I-D.irtf-cfrg-hpke:
-  I-D.ietf-cose-rfc8152bis-algs:
+  RFC8152:
   
 informative:
   RFC8937:
@@ -57,8 +57,8 @@ informative:
   
 --- abstract
 
-This specification defines the hybrid public-key encryption (HPKE).
-
+This specification defines hybrid public-key encryption (HPKE) for use with 
+CBOR Object Signing and Encryption (COSE). 
 
 --- middle
 
@@ -70,8 +70,8 @@ recipient's public key. HPKE utilizes a non-interactive ephemeral-static
 Diffie-Hellman exchange to establish a shared secret, which is then used to 
 encrypt plaintext.
 
-HPKE {{I-D.irtf-cfrg-hpke}} defines several features and a subset are applied 
-to the use with COSE. 
+The HPKE specification defines several features for use with public key encryption 
+and a subset of those features is applied to COSE {{RFC8152}}.
 
 # Conventions and Terminology
 
@@ -84,22 +84,26 @@ This specification uses the following abbreviations:
 
 - Key-encryption key / key-encrypting key (KEK), a term defined in RFC 4949 {{RFC4949}}. 
 - Content-encryption key (CEK), a term defined in RFC 2630 {{RFC2630}}.
-- Hybrid Public Key Encryption (HPKE), defined in {{I-D.irtf-cfrg-hpke}}.
+- Hybrid Public Key Encryption (HPKE) is defined in {{I-D.irtf-cfrg-hpke}}.
 
 # HPKE for COSE
 
 HPKE, when used with COSE, follows a three layer structure: 
 
-- Layer 0 contains content encrypted with the CEK. 
-  The content may be detached. 
+- Layer 0 contains content encrypted with the CEK. The content may be detached. 
+If not detached, then it is included.
 
 - Layer 1 includes the encrypted content encryption key. 
 
-- Layer 2 contains parameters needed for HPKE to generate 
-  the layer 1 key and to encrypt it.
+- Layer 2 contains parameters needed for HPKE to generate the layer 1 key and 
+to encrypt it.
 
 The CDDL for the COSE_Encrypt structure, as used with HPKE,
 is shown in {{cddl-hpke}}.
+
+Noteworthy are the following aspects: 
+- COSE_Encrypt represents layer 0 with the ciphertext. COSE_recipient_outer 
+represents layer 1 and COSE_recipient_inner represents layer 2. 
 
 ~~~
 COSE_Encrypt_Tagged = #6.96(COSE_Encrypt)
@@ -135,8 +139,8 @@ header_map = {
 
 The COSE_Encrypt structure in {{cddl-hpke}} requires the 
 encrypted CEK and the ephemeral public key of the sender to be
-generated. This is accomplished with the HPKE encryption function as 
-illustrated in {{hpke-encryption}}.
+generated. This is accomplished with the HPKE encryption functions 
+as shown in {{hpke-encryption}}.
 
 ~~~
     CEK = random()
@@ -161,33 +165,43 @@ be 16 bytes long.
 
 - 'info' is a data structure described below used as input to the key 
 derivation internal to the HPKE algorithm. In addition to the constant 
-prefix, the COSE_KDF_Context structure is used. The COSE_KDF_Context is 
-shown in {{cddl-cose-kdf}}. 
+prefix, the COSE_KDF_Context structure is used. The 'COSE_KDF_Context' 
+structure is detailed in {{cddl-cose-kdf}}. 
 
 The result of the above-described operation is the encrypted CEK (denoted 
-as ciphertext) and the enc - the HPKE encapsulated key (i.e., the ephemeral 
-ECDH public key of the sender).
+as ciphertext in {{hpke-encryption}}) and the HPKE encapsulated key 
+(i.e., the ephemeral ECDH public key of the sender in variable 'enc').
+
+This specification re-uses the context information structure defined in 
+{{RFC8152}}, which is repeated here for easier readability. 
 
 ~~~
-PartyInfo = (
-   identity : bstr,
-   nonce : nil,
-   other : nil
-)
+   PartyInfo = (
+       identity : bstr / nil,
+       nonce : bstr / int / nil,
+       other : bstr / nil
+   )
 
-COSE_KDF_Context = [
-   AlgorithmID : int,
-   PartyUInfo : [ PartyInfo ],
-   PartyVInfo : [ PartyInfo ],
-   SuppPubInfo : [
-       keyDataLength : uint,
-       protected : empty_or_serialized_map
-   ],
-]
+   COSE_KDF_Context = [
+       AlgorithmID : int / tstr,
+       PartyUInfo : [ PartyInfo ],
+       PartyVInfo : [ PartyInfo ],
+       SuppPubInfo : [
+           keyDataLength : uint,
+           protected : empty_or_serialized_map,
+           ? other : bstr
+       ],
+       ? SuppPrivInfo : bstr
+   ]
 ~~~
 {: #cddl-cose-kdf title="COSE_KDF_Context Data Structure"}
 
-Notes: 
+Since this specification may be used in a number of different 
+deployment environments some flexibility is provided regarding 
+how the fields in the COSE_KDF_Context data structure. 
+
+For better interopability, the following recommended settings 
+are provided:
 
 - PartyUInfo.identity corresponds to the kid found in the 
 COSE_Sign_Tagged or COSE_Sign1_Tagged structure (when a digital 
@@ -204,7 +218,8 @@ in the protected structure in the inner-most recipients array.
 
 - protected refers to the protected structure of the inner-most array. 
 
-The recipient decrypts the encrypted CEK, using two input parameters: 
+
+The recipient decrypts the encrypted CEK using two input parameters: 
 
 - the private key skR corresponding to the public key pkR used by the sender. 
 - the HPKE encapsulated key (i.e., ephemeral ECDH public key) created by the 
@@ -284,7 +299,7 @@ Since the CEK is randomly generated it must be ensured that the guidelines for r
 #  IANA Considerations
 
 This document requests IANA to create new entries in the COSE Algorithms
-registry established with {{I-D.ietf-cose-rfc8152bis-algs}}.
+registry established with {{RFC8152}}.
 
 ~~~
 +-------------+-------+---------+------------+--------+---------------+  
