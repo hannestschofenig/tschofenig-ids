@@ -1,12 +1,12 @@
 ---
-title: Use of Hybrid public-key encryption (HPKE) with CBOR Object Signing and Encryption (COSE)
+title: Use of Hybrid Public-Key Encryption (HPKE) with CBOR Object Signing and Encryption (COSE)
 abbrev: COSE HPKE
 docname: draft-tschofenig-cose-hpke-00
 category: std
 
 ipr: pre5378Trust200902
 area: Security
-workgroup: SUIT
+workgroup: COSE
 keyword: Internet-Draft
 
 stand_alone: yes
@@ -90,20 +90,16 @@ This specification uses the following abbreviations:
 
 HPKE, when used with COSE, follows a three layer structure: 
 
-- Layer 0 (COSE_Encrypt) contains content encrypted with the CEK. This ciphertext may be detached. 
-If not detached, then it is included.
+- Layer 0 (corresponding to the COSE_Encrypt structure) contains content encrypted 
+with the CEK. This ciphertext may be detached. If not detached, then it is included.
 
-- Layer 1 (COSE_recipient_outer) includes the encrypted CEK. 
+- Layer 1 (see COSE_recipient_outer structure) includes the encrypted CEK. 
 
-- Layer 2 (COSE_recipient_inner) contains parameters needed for HPKE to generate the layer 1 key and 
-to encrypt it.
+- Layer 2 (in the COSE_recipient_inner structure) contains parameters needed for 
+HPKE to generate the layer 1 key and to encrypt it.
 
 The CDDL for the COSE_Encrypt structure, as used with HPKE,
 is shown in {{cddl-hpke}}.
-
-Noteworthy are the following aspects: 
-- COSE_Encrypt represents layer 0 with the ciphertext. COSE_recipient_outer 
-represents layer 1 and COSE_recipient_inner represents layer 2. 
 
 ~~~
 COSE_Encrypt_Tagged = #6.96(COSE_Encrypt)
