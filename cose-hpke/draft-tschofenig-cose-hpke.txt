@@ -5,10 +5,10 @@
 COSE                                                       H. Tschofenig
 Internet-Draft                                               Arm Limited
 Intended status: Standards Track                              R. Housley
-Expires: April 21, 2022                                   Vigil Security
+Expires: April 24, 2022                                   Vigil Security
                                                                 B. Moran
                                                              Arm Limited
-                                                        October 18, 2021
+                                                        October 21, 2021
 
 
 Use of Hybrid Public-Key Encryption (HPKE) with CBOR Object Signing and
@@ -35,7 +35,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on April 21, 2022.
+   This Internet-Draft will expire on April 24, 2022.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Tschofenig, et al.       Expires April 21, 2022                 [Page 1]
+Tschofenig, et al.       Expires April 24, 2022                 [Page 1]
 
 Internet-Draft                  COSE HPKE                   October 2021
 
@@ -76,12 +76,16 @@ Internet-Draft                  COSE HPKE                   October 2021
 Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
-   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   2
+   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   3
    3.  HPKE for COSE . . . . . . . . . . . . . . . . . . . . . . . .   3
+     3.1.  Overview  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     3.2.  HPKE Encryption with Seal . . . . . . . . . . . . . . . .   4
+     3.3.  HPKE Decryption with Open . . . . . . . . . . . . . . . .   5
+     3.4.  Info Structure  . . . . . . . . . . . . . . . . . . . . .   5
    4.  Example . . . . . . . . . . . . . . . . . . . . . . . . . . .   6
-   5.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
    6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
-   7.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   9
+   7.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   8
      7.1.  Normative References  . . . . . . . . . . . . . . . . . .   9
      7.2.  Informative References  . . . . . . . . . . . . . . . . .   9
    Appendix A.  Acknowledgements . . . . . . . . . . . . . . . . . .  10
@@ -99,6 +103,17 @@ Table of Contents
    key encryption and a subset of those features is applied to COSE
    [RFC8152].
 
+
+
+
+
+
+
+Tschofenig, et al.       Expires April 24, 2022                 [Page 2]
+
+Internet-Draft                  COSE HPKE                   October 2021
+
+
 2.  Conventions and Terminology
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -107,14 +122,7 @@ Table of Contents
    BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
-
-
-Tschofenig, et al.       Expires April 21, 2022                 [Page 2]
-
-Internet-Draft                  COSE HPKE                   October 2021
-
-
-   This specification uses the following abbreviations:
+   This specification uses the following abbreviations and terms:
 
    -  Key-encryption key (KEK), a term defined in RFC 4949 [RFC4949].
 
@@ -124,7 +132,15 @@ Internet-Draft                  COSE HPKE                   October 2021
    -  Hybrid Public Key Encryption (HPKE) is defined in
       [I-D.irtf-cfrg-hpke].
 
+   -  pkR is the public key of the recipient, as defined in
+      [I-D.irtf-cfrg-hpke].
+
+   -  skR is the private key of the recipient, as defined in
+      [I-D.irtf-cfrg-hpke].
+
 3.  HPKE for COSE
+
+3.1.  Overview
 
    HPKE, when used with COSE, follows a three layer structure:
 
@@ -149,23 +165,7 @@ Internet-Draft                  COSE HPKE                   October 2021
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Tschofenig, et al.       Expires April 21, 2022                 [Page 3]
+Tschofenig, et al.       Expires April 24, 2022                 [Page 3]
 
 Internet-Draft                  COSE HPKE                   October 2021
 
@@ -185,7 +185,7 @@ Internet-Draft                  COSE HPKE                   October 2021
  COSE_recipient_outer = [
    protected   : bstr .size 0,
    unprotected : header_map, ; must contain alg
-   encCEK      : bstr,       ; CEK encrypted based on HPKE algo
+   encCEK      : bstr, ; CEK encrypted with HPKE-derived shared secret
    recipients  : [ + COSE_recipient_inner ]
  ]
 
@@ -205,51 +205,50 @@ Internet-Draft                  COSE HPKE                   October 2021
            Figure 1: CDDL for HPKE-based COSE_Encrypt Structure
 
    The COSE_recipient_outer structure shown in Figure 1 includes the
-   encrypted CEK (in the encCEK structure).  The COSE_recipient_inner
+   encrypted CEK (in the encCEK structure) and the COSE_recipient_inner
    structure, also shown in Figure 1, contains the ephemeral public key
-   of the sender (in the unprotected structure).  To generate these two
-   data structures, the HPKE encryption functions shown in Figure 2 are
-   used.
+   (in the unprotected structure).
 
-       CEK = random()
-       pkR = DeserializePublicKey(recipient_public_key)
-       info = "cose hpke" || 0x00 || COSE_KDF_Context
-       enc, context = SetupBaseS(pkR, info)
-       encCEK = context.Seal(null, CEK)
+3.2.  HPKE Encryption with Seal
 
-                      Figure 2: HPKE-based Encryption
-
+   The SealBase(pkR, info, aad, pt) function is used to encrypt a
+   plaintext pt to a recipient's public key (pkR).  For use in this
+   specification, the plaintext "pt" passed into the SealBase is the
+   CEK.  The CEK is a random byte sequence of length appropriate for the
+   encryption algorithm selected in layer 0.  For example, AES-128-GCM
+   requires a 16 byte key and the CEK would therefore be 16 bytes long.
 
 
-Tschofenig, et al.       Expires April 21, 2022                 [Page 4]
+
+
+Tschofenig, et al.       Expires April 24, 2022                 [Page 4]
 
 Internet-Draft                  COSE HPKE                   October 2021
 
 
-   Legend:
+   The "info" parameter that can be used to influence the generation of
+   keys and the "aad" parameter that provides Additional Authenticated
+   Data to the AEAD algorithm in use.  If successful, SealBase() will
+   output a ciphertext "ct" and an encapsulated key "enc".
 
-   -  The functions DeserializePublicKey(), SetupBaseS() and Seal() are
-      defined in HPKE [I-D.irtf-cfrg-hpke].
+   The content of the info parameter is based on the 'COSE_KDF_Context'
+   structure, which is detailed in Figure 2.
 
-   -  CEK is a random byte sequence of keysize length whereby keysize
-      corresponds to the size of the indicated symmetric encryption
-      algorithm.  For example, AES-128-GCM requires a 16 byte key and
-      the CEK would therefore be 16 bytes long.
+3.3.  HPKE Decryption with Open
 
-   -  'recipient_public_key' represents the public key of the recipient.
+   The recipient will use the OpenBase(enc, skR, info, aad, ct) function
+   with the enc and ct parameters obtained from the sender.  The "aad"
+   and the "info" parameters are obtained via the context of the usage.
 
-   -  'info' is a data structure used as input to the key derivation
-      operation internal to the HPKE algorithm.  The 'COSE_KDF_Context'
-      structure is detailed in Figure 3.
+   The OpenBase function will, if successful, decrypt "ct".  When
+   decrypted, the result will be the CEK.  The CK is the symmetric key
+   used to decrypt the ciphertext in the COSE_Encrypt
 
-   The result of the above-described operation is the encrypted CEK
-   (referred to as encCEK in Figure 2) and the HPKE encapsulated key
-   (i.e., the ephemeral ECDH public key of the sender in variable
-   'enc').
+3.4.  Info Structure
 
    This specification re-uses the context information structure defined
    in [RFC8152] for use with the HPKE algorithm inside the info
-   structure, which is repeated in Figure 3 for easier readability.
+   structure, which is repeated in Figure 2 for easier readability.
 
       PartyInfo = (
           identity : bstr / nil,
@@ -269,7 +268,7 @@ Internet-Draft                  COSE HPKE                   October 2021
           ? SuppPrivInfo : bstr
       ]
 
-                 Figure 3: COSE_KDF_Context Data Structure
+       Figure 2: COSE_KDF_Context Data Structure for info parameter
 
    Since this specification may be used in a number of different
    deployment environments some flexibility is provided regarding how
@@ -277,7 +276,8 @@ Internet-Draft                  COSE HPKE                   October 2021
 
 
 
-Tschofenig, et al.       Expires April 21, 2022                 [Page 5]
+
+Tschofenig, et al.       Expires April 24, 2022                 [Page 5]
 
 Internet-Draft                  COSE HPKE                   October 2021
 
@@ -303,46 +303,40 @@ Internet-Draft                  COSE HPKE                   October 2021
    -  protected refers to the protected structure of the inner-most
       array.
 
-   The recipient decrypts the encrypted CEK using two input parameters:
-
-   -  the private key skR corresponding to the public key pkR used by
-      the sender.
-
-   -  the HPKE encapsulated key (i.e., ephemeral ECDH public key)
-      created by the sender.
-
-   If the HPKE operation is successful, the recipient obtains the CEK
-   and can decrypt the plaintext.
-
-   Figure 4 shows the HPKE computations performed by the recipient for
-   decryption.
-
-       info = "cose hpke" || 0x00 || COSE_KDF_Context
-       context = SetupBaseR(ciphertext, skR, info)
-       CEK = context.Open(null, ciphertext)
-
-                                 Figure 4
-
 4.  Example
 
    An example of the COSE_Encrypt structure using the HPKE scheme is
-   shown in Figure 5.  It uses the following algorithm combination:
+   shown in Figure 3.  It uses the following algorithm combination:
 
    -  AES-GCM-128 for encryption of detached ciphertext.
-
-
-
-
-Tschofenig, et al.       Expires April 21, 2022                 [Page 6]
-
-Internet-Draft                  COSE HPKE                   October 2021
-
 
    -  AES-GCM-128 for encryption of the CEK.
 
    -  Key Encapsulation Mechanism (KEM): NIST P-256
 
    -  Key Derivation Function (KDF): HKDF-SHA256
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.       Expires April 24, 2022                 [Page 6]
+
+Internet-Draft                  COSE HPKE                   October 2021
+
 
    96(
        [
@@ -384,21 +378,21 @@ Internet-Draft                  COSE HPKE                   October 2021
         ]
    )
 
-                  Figure 5: COSE_Encrypt Example for HPKE
-
-
-
-
-Tschofenig, et al.       Expires April 21, 2022                 [Page 7]
-
-Internet-Draft                  COSE HPKE                   October 2021
-
+                  Figure 3: COSE_Encrypt Example for HPKE
 
 5.  Security Considerations
 
    This specification is based on HPKE and the security considerations
    of HPKE [I-D.irtf-cfrg-hpke] are therefore applicable also to this
    specification.
+
+
+
+
+Tschofenig, et al.       Expires April 24, 2022                 [Page 7]
+
+Internet-Draft                  COSE HPKE                   October 2021
+
 
    HPKE assumes that the sender is in possession of the public key of
    the recipient.  A system using HPKE COSE has to assume the same
@@ -443,14 +437,18 @@ Internet-Draft                  COSE HPKE                   October 2021
  |             |       |         |            |        | HKDF-512      |
  +-------------+-------+---------+------------+--------+---------------+
 
+7.  References
 
 
-Tschofenig, et al.       Expires April 21, 2022                 [Page 8]
+
+
+
+
+
+Tschofenig, et al.       Expires April 24, 2022                 [Page 8]
 
 Internet-Draft                  COSE HPKE                   October 2021
 
-
-7.  References
 
 7.1.  Normative References
 
@@ -501,7 +499,9 @@ Internet-Draft                  COSE HPKE                   October 2021
 
 
 
-Tschofenig, et al.       Expires April 21, 2022                 [Page 9]
+
+
+Tschofenig, et al.       Expires April 24, 2022                 [Page 9]
 
 Internet-Draft                  COSE HPKE                   October 2021
 
@@ -557,4 +557,4 @@ Authors' Addresses
 
 
 
-Tschofenig, et al.       Expires April 21, 2022                [Page 10]
+Tschofenig, et al.       Expires April 24, 2022                [Page 10]

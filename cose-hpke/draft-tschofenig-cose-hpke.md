@@ -80,20 +80,24 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 document are to be interpreted as described in BCP&nbsp;14 {{RFC2119}} {{RFC8174}}
 when, and only when, they appear in all capitals, as shown here.
 
-This specification uses the following abbreviations: 
+This specification uses the following abbreviations and terms:
 
 - Key-encryption key (KEK), a term defined in RFC 4949 {{RFC4949}}. 
 - Content-encryption key (CEK), a term defined in RFC 2630 {{RFC2630}}.
 - Hybrid Public Key Encryption (HPKE) is defined in {{I-D.irtf-cfrg-hpke}}.
+- pkR is the public key of the recipient, as defined in {{I-D.irtf-cfrg-hpke}}.
+- skR is the private key of the recipient, as defined in {{I-D.irtf-cfrg-hpke}}.
 
 # HPKE for COSE
+
+## Overview
 
 HPKE, when used with COSE, follows a three layer structure: 
 
 - Layer 0 (corresponding to the COSE_Encrypt structure) contains content encrypted 
 with the CEK. This ciphertext may be detached. If not detached, then it is included.
 
-- Layer 1 (see COSE_recipient_outer structure) includes the encrypted CEK. 
+- Layer 1 (see COSE_recipient_outer structure) includes the encrypted CEK.
 
 - Layer 2 (in the COSE_recipient_inner structure) contains parameters needed for 
 HPKE to generate the layer 1 key and to encrypt it.
@@ -117,7 +121,7 @@ COSE_Encrypt = [
 COSE_recipient_outer = [
   protected   : bstr .size 0,
   unprotected : header_map, ; must contain alg
-  encCEK      : bstr,       ; CEK encrypted based on HPKE algo
+  encCEK      : bstr, ; CEK encrypted with HPKE-derived shared secret
   recipients  : [ + COSE_recipient_inner ]  
 ]
 
@@ -137,39 +141,37 @@ header_map = {
 {: #cddl-hpke title="CDDL for HPKE-based COSE_Encrypt Structure"}
 
 The COSE_recipient_outer structure shown in {{cddl-hpke}} includes the 
-encrypted CEK (in the encCEK structure). The COSE_recipient_inner structure, 
-also shown in {{cddl-hpke}}, contains the ephemeral public key of the sender 
-(in the unprotected structure). To generate these two data structures, 
-the HPKE encryption functions shown in {{hpke-encryption}} are used.
+encrypted CEK (in the encCEK structure) and the COSE_recipient_inner structure, 
+also shown in {{cddl-hpke}}, contains the ephemeral public key 
+(in the unprotected structure).
 
-~~~
-    CEK = random()
-    pkR = DeserializePublicKey(recipient_public_key)
-    info = "cose hpke" || 0x00 || COSE_KDF_Context
-    enc, context = SetupBaseS(pkR, info)
-    encCEK = context.Seal(null, CEK)
-~~~
-{: #hpke-encryption title="HPKE-based Encryption"}
+## HPKE Encryption with Seal
 
-Legend: 
+The SealBase(pkR, info, aad, pt) function is used to encrypt a plaintext pt to 
+a recipient's public key (pkR). For use in this specification, the plaintext 
+"pt" passed into the SealBase is the CEK. The CEK is a random byte sequence of 
+length appropriate for the encryption algorithm selected in layer 0. For example, 
+AES-128-GCM requires a 16 byte key and the CEK would therefore be 16 bytes long. 
 
-- The functions DeserializePublicKey(), SetupBaseS() and Seal() are 
-defined in HPKE {{I-D.irtf-cfrg-hpke}}. 
+The "info" parameter that can be used to influence the generation of keys and the 
+"aad" parameter that provides Additional Authenticated Data to the AEAD algorithm 
+in use. If successful, SealBase() will output a ciphertext "ct" and an encapsulated 
+key "enc". 
 
-- CEK is a random byte sequence of keysize length whereby keysize 
-corresponds to the size of the indicated symmetric encryption algorithm. 
-For example, AES-128-GCM requires a 16 byte key and the CEK would therefore 
-be 16 bytes long. 
+The content of the info parameter is based on the 'COSE_KDF_Context' structure, 
+which is detailed in {{cddl-cose-kdf}}.
 
-- 'recipient_public_key' represents the public key of the recipient. 
+## HPKE Decryption with Open
 
-- 'info' is a data structure used as input to the key derivation 
-operation internal to the HPKE algorithm. The 'COSE_KDF_Context' 
-structure is detailed in {{cddl-cose-kdf}}. 
+The recipient will use the OpenBase(enc, skR, info, aad, ct) function with the enc and 
+ct parameters obtained from the sender. The "aad" and the "info" parameters are obtained 
+via the context of the usage. 
 
-The result of the above-described operation is the encrypted CEK (referred
-to as encCEK in {{hpke-encryption}}) and the HPKE encapsulated key 
-(i.e., the ephemeral ECDH public key of the sender in variable 'enc').
+The OpenBase function will, if successful, decrypt "ct". When decrypted, the result 
+will be the CEK. The CK is the symmetric key used to decrypt the ciphertext in the 
+COSE_Encrypt
+
+## Info Structure
 
 This specification re-uses the context information structure defined in 
 {{RFC8152}} for use with the HPKE algorithm inside the info structure, 
@@ -194,7 +196,7 @@ which is repeated in {{cddl-cose-kdf }} for easier readability.
        ? SuppPrivInfo : bstr
    ]
 ~~~
-{: #cddl-cose-kdf title="COSE_KDF_Context Data Structure"}
+{: #cddl-cose-kdf title="COSE_KDF_Context Data Structure for info parameter"}
 
 Since this specification may be used in a number of different 
 deployment environments some flexibility is provided regarding 
@@ -217,24 +219,6 @@ in the protected structure in the inner-most recipients array.
 - keyDataLength is set to the number of bits of the desired output value.
 
 - protected refers to the protected structure of the inner-most array. 
-
-The recipient decrypts the encrypted CEK using two input parameters: 
-
-- the private key skR corresponding to the public key pkR used by the sender. 
-- the HPKE encapsulated key (i.e., ephemeral ECDH public key) created by the 
-sender. 
-
-If the HPKE operation is successful, the recipient obtains the CEK and can decrypt the 
-plaintext.
-
-{{hpke-decryption}} shows the HPKE computations performed by the recipient for decryption.
-
-~~~
-    info = "cose hpke" || 0x00 || COSE_KDF_Context
-    context = SetupBaseR(ciphertext, skR, info)
-    CEK = context.Open(null, ciphertext)
-~~~
-{: #hpke-decryption title=HPKE-based Decryption"}
 
 # Example
 
