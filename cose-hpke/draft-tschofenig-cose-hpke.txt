@@ -79,13 +79,13 @@ Table of Contents
    2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   3
    3.  HPKE for COSE . . . . . . . . . . . . . . . . . . . . . . . .   3
      3.1.  Overview  . . . . . . . . . . . . . . . . . . . . . . . .   3
-     3.2.  HPKE Encryption with Seal . . . . . . . . . . . . . . . .   4
+     3.2.  HPKE Encryption with SealBase . . . . . . . . . . . . . .   4
      3.3.  HPKE Decryption with Open . . . . . . . . . . . . . . . .   5
      3.4.  Info Structure  . . . . . . . . . . . . . . . . . . . . .   5
    4.  Example . . . . . . . . . . . . . . . . . . . . . . . . . . .   6
    5.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
    6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
-   7.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   8
+   7.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   9
      7.1.  Normative References  . . . . . . . . . . . . . . . . . .   9
      7.2.  Informative References  . . . . . . . . . . . . . . . . .   9
    Appendix A.  Acknowledgements . . . . . . . . . . . . . . . . . .  10
@@ -101,9 +101,9 @@ Table of Contents
 
    The HPKE specification defines several features for use with public
    key encryption and a subset of those features is applied to COSE
-   [RFC8152].
-
-
+   [RFC8152].  Since COSE provides constructs for authenticcation, those
+   are not re-used from the HPKE specification.  This specification uses
+   the "base" mode (as it is called in HPKE specification language).
 
 
 
@@ -209,7 +209,7 @@ Internet-Draft                  COSE HPKE                   October 2021
    structure, also shown in Figure 1, contains the ephemeral public key
    (in the unprotected structure).
 
-3.2.  HPKE Encryption with Seal
+3.2.  HPKE Encryption with SealBase
 
    The SealBase(pkR, info, aad, pt) function is used to encrypt a
    plaintext pt to a recipient's public key (pkR).  For use in this
@@ -226,10 +226,11 @@ Tschofenig, et al.       Expires April 25, 2022                 [Page 4]
 Internet-Draft                  COSE HPKE                   October 2021
 
 
-   The "info" parameter that can be used to influence the generation of
-   keys and the "aad" parameter that provides Additional Authenticated
-   Data to the AEAD algorithm in use.  If successful, SealBase() will
-   output a ciphertext "ct" and an encapsulated key "enc".
+   The "info" parameter can be used to influence the generation of keys
+   and the "aad" parameter provides additional authenticated data to the
+   AEAD algorithm in use.  If successful, SealBase() will output a
+   ciphertext "ct" and an encapsulated key "enc".  The content of enc is
+   the ephemeral public key.
 
    The content of the info parameter is based on the 'COSE_KDF_Context'
    structure, which is detailed in Figure 2.
@@ -237,18 +238,20 @@ Internet-Draft                  COSE HPKE                   October 2021
 3.3.  HPKE Decryption with Open
 
    The recipient will use the OpenBase(enc, skR, info, aad, ct) function
-   with the enc and ct parameters obtained from the sender.  The "aad"
+   with the enc and ct parameters received from the sender.  The "aad"
    and the "info" parameters are obtained via the context of the usage.
 
    The OpenBase function will, if successful, decrypt "ct".  When
    decrypted, the result will be the CEK.  The CK is the symmetric key
-   used to decrypt the ciphertext in the COSE_Encrypt
+   used to decrypt the ciphertext in the COSE_Encrypt structure.
 
 3.4.  Info Structure
 
    This specification re-uses the context information structure defined
-   in [RFC8152] for use with the HPKE algorithm inside the info
-   structure, which is repeated in Figure 2 for easier readability.
+   in [RFC8152] for use with the HPKE algorithm.  This payload becomes
+   the content of the info parameter for the HPKE functions.  For better
+   readability of this specification the COSE_KDF_Context structure is
+   repeated in Figure 2.
 
       PartyInfo = (
           identity : bstr / nil,
@@ -270,9 +273,6 @@ Internet-Draft                  COSE HPKE                   October 2021
 
        Figure 2: COSE_KDF_Context Data Structure for info parameter
 
-   Since this specification may be used in a number of different
-   deployment environments some flexibility is provided regarding how
-   the fields in the COSE_KDF_Context data structure.
 
 
 
@@ -282,7 +282,11 @@ Tschofenig, et al.       Expires April 25, 2022                 [Page 5]
 Internet-Draft                  COSE HPKE                   October 2021
 
 
-   For better interopability, the following recommended settings are
+   Since this specification may be used in a number of different
+   deployment environments flexibility for populating the fields in the
+   COSE_KDF_Context structure is provided.
+
+   For better interoperability, the following recommended settings are
    provided:
 
    -  PartyUInfo.identity corresponds to the kid found in the
@@ -315,10 +319,6 @@ Internet-Draft                  COSE HPKE                   October 2021
    -  Key Encapsulation Mechanism (KEM): NIST P-256
 
    -  Key Derivation Function (KDF): HKDF-SHA256
-
-
-
-
 
 
 
@@ -402,6 +402,11 @@ Internet-Draft                  COSE HPKE                   October 2021
    Since the CEK is randomly generated it must be ensured that the
    guidelines for random number generations are followed, see [RFC8937].
 
+   The SUIT_Encryption_Info structure shown in this document does not
+   provide authentication.  Hence, the SUIT_Encryption_Info structure
+   has to be used in combination with other COSE constructs, such as the
+   COSE_Sign or COSE_Sign1.
+
 6.  IANA Considerations
 
    This document requests IANA to create new entries in the COSE
@@ -437,11 +442,6 @@ Internet-Draft                  COSE HPKE                   October 2021
  |             |       |         |            |        | HKDF-512      |
  +-------------+-------+---------+------------+--------+---------------+
 
-7.  References
-
-
-
-
 
 
 
@@ -449,6 +449,8 @@ Tschofenig, et al.       Expires April 25, 2022                 [Page 8]
 
 Internet-Draft                  COSE HPKE                   October 2021
 
+
+7.  References
 
 7.1.  Normative References
 
@@ -480,8 +482,6 @@ Internet-Draft                  COSE HPKE                   October 2021
               and C. Wood, "Randomness Improvements for Security
               Protocols", RFC 8937, DOI 10.17487/RFC8937, October 2020,
               <https://www.rfc-editor.org/info/rfc8937>.
-
-
 
 
 

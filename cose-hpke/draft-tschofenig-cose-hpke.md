@@ -70,7 +70,10 @@ Diffie-Hellman exchange to establish a shared secret, which is then used to
 encrypt plaintext.
 
 The HPKE specification defines several features for use with public key encryption 
-and a subset of those features is applied to COSE {{RFC8152}}.
+and a subset of those features is applied to COSE {{RFC8152}}. Since COSE provides
+constructs for authenticcation, those are not re-used from the HPKE specification. 
+This specification uses the "base" mode (as it is called in HPKE specification 
+language).
 
 # Conventions and Terminology
 
@@ -143,7 +146,7 @@ encrypted CEK (in the encCEK structure) and the COSE_recipient_inner structure,
 also shown in {{cddl-hpke}}, contains the ephemeral public key 
 (in the unprotected structure).
 
-## HPKE Encryption with Seal
+## HPKE Encryption with SealBase
 
 The SealBase(pkR, info, aad, pt) function is used to encrypt a plaintext pt to 
 a recipient's public key (pkR). For use in this specification, the plaintext 
@@ -151,10 +154,10 @@ a recipient's public key (pkR). For use in this specification, the plaintext
 length appropriate for the encryption algorithm selected in layer 0. For example, 
 AES-128-GCM requires a 16 byte key and the CEK would therefore be 16 bytes long. 
 
-The "info" parameter that can be used to influence the generation of keys and the 
-"aad" parameter that provides Additional Authenticated Data to the AEAD algorithm 
+The "info" parameter can be used to influence the generation of keys and the 
+"aad" parameter provides additional authenticated data to the AEAD algorithm 
 in use. If successful, SealBase() will output a ciphertext "ct" and an encapsulated 
-key "enc". 
+key "enc".  The content of enc is the ephemeral public key. 
 
 The content of the info parameter is based on the 'COSE_KDF_Context' structure, 
 which is detailed in {{cddl-cose-kdf}}.
@@ -162,18 +165,19 @@ which is detailed in {{cddl-cose-kdf}}.
 ## HPKE Decryption with Open
 
 The recipient will use the OpenBase(enc, skR, info, aad, ct) function with the enc and 
-ct parameters obtained from the sender. The "aad" and the "info" parameters are obtained 
+ct parameters received from the sender. The "aad" and the "info" parameters are obtained 
 via the context of the usage. 
 
 The OpenBase function will, if successful, decrypt "ct". When decrypted, the result 
 will be the CEK. The CK is the symmetric key used to decrypt the ciphertext in the 
-COSE_Encrypt
+COSE_Encrypt structure.
 
 ## Info Structure
 
 This specification re-uses the context information structure defined in 
-{{RFC8152}} for use with the HPKE algorithm inside the info structure, 
-which is repeated in {{cddl-cose-kdf }} for easier readability. 
+{{RFC8152}} for use with the HPKE algorithm. This payload becomes the content 
+of the info parameter for the HPKE functions. For better readability of this specification
+the COSE_KDF_Context structure is repeated in {{cddl-cose-kdf }}. 
 
 ~~~
    PartyInfo = (
@@ -196,11 +200,10 @@ which is repeated in {{cddl-cose-kdf }} for easier readability.
 ~~~
 {: #cddl-cose-kdf title="COSE_KDF_Context Data Structure for info parameter"}
 
-Since this specification may be used in a number of different 
-deployment environments some flexibility is provided regarding 
-how the fields in the COSE_KDF_Context data structure. 
+Since this specification may be used in a number of different deployment environments 
+flexibility for populating the fields in the COSE_KDF_Context structure is provided.
 
-For better interopability, the following recommended settings 
+For better interoperability, the following recommended settings 
 are provided:
 
 - PartyUInfo.identity corresponds to the kid found in the 
@@ -283,6 +286,10 @@ mechanism is assumed to exist.
 
 Since the CEK is randomly generated it must be ensured that the guidelines for 
 random number generations are followed, see {{RFC8937}}.
+
+The SUIT_Encryption_Info structure shown in this document does not provide 
+authentication. Hence, the SUIT_Encryption_Info structure has to be used in 
+combination with other COSE constructs, such as the COSE_Sign or COSE_Sign1. 
 
 #  IANA Considerations
 
