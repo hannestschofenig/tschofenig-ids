@@ -52,7 +52,6 @@ normative:
   
 informative:
   RFC8937:
-  RFC4949: 
   RFC2630:
   
 --- abstract
@@ -81,8 +80,6 @@ document are to be interpreted as described in BCP&nbsp;14 {{RFC2119}} {{RFC8174
 when, and only when, they appear in all capitals, as shown here.
 
 This specification uses the following abbreviations and terms:
-
-- Key-encryption key (KEK), a term defined in RFC 4949 {{RFC4949}}. 
 - Content-encryption key (CEK), a term defined in RFC 2630 {{RFC2630}}.
 - Hybrid Public Key Encryption (HPKE) is defined in {{I-D.irtf-cfrg-hpke}}.
 - pkR is the public key of the recipient, as defined in {{I-D.irtf-cfrg-hpke}}.
@@ -92,18 +89,19 @@ This specification uses the following abbreviations and terms:
 
 ## Overview
 
+The CDDL for the COSE_Encrypt structure, as used with this specification,
+is shown in {{cddl-hpke}}. The structures referenced below are found in the CDDL. 
+
 HPKE, when used with COSE, follows a three layer structure: 
 
 - Layer 0 (corresponding to the COSE_Encrypt structure) contains content encrypted 
-with the CEK. This ciphertext may be detached. If not detached, then it is included.
+with the CEK. This ciphertext may be detached. If not detached, then it is included
+in the COSE_Encrypt structure.
 
 - Layer 1 (see COSE_recipient_outer structure) includes the encrypted CEK.
 
 - Layer 2 (in the COSE_recipient_inner structure) contains parameters needed for 
-HPKE to generate the layer 1 key and to encrypt it.
-
-The CDDL for the COSE_Encrypt structure, as used with HPKE,
-is shown in {{cddl-hpke}}.
+HPKE to generate a shared secret used to encrypt the CEK from layer 1.
 
 ~~~
 COSE_Encrypt_Tagged = #6.96(COSE_Encrypt)
