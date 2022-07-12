@@ -21,7 +21,7 @@ To install (needs a working python environment):
 pip install xml2rfc
 ```
 
-## Build
+## build
 
 To build the rendered I-D in HTML, TXT and XML formats:
 
@@ -39,8 +39,8 @@ make clean
 
 To submit the I-D to the IETF datatracker:
 
-* Update `docname` in the markdown file to the intended version
-* Build
+* update `docname` in the markdown file to the intended version
+* [build](#build)
 * change the name of the produced XML file to reflect the intended version
 * [post](https://datatracker.ietf.org/submit/) the XML file and follow further
   instructions coming through your email
