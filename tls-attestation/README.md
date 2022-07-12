@@ -21,7 +21,15 @@ To install (needs a working python environment):
 pip install xml2rfc
 ```
 
-## build
+### idnits
+
+```
+curl -O https://raw.githubusercontent.com/ietf-tools/idnits/main/idnits
+chmod +x idnits
+mv idnits <somewhere in your PATH>
+```
+
+## Build
 
 To build the rendered I-D in HTML, TXT and XML formats:
 
