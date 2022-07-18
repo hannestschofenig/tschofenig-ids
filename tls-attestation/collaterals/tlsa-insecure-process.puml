@@ -1,0 +1,30 @@
+@startuml
+
+participant "TLS Peer" as P order 5
+participant "Normal Process" as TEP order 10
+participant "Key Attestation\nTrusted App\n[TIK, KAK]" as KATA order 15
+participant "Platform RoT\n[PAK]" as PRoT order 20
+
+group Direct mode
+	P -> TEP: nonce
+	TEP -> KATA: nonce
+	KATA -> PRoT: nonce
+	PRoT -> KATA: PAT(nonce, KATAID)
+	KATA -> TEP: PAT(nonce, KATAID),\nKAT(nonce, TIK)
+	TEP -> P: PAT(nonce, KATAID),\nKAT(nonce, TIK)
+end group
+
+group Indirect mode
+	group init
+		KATA -> PRoT: H(KAK)
+		PRoT -> KATA: PAT(H(KAK), KATAID)
+		KATA -> KATA: cache PAT
+	end group
+
+	loop
+		P -> TEP: nonce
+		TEP -> KATA: nonce
+		KATA -> TEP: PAT(H(KAK), KATAID),\nKAT(nonce, TIK)
+		TEP -> P: PAT(H(KAK), KATAID),\nKAT(nonce, TIK)
+	end
+end group
