@@ -76,6 +76,13 @@ informative:
       -
         org: Trusted Computing Group
     date: November 2019
+  WebAuthn:
+    target: https://www.w3.org/TR/webauthn/
+    title: "Web Authentication: An API for accessing Public Key Credentials, Level 2"
+    author:
+      -
+        org: World Wide Web Consortium
+    date: April 2021
 
 --- abstract
 
@@ -134,7 +141,7 @@ systems only a single AK is used. In that case the AK is used as a PAK and a KAK
 
 - Platform Attestation Token (PAT): An AT containing claims relating to the state of the software running on the platform. The process of generating a PAT typically involves gathering data during measured boot.
 
-- Key Attestation Token (KAT, read as "Kate"): An AT containing a claim with a proof-of-possession (PoP) key. The KAT may also contain other claims, such as those indicating its validity. The KAT is signed by the KAK. The attestation 
+- Key Attestation Token (KAT): An AT containing a claim with a proof-of-possession (PoP) key. The KAT may also contain other claims, such as those indicating its validity. The KAT is signed by the KAK. The attestation 
 service part of the RoT conceptually acts as a local certification authority since the KAT behaves like a certificate.
 
 - Combined Attestation Bundle (CAB): A structure used to bundle a KAT and a PAT together for transport in the TLS handshake. If the KAT already includes a PAT, in form of a nested token, then it already corresponds to a CAB.
@@ -486,7 +493,98 @@ Auth | {CertificateVerify*}
    indicates the attestation type carried in the Certificate payload.
    Note that only a single value is permitted in the 
    server_attestation_type extension when carried in the EncryptedExtensions
-   message. 
+   message.
+
+# TPM Attestation
+
+One type of hardware RoT that can be used to prove control over a certain platform is the {{TPM2.0}}. TPMs natively offer interfaces for producing both key and platform attestation tokens.
+
+## Platform Attestation
+
+Platform Configuration Registers (PCRs) represent the core mechanism in TPMs for measuring and conveying information about the platform state via remote attestation. While specifications exist for assigning individual PCRs to specific software components, the choice of which combination of PCRs to include for any attestation procedure (and which hashing algorithm to use) is left to the parties involved. The agreement over and configuration of the PCR selection falls outside the scope of this specification and thus expected to occur out-of-band.
+
+The attestation evidence is produced through the TPM2_Quote operation. The evidence along with all other relevant metadata is transmitted in a format derived from the {{WebAuthn}} Attestation Statements. This format and the workflows around it are defined below.
+
+### TPM Platform Attestation Statement Format
+
+The TPM Platform Attestation Statement is a modified version of the TPM Attestation Statement Format which covers key attestation tokens.
+
+~~~~
+    tpmPlatStmtFormat = {
+                          ver: "2.0",
+                          (
+                              alg: COSEAlgorithmIdentifier,
+                              x5c: [ pakCert: bytes, * (caCert: bytes) ]
+                          )
+                          sig: bytes,
+                          attestInfo: bytes,
+                        }
+~~~~
+{: #figure-tpm-plat-attest-stmt title="TPM Platform Attestation Statement Format"}
+
+- _ver_: The version of the TPM specification to which the signature conforms.
+- _alg_: A COSEAlgorithmIdentifier containing the identifier of the algorithm used to generate the attestation signature.
+- _x5c_: A certificate for the PAK, followed by its certificate chain (in X.509 encoding).
+  - _pakCert_: The PAK certificate used for the attestation, in X.509 encoding.
+- _sig_: The attestation signature, in the form of a TPMT_SIGNATURE structure as specified in Part 2, section 11.3.4 of {{TPM2.0}}.
+- _attestInfo_: The TPMS_ATTEST structure over which the above signature was computed, as specified in Part 2, section 10.12.8 of {{TPM2.0}}.
+
+### Signing Procedure
+
+Generate a signature using the operation specified in Part 3, section 18.4 of {{TPM2.0}}, using the PAK as the signing key, the out-of-band agreed-upon PCR selection. Freshness of the attestation is given by the nonce provided by the relying party. The nonce is included as qualified data to the TPM2_Quote operation, concatenated with an identifier of the platform being attested, as shown below:
+
+  _extraData_ = _platformUuid_ || _relyingPartyNonce_
+
+The platform identifier is a 16-bytes long UUID, with the remaining data representing the nonce. The UUID is intended to help the verifier link the platform with its expected reference values.
+
+Set the _attestInfo_ field to the quoted PCR selection produced by the operation, and _sig_ to the signature generated above.
+
+### Verification Procedure
+
+The inputs to the verification procedure are as follows:
+
+- an attestation statement in the format described above
+- the nonce sent to the attester
+- a database of reference values for various platforms
+
+The steps for verifying the attestation:
+
+- Verify that the attestation token is valid CBOR conforming to the CTAP2 form and perform CBOR decoding on it to extract the contained fields.
+
+- Verify that _alg_ describes a valid, accepted signing algorithm.
+
+- Verify that _x5c_ is present.
+
+- Verify the _sig_ is a valid signature over _attestInfo_ using the attestation public key in _pakCert_ with the algorithm specified in _alg_.
+
+- Verify that _pakCert_ meets the requirements in section 8.3.1 of {{WebAuthn}}.
+
+- Verify that _attestInfo_ is valid:
+
+    * Verify that _magic_ is set to TPM_GENERATED_VALUE.
+
+    * Verify that _type_ is set to TPM_ST_ATTEST_QUOTE.
+
+    * Verify that _attested_ contains a TPMS_QUOTE_INFO structure as specified in Part 2, section 10.12.4 of {{TPM2.0}}.
+
+    * Extract _extraData_ and parse it assuming the format defined above to obtain platform UUID and the nonce. Verify that the nonce is correct.
+    
+    * Verify that the platform UUID obtained earlier is valid and represents a platform found in the database.
+    
+    * Retrieve the reference values defined for this platform. Compute the digest of the concatenation of all relevant PCRs using the hash algorithm defined in _alg_. The PCRs are concatenated as described in "Selecting Multiple PCR" (Part 1, section 17.5 of {{TPM2.0}}). Verify that this digest is equal to _pcrDigest_ in _attested_ and that the hash algorithm defined in _pcrSelect_ is aligned with the one in _alg_.
+
+    * Note that the remaining fields in the "Standard Attestation Structure" (Part 1, section 31.2 of {{TPM2.0}}), i.e., _qualifiedSigner_, _clockInfo_ and _firmwareVersion_ are ignored. These fields MAY be used as an input to risk engines.
+
+- If successful, return implementation-specific values representing attestation type AttCA and attestation trust path _x5c_.
+
+## Key Attestation
+
+Attesting to the provenance and properties of a key is possible through a TPM if the key resides on the TPM. The TPM2.0 key attestation mechanism used in this specification is TPM2_Certify. The workflow for generating the evidence and assessing them, as well as the format used to transport them, follows closely the TPM Attestation Statement defined in section 8.3 of {{WebAuthn}}, with one modification:
+
+- For both signing and verification, _attToBeSigned_ is unnecessary in our case. Its hash is replaced with the nonce coming from the relying party as the qualifying data when signing, and as the expected _extraData_ value during verification.
+
+The key used for signing - named AIK in {{WebAuthn}} - and its certificate chain is in our case the KAK and its associated certificates. The credential (i.e., attested) key is in our case the TIK.
+
    
 #  Security and Privacy Considerations {#sec-cons}
 
