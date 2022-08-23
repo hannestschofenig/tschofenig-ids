@@ -62,6 +62,7 @@ informative:
   RFC7250:
   I-D.ietf-rats-architecture:
   I-D.ietf-rats-eat:
+  I-D.ietf-cose-x509:
   TPM1.2:
     target: https://trustedcomputinggroup.org/resource/tpm-main-specification/
     title: TPM Main Specification Level 2 Version 1.2, Revision 116
@@ -83,6 +84,13 @@ informative:
       -
         org: World Wide Web Consortium
     date: April 2021
+  CTAP2:
+    target: https://fidoalliance.org/specs/fido-v2.0-ps-20190130/fido-client-to-authenticator-protocol-v2.0-ps-20190130.html
+    title: "Client to Authenticator Protocol"
+    author:
+      -
+        org: World Wide Web Consortium
+    date: January 2019
 
 --- abstract
 
@@ -497,17 +505,17 @@ Auth | {CertificateVerify*}
 
 # TPM Attestation
 
-One type of hardware RoT that can be used to prove control over a certain platform is the {{TPM2.0}}. TPMs natively offer interfaces for producing both key and platform attestation tokens.
+The Trusted Platform Module (TPM) {{TPM2.0}} is one type of hardware RoT. TPMs offer the ability to produce both key and platform attestation tokens.
 
 ## Platform Attestation
 
-Platform Configuration Registers (PCRs) represent the core mechanism in TPMs for measuring and conveying information about the platform state via remote attestation. While specifications exist for assigning individual PCRs to specific software components, the choice of which combination of PCRs to include for any attestation procedure (and which hashing algorithm to use) is left to the parties involved. The agreement over and configuration of the PCR selection falls outside the scope of this specification and thus expected to occur out-of-band.
+Platform Configuration Registers (PCRs) represent the core mechanism in TPMs for measuring and conveying information about the platform state via remote attestation. While specifications exist for assigning individual PCRs to specific software components, the choice of which combination of PCRs to include for any attestation procedure (and which hashing algorithm to use) is left to the parties involved. The agreement over and the configuration of the PCR selection falls outside the scope of this specification and is thus expected to occur out-of-band.
 
 The attestation evidence is produced through the TPM2_Quote operation. The evidence along with all other relevant metadata is transmitted in a format derived from the {{WebAuthn}} Attestation Statements. This format and the workflows around it are defined below.
 
 ### TPM Platform Attestation Statement Format
 
-The TPM Platform Attestation Statement is a modified version of the TPM Attestation Statement Format which covers key attestation tokens.
+The TPM Platform Attestation Statement is a modified version of the TPM Attestation Statement Format, which covers key attestation tokens.
 
 ~~~~
     tpmPlatStmtFormat = {
@@ -524,8 +532,8 @@ The TPM Platform Attestation Statement is a modified version of the TPM Attestat
 
 - _ver_: The version of the TPM specification to which the signature conforms.
 - _alg_: A COSEAlgorithmIdentifier containing the identifier of the algorithm used to generate the attestation signature.
-- _x5c_: A certificate for the PAK, followed by its certificate chain (in X.509 encoding).
-  - _pakCert_: The PAK certificate used for the attestation, in X.509 encoding.
+- _x5c_: A certificate for the PAK, followed by its certificate chain. The contents of the array SHOULD follow the same requirements as the _x5chain_ header parameter defined in section 2 of {{I-D.ietf-cose-x509}}, with the sole difference that a CBOR array is also used when only _pakCert_ is present.
+  - _pakCert_: The PAK certificate used for the attestation.
 - _sig_: The attestation signature, in the form of a TPMT_SIGNATURE structure as specified in Part 2, section 11.3.4 of {{TPM2.0}}.
 - _attestInfo_: The TPMS_ATTEST structure over which the above signature was computed, as specified in Part 2, section 10.12.8 of {{TPM2.0}}.
 
@@ -549,11 +557,11 @@ The inputs to the verification procedure are as follows:
 
 The steps for verifying the attestation:
 
-- Verify that the attestation token is valid CBOR conforming to the CTAP2 form and perform CBOR decoding on it to extract the contained fields.
+- Verify that the attestation token is a valid CBOR structure conforming to the CTAP2 canonical CBOR encoding form defined in section 6 of {{CTAP2}}, and perform CBOR decoding on it to extract the contained fields.
 
 - Verify that _alg_ describes a valid, accepted signing algorithm.
 
-- Verify that _x5c_ is present.
+- Verify that _x5c_ is present and follows the requirements laid out for _x5chain_ in {{I-D.ietf-cose-x509}}.
 
 - Verify the _sig_ is a valid signature over _attestInfo_ using the attestation public key in _pakCert_ with the algorithm specified in _alg_.
 
@@ -581,9 +589,9 @@ The steps for verifying the attestation:
 
 Attesting to the provenance and properties of a key is possible through a TPM if the key resides on the TPM. The TPM2.0 key attestation mechanism used in this specification is TPM2_Certify. The workflow for generating the evidence and assessing them, as well as the format used to transport them, follows closely the TPM Attestation Statement defined in section 8.3 of {{WebAuthn}}, with one modification:
 
-- For both signing and verification, _attToBeSigned_ is unnecessary in our case. Its hash is replaced with the nonce coming from the relying party as the qualifying data when signing, and as the expected _extraData_ value during verification.
+- For both signing and verification, _attToBeSigned_ is unnecessary and therefore its hash is replaced with the nonce coming from the relying party as the qualifying data when signing, and as the expected _extraData_ value during verification.
 
-The key used for signing - named AIK in {{WebAuthn}} - and its certificate chain is in our case the KAK and its associated certificates. The credential (i.e., attested) key is in our case the TIK.
+The WebAuthn specification {{WebAuthn}} uses the term AIK to refer to the signing key. In this specification we use the term KAK instead. The credential (i.e., attested) key is in our case the TIK.
 
    
 #  Security and Privacy Considerations {#sec-cons}
