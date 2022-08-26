@@ -541,7 +541,9 @@ The TPM Platform Attestation Statement is a modified version of the TPM Attestat
 
 Generate a signature using the operation specified in Part 3, Section 18.4 of {{TPM2.0}}, using the PAK as the signing key, the out-of-band agreed-upon PCR selection. Freshness of the attestation is given by the nonce provided by the relying party. The nonce is included as qualified data to the TPM2_Quote operation, concatenated with an identifier of the platform being attested, as shown below:
 
+~~~~
   _extraData_ = _platformUuid_ || _relyingPartyNonce_
+~~~~
 
 The platform identifier is a 16-bytes long UUID, with the remaining data representing the nonce. The UUID is intended to help the verifier link the platform with its expected reference values.
 
@@ -565,7 +567,7 @@ The steps for verifying the attestation:
 
 - Verify the _sig_ is a valid signature over _attestInfo_ using the attestation public key in _pakCert_ with the algorithm specified in _alg_.
 
-- Verify that _pakCert_ meets the requirements in Section 8.3.1 of {{WebAuthn}}.
+- Verify that _pakCert_ meets the requirements in Section 8.3.1 of {{WebAuthn}}.
 
 - Verify that _attestInfo_ is valid:
 
@@ -594,11 +596,11 @@ Attesting to the provenance and properties of a key is possible through a TPM if
 The WebAuthn specification {{WebAuthn}} uses the term AIK to refer to the signing key. In this specification we use the term KAK instead. The credential (i.e., attested) key is in our case the TIK.
 
    
-#  Security and Privacy Considerations {#sec-cons}
+# Security Considerations {#sec-cons}
 
 TBD.
 
-#  IANA Considerations
+# IANA Considerations
 
 TBD: Create new registry for attestation types.
 
