@@ -1,7 +1,7 @@
 ---
 title: Using Attestation in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)
 abbrev: Attestation in TLS/DTLS
-docname: draft-fossati-tls-attestation-00
+docname: draft-fossati-tls-attestation-01
 category: std
 
 ipr: pre5378Trust200902
@@ -315,7 +315,7 @@ Auth | {CertificateVerify}
 
 # TLS Attestation Type Extension
 
-This document defines a new extension to carry the assertion types.
+This document defines a new extension to carry the attestation types.
 The extension is conceptually similiar to the 'server_certificate_type'
 and the 'server_certificate_type' defined by {{RFC7250}}.
 
@@ -323,28 +323,28 @@ and the 'server_certificate_type' defined by {{RFC7250}}.
    struct {
            select(ClientOrServerExtension) {
                case client:
-                 CertificateType client_assertion_types<1..2^8-1>;
+                 CertificateType client_attestation_types<1..2^8-1>;
                  opaque nonce<0..2^16-1>;
                  
                case server:
-                 CertificateType client_assertion_type;
+                 CertificateType client_attestation_type;
                  opaque nonce<0..2^16-1>;                 
            }
-   } ClientAssertionTypeExtension;
+   } ClientAttestationTypeExtension;
 
    struct {
            select(ClientOrServerExtension) {
                case client:
-                 CertificateType server_assertion_types<1..2^8-1>;
+                 CertificateType server_attestation_types<1..2^8-1>;
                  opaque nonce<0..2^16-1>;                 
 
                case server:
-                 CertificateType server_assertion_type;
+                 CertificateType server_attestation_type;
                  opaque nonce<0..2^16-1>;                                  
            }
-   } ServerAssertionTypeExtension;
+   } ServerAttestationTypeExtension;
 ~~~~
-{: #figure-assertion-type title="AssertionTypeExtension Structure."}
+{: #figure-attestation-type title="AttestationTypeExtension Structure."}
 
 The Certificate payload is used as a container, as shown in 
 {{figure-certificate}}.  The shown Certificate structure is
@@ -357,11 +357,11 @@ an adaptation of {{RFC8446}}.
                 /* From RFC 7250 ASN.1_subjectPublicKeyInfo */
                 opaque ASN1_subjectPublicKeyInfo<1..2^24-1>;
 
-                /* assertion type defined in this document */
+                /* attestation type defined in this document */
               case EAT:
                 opaque cab<1..2^24-1>;
               
-                /* assertion type defined in a future version */
+                /* attestation type defined in this document */
               case TPM:
                 opaque tpmStmtFormat<1..2^24-1>;
               
@@ -387,7 +387,7 @@ the PAT and the KAT are typed.
    messages, according to {{RFC8446}}.
 
    The high-level message exchange in {{figure-overview}} shows the
-   client_assertion_type and server_assertion_type extensions added
+   client_attestation_type and server_attestation_type extensions added
    to the ClientHello and the EncryptedExtensions messages.
 
 ~~~~
@@ -398,15 +398,15 @@ Exch | + key_share*
      | + signature_algorithms*
      | + psk_key_exchange_modes*
      | + pre_shared_key*
-     | + client_assertion_type
-     v + server_assertion_type
+     | + client_attestation_type
+     v + server_attestation_type
      -------->
                                                   ServerHello  ^ Key
                                                  + key_share*  | Exch
                                             + pre_shared_key*  v
                                         {EncryptedExtensions}  ^  Server
-                                      + client_assertion_type  |
-                                      + server_assertion_type                                        
+                                    + client_attestation_type  |
+                                    + server_attestation_type                                        
                                         {CertificateRequest*}  v  Params
                                                {Certificate*}  ^
                                          {CertificateVerify*}  | Auth
@@ -532,14 +532,14 @@ The TPM Platform Attestation Statement is a modified version of the TPM Attestat
 
 - _ver_: The version of the TPM specification to which the signature conforms.
 - _alg_: A COSEAlgorithmIdentifier containing the identifier of the algorithm used to generate the attestation signature.
-- _x5c_: A certificate for the PAK, followed by its certificate chain. The contents of the array SHOULD follow the same requirements as the _x5chain_ header parameter defined in section 2 of {{I-D.ietf-cose-x509}}, with the sole difference that a CBOR array is also used when only _pakCert_ is present.
+- _x5c_: A certificate for the PAK, followed by its certificate chain. The contents of the array SHOULD follow the same requirements as the _x5chain_ header parameter defined in Section 2 of {{I-D.ietf-cose-x509}}, with the sole difference that a CBOR array is also used when only _pakCert_ is present.
   - _pakCert_: The PAK certificate used for the attestation.
-- _sig_: The attestation signature, in the form of a TPMT_SIGNATURE structure as specified in Part 2, section 11.3.4 of {{TPM2.0}}.
-- _attestInfo_: The TPMS_ATTEST structure over which the above signature was computed, as specified in Part 2, section 10.12.8 of {{TPM2.0}}.
+- _sig_: The attestation signature, in the form of a TPMT_SIGNATURE structure as specified in Part 2, Section 11.3.4 of {{TPM2.0}}.
+- _attestInfo_: The TPMS_ATTEST structure over which the above signature was computed, as specified in Part 2, Section 10.12.8 of {{TPM2.0}}.
 
 ### Signing Procedure
 
-Generate a signature using the operation specified in Part 3, section 18.4 of {{TPM2.0}}, using the PAK as the signing key, the out-of-band agreed-upon PCR selection. Freshness of the attestation is given by the nonce provided by the relying party. The nonce is included as qualified data to the TPM2_Quote operation, concatenated with an identifier of the platform being attested, as shown below:
+Generate a signature using the operation specified in Part 3, Section 18.4 of {{TPM2.0}}, using the PAK as the signing key, the out-of-band agreed-upon PCR selection. Freshness of the attestation is given by the nonce provided by the relying party. The nonce is included as qualified data to the TPM2_Quote operation, concatenated with an identifier of the platform being attested, as shown below:
 
   _extraData_ = _platformUuid_ || _relyingPartyNonce_
 
@@ -557,7 +557,7 @@ The inputs to the verification procedure are as follows:
 
 The steps for verifying the attestation:
 
-- Verify that the attestation token is a valid CBOR structure conforming to the CTAP2 canonical CBOR encoding form defined in section 6 of {{CTAP2}}, and perform CBOR decoding on it to extract the contained fields.
+- Verify that the attestation token is a valid CBOR structure conforming to the CTAP2 canonical CBOR encoding form defined in Section 6 of {{CTAP2}}, and perform CBOR decoding on it to extract the contained fields.
 
 - Verify that _alg_ describes a valid, accepted signing algorithm.
 
@@ -565,7 +565,7 @@ The steps for verifying the attestation:
 
 - Verify the _sig_ is a valid signature over _attestInfo_ using the attestation public key in _pakCert_ with the algorithm specified in _alg_.
 
-- Verify that _pakCert_ meets the requirements in section 8.3.1 of {{WebAuthn}}.
+- Verify that _pakCert_ meets the requirements in Section 8.3.1 of {{WebAuthn}}.
 
 - Verify that _attestInfo_ is valid:
 
@@ -573,21 +573,21 @@ The steps for verifying the attestation:
 
     * Verify that _type_ is set to TPM_ST_ATTEST_QUOTE.
 
-    * Verify that _attested_ contains a TPMS_QUOTE_INFO structure as specified in Part 2, section 10.12.4 of {{TPM2.0}}.
+    * Verify that _attested_ contains a TPMS_QUOTE_INFO structure as specified in Part 2, Section 10.12.4 of {{TPM2.0}}.
 
     * Extract _extraData_ and parse it assuming the format defined above to obtain platform UUID and the nonce. Verify that the nonce is correct.
     
     * Verify that the platform UUID obtained earlier is valid and represents a platform found in the database.
     
-    * Retrieve the reference values defined for this platform. Compute the digest of the concatenation of all relevant PCRs using the hash algorithm defined in _alg_. The PCRs are concatenated as described in "Selecting Multiple PCR" (Part 1, section 17.5 of {{TPM2.0}}). Verify that this digest is equal to _pcrDigest_ in _attested_ and that the hash algorithm defined in _pcrSelect_ is aligned with the one in _alg_.
+    * Retrieve the reference values defined for this platform. Compute the digest of the concatenation of all relevant PCRs using the hash algorithm defined in _alg_. The PCRs are concatenated as described in "Selecting Multiple PCR" (Part 1, Section 17.5 of {{TPM2.0}}). Verify that this digest is equal to _pcrDigest_ in _attested_ and that the hash algorithm defined in _pcrSelect_ is aligned with the one in _alg_.
 
-    * Note that the remaining fields in the "Standard Attestation Structure" (Part 1, section 31.2 of {{TPM2.0}}), i.e., _qualifiedSigner_, _clockInfo_ and _firmwareVersion_ are ignored. These fields MAY be used as an input to risk engines.
+    * Note that the remaining fields in the "Standard Attestation Structure" (Part 1, Section 31.2 of {{TPM2.0}}), i.e., _qualifiedSigner_, _clockInfo_ and _firmwareVersion_ are ignored. These fields MAY be used as an input to risk engines.
 
 - If successful, return implementation-specific values representing attestation type AttCA and attestation trust path _x5c_.
 
 ## Key Attestation
 
-Attesting to the provenance and properties of a key is possible through a TPM if the key resides on the TPM. The TPM2.0 key attestation mechanism used in this specification is TPM2_Certify. The workflow for generating the evidence and assessing them, as well as the format used to transport them, follows closely the TPM Attestation Statement defined in section 8.3 of {{WebAuthn}}, with one modification:
+Attesting to the provenance and properties of a key is possible through a TPM if the key resides on the TPM. The TPM 2.0 key attestation mechanism used in this specification is TPM2_Certify. The workflow for generating the evidence and assessing them, as well as the format used to transport them, follows closely the TPM Attestation Statement defined in Section 8.3 of {{WebAuthn}}, with one modification:
 
 - For both signing and verification, _attToBeSigned_ is unnecessary and therefore its hash is replaced with the nonce coming from the relying party as the qualifying data when signing, and as the expected _extraData_ value during verification.
 
