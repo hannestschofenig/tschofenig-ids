@@ -109,11 +109,8 @@ attestation.
 
 #  Introduction
 
-Attestation is the process by which an entity produces evidence about itself
-that another party can use to evaluate the trustworthiness of that entity.
-
-From an architecture point of view, the Remote attestation procedures (RATS)
-group defined two basic types of topological patterns to communicate between
+Architecturally, the Remote attestation procedures (RATS)
+group defines two basic types of topological patterns to communicate between
 an attester, a relying party, and a verifier, namely the background check model
 and the passport model. In the background check model, the attester conveys
 evidence to the relying party, which then consults the verifier to receive the
@@ -127,23 +124,19 @@ Several formats for encoding evidence are available, such as
 - the Android Key Attestation
 - Apple Key Attestation. 
 
-Like-wise, there are different encodings available for attestation result.
+Like-wise, there are different encodings available for attestation results.
 
 This specification defines how to convey evidence and attestation results in the 
-TLS handshake in an opaque manner. To accomplish this goal, a few assumptions were
-made, namely:
+TLS handshake, such that the details about the attestation technology are agnostic
+to the TLS handshake itself. 
 
-- WebAuthn Attestation Statements {{WebAuthn}} are used to embed evidence or 
-attestation results. The WebAuthn attestation statements correspond to the
-Combined Attestation Bundle (CAB) in the terminology of this document.
-- For use with the TLS handshake, key attestation is needed. Key attestation
-links the TLS Identity Key (TIK) to platform attestation.
-- The private key of the TLS Identity Key (TIK) is stored in a secure area
-and cannot be exported.
-- The platform attestation service ensures that the key attestation service
-has not been tampered with. The platform attestation service issues the
-Platform Attestation Token (PAT) and the key attestation service issues the 
-Key Attestation Token (KAT).
+To give the peer information that the handshake 
+signing key, the TLS Identity Key (TIK) private key, is properly secured the 
+evidence has to be verified by that peer. Hence, key attestation evidence about 
+the signing key (i.e., the KAT) is needed, which is associated with platform state.
+The platform attestation service ensures that the key attestation service has not
+been tampered with. The platform attestation service issues the Platform Attestation
+Token (PAT) and the key attestation service issues the Key Attestation Token (KAT).
 
 The examples in the document detail the use of EAT- and TPM-based evidence.
 This document does not define how different attestation technologies use
