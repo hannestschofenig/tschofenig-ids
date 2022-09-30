@@ -172,7 +172,7 @@ is included in the Key Attestation Token.
 
 - Attestation Token (AT): A collection of claims that a RoT assembles (and signs) with
 the purpose of informing - in a verifiable way - Relying Parties about the identity and
-state of the platform. Essentially a type of "Evidence" as per the RATS architecture
+state of the platform. Essentially a type of Evidence as per the RATS architecture
 terminology.
 
 - Platform Attestation Token (PAT): An AT containing claims relating to the state of
