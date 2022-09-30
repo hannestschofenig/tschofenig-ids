@@ -113,8 +113,8 @@ The Remote ATtestation ProcedureS (RATS)
 architecture defines two basic types of topological patterns to communicate between
 an attester, a relying party, and a verifier, namely the background check model
 and the passport model. In the background check model, the attester conveys
-evidence to the relying party, which then forwards the evidence to the verifier  and then receives the
-attestation result. In the passport model, the attester transmits evidence to
+evidence to the relying party, which then forwards the evidence to the verifier for appraisal; the verifier computes the attestation result and sends it back to
+the relying party. In the passport model, the attester transmits evidence to
 the  verifier directly and receives attestation results, which are then relayed to the
 relying party. This specification supports both patterns.
 
