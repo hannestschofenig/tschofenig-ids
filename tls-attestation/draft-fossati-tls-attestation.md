@@ -181,7 +181,7 @@ involves gathering data during measured boot.
 
 - Key Attestation Token (KAT): An AT containing a claim with a proof-of-possession
 (PoP) key. The KAT may also contain other claims, such as those indicating its validity.
-The KAT is signed by the KAK. The attestation service part of the RoT conceptually acts
+The KAT is signed by the KAK. The key attestation service, which is part of the platform root of trust (RoT), conceptually acts
 as a local certification authority since the KAT behaves like a certificate.
 
 - Combined Attestation Bundle (CAB): A structure used to bundle a KAT and a PAT together
