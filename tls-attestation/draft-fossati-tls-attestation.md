@@ -628,7 +628,21 @@ Attesting to the provenance and properties of a key is possible through a TPM if
 
 The WebAuthn specification {{WebAuthn}} uses the term AIK to refer to the signing key. In this specification we use the term KAK instead. The credential (i.e., attested) key is in our case the TIK.
 
-   
+# Examples
+
+## Background-Check Model
+
+{::include diagrams/background-check-tls-handshake.txt}
+
+## Passport Model
+
+{::include diagrams/kat-media-type-discovery.txt}
+
+{::include diagrams/passport-issuance.txt}
+ 
+{::include diagrams/passport-tls-handshake.txt}
+
+
 # Security Considerations {#sec-cons}
 
 TBD.
