@@ -175,8 +175,8 @@ the purpose of informing - in a verifiable way - relying parties about the ident
 state of the platform. Essentially a type of Evidence as per the RATS architecture
 terminology.
 
-- Platform Attestation Token (PAT): An AT containing claims relating to the state of
-the software running on the platform. The process of generating a PAT typically
+- Platform Attestation Token (PAT): An AT containing claims relating to the security state of the platform,
+including software constituting the platform trusted computing base (TCB). The process of generating a PAT typically
 involves gathering data during measured boot.
 
 - Key Attestation Token (KAT): An AT containing a claim with a proof-of-possession
