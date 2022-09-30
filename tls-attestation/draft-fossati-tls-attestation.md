@@ -125,6 +125,7 @@ Several formats for encoding evidence are available, such as
 - Apple Key Attestation. 
 
 Like-wise, there are different encodings available for attestation results.
+One such encoding, AR4SI {{?I-D.ietf-rats-ar4si}} is being standardized by the RATS working group.
 
 This specification defines how to convey evidence and attestation results in the 
 TLS handshake, such that the details about the attestation technology are agnostic
