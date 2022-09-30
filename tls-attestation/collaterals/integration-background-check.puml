@@ -1,0 +1,33 @@
+@startuml
+skinparam sequenceMessageAlign center
+
+participant "Veraison" as verifier order 10
+participant "TLS A" as tls_a order 20
+participant "TLS B" as tls_b order 30
+participant "PARSEC" as parsec order 50
+participant "KAS" as kas order 50
+
+group KAT discovery
+tls_b --> parsec: get_kat_media_type()
+tls_b <-- parsec: kat-media-type
+end
+
+group TLS Handshake (happy path)
+tls_a --> verifier: POST /newSession
+tls_a <-- verifier: Location: verification-session-URL\nBody: {\n\tnonce,\n\tsupported-kat-media-types\n}\l
+tls_a --> tls_b: ClientHello\n+ {...}\n+ attested-key-ext-request(\n\tnonce,\n\tsupported-kat-media-types\n)\l
+tls_b --> parsec: attest_key(TIK, nonce)
+parsec <-> kas: IMPDEF
+tls_b <-- parsec: KAT
+tls_b --> parsec: sign(TIK, HS-transcript)
+parsec <-> kas: IMPDEF
+tls_b <-- parsec: signature
+tls_a <-- tls_b: ServerHello\n+ {...}\n+ attested-key-ext-provide(\n\tkat-media-type\n)\nCertificate(KAT)\nCertificateVerify(signature)\nFinished\l
+tls_a --> verifier: POST $verification-session-URL\nBody: {\n\tkat-media-type\n\tKAT\n}\l
+tls_a <-- verifier: Body: {\n\tattestation-results: success\n}\l
+tls_a <-- tls_a: verify signature
+tls_a --> tls_b: Finished
+tls_a <-> tls_b: application data
+end
+
+@enduml
