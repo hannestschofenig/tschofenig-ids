@@ -94,32 +94,55 @@ informative:
 
 --- abstract
 
-Various attestation technologies have been developed and formats have been standardized.
-Examples include the Entity Attestation Token (EAT) and Trusted Platform Modules (TPMs).
-Once attestation information has been produced on a device it needs to be communicated
-to a relying party. This information exchange may happen at different layers in the 
-protocol stack.
+Attestation is the process by which an entity produces evidence about itself
+that another party can use to evaluate the trustworthiness of that entity.
 
-This specification provides a generic way of passing attestation information in the 
-TLS handshake.
+In use cases that require the use of remote attestation, such as confidential computing,
+an attester has to convey evidence or attestation results to a relying party. This 
+information exchange may happen at different layers in the protocol stack. 
+
+This specification provides a generic way of passing evidence and attestation results
+in the TLS handshake. Functionality-wise this is accomplished with the help of key
+attestation.
 
 --- middle
 
-
 #  Introduction
 
-Attestation is the process by which an entity produces evidence about itself
-that another party can use to evaluate the trustworthiness of that entity. 
-One format of encoding evidence is standardized with the Entity Attestation 
-Token (EAT) {{I-D.ietf-rats-eat}} but there are other formats, such as 
-attestation produced by Trusted Platform Modules (TPMs) {{TPM1.2}} {{TPM2.0}}.
+The Remote ATtestation ProcedureS (RATS)
+architecture defines two basic types of topological patterns to communicate between
+an attester, a relying party, and a verifier, namely the background-check model
+and the passport model. In the background check model, the attester conveys
+evidence to the relying party, which then forwards the evidence to the verifier for appraisal; the verifier computes the attestation result and sends it back to
+the relying party. In the passport model, the attester transmits evidence to
+the  verifier directly and receives attestation results, which are then relayed to the
+relying party. This specification supports both patterns.
 
-This specification defines how to convey attestation information in the 
-TLS handshake with different encodings being supported. This specification
-standardizes two attestation formats -- EAT and TPM-based attestation.
+Several formats for encoding evidence are available, such as 
+- the Entity Attestation Token (EAT) {{I-D.ietf-rats-eat}}, 
+- the Trusted Platform Modules (TPMs) {{TPM1.2}} {{TPM2.0}}.
+- the Android Key Attestation
+- Apple Key Attestation. 
 
-Note: This initial version of the specification focuses on EAT-based attestation.
-Future versions will also define TPM-based attestation.
+Like-wise, there are different encodings available for attestation results.
+One such encoding, AR4SI {{?I-D.ietf-rats-ar4si}} is being standardized by the RATS working group.
+
+This specification defines how to convey evidence and attestation results in the 
+TLS handshake, such that the details about the attestation technology are agnostic
+to the TLS handshake itself. 
+
+To give the peer information that the handshake 
+signing key, the TLS Identity Key (TIK) private key, is properly secured, the associated
+evidence has to be verified by that peer. Hence, attestation evidence about 
+the security state of the signing key is needed, which is typically associated with evidence about the overall platform state.
+The platform attestation service ensures that the key attestation service has not
+been tampered with. The platform attestation service issues the Platform Attestation
+Token (PAT) and the key attestation service issues the Key Attestation Token (KAT). The security of the protocol critically depends on the verifiable binding between these two logically separate units of evidence.
+
+The examples in the document detail the use of EAT- and TPM-based evidence.
+This document does not define how different attestation technologies use
+WebAuthn to encode information. This has either already been done is done
+accomplished by companion specifications.
 
 # Conventions and Terminology
 
@@ -143,17 +166,27 @@ tokens relating to the state of the platform.
 - Key Attestation Key (KAK): An AK used specifically for signing KATs. In some 
 systems only a single AK is used. In that case the AK is used as a PAK and a KAK.
 
-- TLS Identity Key (TIK): The KIK consists of a private and a public key. The private key is used in the CertificateVerify message during the TLS handshake. The public key is included in the Key Attestation Token.
+- TLS Identity Key (TIK): The TIK consists of a private and a public key. The private 
+key is used in the CertificateVerify message during the TLS handshake. The public key
+is included in the Key Attestation Token.
 
-- Attestation Token (AT): A collection of claims that a RoT assembles (and signs) with the purpose of informing - in a verifiable way - Relying Parties about the identity and state of the platform. Essentially a type of "Evidence" as per the RATS architecture terminology.
+- Attestation Token (AT): A collection of claims that a RoT assembles (and signs) with
+the purpose of informing - in a verifiable way - relying parties about the identity and
+state of the platform. Essentially a type of Evidence as per the RATS architecture
+terminology.
 
-- Platform Attestation Token (PAT): An AT containing claims relating to the state of the software running on the platform. The process of generating a PAT typically involves gathering data during measured boot.
+- Platform Attestation Token (PAT): An AT containing claims relating to the security state of the platform,
+including software constituting the platform trusted computing base (TCB). The process of generating a PAT typically
+involves gathering data during measured boot.
 
-- Key Attestation Token (KAT): An AT containing a claim with a proof-of-possession (PoP) key. The KAT may also contain other claims, such as those indicating its validity. The KAT is signed by the KAK. The attestation 
-service part of the RoT conceptually acts as a local certification authority since the KAT behaves like a certificate.
+- Key Attestation Token (KAT): An AT containing a claim with a proof-of-possession
+(PoP) key. The KAT may also contain other claims, such as those indicating its validity.
+The KAT is signed by the KAK. The key attestation service, which is part of the platform root of trust (RoT), conceptually acts
+as a local certification authority since the KAT behaves like a certificate.
 
-- Combined Attestation Bundle (CAB): A structure used to bundle a KAT and a PAT together for transport in the TLS handshake. If the KAT already includes a PAT, in form of a nested token, then it already corresponds to a CAB.
-
+- Combined Attestation Bundle (CAB): A structure used to bundle a KAT and a PAT together
+for transport in the TLS handshake. If the KAT already includes a PAT, in form of a
+nested token, then it already corresponds to a CAB.
 
 # Overview
 
@@ -511,11 +544,11 @@ The Trusted Platform Module (TPM) {{TPM2.0}} is one type of hardware RoT. TPMs o
 
 Platform Configuration Registers (PCRs) represent the core mechanism in TPMs for measuring and conveying information about the platform state via remote attestation. While specifications exist for assigning individual PCRs to specific software components, the choice of which combination of PCRs to include for any attestation procedure (and which hashing algorithm to use) is left to the parties involved. The agreement over and the configuration of the PCR selection falls outside the scope of this specification and is thus expected to occur out-of-band.
 
-The attestation evidence is produced through the TPM2_Quote operation. The evidence along with all other relevant metadata is transmitted in a format derived from the {{WebAuthn}} Attestation Statements. This format and the workflows around it are defined below.
+The attestation evidence is produced through the TPM2_Quote operation. The evidence along with all other relevant metadata is transmitted in a format derived from the WebAuthn Attestation Statements {{WebAuthn}}. This format and the workflows around it are defined below.
 
 ### TPM Platform Attestation Statement Format
 
-The TPM Platform Attestation Statement is a modified version of the TPM Attestation Statement Format, which covers key attestation tokens.
+The TPM Platform Attestation Statement is a modified version of the WebAuthn TPM Attestation Statement Format, which covers key attestation tokens.
 
 ~~~~
     tpmPlatStmtFormat = {
