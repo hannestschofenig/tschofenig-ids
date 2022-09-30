@@ -110,7 +110,7 @@ attestation.
 #  Introduction
 
 The Remote ATtestation ProcedureS (RATS)
-group defines two basic types of topological patterns to communicate between
+architecture defines two basic types of topological patterns to communicate between
 an attester, a relying party, and a verifier, namely the background check model
 and the passport model. In the background check model, the attester conveys
 evidence to the relying party, which then forwards the evidence to the verifier  and then receives the
