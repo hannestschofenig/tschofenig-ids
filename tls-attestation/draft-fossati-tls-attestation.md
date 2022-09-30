@@ -643,15 +643,18 @@ TBD: Create new registry for attestation types.
 
 RFC EDITOR: PLEASE REMOVE THE THIS SECTION
 
-  - 02
-    o added more diagrams
-    o updated introduction
+## draft-fossati-tls-attestation-02
+
+- Added more diagrams
+- Updated introduction
     
-  - 01 
-    o added details about TPM attestation
+## draft-fossati-tls-attestation-01
+
+- Added details about TPM attestation
     
-  - 00
-    o Initial version
+## draft-fossati-tls-attestation-00
+
+- Initial version
 
 # Working Group Information
 
