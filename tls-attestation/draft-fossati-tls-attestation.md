@@ -134,7 +134,7 @@ to the TLS handshake itself.
 To give the peer information that the handshake 
 signing key, the TLS Identity Key (TIK) private key, is properly secured, the associated
 evidence has to be verified by that peer. Hence, attestation evidence about 
-the signing key (i.e., the KAT) is needed, which is associated with platform state.
+the security state of the signing key is needed, which is typically associated with evidence about the overall platform state.
 The platform attestation service ensures that the key attestation service has not
 been tampered with. The platform attestation service issues the Platform Attestation
 Token (PAT) and the key attestation service issues the Key Attestation Token (KAT).
