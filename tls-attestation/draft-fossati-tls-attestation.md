@@ -132,7 +132,7 @@ TLS handshake, such that the details about the attestation technology are agnost
 to the TLS handshake itself. 
 
 To give the peer information that the handshake 
-signing key, the TLS Identity Key (TIK) private key, is properly secured the 
+signing key, the TLS Identity Key (TIK) private key, is properly secured, the associated
 evidence has to be verified by that peer. Hence, key attestation evidence about 
 the signing key (i.e., the KAT) is needed, which is associated with platform state.
 The platform attestation service ensures that the key attestation service has not
