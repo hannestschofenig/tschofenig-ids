@@ -166,7 +166,7 @@ tokens relating to the state of the platform.
 - Key Attestation Key (KAK): An AK used specifically for signing KATs. In some 
 systems only a single AK is used. In that case the AK is used as a PAK and a KAK.
 
-- TLS Identity Key (TIK): The KIK consists of a private and a public key. The private 
+- TLS Identity Key (TIK): The TIK consists of a private and a public key. The private 
 key is used in the CertificateVerify message during the TLS handshake. The public key
 is included in the Key Attestation Token.
 
