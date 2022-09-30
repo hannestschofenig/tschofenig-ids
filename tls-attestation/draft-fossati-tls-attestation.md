@@ -137,7 +137,7 @@ evidence has to be verified by that peer. Hence, attestation evidence about
 the security state of the signing key is needed, which is typically associated with evidence about the overall platform state.
 The platform attestation service ensures that the key attestation service has not
 been tampered with. The platform attestation service issues the Platform Attestation
-Token (PAT) and the key attestation service issues the Key Attestation Token (KAT).
+Token (PAT) and the key attestation service issues the Key Attestation Token (KAT). The security of the protocol critically depends on the verifiable binding between these two logically separate units of evidence.
 
 The examples in the document detail the use of EAT- and TPM-based evidence.
 This document does not define how different attestation technologies use
