@@ -1,7 +1,7 @@
 ---
 title: Using Attestation in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)
 abbrev: Attestation in TLS/DTLS
-docname: draft-fossati-tls-attestation-01
+docname: draft-fossati-tls-attestation-02
 category: std
 
 ipr: pre5378Trust200902
@@ -643,7 +643,15 @@ TBD: Create new registry for attestation types.
 
 RFC EDITOR: PLEASE REMOVE THE THIS SECTION
 
-  - Initial version
+  - 02
+    o added more diagrams
+    o updated introduction
+    
+  - 01 
+    o added details about TPM attestation
+    
+  - 00
+    o Initial version
 
 # Working Group Information
 
