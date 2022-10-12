@@ -129,47 +129,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
 document are to be interpreted as described in RFC 2119 {{RFC2119}}.
 
-The following terms are used in this document:
-
-- Root of Trust (RoT): A set of software and/or hardware components that need 
-to be trusted to act as a security foundation required for accomplishing the
-security goals. In our case, the RoT is expected to offer the functionality 
-for attesting to the state of the platform.
-
-- Attestation Key (AK): Cryptographic key belonging to the RoT that is only used
- to sign attestation tokens. 
-
-- Platform Attestation Key (PAK): An AK used specifically for signing attestation 
-tokens relating to the state of the platform.
-
-- Key Attestation Key (KAK): An AK used specifically for signing KATs. In some 
-systems only a single AK is used. In that case the AK is used as a PAK and a KAK.
-
-- TLS Identity Key (TIK): The TIK consists of a private and a public key. The private 
-key is used in the CertificateVerify message during the TLS handshake. The public key
-is included in the Key Attestation Token.
-
-- Attestation Token (AT): A collection of claims that a RoT assembles (and signs) with
-the purpose of informing - in a verifiable way - relying parties about the identity and
-state of the platform. Essentially a type of Evidence as per the RATS architecture
-terminology.
-
-- Platform Attestation Token (PAT): An AT containing claims relating to the security
-state of the platform, including software constituting the platform trusted computing 
-base (TCB). The process of generating a PAT typically involves gathering data during 
-measured boot.
-
-- Key Attestation Token (KAT): An AT containing a claim with a proof-of-possession
-(PoP) key. The KAT may also contain other claims, such as those indicating its validity.
-The KAT is signed by the KAK. The key attestation service, which is part of the platform 
-root of trust (RoT), conceptually acts as a local certification authority since the KAT 
-behaves like a certificate.
-
-- Combined Attestation Bundle (CAB): A structure used to bundle a KAT and a PAT together
-for transport in the TLS handshake. If the KAT already includes a PAT, in form of a
-nested token, then it already corresponds to a CAB.
-
-# Architecture
+# Overview
 
 The Remote Attestation Procedures (RATS) architecture {{I-D.ietf-rats-architecture}}
 defines two types of interaction models for attestation, 
@@ -186,65 +146,23 @@ extension in the ClientHello. The client_attestation_type extension lists the
 supported attestation formats. The server, if it supports the extension and one of the
 attestation formats, it confirms the use of the feature.
 
-Note: The newly introduced extension also allows nonces to be exchanged. Those
-nonces are used for guaranteeing freshness of the generated attestation tokens.
+The newly introduced extension allows the exchange of nonces. Those nonces are
+used for guaranteeing freshness of the exchanged attestation payloads.
 
 When the attestation extension is successfully negotiated, the content of the
-Certificate message is replaced with attestation information described in this
-document.
+Certificate message contains an attestation encoded as defined in {{wrapper}}.
 
-A peer has to demonstrate possession of the private key via the CertificateVerify
-message. While attestation information is signed by the attester, it typically
-does not contain a public key claim.
-
-The attestation service on a device, which creates the attestation information, 
-is unaware of the TLS exchange and the attestation service does not directly 
-sign externally provided data, as it would be required to compute the 
-CertificateVerify message.
-
-Hence, the following steps happen:
-
-The client generates the TIK, which are referred here as skT and pkT, for example
-using the following API call:
-
-~~~~
-key_id = GenerateKeyPair(alg_id)
-~~~~
-
-The private key would be created and stored such that it is only accessible to the 
-key attestation service rather than the TLS client in software.
-
-Next, the key attestation service needs to trigger the creation of the Platform
-Attestation Token (PAT), which needs to be linked to the Key Attestation Token (KAT).
-Details about how this linkage is accomplished may vary from technology to technology
-and is outside the scope of TLS. The Key Attestation Token (KAT) will include the 
-public key of the TIK (pkT) and is then signed with the Key Attestation Key (KAK).
-
-To ensure freshness of the PAT and the KAT a nonce is provided by the relying 
-party / verifier. Here is the symbolic API call to request a KAT and a PAT, which 
-are concatinated together as the CAB. 
-
-~~~~
-cab = createCAB(key_id, nonce)
-~~~~
-
-Once the Certificate message containing the CAB has been sent, the CertificateVerify
-has to be created and it requires access to the private key. The signature operation
-uses the private key of the TIK (skT).
+In TLS a client has to demonstrate possession of the private key via the CertificateVerify
+message, when client-based authentication is requested. The attestation payload
+must contain a key attestation token, which associates a private key with the
+attestation information. More information about the key attestation token format can 
+be found in {{kat}}.
 
 The recipient of the Certificate and the CertificateVerify messages first extracts 
-the PAT and the KAT from the Certificate message. The PAT and the KAT need to be 
-conveyed to the verification service, whereby the following checks are made:
-
-- The signature protecting the PAT passes verification when using available trust anchor(s).
-- The PAT has not been replayed, which can be checked by comparing the nonce included
-  in one of the claims and matching it against the nonce provided to the attester.
-- The claims in the PAT are matched against stored reference values.
-- The signature protecting the KAT passes verification. 
-- The claims in the KAT are validated, if needed.
-
-Once all these steps are completed, the verifier produces the attestation result and
-includes (if needed) the TIK public key. 
+the attestation payload from the Certificate message and either relays it to the 
+verifier (if evidence was received) or processes it locally (if attestation results
+were received). Verification of the attestation payloads happen according to the
+defined format.
 
 In the subsections we will look at how the two message pattern fit align with the 
 TLS exchange. 
@@ -254,7 +172,7 @@ TLS exchange.
 The passport model is described in Section 5.1 of {{I-D.ietf-rats-architecture}}. A key feature 
 of this model is that the attester interacts with the verification service before initiating 
 the TLS exchange. It sends evidence to the verification service, which then returns the 
-attestation result (including the TIK public key).
+attestation result.
 
 The example exchange in {{figure-passport-model}} shows how a client
 provides attestation to the server by utilizing EAT tokens {{I-D.ietf-rats-eat}}.
@@ -263,11 +181,11 @@ attestation format. The TLS server acknowledges support for this attestation typ
 the EncryptedExtensions message. 
 
 In the Certificate message the TLS client transmits the attestation result to the TLS 
-server, in form a CAB (i.e. a concatinated PAT and KAT).
+server, in form described in {{wrapper}}.
 
 The TLS client then creates the CertificateVerify message by asking the crypto 
-service to sign the TLS handshake message transcript with the TIK private key. 
-The TLS server then verifies this message by utilizing the TIK public key.
+service to sign the TLS handshake message transcript with the private key. 
+The TLS server then verifies this message by utilizing the corresponding public key.
 
 ~~~~
     Client                                           Server
@@ -300,8 +218,8 @@ The background check model is described in Section 5.2 of {{I-D.ietf-rats-archit
 The message exchange of the background check model differs from the passport 
 model because the TLS server needs to provide a nonce in the ServerHello to the 
 TLS client so that the attestation service can feed the nonce into the generation
-of the PAT. The TLS server, when receiving the CAB, will have to contact the 
-verification service.
+of the PAT. The TLS server, when receiving the attestation payload, will have to
+contact the verification service.
 
 ~~~~
        Client                                           Server
@@ -527,14 +445,17 @@ Auth | {CertificateVerify*}
  
 {::include diagrams/passport-tls-handshake.txt}
 
-
 # Security Considerations {#sec-cons}
 
 TBD.
 
 # IANA Considerations
 
-TBD: Create new registry for attestation types.
+IANA is asked to allocate two new TLS extensions, client_attestation_type
+and server_attestation_type, from the "TLS ExtensionType Values"
+subregistry defined in {{RFC5246}}.  These extensions are used in both
+the client hello message and the server hello message. The
+values carried in these extensions are taken from TBD.
 
 --- back
 
