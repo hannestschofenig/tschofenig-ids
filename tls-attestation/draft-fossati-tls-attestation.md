@@ -58,8 +58,30 @@ normative:
   RFC2119:
   RFC8446:
   I-D.ftbs-rats-msg-wrap:
+  kat:
+    target: draft-fossati-rats-kat
+    title: Key Attestation Token
+    author:
+      -
+        org: 
+    date: October 2022  
 informative:
-  RFC8747:
+  I-D.ietf-rats-eat:
+  RFC5246:
+  TPM1.2:
+    target: https://trustedcomputinggroup.org/resource/tpm-main-specification/
+    title: TPM Main Specification Level 2 Version 1.2, Revision 116
+    author:
+      -
+        org: Trusted Computing Group
+    date: March 2011
+  TPM2.0:
+    target: https://trustedcomputinggroup.org/resource/tpm-library-specification/
+    title: Trusted Platform Module Library Specification, Family "2.0", Level 00, Revision 01.59
+    author:
+      -
+        org: Trusted Computing Group
+    date: November 2019
   RFC7250:
   I-D.ietf-rats-architecture:
 
@@ -104,8 +126,8 @@ This specification defines how to convey evidence and attestation results in the
 TLS handshake, such that the details about the attestation technology are agnostic
 to the TLS handshake itself. 
 
-To give the peer information that the handshake signing key, the TLS Identity Key (TIK)
-private key, is properly secured, the associated evidence has to be verified by that peer.
+To give the peer information that the handshake signing key is properly secured, 
+the associated evidence has to be verified by that peer.
 Hence, attestation evidence about the security state of the signing key is needed, which
 is typically associated with evidence about the overall platform state. The platform 
 attestation service ensures that the key attestation service has not been tampered with.
