@@ -181,7 +181,7 @@ attestation format. The TLS server acknowledges support for this attestation typ
 the EncryptedExtensions message. 
 
 In the Certificate message the TLS client transmits the attestation result to the TLS 
-server, in form described in {{wrapper}}.
+server, in form described in {{attestation-wrapper}}.
 
 The TLS client then creates the CertificateVerify message by asking the crypto 
 service to sign the TLS handshake message transcript with the private key. 
