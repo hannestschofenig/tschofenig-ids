@@ -161,7 +161,7 @@ be found in {{kat}}.
 The recipient of the Certificate and the CertificateVerify messages first extracts 
 the attestation payload from the Certificate message and either relays it to the 
 verifier (if evidence was received) or processes it locally (if attestation results
-were received). Verification of the attestation payloads happen according to the
+were received). Verification of the attestation payloads happens according to the
 defined format.
 
 In the subsections we will look at how the two message pattern fit align with the 
