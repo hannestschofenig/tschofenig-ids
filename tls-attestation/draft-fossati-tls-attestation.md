@@ -57,13 +57,7 @@ author:
 normative:
   RFC2119:
   RFC8446:
-  attestation-wrapper:
-    target: https://link.example.com
-    title: Attestation Wrapper
-    author:
-      -
-        org: Fossati/Arm
-    date: October 2022
+  I-D.ftbs-rats-msg-wrap:
 informative:
   RFC8747:
   RFC7250:
@@ -150,7 +144,7 @@ The newly introduced extension allows the exchange of nonces. Those nonces are
 used for guaranteeing freshness of the exchanged attestation payloads.
 
 When the attestation extension is successfully negotiated, the content of the
-Certificate message contains an attestation encoded as defined in {{wrapper}}.
+Certificate message contains an attestation encoded as defined in {{I-D.ftbs-rats-msg-wrap}}.
 
 In TLS a client has to demonstrate possession of the private key via the CertificateVerify
 message, when client-based authentication is requested. The attestation payload
@@ -181,7 +175,7 @@ attestation format. The TLS server acknowledges support for this attestation typ
 the EncryptedExtensions message. 
 
 In the Certificate message the TLS client transmits the attestation result to the TLS 
-server, in form described in {{attestation-wrapper}}.
+server, in form described in {{I-D.ftbs-rats-msg-wrap}}.
 
 The TLS client then creates the CertificateVerify message by asking the crypto 
 service to sign the TLS handshake message transcript with the private key. 
@@ -307,7 +301,7 @@ The Certificate payload is used as a container, as shown in
 {: #figure-certificate title="Certificate Message."}
 
 The encoding of the attestation structure is defined in
-{attestation-wrapper}.
+{{I-D.ftbs-rats-msg-wrap}}.
 
 # TLS Client and Server Handshake Behavior {#behavior}
 
