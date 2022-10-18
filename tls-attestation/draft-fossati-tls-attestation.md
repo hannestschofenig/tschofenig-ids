@@ -274,31 +274,40 @@ This document defines two new extensions, client_attestation_type and
 server_attestation_type extensions.
 
 ~~~~
-   enum { EAT(0), FOO(1), (255) } AttestationType;
+   enum { NUMERIC(0), STRING(1) } encodingType;
 
+   struct {
+        encodingType type;
+        select (encodingType) {
+            case NUMERIC:
+              uint16 content_format;
+            case STRING:
+               opaque media_type<0..2^16-1>;
+        };
+   } AttestationType;
+      
    struct {
            select(ClientOrServerExtension) {
                case client:
-                 AttestationType client_attestation_types<1..2^8-1>;
-                 opaque nonce<0..2^16-1>;
+                 AttestationType supported_evidence_types<1..2^8-1>;
+                 opaque nonce<0..2^8-1>;
                  
                case server:
-                 AttestationType client_attestation_type;
+                 AttestationType selected_evidence_type;
                  opaque nonce<0..2^16-1>;                 
            }
-   } ClientAttestationTypeExtension;
+   } attestationRequestTypeExtension;
 
    struct {
            select(ClientOrServerExtension) {
                case client:
-                 AttestationType server_attestation_types<1..2^8-1>;
-                 opaque nonce<0..2^16-1>;                 
+                 AttestationType supported_evidence_types<1..2^8-1>;
 
                case server:
-                 AttestationType server_attestation_type;
-                 opaque nonce<0..2^16-1>;                                  
+                 AttestationType selected_evidence_type;
+                 opaque nonce<0..2^8-1>;
            }
-   } ServerAttestationTypeExtension;
+   } attestationProposalTypeExtension;
 ~~~~
 {: #figure-attestation-type title="AttestationTypeExtension Structure."}
 
