@@ -183,6 +183,40 @@ defined format.
 In the subsections we will look at how the two message pattern fit align with the 
 TLS exchange. 
 
+## Attestation within the Background Check Model
+
+The background check model is described in Section 5.2 of {{I-D.ietf-rats-architecture}}. 
+
+The message exchange of the background check model differs from the passport 
+model because the TLS server needs to provide a nonce in the ServerHello to the 
+TLS client so that the attestation service can feed the nonce into the generation
+of the PAT. The TLS server, when receiving the attestation payload, will have to
+contact the verification service.
+
+~~~~
+       Client                                           Server
+
+Key  ^ ClientHello
+Exch | + client_attestation_type(eat)
+     |
+     |
+     v                         -------->
+                                                  ServerHello  ^ Key
+                                 client_attestation_type(eat)  | Exch
+                                                      + nonce  v
+                                        {EncryptedExtensions}  ^  Server
+                                         {CertificateRequest}  v  Params
+                                                {Certificate}  ^
+                                          {CertificateVerify}  | Auth
+                                                   {Finished}  v
+                               <--------  [Application Data*]
+     ^ {Certificate}
+Auth | {CertificateVerify}
+     v {Finished}              -------->
+       [Application Data]      <------->  [Application Data]
+~~~~
+{: #figure-background-check-model title="Example Exchange with the Background Check Model."}
+
 ## Attestation within the Passport Model
 
 The passport model is described in Section 5.1 of {{I-D.ietf-rats-architecture}}. A key feature 
@@ -226,40 +260,8 @@ Auth | {CertificateVerify}
 ~~~~
 {: #figure-passport-model title="Example Exchange with the Passport Model."}
 
-
-## Attestation within the Background Check Model
-
-The background check model is described in Section 5.2 of {{I-D.ietf-rats-architecture}}. 
-
-The message exchange of the background check model differs from the passport 
-model because the TLS server needs to provide a nonce in the ServerHello to the 
-TLS client so that the attestation service can feed the nonce into the generation
-of the PAT. The TLS server, when receiving the attestation payload, will have to
-contact the verification service.
-
-~~~~
-       Client                                           Server
-
-Key  ^ ClientHello
-Exch | + client_attestation_type(eat)
-     |
-     |
-     v                         -------->
-                                                  ServerHello  ^ Key
-                                 client_attestation_type(eat)  | Exch
-                                                      + nonce  v
-                                        {EncryptedExtensions}  ^  Server
-                                         {CertificateRequest}  v  Params
-                                                {Certificate}  ^
-                                          {CertificateVerify}  | Auth
-                                                   {Finished}  v
-                               <--------  [Application Data*]
-     ^ {Certificate}
-Auth | {CertificateVerify}
-     v {Finished}              -------->
-       [Application Data]      <------->  [Application Data]
-~~~~
-{: #figure-background-check-model title="Example Exchange with the Background Check Model."}
+Support for the background-check model in TLS will be provided in a 
+future version of the document. 
 
 # TLS Attestation Type Extension
 
@@ -447,19 +449,15 @@ Auth | {CertificateVerify*}
    server_attestation_type extension when carried in the EncryptedExtensions
    message.
 
-# Examples
+# Background-Check Model Examples
 
-## Background-Check Model
+## Cloud Confidential Computing
 
 {::include diagrams/background-check-tls-handshake.txt}
 
-## Passport Model
+## IoT Device Onboarding
 
-{::include diagrams/kat-media-type-discovery.txt}
-
-{::include diagrams/passport-issuance.txt}
- 
-{::include diagrams/passport-tls-handshake.txt}
+TBD.
 
 # Security Considerations {#sec-cons}
 
@@ -481,7 +479,8 @@ RFC EDITOR: PLEASE REMOVE THE THIS SECTION
 
 ## draft-fossati-tls-attestation-02
 
-- Added more diagrams
+- Focus on the background-check model
+- Added examples
 - Updated introduction
 - Moved content to related drafts.
     
