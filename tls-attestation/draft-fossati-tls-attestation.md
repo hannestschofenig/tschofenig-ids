@@ -479,10 +479,10 @@ the ClientHello.
 ## Cloud Confidential Computing
 
 ~~~~
-                                                        .-------------.
-.------------.      .--------.               .--------. | Attestation |
-| Verifier X |      | Client |               | Server | | Service     |
-'--+---------'      '---+----'               '---+----' '--------+----'
+                                             .------------------------.
+.------------.      .--------.               | Server  |  Attestation |
+| Verifier X |      | Client |               |         |  Service     |
+'--+---------'      '---+----'               '---+---------------+----'
    |                    |                        |               |
 .--+-----------.        |                        |               |
 | TLS handshake |       |                        |               |
