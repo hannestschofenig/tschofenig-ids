@@ -430,53 +430,50 @@ omit the evidence_request extension from the ClientHello.
 
 ## Server Hello
 
-   If the server receives a ClientHello that contains the
-   client_attestation_type extension and/or the server_attestation_type
-   extension, then three outcomes are possible:
+If the server receives a ClientHello that contains the
+evidence_proposal extension and/or the evidence_request
+extension, then three outcomes are possible:
 
-   -  The server does not support the extension defined in this
-       document.  In this case, the server returns the EncryptedExtensions
-       without the extensions defined in this document.
+-  The server does not support the extension defined in this
+   document.  In this case, the server returns the EncryptedExtensions
+   without the extensions defined in this document.
 
-   -  The server supports the extension defined in this document, but
-       it does not have any attestation type in common with the client.
-       Then, the server terminates the session with a fatal alert of
-       type "unsupported_certificate".
+-  The server supports the extension defined in this document, but
+   it does not have any evidence type in common with the client.
+   Then, the server terminates the session with a fatal alert of
+   type "unsupported_evidence".
 
-   -  The server supports the extensions defined in this document and
-       has at least one attestation type in common with the client.  In
-       this case, the processing rules described below are followed.
+-  The server supports the extensions defined in this document and
+   has at least one evidence type in common with the client.  In
+   this case, the processing rules described below are followed.
 
-   The client_attestation_type extension in the ClientHello indicates
-   the attestation types the client is able to provide to the server,
-   when requested using a certificate_request message.  If the TLS
-   server wants to request a certificate from the client (via the
-   certificate_request message), it MUST include the
-   client_attestation_type extension in the EncryptedExtensions.  This
-   client_attestation_type extension in the EncryptedExtensions then indicates
-   the content the client is requested to provide in a
-   subsequent Certificate payload.  The value conveyed in the
-   client_attestation_type extension MUST be selected from one of the
-   values provided in the client_attestation_type extension sent in the
-   client hello.  The server MUST also include a certificate_request
-   payload in the EncryptedExtensions message.
+The evidence_proposal extension in the ClientHello indicates
+the evidence types the client is able to provide to the server,
+when challenged using a certificate_request message.  If the
+server wants to request evidence from the client, it MUST include the
+client_attestation_type extension in the EncryptedExtensions. This
+evidence_proposal extension in the EncryptedExtensions then indicates
+what evidence format the client is requested to provide in a
+subsequent Certificate message.  The value conveyed in the
+evidence_proposal extension by the server MUST be selected from one of the
+values provided in the evidence_proposal extension sent in the
+ClientHello.  The server MUST also send a certificate_request
+message.
 
-   If the server does not send a certificate_request payload (for
-   example, because client authentication happens at the application
-   layer or no client authentication is required) or none of the
-   attestation types supported by the client (as indicated in the
-   client_attestation_type extension in the ClientHello) match the
-   server-supported attestation types, then the client_attestation_type
-   payload in the ServerHello MUST be omitted.
+If the server does not send a certificate_request message or none 
+of the evidence types supported by the client (as indicated in the
+evidence_proposal extension in the ClientHello) match the
+server-supported evidence types, then the evidence_proposal
+extension in the ServerHello MUST be omitted.
 
-   The server_attestation_type extension in the ClientHello indicates
-   the types of attestation types the client is able to process when provided
-   by the server in a subsequent Certificate message. With the
-   server_attestation_type extension in the EncryptedExtensions, the TLS server
-   indicates the attestation type carried in the Certificate payload.
-   Note that only a single value is permitted in the 
-   server_attestation_type extension when carried in the EncryptedExtensions
-   message.
+The evidence_request extension in the ClientHello indicates what
+types of evidence the client can challenge the server to return. 
+in a subsequent Certificate message. With the evidence_request 
+extension in the EncryptedExtensions, the server indicates the 
+evidence type carried in the Certificate message sent by the server.
+The evidence type in the evidence_request extension MUST contain 
+a single value selected from the evidence_request extension in 
+the ClientHello.
 
 # Background-Check Model Examples
 
@@ -494,11 +491,20 @@ TBD.
 
 # IANA Considerations
 
-IANA is asked to allocate two new TLS extensions, client_attestation_type
-and server_attestation_type, from the "TLS ExtensionType Values"
-subregistry defined in {{RFC5246}}.  These extensions are used in both
-the client hello message and the server hello message. The
+IANA is asked to allocate two new TLS extensions, evidence_request
+and evidence_proposal, from the "TLS ExtensionType Values"
+subregistry defined in {{RFC5246}}.  These extensions are used in
+the ClientHello and the EncryptedExtensions messages. The
 values carried in these extensions are taken from TBD.
+
+IANA is also requested to allocate a value in the "TLS Alerts"
+registry and populate it with the following entry:
+
+- Value: TBD
+- Description: unsupported_evidence
+- DTLS-OK: Y
+- Reference: [This document]
+- Comment:
 
 --- back
 
