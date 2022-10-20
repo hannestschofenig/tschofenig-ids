@@ -90,9 +90,10 @@ informative:
 Attestation is the process by which an entity produces evidence about itself
 that another party can use to evaluate the trustworthiness of that entity.
 
-In use cases that require the use of remote attestation, such as confidential computing,
-an attester has to convey evidence or attestation results to a relying party. This 
-information exchange may happen at different layers in the protocol stack. 
+In use cases that require the use of remote attestation, such as confidential computing
+or device onboarding, an attester has to convey evidence or attestation results to 
+a relying party. This information exchange may happen at different layers in the 
+protocol stack. 
 
 This specification provides a generic way of passing evidence and attestation results
 in the TLS handshake. Functionality-wise this is accomplished with the help of key
@@ -102,15 +103,21 @@ attestation.
 
 #  Introduction
 
-The Remote ATtestation ProcedureS (RATS)
-architecture defines two basic types of topological patterns to communicate between
-an attester, a relying party, and a verifier, namely the background-check model
-and the passport model. In the background check model, the attester conveys
-evidence to the relying party, which then forwards the evidence to the verifier for 
-appraisal; the verifier computes the attestation result and sends it back to
-the relying party. In the passport model, the attester transmits evidence to
-the  verifier directly and receives attestation results, which are then relayed to the
-relying party. This specification supports both patterns.
+The Remote ATtestation ProcedureS (RATS) architecture defines two basic types 
+of topological patterns to communicate between an attester, a relying party, and
+a verifier, namely the background-check model and the passport model. These two 
+models are fundamentally different and require a different treatment when 
+incorporated into the TLS handshake. For better readability to use different 
+extensions for these two models.
+
+The two models can be summarized as follows:
+
+- In the background check model, the attester conveys evidence to the relying party,
+  which then forwards the evidence to the verifier for appraisal; the verifier 
+  computes the attestation result and sends it back to the relying party.
+- In the passport model, the attester transmits evidence to the  verifier 
+  directly and receives attestation results, which are then relayed to the
+  relying party. This specification supports both patterns.
 
 Several formats for encoding evidence are available, such as 
 - the Entity Attestation Token (EAT) {{I-D.ietf-rats-eat}}, 
@@ -122,9 +129,10 @@ Like-wise, there are different encodings available for attestation results.
 One such encoding, AR4SI {{?I-D.ietf-rats-ar4si}} is being standardized by the RATS 
 working group.
 
-This specification defines how to convey evidence and attestation results in the 
-TLS handshake, such that the details about the attestation technology are agnostic
-to the TLS handshake itself. 
+This version of the specification defines how to support the background check model
+in  the TLS handshake, such that the details about the attestation technology are
+agnostic to the TLS handshake itself. Later versions of the specification will 
+support the passport model as well. 
 
 To give the peer information that the handshake signing key is properly secured, 
 the associated evidence has to be verified by that peer.
@@ -148,9 +156,9 @@ document are to be interpreted as described in RFC 2119 {{RFC2119}}.
 # Overview
 
 The Remote Attestation Procedures (RATS) architecture {{I-D.ietf-rats-architecture}}
-defines two types of interaction models for attestation, 
-namely the passport model and the background-check model. The subsections below
-explain the difference in their interactions.
+defines two types of interaction models for attestation, namely the passport model
+and the background-check model. The subsections below explain the difference in their 
+interactions.
 
 To simplify the description in this section we focus on the use case where the 
 client is the attester and the server is the relying party. Hence, only the
@@ -158,15 +166,13 @@ client_attestation_type extension is discussed. The verifier is not shown in
 the diagrams. The described mechanism allows the roles to be reversed.
 
 As typical with new features in TLS, the client indicates support for the new 
-extension in the ClientHello. The client_attestation_type extension lists the
-supported attestation formats. The server, if it supports the extension and one of the
-attestation formats, it confirms the use of the feature.
-
-The newly introduced extension allows the exchange of nonces. Those nonces are
-used for guaranteeing freshness of the exchanged attestation payloads.
+extension in the ClientHello. The newly introduced extensions allow evidence
+and attstation result formats to be indicated and enable the exchange of nonces.
+Those nonces are used for guaranteeing freshness of the exchanged attestation payloads.
 
 When the attestation extension is successfully negotiated, the content of the
-Certificate message contains an attestation encoded as defined in {{I-D.ftbs-rats-msg-wrap}}.
+Certificate message contains a payload that is encoded based on the wrapper defined 
+in {{I-D.ftbs-rats-msg-wrap}}.
 
 In TLS a client has to demonstrate possession of the private key via the CertificateVerify
 message, when client-based authentication is requested. The attestation payload
@@ -180,76 +186,50 @@ verifier (if evidence was received) or processes it locally (if attestation resu
 were received). Verification of the attestation payloads happens according to the
 defined format.
 
-In the subsections we will look at how the two message pattern fit align with the 
-TLS exchange. 
+# Use of Evidence with the Background Check Model
 
-## Attestation within the Passport Model
+The background check model is described in Section 5.2 of 
+{{I-D.ietf-rats-architecture}} and allows the following modes
+of operation when used with TLS, namely
 
-The passport model is described in Section 5.1 of {{I-D.ietf-rats-architecture}}. A key feature 
-of this model is that the attester interacts with the verification service before initiating 
-the TLS exchange. It sends evidence to the verification service, which then returns the 
-attestation result.
+- TLS client is the attester, 
+- TLS server is the attester, and
+- TLS client and server mutually attest each other. 
 
-The example exchange in {{figure-passport-model}} shows how a client
-provides attestation to the server by utilizing EAT tokens {{I-D.ietf-rats-eat}}.
-With the ClientHello the TLS client needs to indicate that it supports the EAT-based
-attestation format. The TLS server acknowledges support for this attestation type in
-the EncryptedExtensions message. 
+We will show the message exchanges of the three cases in
+sub-sections below. 
 
-In the Certificate message the TLS client transmits the attestation result to the TLS 
-server, in form described in {{I-D.ftbs-rats-msg-wrap}}.
+## TLS Client as Attester 
 
-The TLS client then creates the CertificateVerify message by asking the crypto 
-service to sign the TLS handshake message transcript with the private key. 
-The TLS server then verifies this message by utilizing the corresponding public key.
+In this use case the TLS client, as the attester, is challenged by the TLS
+server to provide evidence. The TLS client is the attester and the the TLS
+server acts as a relying party. The TLS server needs to provide a nonce
+in the EncryptedExtensions to the TLS client so that the attestation
+service can feed the nonce into the generation of the evidence. The TLS 
+server, when receiving the evidence, will have to contact the verifier 
+(which is not shown in the diagram). 
 
-~~~~
-    Client                                           Server
-
-Key  ^ ClientHello
-Exch | + client_attestation_type(eat)
-     |
-     |
-     v                         -------->
-                                                  ServerHello ^ KeyExch
-                                        {EncryptedExtensions} ^ Server
-                               + client_attestation_type(eat) |
-                                         {CertificateRequest} v Params
-                                                {Certificate} ^
-                                          {CertificateVerify} | Auth
-                                                   {Finished} v
-                               <--------  [Application Data*]
-     ^ {Certificate}
-Auth | {CertificateVerify}
-     v {Finished}              -------->
-       [Application Data]      <------->  [Application Data]
-~~~~
-{: #figure-passport-model title="Example Exchange with the Passport Model."}
-
-
-## Attestation within the Background Check Model
-
-The background check model is described in Section 5.2 of {{I-D.ietf-rats-architecture}}. 
-
-The message exchange of the background check model differs from the passport 
-model because the TLS server needs to provide a nonce in the ServerHello to the 
-TLS client so that the attestation service can feed the nonce into the generation
-of the PAT. The TLS server, when receiving the attestation payload, will have to
-contact the verification service.
+An example of this flow can be found in device onboarding where the 
+client initiates the communication with cloud infrastructure to 
+get credentials, firmware and other configuration data provisioned
+to the device. For the server to consider the device genuine it needs
+to present evidence.
 
 ~~~~
        Client                                           Server
 
 Key  ^ ClientHello
-Exch | + client_attestation_type(eat)
-     |
-     |
+Exch | + evidence_proposal
+     | + key_share*
+     | + signature_algorithms*
      v                         -------->
                                                   ServerHello  ^ Key
-                                 client_attestation_type(eat)  | Exch
-                                                      + nonce  v
+                                                 + key_share*  | Exch
+                                                               v
                                         {EncryptedExtensions}  ^  Server
-                                         {CertificateRequest}  v  Params
+                                          + evidence_proposal  |  Params
+                                                      (nonce)  |
+                                         {CertificateRequest}  v  
                                                 {Certificate}  ^
                                           {CertificateVerify}  | Auth
                                                    {Finished}  v
@@ -259,41 +239,95 @@ Auth | {CertificateVerify}
      v {Finished}              -------->
        [Application Data]      <------->  [Application Data]
 ~~~~
-{: #figure-background-check-model title="Example Exchange with the Background Check Model."}
+{: #figure-background-check-model1 title="TLS Client Providing Evidence to TLS Server."}
 
-# TLS Attestation Type Extension
 
-This document defines a new extension to carry the attestation types.
-The extension is conceptually similiar to the 'server_certificate_type'
-and the 'server_certificate_type' defined by {{RFC7250}} but is
-enhanced to convey nonces.
+## TLS Server as Attester
+
+In this use case the TLS client challenges the TLS server to present evidence. 
+The TLS server acts as an attester while the TLS client is the relying party. 
+The TLS client, when receiving the evidence, will have to contact the verifier 
+(which is not shown in the diagram).
+
+An example of this flow can be found in confidential computing where 
+a compute workload is only submitted to the server infrastructure 
+once the client/user is ensured that the confidential computing platform is
+genuine. 
 
 ~~~~
+       Client                                           Server
+
+Key  ^ ClientHello
+Exch | + evidence_request
+     |   (nonce)
+     | + key_share*
+     | + signature_algorithms*
+     v                         -------->
+                                                  ServerHello  ^ Key
+                                                 + key_share*  | Exch
+                                                               v
+                                        {EncryptedExtensions}  ^  Server
+                                          + evidence_request   |  Params
+                                                               |
+                                         {CertificateRequest}  v  
+                                                {Certificate}  ^
+                                          {CertificateVerify}  | Auth
+                                                   {Finished}  v
+                               <--------  [Application Data*]
+     ^ {Certificate}
+Auth | {CertificateVerify}
+     v {Finished}              -------->
+       [Application Data]      <------->  [Application Data]
+~~~~
+{: #figure-background-check-model1 title="TLS Client Providing Evidence to TLS Server."}
+
+# Evidence Extension (Background Check Model)
+
+This document defines two new extensions, the evidence_request and 
+the evidence_proposal, for use with the background check model. 
+
+The EvidenceType structure encodes either a media type or as a
+content format. The media type is a string-based identifier 
+while the content format uses a number. The former is more 
+flexible and does not necessarily require a registration 
+through IANA while the latter is more efficient over-the-wire.
+
+~~~~
+   enum { NUMERIC(0), STRING(1) } encodingType;
+
+   struct {
+        encodingType type;
+        select (encodingType) {
+            case NUMERIC:
+              uint16 content_format;
+            case STRING:
+               opaque media_type<0..2^16-1>;
+        };
+   } EvidenceType;
+      
    struct {
            select(ClientOrServerExtension) {
                case client:
-                 CertificateType client_attestation_types<1..2^8-1>;
-                 opaque nonce<0..2^16-1>;
+                 EvidenceType supported_evidence_types<1..2^8-1>;
+                 opaque nonce<0..2^8-1>;
                  
                case server:
-                 CertificateType client_attestation_type;
-                 opaque nonce<0..2^16-1>;                 
+                 EvidenceType selected_evidence_type;
            }
-   } ClientAttestationTypeExtension;
+   } evidenceRequestTypeExtension;
 
    struct {
            select(ClientOrServerExtension) {
                case client:
-                 CertificateType server_attestation_types<1..2^8-1>;
-                 opaque nonce<0..2^16-1>;                 
+                 EvidenceType supported_evidence_types<1..2^8-1>;
 
                case server:
-                 CertificateType server_attestation_type;
-                 opaque nonce<0..2^16-1>;                                  
+                 EvidenceType selected_evidence_type;
+                 opaque nonce<0..2^8-1>;
            }
-   } ServerAttestationTypeExtension;
+   } evidenceProposalTypeExtension;
 ~~~~
-{: #figure-attestation-type title="AttestationTypeExtension Structure."}
+{: #figure-attestation-type title="TLS Structure for Evidence."}
 
 The Certificate payload is used as a container, as shown in 
 {{figure-certificate}}, and follows the model of {{RFC8446}}.
@@ -305,9 +339,9 @@ The Certificate payload is used as a container, as shown in
                 /* From RFC 7250 ASN.1_subjectPublicKeyInfo */
                 opaque ASN1_subjectPublicKeyInfo<1..2^24-1>;
 
-                /* attestation type introduced by this spec */
+                /* payload used to convey evidence */
               case attestation:
-                opaque attest<1..2^24-1>;
+                opaque evidence<1..2^24-1>;
               
               case X509:
                 opaque cert_data<1..2^24-1>;
@@ -322,17 +356,14 @@ The Certificate payload is used as a container, as shown in
 ~~~~
 {: #figure-certificate title="Certificate Message."}
 
-The encoding of the attestation structure is defined in
-{{I-D.ftbs-rats-msg-wrap}}.
+The encoding of the payload that is conveyed by the evidence 
+structure is defined in {{I-D.ftbs-rats-msg-wrap}}.
 
 # TLS Client and Server Handshake Behavior {#behavior}
 
-   This specification extends the ClientHello and the EncryptedExtensions
-   messages, according to {{RFC8446}}.
-
-   The high-level message exchange in {{figure-overview}} shows the
-   client_attestation_type and server_attestation_type extensions added
-   to the ClientHello and the EncryptedExtensions messages.
+The high-level message exchange in {{figure-overview}} shows the
+client_attestation_type and server_attestation_type extensions added
+to the ClientHello and the EncryptedExtensions messages.
 
 ~~~~
        Client                                           Server
