@@ -478,19 +478,15 @@ Auth | {CertificateVerify*}
    server_attestation_type extension when carried in the EncryptedExtensions
    message.
 
-# Examples
+# Background-Check Model Examples
 
-## Background-Check Model
+## Cloud Confidential Computing
 
 {::include diagrams/background-check-tls-handshake.txt}
 
-## Passport Model
+## IoT Device Onboarding
 
-{::include diagrams/kat-media-type-discovery.txt}
-
-{::include diagrams/passport-issuance.txt}
- 
-{::include diagrams/passport-tls-handshake.txt}
+TBD.
 
 # Security Considerations {#sec-cons}
 
