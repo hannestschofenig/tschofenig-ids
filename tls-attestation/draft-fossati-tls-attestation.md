@@ -157,7 +157,7 @@ document are to be interpreted as described in RFC 2119 {{RFC2119}}.
 
 The Remote Attestation Procedures (RATS) architecture {{I-D.ietf-rats-architecture}}
 defines two types of interaction models for attestation, namely the passport model
-and the background-check model. The subsections below explain the difference in their 
+and the background check model. The subsections below explain the difference in their 
 interactions.
 
 To simplify the description in this section we focus on the use case where the 
@@ -362,7 +362,7 @@ structure is defined in {{I-D.ftbs-rats-msg-wrap}}.
 # TLS Client and Server Handshake Behavior {#behavior}
 
 The high-level message exchange in {{figure-overview}} shows the
-client_attestation_type and server_attestation_type extensions added
+evidence_proposal and evidence_request extensions added
 to the ClientHello and the EncryptedExtensions messages.
 
 ~~~~
@@ -373,15 +373,15 @@ Exch | + key_share*
      | + signature_algorithms*
      | + psk_key_exchange_modes*
      | + pre_shared_key*
-     | + client_attestation_type
-     v + server_attestation_type
+     | + evidence_proposal
+     v + evidence_request
      -------->
                                                   ServerHello  ^ Key
                                                  + key_share*  | Exch
                                             + pre_shared_key*  v
                                         {EncryptedExtensions}  ^  Server
-                                    + client_attestation_type  |
-                                    + server_attestation_type                                        
+                                          + evidence_proposal  |
+                                           + evidence_request  |                                     
                                         {CertificateRequest*}  v  Params
                                                {Certificate*}  ^
                                          {CertificateVerify*}  | Auth
@@ -396,37 +396,37 @@ Auth | {CertificateVerify*}
 
 ## Client Hello
 
-   In order to indicate the support of attestation types, clients include
-   the client_attestation_type and/or the server_attestation_type
-   extensions in the ClientHello.
+To indicate the support for passing evidence in TLS following the 
+background check model, clients include the evidence_proposal 
+and/or the evidence_request extensions in the ClientHello.
 
-   The client_attestation_type extension in the ClientHello indicates
-   the attestation types the client is able to provide to the server,
-   when requested using a CertificateRequest message.
+The evidence_proposal extension in the ClientHello indicates
+the evidence types the client is able to provide to the server,
+when requested using a CertificateRequest message.
 
-   The server_attestation_type extension in the ClientHello indicates
-   the types of attestation types the client is able to process when 
-   provided by the server in a subsequent Certificate payload.
+The evidence_request extension in the ClientHello indicates
+the types of evidence types the client challenges the server to 
+provide in a subsequent Certificate payload.
 
-   The client_attestation_type and server_attestation_type extensions
-   sent in the ClientHello each carry a list of supported attestation
-   types, sorted by client preference.  When the client supports only
-   one attestation type, it is a list containing a single element.
+The evidence_proposal and evidence_request extensions sent in
+the ClientHello each carry a list of supported evidence types,
+sorted by preference.  When the client supports only one evidence
+type, it is a list containing a single element.
 
-   The TLS client MUST omit attestation types from the
-   client_attestation_type extension in the ClientHello if it is not
-   equipped with the corresponding attestation functionality, or if 
-   it is not configured to use it with the given TLS
-   server.  If the client has no attestation types to send in
-   the ClientHello it MUST omit the client_attestation_type extension 
-   in the ClientHello.
+The client MUST omit evidence types from the evidence_proposal 
+extension in the ClientHello if it cannot respond to a request
+from the server to present a proposed evidence type, or if 
+the cient is not configured to use the proposed evidence type 
+with the given server.  If the client has no evidenence types 
+to send in the ClientHello it MUST omit the evidence_proposal
+extension in the ClientHello.
 
-   The TLS client MUST omit attestation types from the
-   server_attestation_type extension in the ClientHello if it is not
-   equipped with the attestation verification functionality.  If the 
-   client has no attestation types to send in the ClientHello it
-   MUST omit the entire server_attestation_type extension from the
-   ClientHello.
+The client MUST omit evidence types from the evidence_request
+extension in the ClientHello if it is not able to pass the 
+indicated verification type to a verifier.  If the client does 
+not act as a relying party with regards to evidence processing
+(as defined in the RATS architecture) then the client MUST 
+omit the evidence_request extension from the ClientHello.
 
 ## Server Hello
 
@@ -508,7 +508,8 @@ RFC EDITOR: PLEASE REMOVE THE THIS SECTION
 
 ## draft-fossati-tls-attestation-02
 
-- Added more diagrams
+- Focus on the background check model
+- Added examples
 - Updated introduction
 - Moved content to related drafts.
     
