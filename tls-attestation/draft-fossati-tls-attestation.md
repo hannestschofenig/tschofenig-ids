@@ -84,7 +84,13 @@ informative:
     date: November 2019
   RFC7250:
   I-D.ietf-rats-architecture:
-
+  TLS-Ext-Registry:
+    target: http://www.iana.org/assignments/tls-extensiontype-values
+    title: Transport Layer Security (TLS) Extensions
+    author:
+      -
+        org: IANA
+    date: October 2022
 --- abstract
 
 Attestation is the process by which an entity produces evidence about itself
@@ -160,31 +166,24 @@ defines two types of interaction models for attestation, namely the passport mod
 and the background check model. The subsections below explain the difference in their 
 interactions.
 
-To simplify the description in this section we focus on the use case where the 
-client is the attester and the server is the relying party. Hence, only the
-client_attestation_type extension is discussed. The verifier is not shown in 
-the diagrams. The described mechanism allows the roles to be reversed.
-
 As typical with new features in TLS, the client indicates support for the new 
 extension in the ClientHello. The newly introduced extensions allow evidence
-and attstation result formats to be indicated and enable the exchange of nonces.
-Those nonces are used for guaranteeing freshness of the exchanged attestation payloads.
+and nonces to be exchanged. The nonces are used for guaranteeing freshness of
+the exchanged evidence.
 
-When the attestation extension is successfully negotiated, the content of the
+When the evidence extension is successfully negotiated, the content of the
 Certificate message contains a payload that is encoded based on the wrapper defined 
 in {{I-D.ftbs-rats-msg-wrap}}.
 
 In TLS a client has to demonstrate possession of the private key via the CertificateVerify
 message, when client-based authentication is requested. The attestation payload
 must contain a key attestation token, which associates a private key with the
-attestation information. More information about the key attestation token format can 
-be found in {{kat}}.
+attestation information. An example of a key attestation token format utilizing 
+the EAT-format can be found in {{kat}}.
 
-The recipient of the Certificate and the CertificateVerify messages first extracts 
-the attestation payload from the Certificate message and either relays it to the 
-verifier (if evidence was received) or processes it locally (if attestation results
-were received). Verification of the attestation payloads happens according to the
-defined format.
+The recipient extracts evidence from the Certificate message and relays it to the 
+verifier to obtain attestation results. Subsequently, the attested key is used
+to verify the CertificateVerify message.
 
 # Use of Evidence with the Background Check Model
 
@@ -356,8 +355,8 @@ The Certificate payload is used as a container, as shown in
 ~~~~
 {: #figure-certificate title="Certificate Message."}
 
-The encoding of the payload that is conveyed by the evidence 
-structure is defined in {{I-D.ftbs-rats-msg-wrap}}.
+The encoding of the evidence structure is defined in
+{{I-D.ftbs-rats-msg-wrap}}.
 
 # TLS Client and Server Handshake Behavior {#behavior}
 
@@ -491,13 +490,17 @@ TBD.
 
 # IANA Considerations
 
+## TLS Extensions
+
 IANA is asked to allocate two new TLS extensions, evidence_request
 and evidence_proposal, from the "TLS ExtensionType Values"
 subregistry defined in {{RFC5246}}.  These extensions are used in
 the ClientHello and the EncryptedExtensions messages. The
 values carried in these extensions are taken from TBD.
 
-IANA is also requested to allocate a value in the "TLS Alerts"
+## TLS Alerts
+
+IANA is requested to allocate a value in the "TLS Alerts"
 registry and populate it with the following entry:
 
 - Value: TBD
@@ -506,6 +509,16 @@ registry and populate it with the following entry:
 - Reference: [This document]
 - Comment:
 
+## TLS Certificate Types
+
+IANA is requested to allocate a new value in the "TLS Certificate Types"
+subregistry of the "Transport Layer Security (TLS) Extensions"
+registry [TLS-Ext-Registry], as follows:
+
+-   Value: TBD2
+-   Description: Attestation
+-   Reference: [This document]
+   
 --- back
 
 # History
