@@ -278,7 +278,7 @@ Auth | {CertificateVerify}
      v {Finished}              -------->
        [Application Data]      <------->  [Application Data]
 ~~~~
-{: #figure-background-check-model1 title="TLS Client Providing Evidence to TLS Server."}
+{: #figure-background-check-model2 title="TLS Client Providing Evidence to TLS Server."}
 
 # Evidence Extension (Background Check Model)
 
