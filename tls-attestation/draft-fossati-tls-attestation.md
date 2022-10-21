@@ -4,10 +4,10 @@ abbrev: Attestation in TLS/DTLS
 docname: draft-fossati-tls-attestation-02
 category: std
 
-ipr: pre5378Trust200902
+ipr: trust200902
 area: Security
 workgroup: TLS
-keyword: Internet-Draft
+keyword: [ attestation, RATS, TLS ]
 
 stand_alone: yes
 pi:
@@ -58,13 +58,7 @@ normative:
   RFC2119:
   RFC8446:
   I-D.ftbs-rats-msg-wrap:
-  kat:
-    target: draft-fossati-rats-kat
-    title: Key Attestation Token
-    author:
-      -
-        org: 
-    date: October 2022  
+  I-D.bft-rats-kat:
 informative:
   I-D.ietf-rats-eat:
   RFC5246:
@@ -82,15 +76,8 @@ informative:
       -
         org: Trusted Computing Group
     date: November 2019
-  RFC7250:
   I-D.ietf-rats-architecture:
-  TLS-Ext-Registry:
-    target: http://www.iana.org/assignments/tls-extensiontype-values
-    title: Transport Layer Security (TLS) Extensions
-    author:
-      -
-        org: IANA
-    date: October 2022
+  TLS-Ext-Registry: IANA.tls-extensiontype-values
 --- abstract
 
 Attestation is the process by which an entity produces evidence about itself
@@ -179,7 +166,7 @@ In TLS a client has to demonstrate possession of the private key via the Certifi
 message, when client-based authentication is requested. The attestation payload
 must contain a key attestation token, which associates a private key with the
 attestation information. An example of a key attestation token format utilizing 
-the EAT-format can be found in {{kat}}.
+the EAT-format can be found in {{I-D.bft-rats-kat}}.
 
 The recipient extracts evidence from the Certificate message and relays it to the 
 verifier to obtain attestation results. Subsequently, the attested key is used
@@ -478,7 +465,7 @@ the ClientHello.
 
 ## Cloud Confidential Computing
 
-~~~~
+~~~~aasvg
                                              .------------------------.
 .----------.        .--------.               | Server  |  Attestation |
 | Verifier |        | Client |               |         |  Service     |
@@ -554,77 +541,76 @@ the ClientHello.
 
 ## IoT Device Onboarding
 
-~~~~
-.--------------------------.              .---------.
-| Attestation   |  Client  |              | Server  |      .----------.
-| Service       |          |              |         |      | Verifier |
-'--------------------------'              '---+-----'      '-----+----'
-   |                |                         |                  |
-.--+-----------.    |                         |                  |
-| TLS handshake |   |                         |                  |
-+--+------------+---+-------------------------+------------------+---.
-|  |                |                         |                  |    |
-|  |                | ClientHello             |                  |    |
-|  |                |  {...}                  |                  |    |
-|  |                |  evidence_proposal(     |                  |    |
-|  |                |    types(a,b,c)         |                  |    |
-|  |                |  )                      |                  |    |
-|  |                |------------------------>|                  |    |
-|  |                |                         |                  |    |
-|  +                | ServerHello             | POST /newSession |    |
-|  |                |  {...}                  |----------------->|    |
-|  |                |                         | 201 Created      |    |
-|  |                |                         | Location: /76839 |    |
-|  |                |                         | Body: {          |    |
-|  |                |                         |   nonce,         |    |
-|  |                | EncryptedExtensions     |   types(a,b,c)   |    |
-|  |                |  {...}                  | }                |    |
-|  |                |  evidence_proposal(     |<-----------------|    |
-|  |                |    nonce,               |                  |    |
-|  |                |    type(a)              |                  |    |
-|  |                |  )                      |                  |    |
-|  |                | CertificateRequest      |                  |    |
-|  |                | Certificate             |                  |    |
-|  |  attest_key(   | CertificateVerify       |                  |    |
-|  |    nonce,      | Finished                |                  |    |
-|  |    TIK         |<------------------------|                  |    |
-|  |  )             |                         |                  |    |
-|  |<---------------|                         |                  |    |
-|  |  CAB(KAT, PAT) |                         |                  |    |
-|  |--------------->|                         |                  |    |
-|  |  sign(TIK,hs)  |                         |                  |    |
-|  |<---------------|                         |                  |    |
-|  |      sig       |                         |                  |    |
-|  |--------------->| Certificate(KAT,PAT)    |                  |    |
-|  |                | CertificateVerify(sig)  |                  |    |
-|  |                | Finished                |                  |    |
-|  |                |------------------------>|                  |    |
-|  |                |                         |                  |    |
-|  |                |                         | POST /76839A9E   |    |
-|  |                |                         | Body: {          |    |
-|  |                |                         |   type(a),       |    |
-|  |                |                         |   CAB            |    |
-|  |                |                         | }                |    |
-|  |                |                         |----------------- |    |
-|  |                |                         | Body: {          |    |
-|  |                |                         |   att-result:AR{ |    |
-|  |                |                         | }               >|    |
-|  |                |                         |<---------------- |    |
-|  |                |                         |                 }|    |
-|  |                |                         +---.              |    |
-|  |                |                         |    | verify AR{}-|    |
-|  |                |                         |<--'              |    |
-|  |                |                         +---.              |    |
-|  |                |                         |    | verify sig  |    |
-|  |                |                         |<--'              |    |
-|  |                |                         |                  |    |
-|  |                |                         |                  |    |
-|  |                |                         |                  |    |
-|  |                |                         |                  |    |
-'--+----------------+-------------------------+------------------+---'
-                    |    application data     |
-                    |<----------------------->|
-                    |                         |
+~~~~aasvg
+.--------------------------.
+| Attestation   |  Client  |            .--------.         .----------.
+| Service       |          |            | Server |         | Verifier |
+'--+----------------+------'            '----+---'         '-----+----'
+   |                |                        |                   |
+.--+-----------.    |                        |                   |
+| TLS handshake |   |                        |                   |
++--+------------+---+------------------------+-------------------+---.
+|  |                |                        |                   |    |
+|  |                | ClientHello            |                   |    |
+|  |                |  {...}                 |                   |    |
+|  |                |  evidence_proposal(    |                   |    |
+|  |                |    types(a,b,c)        |                   |    |
+|  |                |  )                     |                   |    |
+|  |                +----------------------->|                   |    |
+|  |                |                        |                   |    |
+|  +                | ServerHello            | POST /newSession  |    |
+|  |                |  {...}                 +------------------>|    |
+|  |                |                        | 201 Created       |    |
+|  |                |                        | Location: /76839  |    |
+|  |                |                        | Body: {           |    |
+|  |                |                        |   nonce,          |    |
+|  |                | EncryptedExtensions    |   types(a,b,c)    |    |
+|  |                |  {...}                 | }                 |    |
+|  |                |  evidence_proposal(    |<------------------+    |
+|  |                |    nonce,              |                   |    |
+|  |                |    type(a)             |                   |    |
+|  |                |  )                     |                   |    |
+|  |                | CertificateRequest     |                   |    |
+|  |                | Certificate            |                   |    |
+|  |  attest_key(   | CertificateVerify      |                   |    |
+|  |    nonce,      | Finished               |                   |    |
+|  |    TIK         |<-----------------------+                   |    |
+|  |  )             |                        |                   |    |
+|  |<---------------+                        |                   |    |
+|  |  CAB(KAT, PAT) |                        |                   |    |
+|  +--------------->|                        |                   |    |
+|  |  sign(TIK,hs)  |                        |                   |    |
+|  |<---------------+                        |                   |    |
+|  |      sig       |                        |                   |    |
+|  +--------------->| Certificate(KAT,PAT)   |                   |    |
+|  |                | CertificateVerify(sig) |                   |    |
+|  |                | Finished               |                   |    |
+|  |                +----------------------->|                   |    |
+|  |                |                        |                   |    |
+|  |                |                        | POST /76839A9E    |    |
+|  |                |                        | Body: {           |    |
+|  |                |                        |   type(a),        |    |
+|  |                |                        |   CAB             |    |
+|  |                |                        | }                 |    |
+|  |                |                        +------------------>|    |
+|  |                |                        | Body: {           |    |
+|  |                |                        |  att-result: AR{} |    |
+|  |                |                        | }                 |    |
+|  |                |                        |<------------------+    |
+|  |                |                        +---.               |    |
+|  |                |                        |    | verify AR{}  |    |
+|  |                |                        |<--'               |    |
+|  |                |                        +---.               |    |
+|  |                |                        |    | verify sig   |    |
+|  |                |                        |<--'               |    |
+|  |                |                        |                   |    |
+|  |                |                        |                   |    |
+|  |                |                        |                   |    |
+|  |                |                        |                   |    |
+'--+----------------+------------------------+-------------------+---'
+                    |    application data    |
+                    |<---------------------->|
+                    |                        |
 ~~~~
 {: #figure-iot-example title="Example Exchange with Client as Attester."}
 
