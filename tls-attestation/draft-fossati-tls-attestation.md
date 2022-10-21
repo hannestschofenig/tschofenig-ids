@@ -500,7 +500,7 @@ the ClientHello.
 |  |                    |  {...}                 |               |    |
 |  |                    |  evidence_request(     |               |    |
 |  |                    |    nonce,              |               |    |
-|  |                    |    types(x,b,c)        |               |    |
+|  |                    |    types(a,b,c)        |               |    |
 |  |                    |  )                     |               |    |
 |  |                    +----------------------->|               |    |
 |  |                    | ServerHello            |               |    |
@@ -550,11 +550,84 @@ the ClientHello.
                         |<---------------------->|
                         |                        |
 ~~~~
-{: #figure-overview title="Cloud Confidential Computing Example Exchange."}
+{: #figure-cc-example title="Example Exchange with Server as Attester."}
 
 ## IoT Device Onboarding
 
-TBD.
+~~~~
+.--------------------------.              .---------.
+| Attestation   |  Client  |              | Server  |      .----------.
+| Service       |          |              |         |      | Verifier |
+'--------------------------'              '---+-----'      '-----+----'
+   |                |                         |                  |
+.--+-----------.    |                         |                  |
+| TLS handshake |   |                         |                  |
++--+------------+---+-------------------------+------------------+---.
+|  |                |                         |                  |    |
+|  |                | ClientHello             |                  |    |
+|  |                |  {...}                  |                  |    |
+|  |                |  evidence_proposal(     |                  |    |
+|  |                |    types(a,b,c)         |                  |    |
+|  |                |  )                      |                  |    |
+|  |                |------------------------>|                  |    |
+|  |                |                         |                  |    |
+|  +                | ServerHello             | POST /newSession |    |
+|  |                |  {...}                  |----------------->|    |
+|  |                |                         | 201 Created      |    |
+|  |                |                         | Location: /76839 |    |
+|  |                |                         | Body: {          |    |
+|  |                |                         |   nonce,         |    |
+|  |                | EncryptedExtensions     |   types(a,b,c)   |    |
+|  |                |  {...}                  | }                |    |
+|  |                |  evidence_proposal(     |<-----------------|    |
+|  |                |    nonce,               |                  |    |
+|  |                |    type(a)              |                  |    |
+|  |                |  )                      |                  |    |
+|  |                | CertificateRequest      |                  |    |
+|  |                | Certificate             |                  |    |
+|  |  attest_key(   | CertificateVerify       |                  |    |
+|  |    nonce,      | Finished                |                  |    |
+|  |    TIK         |<------------------------|                  |    |
+|  |  )             |                         |                  |    |
+|  |<---------------|                         |                  |    |
+|  |  CAB(KAT, PAT) |                         |                  |    |
+|  |--------------->|                         |                  |    |
+|  |  sign(TIK,hs)  |                         |                  |    |
+|  |<---------------|                         |                  |    |
+|  |      sig       |                         |                  |    |
+|  |--------------->| Certificate(KAT,PAT)    |                  |    |
+|  |                | CertificateVerify(sig)  |                  |    |
+|  |                | Finished                |                  |    |
+|  |                |------------------------>|                  |    |
+|  |                |                         |                  |    |
+|  |                |                         | POST /76839A9E   |    |
+|  |                |                         | Body: {          |    |
+|  |                |                         |   type(a),       |    |
+|  |                |                         |   CAB            |    |
+|  |                |                         | }                |    |
+|  |                |                         |----------------- |    |
+|  |                |                         | Body: {          |    |
+|  |                |                         |   att-result:AR{ |    |
+|  |                |                         | }               >|    |
+|  |                |                         |<---------------- |    |
+|  |                |                         |                 }|    |
+|  |                |                         +---.              |    |
+|  |                |                         |    | verify AR{}-|    |
+|  |                |                         |<--'              |    |
+|  |                |                         +---.              |    |
+|  |                |                         |    | verify sig  |    |
+|  |                |                         |<--'              |    |
+|  |                |                         |                  |    |
+|  |                |                         |                  |    |
+|  |                |                         |                  |    |
+|  |                |                         |                  |    |
+'--+----------------+-------------------------+------------------+---'
+                    |    application data     |
+                    |<----------------------->|
+                    |                         |
+~~~~
+{: #figure-iot-example title="Example Exchange with Client as Attester."}
+
 
 # Security Considerations {#sec-cons}
 
