@@ -466,10 +466,10 @@ the ClientHello.
 ## Cloud Confidential Computing
 
 In this example, a confidential workload is executed on computational
-resources hosted at a cloud service provider.  This is a typical scenario
-for secure, privacy-preserving multiparty computation, including
-anti-money laundering, drug development in healthcare, contact tracing
-in pandemic times, etc.
+resources hosted at a cloud service provider.  This is a typical
+scenario for secure, privacy-preserving multiparty computation,
+including anti-money laundering, drug development in healthcare, contact
+tracing in pandemic times, etc.
 
 In such scenarios, the users (e.g., the party providing the data input
 for the computation, the consumer of the computed results, the party
@@ -488,11 +488,11 @@ The protocol flow, alongside all the involved actors, is captured in
 party) while the TLS server is co-located with the TEE-hosted
 confidential workload (the attester).
 
-The client initiates a verification session with a trusted verifier,
-which returns the kinds of evidence it understands as well as a nonce
-that will be used to challenge the attester.
+The flow starts with the client initiating a verification session with a
+trusted verifier.  The verifier returns the kinds of evidence it
+understands and a nonce that will be used to challenge the attester.
 
-The client initiates the TLS handshake with the server by supplying the
+The client starts the TLS handshake with the server by supplying the
 attestation-related parameters it has obtained from the verifier.  If
 the server supports one of the offered evidence types, it will echo it
 in the specular extension and proceed by invoking the local API to
@@ -502,7 +502,7 @@ then signs the handshake transcript with the (attested) identity key,
 and sends the attestation evidence together with the signature over to
 the client.
 
-The client forwards the attestation evidence to its verifier using the
+The client forwards the attestation evidence to the verifier using the
 previously established session, obtains the attestation result and
 checks it is acceptable according to its local policy.  If so, it
 proceeds and verifies the handshake signature using the corresponding
