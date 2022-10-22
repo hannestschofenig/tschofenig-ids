@@ -469,7 +469,7 @@ In this example, a confidential workload is executed on computational
 resources hosted at a cloud service provider.  This is a typical scenario
 for secure, privacy-preserving  multiparty computation, including
 anti-money laundering, drug development in healthcare, contact tracing
-in a pandemic, etc.
+in pandemic times, etc.
 
 In such scenarios, the users (e.g., the party providing the data input
 for the computation, the consumer of the computed results, the party
@@ -480,39 +480,40 @@ goals:
 * Making sure that the platform on which the workload executes is a
   Trusted Execution Environment (TEE) with the expected features.
 
-The typical arrangement is to verify that the two requirements are met
-at the same time the secure channel is established.
+The convenient arrangement is to verify that the two requirements are
+met at the same time the secure channel is established.
 
-The protocol flow, alongside the involved actors, is captured in
+The protocol flow, alongside all the involved actors, is captured in
 {{figure-cc-example}} where the TLS client is the user while the TLS
 server is co-located with the TEE-hosted confidential workload.
 
 The client initiates a verification session with a trusted verifier,
-which returns the types of evidence it understands as well as a nonce
+which returns the kinds of evidence it understands as well as a nonce
 that will be used to challenge the attester.
 
 The client initiates the TLS handshake with the server by supplying the
 attestation-related parameters it has obtained from the verifier.  If
 the server supports one of the offered evidence types, it will echo it
-in the specular extension and proceed with requesting the key
-attestation that binds the identity key with the workload and platform
-identity and security state.  It will then sign the handshake transcript
-with the attested identity key and send the attestation evidence and
-the signature over the handshake over to the client.
+in the specular extension and proceed by invoking the local API to
+request the key attestation.  The returned evidence binds the identity
+key with the workload and platform identity and security state.  The
+client will then sign the handshake transcript with the attested
+identity key and send the attestation evidence and the signature over to
+the client.
 
-The client forwards the attestation evidence to its verifier, checks
-that the returned attestation result is acceptable according to its
-local policy and, if so, it proceeds to verify the handshake signature
-using the corresponding public key (e.g., using the PoP key in the KAT
-evidence {{I-D.bft-rats-kat}}).
+The client forwards the attestation evidence to its verifier on the
+previously established session, checks that the returned attestation
+result is acceptable according to its local policy and, if so, proceeds
+to verify the handshake signature using the corresponding public key
+(e.g., using the PoP key in the KAT evidence {{I-D.bft-rats-kat}}).
 
 The attestation evidence verification combined with the verification of
-the CertificateVerify signature provides confirmation that the
-presented cryptographic identity is bound to the workload and platform
-identity, and that the workload and platform are trustworthy.
-
-After the handshake is finalized the client can trust the workload to
-provide the requested confidential computing properties needed.
+the CertificateVerify signature provides confirmation that the presented
+cryptographic identity is bound to the workload and platform identity,
+and that the workload and platform are trustworthy.  Therefore, after
+the handshake is finalized, the client can trust the workload on the
+other side of the established secure channel to provide the requested
+confidential computing properties.
 
 ~~~~aasvg
                                              .------------------------.
