@@ -61,7 +61,6 @@ normative:
   I-D.bft-rats-kat:
 informative:
   I-D.ietf-rats-eat:
-  RFC5246:
   TPM1.2:
     target: https://trustedcomputinggroup.org/resource/tpm-main-specification/
     title: TPM Main Specification Level 2 Version 1.2, Revision 116
@@ -78,6 +77,8 @@ informative:
     date: November 2019
   I-D.ietf-rats-architecture:
   TLS-Ext-Registry: IANA.tls-extensiontype-values
+  TLS-Param-Registry: IANA.tls-parameters
+
 --- abstract
 
 Attestation is the process by which an entity produces evidence about itself
@@ -523,18 +524,19 @@ confidential computing properties.
 | Verifier |        | Client |               |         |  Service     |
 '--+-------'        '---+----'               '---+---------------+----'
    |                    |                        |               |
+   |  POST /newSession  |                        |               |
+   |<-------------------+                        |               |
+   | 201 Created        |                        |               |
+   | Location: /76839A9 |                        |               |
+   | Body: {            |                        |               |
+   |   nonce,           |                        |               |
+   |   supp-media-types |                        |               |
+   | }                  |                        |               |
+   +------------------->|                        |               |
+   |                    |                        |               |
 .--+-----------.        |                        |               |
 | TLS handshake |       |                        |               |
 +--+------------+-------+------------------------+---------------+---.
-|  |  POST /newSession  |                        |               |    |
-|  |<-------------------+                        |               |    |
-|  | 201 Created        |                        |               |    |
-|  | Location: /76839A9 |                        |               |    |
-|  | Body: {            |                        |               |    |
-|  |   nonce,           |                        |               |    |
-|  |   supp-media-types |                        |               |    |
-|  | }                  |                        |               |    |
-|  +------------------->|                        |               |    |
 |  |                    | ClientHello            |               |    |
 |  |                    |  {...}                 |               |    |
 |  |                    |  evidence_request(     |               |    |
@@ -718,14 +720,16 @@ TBD.
 
 IANA is asked to allocate two new TLS extensions, evidence_request
 and evidence_proposal, from the "TLS ExtensionType Values"
-subregistry defined in {{RFC5246}}.  These extensions are used in
+subregistry of the "Transport Layer Security (TLS) Extensions"
+registry {{TLS-Ext-Registry}}.  These extensions are used in
 the ClientHello and the EncryptedExtensions messages. The
 values carried in these extensions are taken from TBD.
 
 ## TLS Alerts
 
 IANA is requested to allocate a value in the "TLS Alerts"
-registry and populate it with the following entry:
+subregistry of the "Transport Layer Security (TLS) Parameters" registry
+{{TLS-Param-Registry}} and populate it with the following entry:
 
 - Value: TBD
 - Description: unsupported_evidence
@@ -737,7 +741,7 @@ registry and populate it with the following entry:
 
 IANA is requested to allocate a new value in the "TLS Certificate Types"
 subregistry of the "Transport Layer Security (TLS) Extensions"
-registry [TLS-Ext-Registry], as follows:
+registry {{TLS-Ext-Registry}}, as follows:
 
 -   Value: TBD2
 -   Description: Attestation
@@ -754,7 +758,7 @@ RFC EDITOR: PLEASE REMOVE THE THIS SECTION
 - Focus on the background check model
 - Added examples
 - Updated introduction
-- Moved content to related drafts.
+- Moved attestation format-specific content to related drafts.
     
 ## draft-fossati-tls-attestation-01
 
