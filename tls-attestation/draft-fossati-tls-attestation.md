@@ -4,10 +4,10 @@ abbrev: Attestation in TLS/DTLS
 docname: draft-fossati-tls-attestation-02
 category: std
 
-ipr: pre5378Trust200902
+ipr: trust200902
 area: Security
 workgroup: TLS
-keyword: Internet-Draft
+keyword: [ attestation, RATS, TLS ]
 
 stand_alone: yes
 pi:
@@ -58,13 +58,7 @@ normative:
   RFC2119:
   RFC8446:
   I-D.ftbs-rats-msg-wrap:
-  kat:
-    target: draft-fossati-rats-kat
-    title: Key Attestation Token
-    author:
-      -
-        org: 
-    date: October 2022  
+  I-D.bft-rats-kat:
 informative:
   I-D.ietf-rats-eat:
   RFC5246:
@@ -82,15 +76,8 @@ informative:
       -
         org: Trusted Computing Group
     date: November 2019
-  RFC7250:
   I-D.ietf-rats-architecture:
-  TLS-Ext-Registry:
-    target: http://www.iana.org/assignments/tls-extensiontype-values
-    title: Transport Layer Security (TLS) Extensions
-    author:
-      -
-        org: IANA
-    date: October 2022
+  TLS-Ext-Registry: IANA.tls-extensiontype-values
 --- abstract
 
 Attestation is the process by which an entity produces evidence about itself
@@ -179,7 +166,7 @@ In TLS a client has to demonstrate possession of the private key via the Certifi
 message, when client-based authentication is requested. The attestation payload
 must contain a key attestation token, which associates a private key with the
 attestation information. An example of a key attestation token format utilizing 
-the EAT-format can be found in {{kat}}.
+the EAT-format can be found in {{I-D.bft-rats-kat}}.
 
 The recipient extracts evidence from the Certificate message and relays it to the 
 verifier to obtain attestation results. Subsequently, the attested key is used
@@ -478,7 +465,59 @@ the ClientHello.
 
 ## Cloud Confidential Computing
 
-~~~~
+In this example, a confidential workload is executed on computational
+resources hosted at a cloud service provider.  This is a typical
+scenario for secure, privacy-preserving multiparty computation,
+including anti-money laundering, drug development in healthcare, contact
+tracing in pandemic times, etc.
+
+In such scenarios, the users (e.g., the party providing the data input
+for the computation, the consumer of the computed results, the party
+providing a proprietary ML model used in the computation) have two
+goals:
+
+* Identifying the workload they are interacting with,
+* Making sure that the platform on which the workload executes is a
+  Trusted Execution Environment (TEE) with the expected features.
+
+A convenient arrangement is to verify that the two requirements are met
+at the same time that the secure channel is established.
+
+The protocol flow, alongside all the involved actors, is captured in
+{{figure-cc-example}} where the TLS client is the user (the relying
+party) while the TLS server is co-located with the TEE-hosted
+confidential workload (the attester).
+
+The flow starts with the client initiating a verification session with a
+trusted verifier.  The verifier returns the kinds of evidence it
+understands and a nonce that will be used to challenge the attester.
+
+The client starts the TLS handshake with the server by supplying the
+attestation-related parameters it has obtained from the verifier.  If
+the server supports one of the offered evidence types, it will echo it
+in the specular extension and proceed by invoking the local API to
+request the attestation.  The returned evidence binds the identity key
+with the platform identity and security state.  The server
+then signs the handshake transcript with the (attested) identity key,
+and sends the attestation evidence together with the signature over to
+the client.
+
+The client forwards the attestation evidence to the verifier using the
+previously established session, obtains the attestation result and
+checks it is acceptable according to its local policy.  If so, it
+proceeds and verifies the handshake signature using the corresponding
+public key (for example, using the PoP key in the KAT evidence
+{{I-D.bft-rats-kat}}).
+
+The attestation evidence verification combined with the verification of
+the CertificateVerify signature provide confirmation that the presented
+cryptographic identity is bound to the workload and platform identity,
+and that the workload and platform are trustworthy.  Therefore, after
+the handshake is finalized, the client can trust the workload on the
+other side of the established secure channel to provide the required
+confidential computing properties.
+
+~~~~aasvg
                                              .------------------------.
 .----------.        .--------.               | Server  |  Attestation |
 | Verifier |        | Client |               |         |  Service     |
@@ -500,7 +539,7 @@ the ClientHello.
 |  |                    |  {...}                 |               |    |
 |  |                    |  evidence_request(     |               |    |
 |  |                    |    nonce,              |               |    |
-|  |                    |    types(x,b,c)        |               |    |
+|  |                    |    types(a,b,c)        |               |    |
 |  |                    |  )                     |               |    |
 |  |                    +----------------------->|               |    |
 |  |                    | ServerHello            |               |    |
@@ -550,11 +589,124 @@ the ClientHello.
                         |<---------------------->|
                         |                        |
 ~~~~
-{: #figure-overview title="Cloud Confidential Computing Example Exchange."}
+{: #figure-cc-example title="Example Exchange with Server as Attester."}
 
 ## IoT Device Onboarding
 
-TBD.
+In this example, an IoT is onboarded to a cloud service provider (or to a
+network operator). In this scenario there is typically no a-priori
+relationship between the device and the cloud service provider that 
+will remote manage the device.
+
+In such scenario, the cloud service provider wants to make sure
+that the device runs the correct version of firmware, has not been 
+rooted, is emulated, or cloned.
+
+The protocol flow is shown in {{figure-iot-example}} where the client 
+is the attester while the server is the relying party.
+
+The flow starts with the client initiating a TLS exchange with the TLS
+server operated by the cloud service provider. The client indicates
+what evidence types it supports.
+
+The server obtains a nonce from the verifier, in real-time or from a
+reserved nonce range, and returns it to the client alongside the
+selected evidence type. Since the evidence will be returned in the
+Certificate message the server has to request mutual authentication
+via the CertificateRequest message.
+
+The client, when receiving the EncryptedExtension with the 
+evidence_proposal, will proceed by invoking a local API to
+request the attestation.  The returned evidence binds the identity key
+with the workload and platform identity and security state.  The client
+then signs the handshake transcript with the (attested) identity key,
+and sends the evidence together with the signature over to
+the server.
+
+The server forwards the attestation evidence to the verifier, obtains 
+the attestation result and checks it is acceptable according to its 
+local policy. The evidence verification combined with the verification of
+the CertificateVerify signature provide confirmation that the presented
+cryptographic identity is bound to the platform identity, and that the 
+platform is trustworthy. 
+
+If successful, the server proceeds with the application layer protocol 
+exchange. If, for some reason, the attestation result is not satisfactory
+the TLS server will terminate the exchange. 
+
+~~~~aasvg
+.--------------------------.
+| Attestation   |  Client  |            .--------.         .----------.
+| Service       |          |            | Server |         | Verifier |
+'--+----------------+------'            '----+---'         '-----+----'
+   |                |                        |                   |
+.--+-----------.    |                        |                   |
+| TLS handshake |   |                        |                   |
++--+------------+---+------------------------+-------------------+---.
+|  |                |                        |                   |    |
+|  |                | ClientHello            |                   |    |
+|  |                |  {...}                 |                   |    |
+|  |                |  evidence_proposal(    |                   |    |
+|  |                |    types(a,b,c)        |                   |    |
+|  |                |  )                     |                   |    |
+|  |                +----------------------->|                   |    |
+|  |                |                        |                   |    |
+|  +                | ServerHello            | POST /newSession  |    |
+|  |                |  {...}                 +------------------>|    |
+|  |                |                        | 201 Created       |    |
+|  |                |                        | Location: /76839  |    |
+|  |                |                        | Body: {           |    |
+|  |                |                        |   nonce,          |    |
+|  |                | EncryptedExtensions    |   types(a,b,c)    |    |
+|  |                |  {...}                 | }                 |    |
+|  |                |  evidence_proposal(    |<------------------+    |
+|  |                |    nonce,              |                   |    |
+|  |                |    type(a)             |                   |    |
+|  |                |  )                     |                   |    |
+|  |                | CertificateRequest     |                   |    |
+|  |                | Certificate            |                   |    |
+|  |  attest_key(   | CertificateVerify      |                   |    |
+|  |    nonce,      | Finished               |                   |    |
+|  |    TIK         |<-----------------------+                   |    |
+|  |  )             |                        |                   |    |
+|  |<---------------+                        |                   |    |
+|  |  CAB(KAT, PAT) |                        |                   |    |
+|  +--------------->|                        |                   |    |
+|  |  sign(TIK,hs)  |                        |                   |    |
+|  |<---------------+                        |                   |    |
+|  |      sig       |                        |                   |    |
+|  +--------------->| Certificate(KAT,PAT)   |                   |    |
+|  |                | CertificateVerify(sig) |                   |    |
+|  |                | Finished               |                   |    |
+|  |                +----------------------->|                   |    |
+|  |                |                        |                   |    |
+|  |                |                        | POST /76839A9E    |    |
+|  |                |                        | Body: {           |    |
+|  |                |                        |   type(a),        |    |
+|  |                |                        |   CAB             |    |
+|  |                |                        | }                 |    |
+|  |                |                        +------------------>|    |
+|  |                |                        | Body: {           |    |
+|  |                |                        |  att-result: AR{} |    |
+|  |                |                        | }                 |    |
+|  |                |                        |<------------------+    |
+|  |                |                        +---.               |    |
+|  |                |                        |    | verify AR{}  |    |
+|  |                |                        |<--'               |    |
+|  |                |                        +---.               |    |
+|  |                |                        |    | verify sig   |    |
+|  |                |                        |<--'               |    |
+|  |                |                        |                   |    |
+|  |                |                        |                   |    |
+|  |                |                        |                   |    |
+|  |                |                        |                   |    |
+'--+----------------+------------------------+-------------------+---'
+                    |    application data    |
+                    |<---------------------->|
+                    |                        |
+~~~~
+{: #figure-iot-example title="Example Exchange with Client as Attester."}
+
 
 # Security Considerations {#sec-cons}
 
