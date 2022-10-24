@@ -602,7 +602,7 @@ In such scenario, the cloud service provider wants to make sure
 that the device runs the correct version of firmware, has not been 
 rooted, is emulated, or cloned.
 
-The protocol flow is shown in {{figure-cc-example}} where the client 
+The protocol flow is shown in {{figure-iot-example}} where the client 
 is the attester while the server is the relying party.
 
 The flow starts with the client initiating a TLS exchange with the TLS
