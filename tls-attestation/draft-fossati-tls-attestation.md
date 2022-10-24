@@ -593,6 +593,47 @@ confidential computing properties.
 
 ## IoT Device Onboarding
 
+In this example, an IoT is onboarded to a cloud service provider (or to a
+network operator). In this scenario there is typically no a-priori
+relationship between the device and the cloud service provider that 
+will remote manage the device.
+
+In such scenario, the cloud service provider wants to make sure
+that the device runs the correct version of firmware, has not been 
+rooted, is emulated, or cloned.
+
+The protocol flow is shown in {{figure-cc-example}} where the client 
+is the attester while the server is the relying party.
+
+The flow starts with the client initiating a TLS exchange with the TLS
+server operated by the cloud service provider. The client indicates
+what evidence types it supports.
+
+The server obtains a nonce from the verifier, in real-time or from a
+reserved nonce range, and returns it to the client alongside the
+selected evidence type. Since the evidence will be returned in the
+Certificate message the server has to request mutual authentication
+via the CertificateRequest message.
+
+The client, when receiving the EncryptedExtension with the 
+evidence_proposal, will proceed by invoking a local API to
+request the attestation.  The returned evidence binds the identity key
+with the workload and platform identity and security state.  The client
+then signs the handshake transcript with the (attested) identity key,
+and sends the evidence together with the signature over to
+the server.
+
+The server forwards the attestation evidence to the verifier, obtains 
+the attestation result and checks it is acceptable according to its 
+local policy. The evidence verification combined with the verification of
+the CertificateVerify signature provide confirmation that the presented
+cryptographic identity is bound to the platform identity, and that the 
+platform is trustworthy. 
+
+If successful, the server proceeds with the application layer protocol 
+exchange. If, for some reason, the attestation result is not satisfactory
+the TLS server will terminate the exchange. 
+
 ~~~~aasvg
 .--------------------------.
 | Attestation   |  Client  |            .--------.         .----------.
