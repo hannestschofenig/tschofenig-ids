@@ -497,7 +497,7 @@ attestation-related parameters it has obtained from the verifier.  If
 the server supports one of the offered evidence types, it will echo it
 in the specular extension and proceed by invoking the local API to
 request the attestation.  The returned evidence binds the identity key
-with the workload and platform identity and security state.  The server
+with the platform identity and security state.  The server
 then signs the handshake transcript with the (attested) identity key,
 and sends the attestation evidence together with the signature over to
 the client.
