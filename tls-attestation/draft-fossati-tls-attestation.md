@@ -21,7 +21,7 @@ pi:
   inline: yes
   text-list-symbols: -o*+
   docmapping: yes
-  
+
 author:
  -
        ins: H. Tschofenig
@@ -101,7 +101,7 @@ The Remote ATtestation ProcedureS (RATS) architecture defines two basic types
 of topological patterns to communicate between an attester, a relying party, and
 a verifier, namely the background-check model and the passport model. These two 
 models are fundamentally different and require a different treatment when 
-incorporated into the TLS handshake. For better readability to use different 
+incorporated into the TLS handshake. For better readability we suggest to use different 
 extensions for these two models.
 
 The two models can be summarized as follows:
@@ -109,17 +109,20 @@ The two models can be summarized as follows:
 - In the background check model, the attester conveys evidence to the relying party,
   which then forwards the evidence to the verifier for appraisal; the verifier 
   computes the attestation result and sends it back to the relying party.
-- In the passport model, the attester transmits evidence to the  verifier 
+  
+- In the passport model, the attester transmits evidence to the verifier 
   directly and receives attestation results, which are then relayed to the
-  relying party. This specification supports both patterns.
+  relying party.
 
-Several formats for encoding evidence are available, such as 
+This specification supports both patterns.
+
+Several formats for encoding evidence are available, such as:
 - the Entity Attestation Token (EAT) {{I-D.ietf-rats-eat}}, 
 - the Trusted Platform Modules (TPMs) {{TPM1.2}} {{TPM2.0}},
 - the Android Key Attestation, and
 - Apple Key Attestation. 
 
-Like-wise, there are different encodings available for attestation results.
+Likewise, there are different encodings available for attestation results.
 One such encoding, AR4SI {{?I-D.ietf-rats-ar4si}} is being standardized by the RATS 
 working group.
 
@@ -139,7 +142,7 @@ protocol critically depends on the verifiable binding between these two logicall
 units of evidence.
 
 This document does not define how different attestation technologies are encoded.
-This has either already been done is done accomplished by companion specifications.
+This is accomplished by companion specifications.
 
 # Conventions and Terminology
 
@@ -155,7 +158,7 @@ and the background check model. The subsections below explain the difference in 
 interactions.
 
 As typical with new features in TLS, the client indicates support for the new 
-extension in the ClientHello. The newly introduced extensions allow evidence
+extension in the ClientHello message. The newly introduced extensions allow evidence
 and nonces to be exchanged. The nonces are used for guaranteeing freshness of
 the exchanged evidence.
 
@@ -167,7 +170,7 @@ In TLS a client has to demonstrate possession of the private key via the Certifi
 message, when client-based authentication is requested. The attestation payload
 must contain a key attestation token, which associates a private key with the
 attestation information. An example of a key attestation token format utilizing 
-the EAT-format can be found in {{I-D.bft-rats-kat}}.
+the EAT format can be found in {{I-D.bft-rats-kat}}.
 
 The recipient extracts evidence from the Certificate message and relays it to the 
 verifier to obtain attestation results. Subsequently, the attested key is used
@@ -177,21 +180,21 @@ to verify the CertificateVerify message.
 
 The background check model is described in Section 5.2 of 
 {{I-D.ietf-rats-architecture}} and allows the following modes
-of operation when used with TLS, namely
+of operation when used with TLS, namely:
 
 - TLS client is the attester, 
 - TLS server is the attester, and
-- TLS client and server mutually attest each other. 
+- TLS client and server mutually attest towards each other. 
 
 We will show the message exchanges of the three cases in
-sub-sections below. 
+sub-sections below.
 
 ## TLS Client as Attester 
 
 In this use case the TLS client, as the attester, is challenged by the TLS
 server to provide evidence. The TLS client is the attester and the the TLS
 server acts as a relying party. The TLS server needs to provide a nonce
-in the EncryptedExtensions to the TLS client so that the attestation
+in the EncryptedExtensions message to the TLS client so that the attestation
 service can feed the nonce into the generation of the evidence. The TLS 
 server, when receiving the evidence, will have to contact the verifier 
 (which is not shown in the diagram). 
@@ -238,7 +241,7 @@ The TLS client, when receiving the evidence, will have to contact the verifier
 
 An example of this flow can be found in confidential computing where 
 a compute workload is only submitted to the server infrastructure 
-once the client/user is ensured that the confidential computing platform is
+once the client/user is assured that the confidential computing platform is
 genuine. 
 
 ~~~~
@@ -387,12 +390,12 @@ To indicate the support for passing evidence in TLS following the
 background check model, clients include the evidence_proposal 
 and/or the evidence_request extensions in the ClientHello.
 
-The evidence_proposal extension in the ClientHello indicates
+The evidence_proposal extension in the ClientHello message indicates
 the evidence types the client is able to provide to the server,
 when requested using a CertificateRequest message.
 
-The evidence_request extension in the ClientHello indicates
-the types of evidence types the client challenges the server to 
+The evidence_request extension in the ClientHello message indicates
+the evidence types the client challenges the server to 
 provide in a subsequent Certificate payload.
 
 The evidence_proposal and evidence_request extensions sent in
@@ -403,8 +406,8 @@ type, it is a list containing a single element.
 The client MUST omit evidence types from the evidence_proposal 
 extension in the ClientHello if it cannot respond to a request
 from the server to present a proposed evidence type, or if 
-the cient is not configured to use the proposed evidence type 
-with the given server.  If the client has no evidenence types 
+the client is not configured to use the proposed evidence type 
+with the given server.  If the client has no evidence types 
 to send in the ClientHello it MUST omit the evidence_proposal
 extension in the ClientHello.
 
@@ -421,11 +424,11 @@ If the server receives a ClientHello that contains the
 evidence_proposal extension and/or the evidence_request
 extension, then three outcomes are possible:
 
--  The server does not support the extension defined in this
+-  The server does not support the extensions defined in this
    document.  In this case, the server returns the EncryptedExtensions
    without the extensions defined in this document.
 
--  The server supports the extension defined in this document, but
+-  The server supports the extensions defined in this document, but
    it does not have any evidence type in common with the client.
    Then, the server terminates the session with a fatal alert of
    type "unsupported_evidence".
@@ -454,7 +457,7 @@ server-supported evidence types, then the evidence_proposal
 extension in the ServerHello MUST be omitted.
 
 The evidence_request extension in the ClientHello indicates what
-types of evidence the client can challenge the server to return. 
+types of evidence the client can challenge the server to return
 in a subsequent Certificate message. With the evidence_request 
 extension in the EncryptedExtensions, the server indicates the 
 evidence type carried in the Certificate message sent by the server.
@@ -505,7 +508,7 @@ the client.
 
 The client forwards the attestation evidence to the verifier using the
 previously established session, obtains the attestation result and
-checks it is acceptable according to its local policy.  If so, it
+checks whether it is acceptable according to its local policy.  If so, it
 proceeds and verifies the handshake signature using the corresponding
 public key (for example, using the PoP key in the KAT evidence
 {{I-D.bft-rats-kat}}).
@@ -596,13 +599,13 @@ confidential computing properties.
 ## IoT Device Onboarding
 
 In this example, an IoT is onboarded to a cloud service provider (or to a
-network operator). In this scenario there is typically no a-priori
+network operator). In this scenario there is typically no a priori
 relationship between the device and the cloud service provider that 
-will remote manage the device.
+will remotely manage the device.
 
 In such scenario, the cloud service provider wants to make sure
 that the device runs the correct version of firmware, has not been 
-rooted, is emulated, or cloned.
+rooted, is not emulated or cloned.
 
 The protocol flow is shown in {{figure-iot-example}} where the client 
 is the attester while the server is the relying party.
@@ -626,11 +629,11 @@ and sends the evidence together with the signature over to
 the server.
 
 The server forwards the attestation evidence to the verifier, obtains 
-the attestation result and checks it is acceptable according to its 
+the attestation result and checks that it is acceptable according to its 
 local policy. The evidence verification combined with the verification of
 the CertificateVerify signature provide confirmation that the presented
 cryptographic identity is bound to the platform identity, and that the 
-platform is trustworthy. 
+platform is trustworthy.
 
 If successful, the server proceeds with the application layer protocol 
 exchange. If, for some reason, the attestation result is not satisfactory
@@ -731,7 +734,7 @@ IANA is requested to allocate a value in the "TLS Alerts"
 subregistry of the "Transport Layer Security (TLS) Parameters" registry
 {{TLS-Param-Registry}} and populate it with the following entry:
 
-- Value: TBD
+- Value: TBD1
 - Description: unsupported_evidence
 - DTLS-OK: Y
 - Reference: [This document]
@@ -746,12 +749,12 @@ registry {{TLS-Ext-Registry}}, as follows:
 -   Value: TBD2
 -   Description: Attestation
 -   Reference: [This document]
-   
+
 --- back
 
 # History
 
-RFC EDITOR: PLEASE REMOVE THE THIS SECTION
+RFC EDITOR: PLEASE REMOVE THIS SECTION
 
 ## draft-fossati-tls-attestation-02
 
@@ -759,11 +762,11 @@ RFC EDITOR: PLEASE REMOVE THE THIS SECTION
 - Added examples
 - Updated introduction
 - Moved attestation format-specific content to related drafts.
-    
+  
 ## draft-fossati-tls-attestation-01
 
 - Added details about TPM attestation
-    
+  
 ## draft-fossati-tls-attestation-00
 
 - Initial version

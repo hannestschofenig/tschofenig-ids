@@ -29,6 +29,11 @@ chmod +x idnits
 mv idnits <somewhere in your PATH>
 ```
 
+### aasvg
+```shell
+npm install -g aasvg
+```
+
 ## Build
 
 To build the rendered I-D in HTML, TXT and XML formats:
