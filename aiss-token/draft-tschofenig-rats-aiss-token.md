@@ -1,7 +1,7 @@
 ---
 title: "Automatic Integration of Secure Silicon (AISS) Attestation Token"
 abbrev: "AISS Attestation Token"
-docname: draft-tschofenig-rats-aiss-token-00
+docname: draft-tschofenig-rats-aiss-token-01
 category: info
 submissionType: independent
 
@@ -70,7 +70,10 @@ informative:
 
 This specification defines a profile of the Entity Attestation Token (EAT) for use in
 special System-on-Chip (SoC) designs that are generated automatically utilizing a
-methodology currently developed in a DARPA funded project. 
+methodology currently developed in a DARPA funded project.
+
+The term "AISS Token" is used to refer to a token that complies to this profile.
+The AISS Token is used as Evidence and processed by a Verifier.
 
 --- middle
 
@@ -89,7 +92,7 @@ As a minimal component, the generated chip designs must offer attestation capabi
 
 This specification describes the minimal claim set offered by an attestation token
 conforming to the Entity Attestation Token (EAT) specification. This attestation
-token is, on request, provided to a Verifier.
+token (in form of Evidence) is, on request, provided to a Verifier.
 
 # Conventions and Definitions
 
@@ -105,6 +108,9 @@ unmodified.  An example of RoT is an initial bootloader in ROM, which contains
 cryptographic functions and credentials, running on a specific hardware
 platform.
 
+This specification re-uses terms defined in {{!I-D.ietf-rats-architecture}}.
+
+
 # Claims
 {: #sec-claims }
 
@@ -118,7 +124,7 @@ claims:
 {::include cddl/aiss-common-types.cddl}
 ~~~
 
-## Nonce
+## Nonce Claim
 {: #sec-nonce-claim}
 
 The Nonce claim is used to carry the challenge provided by the caller to
@@ -138,14 +144,14 @@ This claim MUST be present in an AISS attestation token.
 {::include cddl/aiss-nonce.cddl}
 ~~~
 
-## Instance ID
+## Instance ID Claim
 {: #sec-instance-id-claim}
 
 The Instance ID claim represents the unique identifier of the
 attestation key.
 
-The EAT `ueid` (claim key 256) of type RAND is used.  The following 
-constraints apply to the `ueid-type`:
+For the Instance ID claim, the EAT `ueid` (claim key 256) of type 
+RAND is used.  The following constraints apply to the `ueid-type`:
 
 * The length MUST be 17 bytes.
 * The first byte MUST be 0x01 (RAND) followed by the 16-bytes random
@@ -158,13 +164,13 @@ This claim MUST be present in an AISS attestation token.
 {::include cddl/aiss-instance-id.cddl}
 ~~~
 
-## Implementation ID
+## Implementation ID Claim
 {: #sec-implementation-id}
 
 The Implementation ID claim uniquely identifies the implementation of the
-immutable RoT. A verification service uses this claim to locate the
+immutable RoT. A Verifier uses this claim to locate the
 details of the RoT implementation from a manufacturer. Such details are used
-by a verification service to determine the security properties or
+by a Verifier to determine the security properties or
 certification status of the RoT implementation.
 
 The value and format of the ID is decided by the manufacturer or a
@@ -182,7 +188,7 @@ instance.
 {::include cddl/aiss-implementation-id.cddl}
 ~~~
 
-## Security Lifecycle
+## Security Lifecycle Claim
 {: #sec-security-lifecycle }
 
 The Security Lifecycle claim represents the current lifecycle state of the 
@@ -222,7 +228,7 @@ This claim MUST be present in an AISS attestation token.
 {::include cddl/aiss-security-lifecycle.cddl}
 ~~~
 
-## Boot Odometer
+## Boot Odometer Claim
 {: #sec-boot-odometer }
 
 The Boot Odometer claim contains a value that represents the number of
@@ -236,7 +242,7 @@ This claim MUST be present in an AISS attestation token.
 {::include cddl/aiss-boot-odometer.cddl}
 ~~~
 
-## Watermark
+## Watermark Claim
 {: #sec-watermark }
 
 Watermarking, the process of marking an asset with a known structure,
@@ -257,7 +263,7 @@ attestation token request asked for a watermark to be present.
 ~~~
 
 
-## Profile Definition
+## Profile Definition Claim
 {: #sec-profile-definition-claim}
 
 The Profile Definition claim encodes the unique identifier that corresponds to
@@ -268,7 +274,7 @@ The EAT `profile` (claim key 265) is used.  The following constraints
 apply to its type:
 
 * The URI encoding MUST be used.
-* The value MUST be `http://aiss/1.0.0`.
+* The value MUST be `https://www.rfc-editor.org/rfc/rfcTBD`.
 
 This claim MUST be present in an AISS attestation token.
 
@@ -295,7 +301,7 @@ type, as for example defined in defined in {{sec-iana-media-types}} or the CoAP 
 # Freshness Model
 
 The AISS attestation token supports the freshness models for attestation Evidence
-based on nonces (Section 10.2 and 10.3 of {{?I-D.ietf-rats-architecture}}) using
+based on nonces (Section 10.2 and 10.3 of {{!I-D.ietf-rats-architecture}}) using
 the `nonce` claim to convey the nonce supplied by the Verifier. No further
 assumption on the specific remote attestation protocol is made.
 
@@ -313,9 +319,9 @@ assumption on the specific remote attestation protocol is made.
 {::include cddl/aiss-profile.cddl}
 ~~~
 
-# Verification
+# AISS Token Appraisal
 
-To verify the token, the primary need is to check correct encoding and signing
+To process the token by a Verifier, the primary need is to check correct encoding and signing
 as detailed in {{sec-token-encoding-and-signing}}.  In particular, the Instance
 ID claim is used (together with the kid in the COSE header, if present)
 to assist in locating the public key used to verify the signature covering the token.
@@ -367,6 +373,27 @@ Web Token (CWT) Claims" registry {{IANA-CWT}}.
 * Claim Value Type(s): byte string
 * Change Controller: [[Authors of this RFC]]
 * Specification Document(s): {{sec-watermark}} of [[this RFC]]
+
+
+## The AISS Token Profile
+
+This specification defines a profile of an EAT.
+
+The identifier for this profile is "https://www.rfc-editor.org/rfc/rfcTBD".
+
+| Issue | Profile Definition |
+| CBOR/JSON | CBOR only |
+| CBOR Encoding | Only definite length maps and arrays are allowed |
+| CBOR Encoding | Only definite length strings are allowed |
+| CBOR Serialization | Only preferred serialization is allowed |
+| COSE Protection | Only COSE_Sign1 format is used |
+| Algorithms | Receiver MUST accept ES256, ES384 and ES512; sender MUST send one of these |
+| Detached EAT Bundle Usage | Detached EAT bundles are not sent with this profile |
+| Verification Key Identification | The Instance ID claim MUST be used to identify the verification key. |
+| Endorsements | This profile contains no endorsement identifier |
+| Nonce | A new single unique nonce MUST be used for every token request |
+| Claims | The claims listed in this specification MUST be implemented and understood by the receiver. As per general EAT rules, the receiver MUST NOT error out on claims it does not understand. |
+
 
 ## Media Type Registration
 {: #sec-iana-media-types}
@@ -442,7 +469,7 @@ The resulting COSE object is:
 # Acknowledgments
 {:numbered="false"}
 
-We would like to thank Rob Aitken, Mike Borza, Liam Dillon, Dale Donchin, John Goodenough, and Oleg Raikhman for their feedback.
+We would like to thank Rob Aitken, Mike Borza, Liam Dillon, Dale Donchin, John Goodenough, Oleg Raikhman, Henk Birkholz, Ned Smith, and Laurence Lundblade for their feedback.
 
 Work on this document has in part been supported by the DARPA AISS project (grant agreement HR0011-20-9-0043).
 
