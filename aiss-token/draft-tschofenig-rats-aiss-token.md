@@ -228,18 +228,17 @@ This claim MUST be present in an AISS attestation token.
 {::include cddl/aiss-security-lifecycle.cddl}
 ~~~
 
-## Boot Odometer Claim
-{: #sec-boot-odometer }
+## Boot Count Claim
+{: #sec-boot-count }
 
-The Boot Odometer claim contains a value that represents the number of
-times the entity or submod has been booted.
+The "bootcount" claim contains a count of the number times the entity or submod has been booted. Support for this claim requires a persistent storage on the device.
 
-The EAT `boot-seed-label` (claim key TBD) of type unsigned integer is used. 
+The EAT `boot-count-label` (claim key TBD) of type unsigned integer is used. 
 
 This claim MUST be present in an AISS attestation token.
 
 ~~~
-{::include cddl/aiss-boot-odometer.cddl}
+{::include cddl/aiss-boot-count.cddl}
 ~~~
 
 ## Watermark Claim
@@ -314,7 +313,7 @@ assumption on the specific remote attestation protocol is made.
 {::include cddl/aiss-instance-id.cddl}
 {::include cddl/aiss-implementation-id.cddl}
 {::include cddl/aiss-security-lifecycle.cddl}
-{::include cddl/aiss-boot-odometer.cddl}
+{::include cddl/aiss-boot-count.cddl}
 {::include cddl/aiss-watermark.cddl}
 {::include cddl/aiss-profile.cddl}
 ~~~
