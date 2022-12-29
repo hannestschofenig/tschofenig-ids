@@ -43,6 +43,11 @@ author:
     name: Tushar Khandelwal
     organization: Arm Limited
     email: Tushar.Khandelwal@arm.com
+ -
+    ins: D. Sahoo
+    name: Durga Prasad Sahoo
+    organization: Synopsys
+    email: Durga.Sahoo@synopsys.com
 
 normative:
   IANA-CWT:
