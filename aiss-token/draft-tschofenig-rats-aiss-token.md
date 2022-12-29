@@ -1,5 +1,5 @@
 ---
-title: "Automatic Integration of Secure Silicon (AISS) Attestation Token"
+title: "Automatic Implementation of Secure Silicon (AISS) Attestation Token"
 abbrev: "AISS Attestation Token"
 docname: draft-tschofenig-rats-aiss-token-01
 category: info
@@ -84,7 +84,7 @@ The AISS Token is used as Evidence and processed by a Verifier.
 
 # Introduction
 
-The DARPA-funded project Automated Implementation of Secure Silicon (AISS) is aimed at 
+The DARPA-funded project Automatic Implementation of Secure Silicon (AISS) is aimed at 
 making scalable on-chip security pervasive. The objective is to develop ways to automate
 the process of adding security into integrated circuits.
 
@@ -475,6 +475,7 @@ The resulting COSE object is:
 
 We would like to thank Rob Aitken, Mike Borza, Liam Dillon, Dale Donchin, John Goodenough, Oleg Raikhman, Henk Birkholz, Ned Smith, and Laurence Lundblade for their feedback.
 
-Work on this document has in part been supported by the DARPA AISS project (grant agreement HR0011-20-9-0043).
+Work on this document has in part been supported by the DARPA AISS project (grant agreement
+HR0011-20-9-0043, see https://www.darpa.mil/program/automatic-implementation-of-secure-silicon).
 
 
