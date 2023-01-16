@@ -255,6 +255,13 @@ in hardware IPs is the mechanism of embedding a unique "code" into IP
 without altering the original functionality of the design. The ownership
 of the IP can be later verified when the watermark is extracted. 
 
+A watermark is typically a key-less security scheme. The IP containing
+the watermark will produce the output based on an input random value.
+For the purpose of this specification this random value is the nonce.
+If there are multiple watermarked IPs on a device, which should be
+included in the Watermark claim, then the same nonce is passed into
+all relevant IPs.
+
 The Watermark claim contains a code extracted from the watermarking
 hardware identified by an identifier. This identifier is formated
 as a type 4 UUID {{!RFC4122}}.
