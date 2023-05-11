@@ -17,7 +17,7 @@ pi:
   sortrefs: yes
   symrefs: yes
   strict: yes
-  comments: yes
+  comments: yesa
   inline: yes
   text-list-symbols: -o*+
   docmapping: yes
@@ -26,17 +26,16 @@ author:
  -
       ins: K. Isobe
       name: Kohei Isobe
-      organization: 
       email: isobekohei@gmail.com
 
  -
       ins: H. Tschofenig
       name: Hannes Tschofenig
-      organization: 
       email: hannes.tschofenig@gmx.net
 
 normative:
   RFC2119:
+  RFC8949:
   RFC8174:
   RFC9052:
 
@@ -85,12 +84,14 @@ informative:
    The thumbprint of a COSE Key MUST be computed as follows:
 
    1. Construct a COSE_Key structure (see Section 7 of {{RFC9052}}) containing
-       only the required elements representing the key.
+       only the required elements representing the key. This specification
+	   describes what those required elements are and what, if necessary, 
+	   what the unique encoding is.
 
-   2. Sort the required eelements based on their numerical label in ascending
-       order.
+   2. Sort the required elements based on the deterministic format described in 
+      Section 4.2.1 of {{RFC8949}}.
 
-   2.  Hash the bytes of the resulting COSE_Key structure from step (2)
+   3.  Hash the bytes of the resulting COSE_Key structure from step (2)
        with a cryptographic hash function H. For example, SHA-256 {{RFC6234}}
        may be used as a hash function.
 
@@ -104,6 +105,7 @@ informative:
    computing its COSE Key Thumbprint value. This section summarizes the
    required elements.
 
+
    The "kty" (label: 1) element MUST be present for all key types and the integer
    value found in the IANA COSE Key Types registry MUST be used. Other
    elements depend on the chosen key type. The subsection below list
@@ -113,23 +115,23 @@ informative:
 
    The required elements for an RSA public key are:
 
+   -  "n" (label: -1, data type: bstr)
    -  "e" (label: -2, data type: bstr)
-   -  "n" (label: -1, data type: bstr )
 
 ## Elliptic Curve Public Keys
 
    The required elements for an elliptic curve public key are:
 
-   -  "y" (label: -3, data type: bstr)
-   -  "x" (label: -2, data type: bstr)
    -  "crv" (label: -1, data type: int)
+   -  "x" (label: -2, data type: bstr)
+   -  "y" (label: -3, data type: bstr)
 
 Note: {{RFC9052}} offers both compressed as well as uncompressed point
-representations. For interoperability, implementations following this specification
-MUST use the uncompressed point representation. Hence, the y-coordinate is expressed
-as a bstr. An implementation that uses the compressed point representation must
-compute the uncompressed representation for the purpose of the thumbprint calculation.
-
+representations. For interoperability, implementations following this 
+specification MUST use the uncompressed point representation. Hence, 
+the y-coordinate is expressed as a bstr. An implementation that uses 
+the compressed point representation MUST compute the uncompressed 
+representation for the purpose of the thumbprint calculation.
 
 ## Others
 
@@ -167,7 +169,7 @@ compute the uncompressed representation for the purpose of the thumbprint calcul
    A specific hash function must be chosen by an application to compute
    the hash value of the hash input.  For example, SHA-256 {{RFC6234}} might
    be used as the hash function by the application.  While SHA-256 is a
-   good default choice at the time of this writing, the hash function of
+   good default choice at the time of writing, the hash function of
    choice can be expected to change over time as the cryptographic
    landscape evolves.
 
@@ -239,40 +241,41 @@ Thumbprint since the required elements of an elliptic curve public key are:
    -  "x"
    -  "y"
 
-The required order is:
+The required order based on Section 4.2.1 of {{RFC8949}} is:
 
    -  "y" (label: -3, data type: bstr)
    -  "x" (label: -2, data type: bstr)
    -  "crv" (label: -1, data type: int)
    -  "kty" (label: 1, data type: int)
 
-The resulting COSE Key structure, in CBOR diagnostic format, 
-with the minimum elements in the correct order are.
+The resulting COSE Key structure, in CBOR diagnostic format with
+line-breaks added for better readability, with the minimum elements 
+in the correct order are.
 
 ~~~
-  {
-    -3:h'1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd008
-4d19c',
-    -2:h'65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c0
-8551d',
-    -1:1,
-     1:2
-  }
+{
+   1:2,
+  -1:1,
+  -2:h'65eda5a12577c2bae829437fe338701a
+       10aaa375e1bb5b5de108de439c08551d',
+  -3:h'1e52ed75701163f7f9e40ddf9f341b3d
+       c9ba860af7e0ca7ca7e9eecd0084d19c'
+}
 ~~~
 
-In CBOR encoding the result is (with link breaks added for display
+In CBOR encoding the result is (with line-breaks added for display
 purposes only):
 
 ~~~
-A42258201E52ED75701163F7F9E40DDF9F341B3DC9BA860AF7E0CA7CA7E9EECD0084D
-19C21582065EDA5A12577C2BAE829437FE338701A10AAA375E1BB5B5DE108DE439C08
-551D20010102
+A40102200121582065EDA5A12577C2BAE829437FE338701A10AAA375E1BB5B5DE
+108DE439C08551D2258201E52ED75701163F7F9E40DDF9F341B3DC9BA860AF7E0
+CA7CA7E9EECD0084D19C
 ~~~
 
 Using SHA-256, the resulting thumbprint is:
 
 ~~~
-c4bb6ecc9e19593dac8a32d00bbefae03067199bb1196b741f3df42bbdbad325
+496bd8afadf307e5b08c64b0421bf9dc01528a344a43bda88fadd1669da253ec
 ~~~
 
 # Security Considerations
