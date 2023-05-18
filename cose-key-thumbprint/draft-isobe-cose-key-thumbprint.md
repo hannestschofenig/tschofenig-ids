@@ -27,6 +27,7 @@ author:
       ins: K. Isobe
       name: Kohei Isobe
       email: isobekohei@gmail.com
+      org: SECOM CO., LTD.
 
  -
       ins: H. Tschofenig
