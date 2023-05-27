@@ -17,7 +17,7 @@ pi:
   sortrefs: yes
   symrefs: yes
   strict: yes
-  comments: yesa
+  comments: yes
   inline: yes
   text-list-symbols: -o*+
   docmapping: yes
@@ -86,8 +86,8 @@ informative:
 
    1. Construct a COSE_Key structure (see Section 7 of {{RFC9052}}) containing
        only the required elements representing the key. This specification
-	   describes what those required elements are and what, if necessary, 
-	   what the unique encoding is.
+       describes what those required elements are and what, if necessary, 
+       what the unique encoding is.
 
    2. Sort the required elements based on the deterministic format described in 
       Section 4.2.1 of {{RFC8949}}.
