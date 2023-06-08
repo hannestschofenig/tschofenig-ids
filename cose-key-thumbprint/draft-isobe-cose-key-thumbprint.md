@@ -1,10 +1,10 @@
 ---
 title: COSE Key Thumbprint and Thumbprint URI
 abbrev: 
-docname: draft-isobe-cose-key-thumbprint-00
+docname: draft-isobe-cose-key-thumbprint-01
 category: std
 
-ipr: pre5378Trust200902
+ipr: trust200902
 area: Security
 workgroup: COSE
 keyword: Internet-Draft
@@ -39,6 +39,7 @@ normative:
   RFC8949:
   RFC8174:
   RFC9052:
+  RFC9053:
 
 informative:
   RFC7638:
@@ -89,12 +90,11 @@ informative:
        describes what those required elements are and what, if necessary, 
        what the unique encoding is.
 
-   2. Sort the required elements based on the deterministic format described in 
-      Section 4.2.1 of {{RFC8949}}.
+   2. Apply the deterministic encoding described in Section 4.2.1 of {{RFC8949}}
+      to the representation constructed in step (1).
 
-   3.  Hash the bytes of the resulting COSE_Key structure from step (2)
-       with a cryptographic hash function H. For example, SHA-256 {{RFC6234}}
-       may be used as a hash function.
+   3.  Hash the bytes produced in step (2) with a cryptographic hash function H.
+       For example, SHA-256 {{RFC6234}} may be used as a hash function.
 
    The resulting value is the COSE Key Thumbprint with H of the COSE Key.  The
    details of this computation are further described in subsequent
@@ -108,24 +108,34 @@ informative:
 
 
    The "kty" (label: 1) element MUST be present for all key types and the integer
-   value found in the IANA COSE Key Types registry MUST be used. Other
-   elements depend on the chosen key type. The subsection below list
+   value found in the IANA COSE Key Types registry MUST be used. The tstr data
+   type is not used with the kty element. 
+   
+   Many COSE Key elements depend on the chosen key type. The subsection below list
    the required elements for commonly used key types.
 
-## RSA Public Keys
+## Octet Key Pair (OKP)
 
-   The required elements for an RSA public key are:
+The required elements for elliptic curve public keys that use the OKP key type,
+such as X25519, are:
 
-   -  "n" (label: -1, data type: bstr)
-   -  "e" (label: -2, data type: bstr)
+   -  "kty" (label: 1, data type: int, value: 1)
+   -  "crv" (label: -1, value: int)
+   -  "x" (label: -2, value: bstr)
 
-## Elliptic Curve Public Keys
+Details can be found in Section 7.1 of {{RFC9053}}.
 
-   The required elements for an elliptic curve public key are:
+## Elliptic Curve Keys w/ x- and y-coordinate pair
 
+The required elements for elliptic curve public keys that use the EC2 key type, such
+as NIST P-256, are:
+
+   -  "kty" (label: 1, data type: int, value: 2)
    -  "crv" (label: -1, data type: int)
    -  "x" (label: -2, data type: bstr)
    -  "y" (label: -3, data type: bstr)
+
+Details can be found in Section 7.1 of {{RFC9053}}.
 
 Note: {{RFC9052}} offers both compressed as well as uncompressed point
 representations. For interoperability, implementations following this 
@@ -134,13 +144,27 @@ the y-coordinate is expressed as a bstr. An implementation that uses
 the compressed point representation MUST compute the uncompressed 
 representation for the purpose of the thumbprint calculation.
 
+## RSA Public Keys
+
+   The required elements for an RSA public key are:
+
+   -  "kty" (label: 1, data type: int, value: 3)
+   -  "n" (label: -1, data type: bstr)
+   -  "e" (label: -2, data type: bstr)
+
+## HSS-LMS
+
+The required elements for HSS-LMS keys are:
+
+   -  "kty" (label: 1, data type: int, value: 5)
+   -  "pub" (label: -1, data type: bstr)
+
 ## Others
 
    As other key type values are defined, the specifications
    defining them should be similarly consulted to determine which
    elements, in addition to the "kty" element, are required.
 
-   
 ## Why Not Include Optional COSE Key Elements?
 
    Optional elements of COSE Keys are intentionally not included in the
@@ -164,7 +188,7 @@ representation for the purpose of the thumbprint calculation.
    specifications that might include some or all additional COSE Key elements,
    if use cases arise where such different kinds of thumbprints would be
    useful.
-   
+
 ##  Selection of Hash Function
 
    A specific hash function must be chosen by an application to compute
@@ -198,7 +222,7 @@ representation for the purpose of the thumbprint calculation.
    the SPKI representation of the key, a COSE Key Thumbprint is computed over
    the CBOR representation of that key, rather than over an ASN.1
    representation of it.
-   
+
 # Example
 
    This section demonstrates the COSE Key Thumbprint computation for the
@@ -312,3 +336,7 @@ There are no actions for IANA.
 We would like to thank the authors of {{RFC7638}} for their work on the
 JSON Web Key (JWK) Thumbprint specification. This document applies JWK
 Thumbprints to COSE Key structures.
+
+Additionally, we would like to thank Carsten Bormann, Orie Steele,
+Ilari Liusvaara, Laurence Lundblade, Daisuke Ajitomi, and Michael Richardson
+for their feedback.
