@@ -1,7 +1,7 @@
 ---
-title: COSE Key Thumbprint and Thumbprint URI
+title: COSE Key Thumbprint
 abbrev: 
-docname: draft-isobe-cose-key-thumbprint-01
+docname: draft-isobe-cose-key-thumbprint-02
 category: std
 
 ipr: trust200902
@@ -69,9 +69,6 @@ informative:
 
    This specification only defines how thumbprints of public keys are created, not
    private keys or symmetric keys.
-
-   A future version of this document will describe the concept of a COSE Key
-   Thumbprint URI.
 
 # Terminology
 
@@ -317,15 +314,18 @@ Using SHA-256, the resulting thumbprint is:
    is important for a given application, this specification is not the
    appropriate choice. 
 
-   Even more insidious is that an attacker may supply a key that is a
-   transformation of a legal key in order to have it appear to be a
-   different key.  For instance, if a legitimate RSA key uses a modulus
-   value N and an attacker supplies a key with modulus 3*N, the modified
-   key would still work about 1/3 of the time, but would appear to be a
-   different key.  Thus, while thumbprint values are valuable for
+   To promote interoperability among implementations, the SHA-256 hash
+   algorithm is mandatory to implement.
+
+   While thumbprint values are valuable for
    identifying legitimate keys, comparing thumbprint values is not a
-   reliable means of excluding (blacklisting) the use of particular keys
-   (or transformations thereof).
+   reliable means of excluding the use of particular keys
+   (or transformations thereof). The reason is that an attacker may
+   supply a key that is a transformation of a key in order to have it 
+   appear to be a different key.  For instance, if a legitimate RSA key
+   uses a modulus value N and an attacker supplies a key with modulus 3*N,
+   the modified key would still work about 1/3 of the time, but would appear
+   to be a different key.  
 
 # IANA Considerations
 
