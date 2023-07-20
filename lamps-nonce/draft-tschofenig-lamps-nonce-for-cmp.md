@@ -2,7 +2,7 @@
 title: Nonce-based Freshness for Attestation in Certification Requests for use with the Certification Management Protocol
 
 abbrev: Nonce-based Freshness in CMP
-docname: draft-tschofenig-lamps-nonce-for-cmp-00
+docname: draft-tschofenig-lamps-nonce-for-cmp-01
 category: std
 
 ipr: trust200902
@@ -104,27 +104,32 @@ a CSR and returned to the RA/CA in a certification request message.
 This exchange is shown graphically below.
 
 ~~~
- End entity                                          RA/CA
- ==========                                      =============
+End entity                                          RA/CA
+==========                                      =============
 
-               -->>-- CertReqTemplate request -->>--
-                                                Verify request
-                                                Generate nonce
-                                                Create response
-               --<<-- CertReqTemplate response --<<--
-                      (nonce)
- Generate key pair
- Fetch Evidence (with nonce) from attester
- Evidence Response from attestation
- Creation of certification request
- Protect request
-               -->>-- certification request -->>--
-                      (evidence including nonce)
-                                                Verify request
-                                                Verify evidence
-                                                Create response
-               --<<-- certification response --<<--
- Handle response
+              -->>-- CertReqTemplate request -->>--
+                                               Verify request
+                                               Generate nonce*
+                                               Create response
+              --<<-- CertReqTemplate response --<<--
+                     (nonce)
+Generate key pair
+Fetch Evidence (with nonce) from attester
+Evidence Response from attestation
+Creation of certification request
+Protect request
+              -->>-- certification request -->>--
+                     (evidence including nonce)
+                                               Verify request
+                                               Verify evidence*
+                                               Check replay*
+                                               Issue certificate
+                                               Create response
+              --<<-- certification response --<<--
+Handle response
+Store certificate
+
+*: These steps require interactions with a verifier.
 ~~~
 
 # Terminology and Requirements Language
@@ -209,5 +214,4 @@ For the use of attestation in the CSR the security considerations of
 
 #  Acknowledgments
 
-Add your name here.
-
+We would like to thank Russ Housley for his review comments.
