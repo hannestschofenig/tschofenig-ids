@@ -173,10 +173,17 @@ The assumption in this specification is that the RA/CA have out-of-band
 knowledge about the required nonce length required for the technology used
 by the end entity.
 
-When the end entity receives the CertReqTemplate response it MUST use this
-nonce as input to the API call made to the attester functionality on the
-device. While the semantic of the API call and the software/hardware
-architecture is out-of-scope of this specification, it will return
+When the end entity receives the CertReqTemplate response it SHOULD use this
+nonce as input to an attestation API call made to the attester functionality
+on the device. The rational behind this design is that the design may support
+attestation but configuration or policies make the attestation feature
+unavailable. Hence, it is better for an RA/CA to be aggressive in sending
+a nonce, at least where there is a reasonable chance the client supports
+attestation and the client should be allowed to ignore the nonce if it either
+does not support attestation or cannot use attestation for policy reasons.
+
+While the semantic of the attestation API and the software/hardware
+architecture is out-of-scope of this specification, the API will return
 evidence from the attester in a format specific to the attestation technology
 utilized. The encoding of the returned evidence varies but will be placed
 inside the CSR, as specified in {{I-D.ounsworth-csr-attestation}}. The
@@ -188,9 +195,9 @@ it MUST NOT be conveyed in elements of the CSR.
 The processing of the CSR containing attestation information is described
 in {{I-D.ounsworth-csr-attestation}}. Note that the CA MUST NOT issue
 a certificate that contains the extension provided in the CertReqTemplate
-containing the nonce. The nonce MUST only be used for determining freshness
-of the evidence provided by the attester. The nonce is not included in an
-X.509 certificate.
+containing the nonce. Instead the nonce is typically embedded in the
+evidence and used as a way to provide freshness of the evidence provided
+by the attester.
 
 [Editor's Note: It may be useful to augment the CertReqTemplate request
 with information about the type of attestation technology/technologies
@@ -214,4 +221,4 @@ For the use of attestation in the CSR the security considerations of
 
 #  Acknowledgments
 
-We would like to thank Russ Housley for his review comments.
+We would like to thank Russ Housley and Carl Wallace for their review comments.
