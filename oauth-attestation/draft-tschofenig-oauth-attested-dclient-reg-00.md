@@ -86,8 +86,8 @@ in possession of a software statement (a sort-of bearer token).
 This specification improves the security of the OAuth 2.0 Dynamic Client Registration
 specification by introducing the support of attestation.
 
-{{fig-arch}} shows the high-level communication pattern of the IETF RATS passport
-model where the attester transmits the evidence in the OAuth 2.0 Dynamic
+{{fig-arch}} shows the high-level communication pattern of the IETF RATS background
+check model where the attester transmits the evidence in the OAuth 2.0 Dynamic
 Client Registration to the authorization server. The authorization server thereby
 acts as a relying party and relays the evidence to the verifier. The verifier
 processes the received evidence and computes an attestation result, which is then
