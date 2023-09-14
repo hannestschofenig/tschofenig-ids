@@ -2,7 +2,7 @@
 title: Nonce-based Freshness for Attestation in Certification Requests for use with the Certification Management Protocol
 
 abbrev: Nonce-based Freshness in CMP
-docname: draft-tschofenig-lamps-nonce-for-cmp-00
+docname: draft-tschofenig-lamps-nonce-for-cmp-01
 category: std
 
 ipr: trust200902
@@ -104,27 +104,32 @@ a CSR and returned to the RA/CA in a certification request message.
 This exchange is shown graphically below.
 
 ~~~
- End entity                                          RA/CA
- ==========                                      =============
+End entity                                          RA/CA
+==========                                      =============
 
-               -->>-- CertReqTemplate request -->>--
-                                                Verify request
-                                                Generate nonce
-                                                Create response
-               --<<-- CertReqTemplate response --<<--
-                      (nonce)
- Generate key pair
- Fetch Evidence (with nonce) from attester
- Evidence Response from attestation
- Creation of certification request
- Protect request
-               -->>-- certification request -->>--
-                      (evidence including nonce)
-                                                Verify request
-                                                Verify evidence
-                                                Create response
-               --<<-- certification response --<<--
- Handle response
+              -->>-- CertReqTemplate request -->>--
+                                               Verify request
+                                               Generate nonce*
+                                               Create response
+              --<<-- CertReqTemplate response --<<--
+                     (nonce)
+Generate key pair
+Fetch Evidence (with nonce) from attester
+Evidence Response from attestation
+Creation of certification request
+Protect request
+              -->>-- certification request -->>--
+                     (evidence including nonce)
+                                               Verify request
+                                               Verify evidence*
+                                               Check replay*
+                                               Issue certificate
+                                               Create response
+              --<<-- certification response --<<--
+Handle response
+Store certificate
+
+*: These steps require interactions with a verifier.
 ~~~
 
 # Terminology and Requirements Language
@@ -168,10 +173,17 @@ The assumption in this specification is that the RA/CA have out-of-band
 knowledge about the required nonce length required for the technology used
 by the end entity.
 
-When the end entity receives the CertReqTemplate response it MUST use this
-nonce as input to the API call made to the attester functionality on the
-device. While the semantic of the API call and the software/hardware
-architecture is out-of-scope of this specification, it will return
+When the end entity receives the CertReqTemplate response it SHOULD use this
+nonce as input to an attestation API call made to the attester functionality
+on the device. The rational behind this design is that the design may support
+attestation but configuration or policies make the attestation feature
+unavailable. Hence, it is better for an RA/CA to be aggressive in sending
+a nonce, at least where there is a reasonable chance the client supports
+attestation and the client should be allowed to ignore the nonce if it either
+does not support attestation or cannot use attestation for policy reasons.
+
+While the semantic of the attestation API and the software/hardware
+architecture is out-of-scope of this specification, the API will return
 evidence from the attester in a format specific to the attestation technology
 utilized. The encoding of the returned evidence varies but will be placed
 inside the CSR, as specified in {{I-D.ounsworth-csr-attestation}}. The
@@ -183,9 +195,9 @@ it MUST NOT be conveyed in elements of the CSR.
 The processing of the CSR containing attestation information is described
 in {{I-D.ounsworth-csr-attestation}}. Note that the CA MUST NOT issue
 a certificate that contains the extension provided in the CertReqTemplate
-containing the nonce. The nonce MUST only be used for determining freshness
-of the evidence provided by the attester. The nonce is not included in an
-X.509 certificate.
+containing the nonce. Instead the nonce is typically embedded in the
+evidence and used as a way to provide freshness of the evidence provided
+by the attester.
 
 [Editor's Note: It may be useful to augment the CertReqTemplate request
 with information about the type of attestation technology/technologies
@@ -209,5 +221,4 @@ For the use of attestation in the CSR the security considerations of
 
 #  Acknowledgments
 
-Add your name here.
-
+We would like to thank Russ Housley and Carl Wallace for their review comments.
