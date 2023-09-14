@@ -1,0 +1,560 @@
+
+
+
+
+LAMPS                                                      H. Tschofenig
+Internet-Draft                                              H. Brockhaus
+Intended status: Standards Track                                 Siemens
+Expires: March 17, 2024                               September 14, 2023
+
+
+  Nonce-based Freshness for Remote Attestation in Certificate Signing
+Requests (CSRs) for the Certification Management Protocol (CMP) and for
+                 Enrollment over Secure Transport (EST)
+                draft-tschofenig-lamps-nonce-cmp-est-00
+
+Abstract
+
+   Certificate Management Protocol (CMP) and Enrollment over Secure
+   Transport (EST) define protocol messages for X.509v3 certificate
+   creation and management.  Both protocol provide interactions between
+   client systems and PKI components, such as a Registration Authority
+   (RA) and a Certification Authority (CA).
+
+   CMP and EST allow an RA/CA to inform an end entity about the
+   information it has to provide in a certification request.  When an
+   end entity places attestation Evidence in a Certificate Signing
+   Request (CSR) it may need to demonstrate freshness of the provided
+   Evidence.  Attestation technology today often accomplishes this task
+   via the help of nonces.
+
+   This document specifies how nonces are provided by an RA/CA to the
+   end entity for inclusion in evidence.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on March 17, 2024.
+
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 1]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+Copyright Notice
+
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (https://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+1.
+
+   Certificate Management Protocol (CMP) [I-D.ietf-lamps-rfc4210bis]
+   defines protocol messages for X.509v3 certificate creation and
+   management.  CMP provides interactions between client systems and PKI
+   components, such as a Registration Authority (RA) and a Certification
+   Authority (CA).  Enrollment over Secure Transport (EST) [RFC7030] is
+   another popular protocol for the management of certificates, which
+   provides a sub-set of the features offered by CMP.
+
+   Both protocols allow an RA/CA to inform an end entity about the
+   information it has to provide in a certification request.  When an
+   end entity places attestation Evidence in a Certificate Signing
+   Request (CSR) it may need to demonstrate freshness of the provided
+   Evidence.  This extension to a CSR is described in
+   [I-D.ietf-lamps-csr-attestation].  Attestation technology today, such
+   as [TPM20] and [I-D.tschofenig-rats-psa-token], often accomplishes
+   this task via the help of nonces.  A discussion of freshness
+   approaches for Evidence is found in Section 10 of [RFC9334].
+
+   To include a nonce in Evidence by the Attester at the an end entity
+   it is necessary to obtain this nonce from the Relying Party, i.e. RA/
+   CA in our use case, first.  Since the CSR itself is a 'one-shot'
+   message the CMP/EST protocols are used to obtain the nonce from the
+   RA/CA.
+
+   CMP already offers a mechanism to request information from the RA/CA
+   prior to a certification request.  The same is true for EST.
+
+   Once the nonce is obtained the end entity can issue an API call to
+   the Attester to request Evidence and passes the nonce as an input
+   parameter into the API call.  The returned Evidence is then embedded
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 2]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+   into a CSR and returned to the RA/CA in a certification request
+   message.
+
+   The main functionality of this document is described in three
+   sections, namely:
+
+   -  [CMP] describes how to convey the nonce CMP,
+
+   -  Section 4 offers the equivalent functionality for EST, and
+
+   -  Section 8 contains the ASN.1 description.
+
+2.
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+   The terms Attester, Relying Party, Verifier and Evidence are defined
+   in [RFC9334].
+
+   We use the terms certification signing request (CSR) and
+   certification request interchangeably.
+
+3.
+
+   Section 5.3.19.16 of [I-D.ietf-lamps-rfc4210bis] defines the
+   Certificate Request Template (CertReqTemplate) message for use with
+   CMP.  The CertReqTemplateContent payload, which is sent by the CA/RA
+   in response to a request message by the end entity, contains the
+   nonce.  The use of the Certificate Request Template request/response
+   message exchange leads to an extra roundtrip to convey the nonce from
+   the CA/RA to the end entity (and ultimately to the Attester inside
+   the device).
+
+   The end entity MUST construct a CertReqTemplate request message to
+   trigger the RA/CA to transmit a nonce in the response.
+
+   When the RA/CA receive the CertReqTemplate request message the
+   profile information is used to determine that the end entity supports
+   this specification as well as [I-D.ietf-lamps-csr-attestation].  If
+   the end entity supports remote attestation and the policy requires
+   Evidence in a CSR to be provided, the RA/CA issues a CertReqTemplate
+   response containing a nonce in in the template.
+
+   The following exchange showns the interaction graphically.
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 3]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+   End Entity                                          RA/CA
+   ==========                                      =============
+
+                 -->>-- CertReqTemplate request -->>--
+                                                  Verify request
+                                                  Generate nonce*
+                                                  Create response
+                 --<<-- CertReqTemplate response --<<--
+                        (nonce)
+   Generate key pair
+   Fetch Evidence (with nonce) from Attester
+   Evidence response from Attester
+   Generate certification request message
+   Protect request
+                 -->>-- certification request -->>--
+                        (Evidence including nonce)
+                                                  Verify request
+                                                  Verify Evidence*
+                                                  Check for replay*
+                                                  Issue certificate
+                                                  Create response
+                 --<<-- certification response --<<--
+   Handle response
+   Store certificate
+
+   *: These steps require interactions with a Verifier.
+
+4.
+
+   EST offers two ways an EST server can use to tell the EST client what
+   values to use in a CSR.  These two approaches are described
+
+   -  in Section 4.5.2 of [RFC7030], and
+
+   -  in Appendix B of [RFC8295].
+
+   The latter functionality corresponds to the use of CSR templates in
+   [CMP].  While this approach is preferred, an EST deployment may only
+   support RFC 7030 functionality and for this reason a CSR attribute to
+   convey a nonce is defined.  [I-D.ietf-lamps-rfc7030-csrattrs] offers
+   additional clarifications for use of CSR attributes in Section 3.2.
+
+5.
+
+   When the RA/CA is requested or configured to transmit a nonce to an
+   end entity then it interacts with the Verifier.  The Verifier is,
+   according to the IETF RATS architecture Authors' Addresses, "a role
+   performed by an entity that appraises the validity of Evidence about
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 4]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+   an Attester and produces Attestation Results to be used by a Relying
+   Party."  Since the Attester validates Evidence it is also the source
+   of the nonce, at least indirectly, to check for replay.
+
+   Once the nonce is available to the RA/CA, the nonce MUST be copied to
+   the EvidenceNonce field.  It MUST contain a random byte sequence
+   whereby the length depends on the used remote attestation technology.
+   For example, the PSA attestation token
+   [I-D.tschofenig-rats-psa-token] supports nonces of length 32, 48 and
+   64 bytes.  Other attestation technologies use nonces of similar
+   length.  The assumption in this specification is that the RA/CA have
+   out-of-band knowledge about the required nonce length required for
+   the attestation technology used by the end entity.
+
+   When the end entity receives the nonce it SHOULD use it as input to
+   an attestation API call made to the Attester on the device.  The
+   rational behind this "SHOULD"-requirement, rather than a "MUST"-
+   requirement, is that the end entity may support remote attestation
+   but configuration or policies make it unavailable.  Hence, it is
+   better for an RA/CA to be aggressive in sending a nonce, at least
+   where there is a reasonable chance the client supports remote
+   attestation and the client should be allowed to ignore the nonce if
+   it either does not support it or cannot use it for policy reasons.
+
+   While the semantic of the attestation API and the software/hardware
+   architecture is out-of-scope of this specification, the API will
+   return Evidence from the Attester in a format specific to the
+   attestation technology utilized.  The encoding of the returned
+   evidence varies but will be placed inside the CSR, as specified in
+   [I-D.ietf-lamps-csr-attestation].  The software creating the CSR will
+   not have to interpret the Evidence format - it is treated as an
+   opaque blob.  It is important to note that the nonce is carried in
+   the Evidence, either implictily or explicitly, and it MUST NOT be
+   conveyed in elements of the CSR.
+
+   The processing of the CSR containing Evidence is described in
+   [I-D.ietf-lamps-csr-attestation].  Note that the issued certificates
+   does not contain the nonce, as explained in
+   [I-D.ietf-lamps-csr-attestation].  Instead, it is typically embedded
+   in the Evidence and used as a way to provide freshness of the
+   Evidence signed by the Attester.
+
+6.
+
+   [Editor's Note: The ASN.1 module OID (TBD2) and the new private
+   extension (TBD1) must be registered.]
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 5]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+7.
+
+   This specification adds a nonce to a Certificate Request Message
+   Format (CRMF) extension and to PKCS#10 attribute.  This specification
+   assumes that the nonce does not require confidentiality protection
+   without impacting the security property of the remote attestation
+   protocol.  [RFC9334] defines the IETF remote attestation architecture
+   discusses nonce-based freshness in more detail.
+
+   For the use of Evidence in the CSR the security considerations of
+   [I-D.ietf-lamps-csr-attestation] are relevant to this document.
+
+8.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 6]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+PKIX-CMP-KeyAttestationNonceExtn-2023
+  { iso(1) identified-organization(3) dod(6) internet(1) security(5)
+    mechanisms(5) pkix(7) id-mod(0) id-mod-evidenceNonce(TBD2) }
+
+DEFINITIONS IMPLICIT TAGS ::= BEGIN
+
+IMPORTS
+  id-pe
+    FROM PKIX1Explicit-2009 -- from [RFC5912]
+      { iso(1) identified-organization(3) dod(6) internet(1) security(5)
+         mechanisms(5) pkix(7) id-mod(0) id-mod-pkix1-explicit-02(51) }
+  EXTENSION
+    FROM PKIX-CommonTypes-2009  -- From RFC 5912
+      { iso(1) identified-organization(3) dod(6) internet(1) security(5)
+        mechanisms(5) pkix(7) id-mod(0) id-mod-pkixCommon-02(57) } ;
+
+
+id-pe-evidenceNonce OBJECT IDENTIFIER ::= { id-pe TBD1 }
+
+EvidenceNonce ::= OCTET STRING
+
+--
+-- Evidence Nonce Attribute
+--
+
+-- For PKCS#10
+attr-evidence ATTRIBUTE ::= {
+  TYPE EvidenceNonce
+  IDENTIFIED BY id-pe-evidenceNonce
+}
+
+--
+-- Evidence Nonce Extension
+--
+
+-- For CRMF
+ext-evidenceNonce EXTENSION ::= {
+  TYPE EvidenceNonce
+  IDENTIFIED BY id-pe-evidenceNonce
+}
+
+END
+
+
+
+
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 7]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+9.  References
+
+9.1.  Normative References
+
+   [I-D.ietf-lamps-csr-attestation]
+              Ounsworth, M. and H. Tschofenig, "Use of Remote
+              Attestation with Certificate Signing Requests", draft-
+              ietf-lamps-csr-attestation-00 (work in progress), August
+              2023.
+
+   [I-D.ietf-lamps-rfc4210bis]
+              Brockhaus, H., von Oheimb, D., Ounsworth, M., and J. Gray,
+              "Internet X.509 Public Key Infrastructure -- Certificate
+              Management Protocol (CMP)", draft-ietf-lamps-rfc4210bis-07
+              (work in progress), June 2023.
+
+   [I-D.ietf-lamps-rfc7030-csrattrs]
+              Richardson, M., Friel, O., von Oheimb, D., and D. Harkins,
+              "Clarification of RFC7030 CSR Attributes definition",
+              draft-ietf-lamps-rfc7030-csrattrs-06 (work in progress),
+              August 2023.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997.
+
+   [RFC7030]  Pritikin, M., Ed., Yee, P., Ed., and D. Harkins, Ed.,
+              "Enrollment over Secure Transport", RFC 7030,
+              DOI 10.17487/RFC7030, October 2013.
+
+   [RFC8295]  Turner, S., "EST (Enrollment over Secure Transport)
+              Extensions", RFC 8295, DOI 10.17487/RFC8295, January 2018.
+
+9.2.  Informative References
+
+   [I-D.tschofenig-rats-psa-token]
+              Tschofenig, H., Frost, S., Brossard, M., Shaw, A., and T.
+              Fossati, "Arm's Platform Security Architecture (PSA)
+              Attestation Token", draft-tschofenig-rats-psa-token-13
+              (work in progress), September 2023.
+
+   [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
+              W. Pan, "Remote ATtestation procedureS (RATS)
+              Architecture", RFC 9334, DOI 10.17487/RFC9334, January
+              2023.
+
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 8]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+   [TPM20]    Trusted Computing Group, "Trusted Platform Module Library
+              Specification, Family 2.0, Level 00, Revision 01.59",
+              November 2019,
+              <https://trustedcomputinggroup.org/resource/
+              tpm-library-specification/>.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                 [Page 9]
+
+Internet-Draft         Nonce Extension for CMP/EST        September 2023
+
+
+Appendix A.
+
+   It may be useful to inform the CA/RA about the type of attestation
+   technology/technologies available on the end entity.
+
+Appendix B.
+
+   We would like to thank Russ Housley and Carl Wallace for their review
+   comments.
+
+Authors' Addresses
+
+   Hannes Tschofenig
+   Siemens
+
+   EMail: hannes.tschofenig@siemens.com
+
+
+   Hendrik Brockhaus
+   Siemens
+
+   EMail: hendrik.brockhaus@siemens.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Brockhaus   Expires March 17, 2024                [Page 10]
