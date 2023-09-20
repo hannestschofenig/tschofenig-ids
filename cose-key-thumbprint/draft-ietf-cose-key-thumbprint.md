@@ -41,6 +41,7 @@ normative:
   RFC9052:
   RFC9053:
   RFC8747:
+  RFC8392:
 
 informative:
   RFC7638:
@@ -238,7 +239,43 @@ the SPKI representation of the key, a COSE Key Thumbprint is computed over
 the CBOR representation of that key, rather than over an ASN.1
 representation of it.
 
-# Example
+## Confirmation Methods
+
+{{RFC8747}} introduced confirmation methods for use with CBOR
+Web Tokens (CWTs). CWTs have been defined in {{RFC8392}}. This
+specification adds a new confirmation method based on COSE Key
+Thumbprints.
+
+The proof-of-possession key is identified using the "ckt" claim,
+the COSE Key Thumbprint claim. This claim contains the value of
+the COSE Key Thumbprint encoded as a binary string. Instead of
+communicating the actual COSE Key only the thumbprint is conveyed.
+This approach assumes that the recipient is able to obtain the
+identified COSE Key using the thumbprint contained in the "ckt"
+claim. In this case, the issuer of a CWT declares that the
+presenter possesses a particular key and that the recipient
+can cryptographically confirm the presenter's proof of possession
+of the key by including a "ckt" claim in the CWT.
+
+The following example demonstrates the use of the "ckt" claim
+in a CWT (with line-breaks inserted for editorial reasons):
+
+~~~
+   {
+    /iss/ 1 : "coaps://as.example.com",
+    /aud/ 3 : "coaps://resource.example.org",
+    /exp/ 4 : 1361398824,
+    /cnf/ 8 : {
+      /ckt/ [[TBD2]] : h'496bd8afadf307e5b08c64b0421bf9dc
+                  01528a344a43bda88fadd1669da253ec'
+     }
+   }
+~~~
+
+{{IANA}} registers the "ckt" claim and the confirmation method.
+The "ckt" claim is expected to be used in the "cnf" claim.
+
+# Example {#example}
 
 This section demonstrates the COSE Key Thumbprint computation for the
 following example COSE Key containing an ECC public key.
@@ -357,18 +394,28 @@ only be used in special applications. In most other deployment scenarios
 it is more appropriate to utilize a different naming scheme for key
 identifiers.
 
-# IANA Considerations
+# IANA Considerations {#IANA}
 
 IANA is requested to add the following entry to the "CWT Confirmation
 Methods Registry" registry established by {{RFC8747}}:
 
 - Confirmation Method Name: ckt
 - Confirmation Method Description: COSE Key Thumbprint
-- JWT Confirmation Method Name: "jkt"
+- JWT Confirmation Method Name: ckt
 - Confirmation Key: [[TBD1]]
 - Confirmation Value Type(s): binary string
 - Change Controller: IESG
 - Specification Document(s): [[This document]]
+
+IANA is furthermore asked to register the "ckt" claim to the
+
+- Claim Name: ckt
+- Claim Description: COSE Key Thumbprint
+- JWT Claim Name: ckt
+- Claim Key: TBD1
+- Claim Value Type(s): byte string
+- Change Controller: IESG
+- Specification Document(s): [[This specification]]
 
 # Acknowledgements
 
