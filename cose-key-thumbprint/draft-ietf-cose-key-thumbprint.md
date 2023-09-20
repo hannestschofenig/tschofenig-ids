@@ -397,7 +397,7 @@ identifiers.
 # IANA Considerations {#IANA}
 
 IANA is requested to add the following entry to the "CWT Confirmation
-Methods Registry" registry established by {{RFC8747}}:
+Methods" registry established by {{RFC8747}}:
 
 - Confirmation Method Name: ckt
 - Confirmation Method Description: COSE Key Thumbprint
@@ -408,6 +408,7 @@ Methods Registry" registry established by {{RFC8747}}:
 - Specification Document(s): [[This document]]
 
 IANA is furthermore asked to register the "ckt" claim to the
+"CBOR Web Token (CWT) Claims" registry created by {{RFC8392}}:
 
 - Claim Name: ckt
 - Claim Description: COSE Key Thumbprint
