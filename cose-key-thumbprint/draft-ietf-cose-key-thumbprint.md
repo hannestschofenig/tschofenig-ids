@@ -1,7 +1,7 @@
 ---
 title: CBOR Object Signing and Encryption (COSE) Key Thumbprint
 abbrev: COSE Key Thumbprint
-docname: draft-ietf-cose-key-thumbprint-02
+docname: draft-ietf-cose-key-thumbprint-03
 category: std
 
 ipr: trust200902
@@ -266,7 +266,7 @@ in a CWT (with line-breaks inserted for editorial reasons):
     /aud/ 3 : "coaps://resource.example.org",
     /exp/ 4 : 1361398824,
     /cnf/ 8 : {
-      /ckt/ [[TBD2]] : h'496bd8afadf307e5b08c64b0421bf9dc
+      /ckt/ [[TBD1]] : h'496bd8afadf307e5b08c64b0421bf9dc
                   01528a344a43bda88fadd1669da253ec'
      }
    }
@@ -401,22 +401,12 @@ Methods" registry established by {{RFC8747}}:
 
 - Confirmation Method Name: ckt
 - Confirmation Method Description: COSE Key Thumbprint
-- JWT Confirmation Method Name: ckt
+- JWT Confirmation Method Name: jkt
 - Confirmation Key: [[TBD1]]
 - Confirmation Value Type(s): binary string
 - Change Controller: IESG
 - Specification Document(s): [[This document]]
 
-IANA is furthermore asked to register the "ckt" claim to the
-"CBOR Web Token (CWT) Claims" registry created by {{RFC8392}}:
-
-- Claim Name: ckt
-- Claim Description: COSE Key Thumbprint
-- JWT Claim Name: ckt
-- Claim Key: TBD1
-- Claim Value Type(s): byte string
-- Change Controller: IESG
-- Specification Document(s): [[This specification]]
 
 # Acknowledgements
 
