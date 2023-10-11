@@ -1,7 +1,7 @@
 ---
 title: CBOR Object Signing and Encryption (COSE) Key Thumbprint
 abbrev: COSE Key Thumbprint
-docname: draft-ietf-cose-key-thumbprint-03
+docname: draft-ietf-cose-key-thumbprint-04
 category: std
 
 ipr: trust200902
@@ -24,15 +24,22 @@ pi:
 
 author:
  -
-      ins: K. Isobe
-      name: Kohei Isobe
-      email: isobekohei@gmail.com
-      org: SECOM CO., LTD.
+    ins: K. Isobe
+    name: Kohei Isobe
+    email: isobekohei@gmail.com
+    org: SECOM CO., LTD.
 
  -
-      ins: H. Tschofenig
-      name: Hannes Tschofenig
-      email: hannes.tschofenig@gmx.net
+    ins: H. Tschofenig
+    name: Hannes Tschofenig
+    email: hannes.tschofenig@gmx.net
+
+ -
+    ins: O. Steele
+    name: Orie Steele
+    organization: Transmute
+    email: orie@transmute.industries
+    country: United States
 
 normative:
   RFC2119:
@@ -48,6 +55,11 @@ informative:
   RFC6234:
   RFC5280:
   RFC9360:
+  RFC9278:
+  IANA.Hash.Algorithms:
+     title: "Named Information Hash Algorithm Registry"
+     target: https://www.iana.org/assignments/named-information
+     date: false
 
 --- abstract
 
@@ -275,6 +287,47 @@ in a CWT (with line-breaks inserted for editorial reasons):
 {{IANA}} registers the "ckt" claim and the confirmation method.
 The "ckt" claim is expected to be used in the "cnf" claim.
 
+## COSE Key Thumbprint URIs
+
+This specification defines Uniform Resource Identifiers (URIs)
+to represent a COSE Key Thumbprint value. The design follows
+the work of the JSON Web Key (JWK) Thumbprint URIs, specified
+in {{RFC9278}}. This enables COSE Key Thumbprints to be used,
+for example, as key identifiers in contexts requiring URIs.
+This specification defines a URI prefix indicating that the
+portion of the URI following the prefix is a COSE Key Thumbprint.
+
+The following URI prefix is defined to indicate that the portion
+of the URI following the prefix is a COSE Key Thumbprint:
+
+~~~
+  urn:ietf:params:oauth:ckt
+~~~
+
+To make the hash algorithm being used explicit in a URI, the prefix
+is followed by a hash algorithm identifier and a COSE Key Thumbprint
+value, each separated by a colon character to form a URI representing
+a COSE Key Thumbprint.
+
+Hash algorithm identifiers used in COSE Key Thumbprint URIs MUST be values
+from the "Hash Name String" column in the IANA "Named Information
+Hash Algorithm Registry" {{IANA.Hash.Algorithms}}. COSE Key Thumbprint URIs
+with hash algorithm identifiers not found in this registry are not
+considered valid and applications will need to detect and handle this
+error, should it occur.
+
+To promote interoperability among implementations, the SHA-256 hash
+algorithm is mandatory to implement.
+
+An example of a COSE Key Thumbprint URI is shown below with the
+thumbprint value taken from {{example}}. The line-break is added
+for readability purposes.
+
+~~~
+urn:ietf:params:oauth:ckt:sha-256:
+496bd8afadf307e5b08c64b0421bf9dc01528a344a43bda88fadd1669da253ec
+~~~
+
 # Example {#example}
 
 This section demonstrates the COSE Key Thumbprint computation for the
@@ -407,6 +460,13 @@ Methods" registry established by {{RFC8747}}:
 - Change Controller: IESG
 - Specification Document(s): [[This document]]
 
+Furthermore, IANA is requested to add a value to the "OAuth URI" registry
+established with {{!RFC6755}}:
+
+- URN:  urn:ietf:params:oauth:ckt
+- Common Name:  COSE Key Thumbprint URI
+- Change controller:  IESG
+- Specification Document:  [[This document]]
 
 # Acknowledgements
 
@@ -414,6 +474,6 @@ We would like to thank the authors of {{RFC7638}} for their work on the
 JSON Web Key (JWK) Thumbprint specification. This document applies JWK
 Thumbprints to COSE Key structures.
 
-Additionally, we would like to thank Carsten Bormann, Orie Steele,
-Ilari Liusvaara, Laurence Lundblade, Daisuke Ajitomi, Michael Richardson,
-Mike Jones, and Brendan Moran for their feedback.
+Additionally, we would like to thank Carsten Bormann, Ilari Liusvaara,
+Laurence Lundblade, Daisuke Ajitomi, Michael Richardson, Mike Jones,
+and Brendan Moran for their feedback.
