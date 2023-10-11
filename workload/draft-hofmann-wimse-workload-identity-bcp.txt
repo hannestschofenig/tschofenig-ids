@@ -1,0 +1,560 @@
+
+
+
+
+WIMSE                                                         B. Hofmann
+Internet-Draft                                             H. Tschofenig
+Intended status: Standards Track                                 Siemens
+Expires: 12 April 2024                                   10 October 2023
+
+
+              Best Current Practice for Workload Identity
+              draft-hofmann-wimse-workload-identity-bcp-00
+
+Abstract
+
+   The use of the OAuth 2.0 framework for container orchestration
+   systems poses a challenge as managing secrets, such as client_id and
+   client_secret, can be complex and error-prone.  "Service account
+   token volume projection", a term introduced by Kubernetes, provides a
+   way of injecting JSON Web Tokens (JWTs) to workloads.
+
+   This document specifies the use of JWTs for client credentials in
+   container orchestration systems to improve interoperability in
+   orchestration systems, to reduce complexity for developers, and
+   motivates authorization server to support RFC 7523.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 12 April 2024.
+
+Copyright Notice
+
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 1]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   5
+   3.  Architecture and Recommendations  . . . . . . . . . . . . . .   5
+   4.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
+   5.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
+   6.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   6
+   7.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   6
+     7.1.  Normative References  . . . . . . . . . . . . . . . . . .   6
+     7.2.  Informative References  . . . . . . . . . . . . . . . . .   6
+   Appendix A.  Example  . . . . . . . . . . . . . . . . . . . . . .   7
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  10
+
+1.  Introduction
+
+   In workload scenarios dedicated management entities, also called
+   "control plane" entities, are used to start, monitor and stop
+   workloads dynamically.  These workloads typically run micro services
+   that interact with each other and with other entities on the
+   corporate network or on the Internet.  When one workload, acting as
+   an OAuth client, wants to gain access to a protected resource hosted
+   on another workload or on the Internet (referred here generically as
+   a resource server) then authorization is typically required.
+
+   OAuth has been designed to offer help in scenarios where access to
+   protected resources needs to be managed dynamically in a distributed
+   system.
+
+   Each workload instance has to be provisioned with unique credentials.
+   However, these credentials have to be configured prior and are then
+   attached to the workload.  In addition, these credentials do not have
+   an automated rotation mechanism and are valid for an unspecified
+   amount of time.
+
+   This requires manual configuration effort and the missing automated
+   rotation mechanism introduce inconvenience and increase the attack
+   surface.
+
+   "Service account token volume projection" is a feature of container
+   orchestration systems that allows users to create JSON Web Tokens
+   (JWTs) for their workloads.  These JWTs, referred as Service Account
+   Tokens, can be used as client credentials, as specified in RFC 7523
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 2]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+   [RFC7523].  As these tokens are managed by the "control plane" and
+   simply mounted to the filesystem, a workload just needs to consume
+   this file and present it to the authorization server.  In addition,
+   service account token volume projection allows an expiration time on
+   these JWTs to be set, allowing automated rotation of these
+   credentials.  Finally, the private key for signing these tokens is
+   managed by the "control plane", hence removing the manual effort of
+   configuring the client_id and client_secret.
+
+   However, there is currently no standardized way to manage these
+   Service Account Tokens across container orchestrators.  This leads to
+   inconsistencies, and additional effort for developers as they need to
+   support different client authentication mechanisms.  In the worst
+   case, this approach is ignored in favor of client_id and
+   client_secret.
+
+   This specification specifies the use of Service Account Tokens in
+   container orchestration systems, which provides a secure and scalable
+   way to create and manage these tokens, and ensures interoperability
+   with existing OAuth-based authorization systems.
+
+   When OAuth is used as part of the control plane entities, a Service
+   Account Token is provisioned to the workload via the Agent.  This
+   interaction is shown in Figure 1.
+
+   To distinguish the entities, we use the term "Control Plane" to refer
+   to the OAuth 2.0 Authorization Server that is part of the cluster's
+   control plane.  Since there are also two access tokens in play, we
+   use the term "Service Account Token" to refer to the token issued by
+   the Control Plane and thereby distinguish it from the other access
+   token issued to an OAuth 2.0 client running inside the workload by
+   the second authorization server.
+
+   It is important to note that the workload does not use the Service
+   Account Token with resource servers directly but instead obtains
+   access tokens from this second authorization server.  To obtain these
+   access tokens, the OAuth 2.0 client running in the workload uses the
+   JWT client authentication grant, as defined in [RFC7523], with the
+   Service Account Token as input.  The obtained access token may be a
+   bearer token, or a proof-of-possession token.
+
+   Figure 1 illustrates the interaction in the architecture graphically.
+
+
+
+
+
+
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 3]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+                         +---------------+
+                         |               |
+                         | Authorization |
+                         | Server        |
+                         |               |
+                         +---------------+
+                                ^ |
+                                | |
+     +--------------------------|-|--------------+
+     |Cluster                   | | OAuth        |
+     |                          | | Exchange     |
+     | +---------------+        | | to obtain    |
+     | |               |        | | access token |
+     | | Control Plane |        | | using        |
+     | |               |        | | Service      |
+     | +---------------+        | | Account      |
+     |         ^|               | | Token        |
+     |         ||               | v        +-----+
+     |         ||            +----------+  |
+     |         ||            |          |+ |        +----------+
+     |  Obtain ||            | Workload || |        |          |
+     |  Service||            |          ||<-------->| Resource |
+     |  Account||            +----------+| | Access | Server   |
+     |  Token  ||             +----------+ | Token  |          |
+     |         ||                  ^       |        +----------+
+     |         ||    Start Workload:       |
+     |         ||     with Service :       |
+     |         ||    Account Token :       |
+     |         ||                  v       |
+     |         ||              +-------+   |
+     |         |+------------->|       |   |
+     |         +---------------| Agent |   |
+     |                         |       |   |
+     |                         +-------+   |
+     |                                     |
+     +-------------------------------------+
+
+                      Figure 1: Protocol Interaction.
+
+   In Section 3 we provide more details about how the content of the
+   tokens and the offered security properties.
+
+
+
+
+
+
+
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 4]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+3.  Architecture and Recommendations
+
+   This specification relies on the use of OAuth 2.0 [RFC6749] and
+   [RFC7523] for client authentication using a JWT.
+
+   Service Account Tokens used in container orchestration systems are
+   vulnerable to different types of threats, as shown in this list:
+
+   1.  Token theft: Tokens can be stolen by attackers who have already
+       gained access to a workload.  These attackers can then use these
+       tokens to impersonate the workload and gain access to resources
+       they should not have access to.
+
+   2.  Token reuse: Tokens can be reused by attackers to gain access to
+       the system.  However, expiration times limited the token reuse
+       time.
+
+   3.  Misconfigured service accounts: Similar to misconfigured access
+       to secrets, misconfigured service accounts can lead to
+       applications gaining more privileges then necessary.
+
+   4.  Theft of token signing key: The token signing key can be stolen
+       by attackers who have already gained access to the control plane.
+       However, such attackers also have access to all secrets in the
+       container orchestration system.  Hence, resulting in the same
+       impact for use of client_id and client_secret compared to using
+       Service Account Tokens.
+
+   The following fields are populated in the Service Account Token:
+
+   1.  The 'iss' claim MUST contain a string identifying the container
+       orchestrator.
+
+   2.  The 'sub' claim MUST contain a string identifying the workload.
+       This is also the client_id according to [RFC7523].
+
+   3.  The 'aud' claim MUST identify one or multiple authorization
+       servers that are intended recipients of the Service Account Token
+       for client authorization.
+
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 5]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+   Further processing requirements are specified in [RFC7523].
+
+4.  Security Considerations
+
+   This entire document is about security.
+
+5.  IANA Considerations
+
+   This document does not require actions by IANA.
+
+6.  Acknowledgements
+
+   Add your name here.
+
+7.  References
+
+7.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC6749]  Hardt, D., Ed., "The OAuth 2.0 Authorization Framework",
+              RFC 6749, DOI 10.17487/RFC6749, October 2012,
+              <https://www.rfc-editor.org/rfc/rfc6749>.
+
+   [RFC7523]  Jones, M., Campbell, B., and C. Mortimore, "JSON Web Token
+              (JWT) Profile for OAuth 2.0 Client Authentication and
+              Authorization Grants", RFC 7523, DOI 10.17487/RFC7523, May
+              2015, <https://www.rfc-editor.org/rfc/rfc7523>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+7.2.  Informative References
+
+   [OIDC]     Sakimura, N., Bradley, J., Jones, M., de Medeiros, B., and
+              C. Mortimore, "OpenID Connect Core 1.0 incorporating
+              errata set 1", November 2014,
+              <https://openid.net/specs/openid-connect-core-1_0.html>.
+
+
+
+
+
+
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 6]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+Appendix A.  Example
+
+   The functionality described in this specification can be verified
+   using Kubernetes.  Modern version of Kubernetes implement service
+   account token volume projection, which enables the ability to inject
+   the Service Account Token with a specific issuer and audience into
+   the workload.
+
+   A most important parts of the configuration are (which can be found
+   at the end of the full configuration):
+
+   1.  the path, where the application can find the token, as a file
+
+   2.  the expiration of the token in seconds
+
+   3.  the audience, which will be in the Service Account Token
+
+   serviceAccountToken:
+     path: token
+     expirationSeconds: 7200
+     audience: "https://localhost:5001/connect/token"
+
+   The full configuration is shown below:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 7]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: simpleapp
+     labels:
+       app: simpleapp
+   spec:
+     replicas: 1
+     selector:
+       matchLabels:
+         app: simpleapp
+     template:
+       metadata:
+         labels:
+           app: simpleapp
+       spec:
+         containers:
+           - name: container1
+             image: curlimages/curl:8.2.1
+             imagePullPolicy: Always
+             command:
+               - sleep
+               - "3600"
+             env:
+               - name: TOKEN_PATH
+                 value: '/var/run/secrets/other_token/token/token'
+             volumeMounts:
+               - mountPath: '/var/run/secrets/other_token/token'
+                 name: other-token-path
+         volumes:
+           - name: other-token-path
+             projected:
+               sources:
+               - serviceAccountToken:
+                   path: token
+                   expirationSeconds: 7200
+                   audience: "https://localhost:5001/connect/token"
+
+   The most important parts of the token, which the workload will
+   obtain, looks as follows:
+
+
+
+
+
+
+
+
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 8]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+   {
+     "aud": [
+       "https://localhost:5001/connect/token"
+     ],
+     "exp": 1691752299,
+     "iss": "https://kubernetes.default.svc.cluster.local",
+     "sub": "system:serviceaccount:test:default"
+   }
+
+   A complete token example obtained by the workload is shown below.
+
+   {
+     "aud": [
+       "https://localhost:5001/connect/token"
+     ],
+     "exp": 1691752299,
+     "iat": 1691745099,
+     "iss": "https://kubernetes.default.svc.cluster.local",
+     "kubernetes.io": {
+       "namespace": "test",
+       "pod": {
+         "name": "simpleapp-5d7dcf96df-n7csk",
+         "uid": "9fc443d7-5c7a-48d5-9679-0ee03b17d4c5"
+       },
+       "serviceaccount": {
+         "name": "default",
+         "uid": "0bea3006-fb60-49a3-bc80-7e6884d378ae"
+       }
+     },
+     "nbf": 1691745099,
+     "sub": "system:serviceaccount:test:default"
+   }
+
+   To enable the authorization server to use the Service Account Token
+   for client authentication the following configuration is needed:
+
+   1.  the client id is set to system:serviceaccount:test:default.  In
+       our case we are using the default service account in the test
+       namespace.
+
+   2.  the public key of the token signing key.  This can be either
+       configured manually, or dynamically by referencing the JWK
+       endpoint Kubernetes exposes, which is
+       https://kubernetes.default.svc.cluster.local/openid/v1/jwks
+
+   Note: Authorization servers that follow the OpenID Connect Core
+   specification, which profiles RFC 7523, will unfortunately run into
+   problem.  Here is the why.
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                 [Page 9]
+
+Internet-Draft              Workload Identity               October 2023
+
+
+   For JWT-based client authentication [OIDC] specifies the following:
+
+   1.  The 'jti' claim is mandated for client authentication.
+
+   2.  The 'iss' claim must match the 'sub' claim.  Since Kubernetes
+       issues the tokens, and not the workload, the two do not match.
+
+   [RFC7523], on the other hand, does not mandate the use of a 'jti'
+   claim and does not mandate that the 'iss' claim equals the 'sub'
+   claim.
+
+Authors' Addresses
+
+   Benedikt Hofmann
+   Siemens
+   Email: hofmann.benedikt@siemens.com
+
+
+   Hannes Tschofenig
+   Siemens
+   Email: hannes.tschofenig@siemens.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Hofmann & Tschofenig      Expires 12 April 2024                [Page 10]
