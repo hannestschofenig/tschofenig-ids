@@ -49,6 +49,8 @@ normative:
   RFC9053:
   RFC8747:
   RFC8392:
+  RFC7515:
+  RFC4648:
 
 informative:
   RFC7638:
@@ -95,7 +97,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 BCP 14 {{RFC2119}} {{RFC8174}} when, and only when, they appear in all
 capitals, as shown here.
 
-# COSE Key Thumbprint
+# COSE Key Thumbprint {#thumbprint}
 
 The thumbprint of a COSE Key MUST be computed as follows:
 
@@ -319,13 +321,34 @@ error, should it occur.
 To promote interoperability among implementations, the SHA-256 hash
 algorithm is mandatory to implement.
 
-An example of a COSE Key Thumbprint URI is shown below with the
-thumbprint value taken from {{example}}. The line-break is added
-for readability purposes.
+Since the URN is encoded as a string, the output of the COSE Key
+Thumbprint computation described in {{thumbprint}} MUST be base64url
+encoded without padding.
+
+{{RFC7515}} specifies Base64url encoding as follows:
+
+"Base64 encoding using the URL- and filename-safe character set
+defined in Section 5 of RFC 4648 {{RFC4648}}, with all trailing '='
+characters omitted and without the inclusion of any line breaks,
+whitespace, or other additional characters.  Note that the base64url
+encoding of the empty octet sequence is the empty string.
+(See Appendix C of {{RFC7515}} for notes on implementing base64url
+encoding without padding.)"
+
+The base64url encoding of the thumbprint shown in {{example}} is
+shown below (with a line-break added for readability purposes).
 
 ~~~
-urn:ietf:params:oauth:ckt:sha-256:
-496bd8afadf307e5b08c64b0421bf9dc01528a344a43bda88fadd1669da253ec
+NDk2YmQ4YWZhZGYzMDdlNWIwOGM2NGIwNDIxYmY5ZGM
+wMTUyOGEzNDRhNDNiZGE4OGZhZGQxNjY5ZGEyNTNlYw
+~~~
+
+The full example of a COSE Key Thumbprint URI is shown below, again
+with a line-break added.
+
+~~~
+urn:ietf:params:oauth:ckt:sha-256:NDk2YmQ4YWZhZGYzMDdlNWIwOG
+M2NGIwNDIxYmY5ZGMwMTUyOGEzNDRhNDNiZGE4OGZhZGQxNjY5ZGEyNTNlYw
 ~~~
 
 # Example {#example}
