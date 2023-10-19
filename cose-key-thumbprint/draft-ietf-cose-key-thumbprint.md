@@ -372,7 +372,7 @@ the long line broken for display purposes only).
     -3:h'1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd008
 4d19c',
     / kid /
-    2:'meriadoc.brandybuck@buckland.example'
+    2:h'1decade2facade3'
   }
 ~~~
 
