@@ -339,16 +339,14 @@ The base64url encoding of the thumbprint shown in {{example}} is
 shown below (with a line-break added for readability purposes).
 
 ~~~
-NDk2YmQ4YWZhZGYzMDdlNWIwOGM2NGIwNDIxYmY5ZGM
-wMTUyOGEzNDRhNDNiZGE4OGZhZGQxNjY5ZGEyNTNlYw
+SWvYr63zB-WwjGSwQhv53AFSijRKQ72oj63RZp2iU-w
 ~~~
 
 The full example of a COSE Key Thumbprint URI is shown below, again
 with a line-break added.
 
 ~~~
-urn:ietf:params:oauth:ckt:sha-256:NDk2YmQ4YWZhZGYzMDdlNWIwOG
-M2NGIwNDIxYmY5ZGMwMTUyOGEzNDRhNDNiZGE4OGZhZGQxNjY5ZGEyNTNlYw
+urn:ietf:params:oauth:ckt:sha-256:SWvYr63zB-WwjGSwQhv53AFSijRKQ72oj63RZp2iU-w
 ~~~
 
 # Example {#example}
@@ -356,7 +354,7 @@ M2NGIwNDIxYmY5ZGMwMTUyOGEzNDRhNDNiZGE4OGZhZGQxNjY5ZGEyNTNlYw
 This section demonstrates the COSE Key Thumbprint computation for the
 following example COSE Key containing an ECC public key.
 
-For better readability, the example is first presented in JSON (with
+For better readability, the example is first presented in CBOR diagnostic format (with
 the long line broken for display purposes only).
 
 ~~~
@@ -371,7 +369,7 @@ the long line broken for display purposes only).
     / public key: y-coordinate /
     -3:h'1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd008
 4d19c',
-    / kid /
+    / kid is bstr, not used in COSE Key Thumbprint /
     2:h'1decade2facade3'
   }
 ~~~
