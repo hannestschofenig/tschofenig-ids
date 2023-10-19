@@ -1,0 +1,672 @@
+
+
+
+
+RATS                                                        M. Ounsworth
+Internet-Draft                                                   Entrust
+Intended status: Standards Track                           H. Tschofenig
+Expires: 21 April 2024                                           Siemens
+                                                         19 October 2023
+
+
+                    X.509-based Attestation Evidence
+                 draft-ounsworth-rats-x509-evidence-00
+
+Abstract
+
+   This document specifies Claims for use within X.509 certificates.
+   These X.509 certificates are produced by an Attester as part of the
+   remote attestation procedures and consitute Evidence.
+
+   This document follows the Remote ATtestation procedureS (RATS)
+   architecture where Evidence is sent by an Attester and processed by a
+   Verifier.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 21 April 2024.
+
+Copyright Notice
+
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 1]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   3
+   3.  Claims  . . . . . . . . . . . . . . . . . . . . . . . . . . .   4
+     3.1.  Nonce . . . . . . . . . . . . . . . . . . . . . . . . . .   4
+     3.2.  Claims Describing the Entity  . . . . . . . . . . . . . .   4
+       3.2.1.  ueid (Universal Entity ID) Claim  . . . . . . . . . .   4
+     3.3.  sueids (Semi-permanent UEIDs) Claim (SUEIDs)  . . . . . .   5
+     3.4.  oemid (Hardware OEM Identification) Claim . . . . . . . .   5
+     3.5.  hwmodel (Hardware Model) Claim  . . . . . . . . . . . . .   6
+     3.6.  hwversion (Hardware Version) Claim  . . . . . . . . . . .   6
+     3.7.  swversion (Software Version) Claim  . . . . . . . . . . .   7
+     3.8.  dbgstat (Debug Status) Claim  . . . . . . . . . . . . . .   7
+     3.9.  software-component Claim  . . . . . . . . . . . . . . . .   7
+     3.10. fips_conf (Federal Information Processing Standards
+            Conformance) Claim . . . . . . . . . . . . . . . . . . .   8
+     3.11. cc_conf (Common Criteria Conformance) Claim . . . . . . .   9
+   4.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   5.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
+   6.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   9
+     6.1.  Normative References  . . . . . . . . . . . . . . . . . .   9
+     6.2.  Informative References  . . . . . . . . . . . . . . . . .  10
+   Appendix A.  Acknowledgements . . . . . . . . . . . . . . . . . .  11
+   Appendix B.  A.  Full ASN.1 . . . . . . . . . . . . . . . . . . .  11
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  11
+
+1.  Introduction
+
+   Trusted execution environments, like secure elements and hardware
+   security modules, are now widely used, which provide a safe
+   environment to place security sensitive code, such as cryptography,
+   secure boot, secure storage, and other essential security functions.
+   These security functions are typically exposed through a narrow and
+   well-defined interface, and can be used by operating system libraries
+   and applications.
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 2]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+   When a Certificate Signing Request (CSR) library is requesting a
+   certificate from a Certification Authority (CA), a PKI end entity may
+   wish to provide Evidence of the security properties of the trusted
+   execution environment in which the private key is stored.  This
+   Evidence is to be verified by a Relying Party, such as the
+   Registration Authority or the Certification Authority as part of
+   validating an incoming CSR against a given certificate policy.
+   [I-D.ietf-lamps-csr-attestation] defines how to carry Evidence in
+   either PKCS#10 [RFC2986] or Certificate Request Message Format (CRMF)
+   [RFC4211].
+
+   [I-D.ietf-lamps-csr-attestation] is agnostic to the content and the
+   encoding of Evidence.  To offer interoperability it is necessary to
+   define a format that is utilized in a specific deployment environment
+   environment.  Hardware security modules and other trusted execution
+   environments, which have been using ASN.1-based encodings for a long
+   time prefer the use of the same format throughout their software
+   ecosystem.  For those use cases this specification has been
+   developed.
+
+   This specification re-uses the claims defined in [I-D.ietf-rats-eat],
+   and encodes them as an extension in an X.509 certificate [RFC5280].
+   While the encoding of the claims is different to what is defined in
+   [I-D.ietf-rats-eat], the semantics of the claims is retained.  This
+   specification is not an EAP profile, as defined in Section 6 of
+   [I-D.ietf-rats-eat]
+
+   This specification was designed to meet the requirements published by
+   the CA Browser Forum to convey properties about hardware security
+   models, such as non-exportability, which must be enabled for storing
+   publicly-trusted code-signing keys.  Hence, this specification is
+   supposed to be used with the attestation extension for Certificate
+   Signing Requests (CSRs), see [I-D.ietf-lamps-csr-attestation], but
+   Evidence encoded as X.509 certificates may also be used in other
+   context.
+
+2.  Conventions and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in
+   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   This document re-uses the terms defined in [RFC9334] related to
+   remote attestation.  Readers of this document are assumed to be
+   familiar with the following terms: Evidence, Claim, Attestation
+   Result, Attester, Verifier, and Relying Party.
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 3]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+3.  Claims
+
+3.1.  Nonce
+
+   The "nonce" claim is used to provide freshness.
+
+   The Nonce claim is used to carry the challenge provided by the caller
+   to demonstrate freshness of the generated token.  The following
+   constraints apply to the nonce-type:
+
+   *  The length MUST be either 32, 48, or 64 bytes.
+
+   *  Only a single nonce value is conveyed.
+
+   The nonce claim is defined as follows:
+
+      id-ce-evidence-nonce OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_nonce }
+
+      claim_nonce ::= OCTET STRING
+
+   See Section 4.1 of [I-D.ietf-rats-eat] for a description of this
+   claim.
+
+3.2.  Claims Describing the Entity
+
+   The claims in this section describe the entity itself.
+
+3.2.1.  ueid (Universal Entity ID) Claim
+
+   The "ueid" claim conveys a UEID, which identifies an individual
+   manufactured entity.  This identifier is a globally unique and
+   permanent identifier.  See Section 4.2.1 of [I-D.ietf-rats-eat] for a
+   description of this claim.  Three types of UEIDs are defined, which
+   are distinguished via a type field.
+
+   The ueid claim is defined as follows:
+
+      id-ce-evidence-ueid OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_ueid }
+
+      claim_ueid ::= SEQUENCE {
+          type    INTEGER ( RAND(1), EUI(2), IMEI(3),...),
+          value   OCTET STRING
+      }
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 4]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+3.3.  sueids (Semi-permanent UEIDs) Claim (SUEIDs)
+
+   The "sueids" claim conveys one or more semi-permanent UEIDs (SUEIDs).
+   An SUEID has the same format, characteristics and requirements as a
+   UEID, but MAY change to a different value on entity life-cycle events
+   while the ueid claim is permanent.  An entity MAY have both a UEID
+   and SUEIDs, neither, one or the other.
+
+   There MAY be multiple SUEIDs and each has a text string label the
+   purpose of which is to distinguish it from others.
+
+   See Section 4.2.2 of [I-D.ietf-rats-eat] for a description of this
+   claim.
+
+   The sueids claim is defined as follows:
+
+      id-ce-evidence-sueids OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_sueids }
+
+      claim_sueids ::= SEQUENCE {
+          label   OCTET STRING,
+          type    INTEGER ( RAND(1), EUI(2), IMEI(3),...),
+          value   OCTET STRING
+      }
+
+3.4.  oemid (Hardware OEM Identification) Claim
+
+   The "oemid" claim identifies the Original Equipment Manufacturer
+   (OEM) of the hardware.
+
+   See Section 4.2.3 of [I-D.ietf-rats-eat] for a description of this
+   claim.
+
+   The value of this claim depends on the type of OEMID and three types
+   of IDs are defined:
+
+   *  OEMIDs using a 128-bit random number.  Section 4.2.3.1 of
+      [I-D.ietf-rats-eat] defines this type.
+
+   *  an IEEE based OEMID using a global registry for MAC addresses and
+      company IDs.  Section 4.2.3.1 of [I-D.ietf-rats-eat] defines this
+      type.
+
+   *  OEMIDs using Private Enterprise Numbers maintained by IANA.
+      Section 4.2.3.3 of [I-D.ietf-rats-eat] defines this type.
+
+   The oemid claim is defined as follows:
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 5]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+      id-ce-evidence-oemid OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_oemid }
+
+      claim_oemid ::= SEQUENCE {
+          type    INTEGER ( PEN(1), IEEE(2), RANDOM(3),...),
+          value   OCTET STRING
+      }
+
+   [Editor's Note: The value for the PEN is numeric.  For the other two
+   types it is a binary string.]
+
+3.5.  hwmodel (Hardware Model) Claim
+
+   The "hwmodel" claim differentiates hardware models, products and
+   variants manufactured by a particular OEM, the one identified by OEM
+   ID.  It MUST be unique within a given OEM ID.  The concatenation of
+   the OEM ID and "hwmodel" give a global identifier of a particular
+   product.  The "hwmodel" claim MUST only be present if an "oemid"
+   claim is present.
+
+   See Section 4.2.4 of [I-D.ietf-rats-eat] for a description of this
+   claim.
+
+   The hwmodel claim is defined as follows:
+
+      id-ce-evidence-hwmodel OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_hwmodel }
+
+      claim_hwmodel ::= OCTET STRING
+
+3.6.  hwversion (Hardware Version) Claim
+
+   The "hwversion" claim is a text string the format of which is set by
+   each manufacturer.  A "hwversion" claim MUST only be present if a
+   "hwmodel" claim is present.
+
+   See Section 4.2.5 of [I-D.ietf-rats-eat] for a description of this
+   claim.
+
+   The hwversion claim is defined as follows:
+
+      id-ce-evidence-hwversion OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_hwwversion }
+
+      hwversion ::= OCTET STRING
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 6]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+3.7.  swversion (Software Version) Claim
+
+   The "swversion" claim makes use of the CoSWID version-scheme defined
+   in Section 4.1 of [RFC9393] to give a simple version for the
+   software.  A "swversion" claim MUST only be present if a "swname"
+   claim is present.
+
+   See Section 4.2.5 of [I-D.ietf-rats-eat] for a description of this
+   claim.
+
+   The swversion claim is defined as follows:
+
+      id-ce-evidence-swversion OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_swversion }
+
+      swversion ::= PrintableString
+
+3.8.  dbgstat (Debug Status) Claim
+
+   The "dbgstat" claim applies to entity-wide or submodule-wide debug
+   facilities and diagnostic hardware built into chips.  It applies to
+   any software debug facilities related to privileged software that
+   allows system-wide memory inspection, tracing or modification of non-
+   system software like user mode applications.
+
+   See Section 4.2.9 of [I-D.ietf-rats-eat] for a description of this
+   claim and the semantic of the values in the enumerated list.
+
+   The dbgstat claim is defined as follows:
+
+      id-ce-evidence-dbgstat OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_dbgstat }
+
+      dbgstat ::= ENUMERATED {
+         dsEnabled                   (0),
+         disabled                    (1),
+         disabledSinceBoot           (2),
+         disabledPermanently         (3),
+         disabledFullyAndPermanently (4)
+      }
+
+3.9.  software-component Claim
+
+   The Software Components claim is a list of software components that
+   includes all the software (both code and configuration) loaded by the
+   root of trust.
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 7]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+   Each entry in the Software Components list describes one software
+   component using the attributes described below:
+
+   *  The Measurement Type attribute is short string representing the
+      role of this software component.  Examples include the bootloader
+      code, the bootloader configuration, and firmware running in the
+      Trusted Execution Environment.
+
+   *  The Measurement Value attribute represents a hash of the invariant
+      software component in memory at startup time.  The value MUST be a
+      cryptographic hash of 256 bits or stronger.  For interoperability,
+      SHA-256 is assumed to be the default.
+
+   *  The Signer ID attribute is the hash of a signing authority public
+      key for the software component.  This can be used by a Verifier to
+      ensure the components were signed by an expected trusted source.
+
+   *  The Measurement Description contains the OID identifying the hash
+      algorithm used to compute the corresponding Measurement Value.
+      For interoperability, SHA-256 is the default.  If the default
+      algorithm is used, then this field can be omitted.  The values for
+      identifying the hash algorithms MUST be taken from [IANA-Hash].
+
+   The description of the software-component claims is taken from
+   Section 4.4.1 of [I-D.tschofenig-rats-psa-token]
+
+   The software-component claim is defined as follows:
+
+      id-ce-evidence-softwarecomponent OBJECT IDENTIFIER ::=
+            { id-ce TBD_evidence TBD_softwarecomponent }
+
+      softwarecomponent ::= SEQUENCE {
+          measurement-type    PrintableString,
+          measurement-value   OCTET STRING,
+          signer-id           OCTET STRING,
+          measurement-desc    OBJECT IDENTIFIER
+      }
+
+      softwarecomponents  ::=  SEQUENCE SIZE (1..MAX)
+                               OF softwarecomponent
+
+3.10.  fips_conf (Federal Information Processing Standards Conformance)
+       Claim
+
+   TBD: Tomas/Mike to add text here.
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 8]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+3.11.  cc_conf (Common Criteria Conformance) Claim
+
+   TBD: Tomas/Mike to add text here.
+
+4.  Security Considerations
+
+   This specification re-uses the claims from the EAT specification but
+   relies on the security protection offered by X.509 certificate and
+   particularly the digital signature covering the certificate.  This
+   digital signature is computed with the Attestation Key available on
+   the device, see Section 12.1 of [RFC9334] for considerations
+   regarding the generation, the use and the protection of these
+   Attestation Keys.  Although the encoding of an X.509 certificate has
+   been selected for conveying Claims from an Attester to a Relying
+   Party, this document uses a model that is very different from Web PKI
+   deployment where CAs verify whether an applicant for a certificate
+   legitimately represents the domain name(s) in the certificate.  Since
+   the Attester located at the end entity creates the X.509 certificate
+   with claims defined in this document, it conceptually acts like a CA.
+   This document inherits the remote attestation architecture described
+   in [RFC9334].  With the re-use of the claims from [I-D.ietf-rats-eat]
+   the security and privacy considerations apply also to this document
+   even though the encoding in this specification is different from the
+   encoding of claims discussed by [I-D.ietf-rats-eat].
+
+   Evidence contains information that may be unique to a device and may
+   therefore allow to single out an individual device for tracking
+   purposes.  Deployments that have privacy requirements must take
+   appropriate measures to ensure that claim values can only identify a
+   group of devices and that the Attestation Keys are used across a
+   number of devices as well.
+
+   To verify the Evidence, the primary need is to check the signature
+   and the correct encoding of the claims.  To produce the Attestation
+   Result, the Verifier will use Endorsements, Reference Values, and
+   Appraisal Policies.  The policies may require that certain claims
+   must be present and that their values match registered reference
+   values.  All claims may be worthy of additional appraisal.
+
+5.  IANA Considerations
+
+   TBD: OIDs for all the claims listed in this document.
+
+6.  References
+
+6.1.  Normative References
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                 [Page 9]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+   [I-D.ietf-rats-eat]
+              Lundblade, L., Mandyam, G., O'Donoghue, J., and C.
+              Wallace, "The Entity Attestation Token (EAT)", Work in
+              Progress, Internet-Draft, draft-ietf-rats-eat-22, 14
+              October 2023, <https://datatracker.ietf.org/doc/html/
+              draft-ietf-rats-eat-22>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC5280]  Cooper, D., Santesson, S., Farrell, S., Boeyen, S.,
+              Housley, R., and W. Polk, "Internet X.509 Public Key
+              Infrastructure Certificate and Certificate Revocation List
+              (CRL) Profile", RFC 5280, DOI 10.17487/RFC5280, May 2008,
+              <https://www.rfc-editor.org/rfc/rfc5280>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+   [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
+              W. Pan, "Remote ATtestation procedureS (RATS)
+              Architecture", RFC 9334, DOI 10.17487/RFC9334, January
+              2023, <https://www.rfc-editor.org/rfc/rfc9334>.
+
+   [RFC9393]  Birkholz, H., Fitzgerald-McKay, J., Schmidt, C., and D.
+              Waltermire, "Concise Software Identification Tags",
+              RFC 9393, DOI 10.17487/RFC9393, June 2023,
+              <https://www.rfc-editor.org/rfc/rfc9393>.
+
+6.2.  Informative References
+
+   [I-D.ietf-lamps-csr-attestation]
+              Ounsworth, M., Tschofenig, H., and H. Birkholz, "Use of
+              Remote Attestation with Certificate Signing Requests",
+              Work in Progress, Internet-Draft, draft-ietf-lamps-csr-
+              attestation-02, 9 October 2023,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-
+              csr-attestation-02>.
+
+
+
+
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                [Page 10]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+   [I-D.tschofenig-rats-psa-token]
+              Tschofenig, H., Frost, S., Brossard, M., Shaw, A. L., and
+              T. Fossati, "Arm's Platform Security Architecture (PSA)
+              Attestation Token", Work in Progress, Internet-Draft,
+              draft-tschofenig-rats-psa-token-13, 1 September 2023,
+              <https://datatracker.ietf.org/doc/html/draft-tschofenig-
+              rats-psa-token-13>.
+
+   [IANA-Hash]
+              IANA, "Hash Function Textual Names", 2023,
+              <https://www.iana.org/assignments/hash-function-text-
+              names>.
+
+   [RFC2986]  Nystrom, M. and B. Kaliski, "PKCS #10: Certification
+              Request Syntax Specification Version 1.7", RFC 2986,
+              DOI 10.17487/RFC2986, November 2000,
+              <https://www.rfc-editor.org/rfc/rfc2986>.
+
+   [RFC4211]  Schaad, J., "Internet X.509 Public Key Infrastructure
+              Certificate Request Message Format (CRMF)", RFC 4211,
+              DOI 10.17487/RFC4211, September 2005,
+              <https://www.rfc-editor.org/rfc/rfc4211>.
+
+Appendix A.  Acknowledgements
+
+   This specification is the work of a design team created by the chairs
+   of the LAMPS working group.  This specification has been developed
+   based on discussions in that design team.
+
+   The following persons, in no specific order, contributed to the work:
+   Richard Kettlewell, Chris Trufan, Bruno Couillard, Jean-Pierre Fiset,
+   Sander Temme, Jethro Beekman, Zsolt Rozsahegyi, Ferenc Pet&#337;,
+   Mike Agrenius Kushner, Tomas Gustavsson, Dieter Bong, Christopher
+   Meyer, Michael StJohns, Carl Wallace, Michael Ricardson, Tomofumi
+   Okubo, Olivier Couillard, John Gray, Eric Amador, Johnson Darren,
+   Herman Slatman, Tiru Reddy, Thomas Fossati, Corey Bonnel, Argenius
+   Kushner, James Hagborg.
+
+Appendix B.  A.  Full ASN.1
+
+   TBD: Full ASN.1 goes in here.
+
+Authors' Addresses
+
+
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                [Page 11]
+
+Internet-Draft      X.509-based Attestation Evidence        October 2023
+
+
+   Mike Ounsworth
+   Entrust Limited
+   2500 Solandt Road – Suite 100
+   Ottawa, Ontario  K2K 3G5
+   Canada
+   Email: mike.ounsworth@entrust.com
+
+
+   Hannes Tschofenig
+   Siemens
+   Email: hannes.tschofenig@gmx.net
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ounsworth & Tschofenig    Expires 21 April 2024                [Page 12]
