@@ -59,7 +59,7 @@ informative:
 Certificate Management Protocol (CMP) and Enrollment over Secure
 Transport (EST) define protocol messages for X.509v3 certificate
 creation and management. Both protocol provide interactions
-between client systems and PKI components, such as a Registration
+between client systems and PKI management entities, such as a Registration
 Authority (RA) and a Certification Authority (CA).
 
 CMP and EST allow an RA/CA to inform an end entity about the information
@@ -94,7 +94,7 @@ An end entity requesting a certificate from a Certification Authority (CA)
 may wish to offer believable claims about the protections afforded
 to the corresponding private key, such as whether the private key
 resides on a hardware security module or the protection capabilities
-provided by the hardware.
+provided by the hardware, and claims about the platform itself. 
 
 To convey these claims in Evidence, as part of remote attestation,
 the remote attestation extension {{I-D.ietf-lamps-csr-attestation}} has
@@ -133,7 +133,6 @@ convey Evidence to the RA/CA in step (2). The Verifier processes the
 received information and returns an Attestation Result to the Relying
 Party in step (3).
 
-
 ~~~ aasvg
                               .---------------.
                               |               |
@@ -146,12 +145,13 @@ Party in step (3).
                     (1)            |    |  v
  .------------.   Nonce in    .----|----|-----.
  |            |   CMP or EST  |    |    |     |
- |  Attester  |<-------------------+    |     |
- |            |               |         |     |
- |            |-------------->|---------'     |
- |  End       |   Evidence    | Relying       |
- |  Entity    |   in CSR      | Party (RA/CA) |
- |            |     (2)       |               |
+ |  End       |<-------------------+    |     |
+ |  Entity    |               |         |     |
+ |    ^       |-------------->|---------'     |
+ |    |       |   Evidence    | Relying       |
+ |    v       |   in CSR      | Party (RA/CA) |
+ |  Attester  |     (2)       |               |
+ |            |               |               |
  '------------'               '---------------'
 ~~~
 {: #fig-arch title="Architecture with Background Check Model."}
@@ -216,12 +216,10 @@ End Entity                                          RA/CA
               --<<-- CertReqTemplate response --<<--
                      (nonce)
 Generate key pair
-Fetch Evidence (with nonce) from Attester
-Evidence response from Attester
+Generate Evidence*
 Generate certification request message
-Protect request
               -->>-- certification request -->>--
-                     (Evidence including nonce)
+                    (+Evidence including nonce)
                                                Verify request
                                                Verify Evidence*
                                                Check for replay*
@@ -231,7 +229,8 @@ Protect request
 Handle response
 Store certificate
 
-*: These steps require interactions with a Verifier.
+*: These steps require interactions with the Attester
+(on the EE side) and with the Verifier (on the RA/CA side).
 ~~~
 {: #fig-cmp-msg title="CMP Exchange with Nonce and Evidence."}
 
@@ -257,20 +256,22 @@ end entity then it interacts with the Verifier.
 The Verifier is, according to the IETF RATS architecture {{RFC9334}}, "a role
 performed by an entity that appraises the validity of Evidence about
 an Attester and produces Attestation Results to be used by a Relying
-Party." Since the Attester validates Evidence it is also the source
-of the nonce, at least indirectly, to check for replay.
+Party." Since the Verifier validates Evidence it is also the source
+of the nonce to check for replay.
 
-Once the nonce is available to the RA/CA, the nonce MUST be copied to
-the respective structure, as described in {{EST}} and {{CMP}}. The
-nonce value MUST contain a random byte sequence whereby the length
+The nonce value MUST contain a random byte sequence whereby the length
 depends on the used remote attestation technology.
+Since the nonce is relayed with the RA/CA, it MUST be copied to
+the respective structure, as described in {{EST}} and {{CMP}}, for
+transmission to the Attester.
 
 For example, the PSA attestation token {{I-D.tschofenig-rats-psa-token}}
 supports nonces of length 32, 48 and 64 bytes. Other attestation
 technologies use nonces of similar length. The assumption in this
 specification is that the RA/CA have out-of-band knowledge about the
 required nonce length required for the attestation technology used by
-the end entity.
+the end entity. The nonces of incorrect length will cause the remote
+attestation protocol to fail.
 
 When the end entity receives the nonce it MUST use it, if remote
 attestation is available and supports nonces. It is better for an
@@ -287,7 +288,7 @@ inside the CSR, as specified in {{I-D.ietf-lamps-csr-attestation}}. The
 software creating the CSR will not have to interpret the Evidence format
 - it is treated as an opaque blob. It is important to note that the
 nonce is carried in the Evidence, either implicitly or explicitly, and
-it MUST NOT be conveyed in CSR structures.
+it MUST NOT be conveyed in CSR structures outside the Evidence payload.
 
 The processing of the CSR containing Evidence is described in
 {{I-D.ietf-lamps-csr-attestation}}. Note that the issued certificates

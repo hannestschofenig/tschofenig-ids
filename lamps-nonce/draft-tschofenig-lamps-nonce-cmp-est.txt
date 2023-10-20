@@ -5,7 +5,7 @@
 LAMPS                                                      H. Tschofenig
 Internet-Draft                                              H. Brockhaus
 Intended status: Standards Track                                 Siemens
-Expires: 20 April 2024                                   18 October 2023
+Expires: 22 April 2024                                   20 October 2023
 
 
   Nonce-based Freshness for Remote Attestation in Certificate Signing
@@ -18,8 +18,8 @@ Abstract
    Certificate Management Protocol (CMP) and Enrollment over Secure
    Transport (EST) define protocol messages for X.509v3 certificate
    creation and management.  Both protocol provide interactions between
-   client systems and PKI components, such as a Registration Authority
-   (RA) and a Certification Authority (CA).
+   client systems and PKI management entities, such as a Registration
+   Authority (RA) and a Certification Authority (CA).
 
    CMP and EST allow an RA/CA to inform an end entity about the
    information it has to provide in a certification request.  When an
@@ -46,14 +46,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 20 April 2024.
+   This Internet-Draft will expire on 22 April 2024.
 
 
 
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 1]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 1]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 2]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 2]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -118,7 +118,8 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
    (CA) may wish to offer believable claims about the protections
    afforded to the corresponding private key, such as whether the
    private key resides on a hardware security module or the protection
-   capabilities provided by the hardware.
+   capabilities provided by the hardware, and claims about the platform
+   itself.
 
    To convey these claims in Evidence, as part of remote attestation,
    the remote attestation extension [I-D.ietf-lamps-csr-attestation] has
@@ -164,8 +165,7 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
 
 
-
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 3]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 3]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -181,12 +181,13 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
                        (1)            |    |  v
     .------------.   Nonce in    .----|----|-----.
     |            |   CMP or EST  |    |    |     |
-    |  Attester  |<-------------------+    |     |
-    |            |               |         |     |
-    |            |-------------->|---------'     |
-    |  End       |   Evidence    | Relying       |
-    |  Entity    |   in CSR      | Party (RA/CA) |
-    |            |     (2)       |               |
+    |  End       |<-------------------+    |     |
+    |  Entity    |               |         |     |
+    |    ^       |-------------->|---------'     |
+    |    |       |   Evidence    | Relying       |
+    |    v       |   in CSR      | Party (RA/CA) |
+    |  Attester  |     (2)       |               |
+    |            |               |               |
     '------------'               '---------------'
 
             Figure 1: Architecture with Background Check Model.
@@ -220,8 +221,7 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
 
 
-
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 4]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 4]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -277,7 +277,7 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 5]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 5]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -292,12 +292,10 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
                  --<<-- CertReqTemplate response --<<--
                         (nonce)
    Generate key pair
-   Fetch Evidence (with nonce) from Attester
-   Evidence response from Attester
+   Generate Evidence*
    Generate certification request message
-   Protect request
                  -->>-- certification request -->>--
-                        (Evidence including nonce)
+                       (+Evidence including nonce)
                                                   Verify request
                                                   Verify Evidence*
                                                   Check for replay*
@@ -307,7 +305,8 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
    Handle response
    Store certificate
 
-   *: These steps require interactions with a Verifier.
+   *: These steps require interactions with the Attester
+   (on the EE side) and with the Verifier (on the RA/CA side).
 
               Figure 2: CMP Exchange with Nonce and Evidence.
 
@@ -333,7 +332,8 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 6]
+
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 6]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -345,20 +345,22 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
    according to the IETF RATS architecture [RFC9334], "a role performed
    by an entity that appraises the validity of Evidence about an
    Attester and produces Attestation Results to be used by a Relying
-   Party."  Since the Attester validates Evidence it is also the source
-   of the nonce, at least indirectly, to check for replay.
+   Party."  Since the Verifier validates Evidence it is also the source
+   of the nonce to check for replay.
 
-   Once the nonce is available to the RA/CA, the nonce MUST be copied to
-   the respective structure, as described in Section 4 and Section 3.
    The nonce value MUST contain a random byte sequence whereby the
-   length depends on the used remote attestation technology.
+   length depends on the used remote attestation technology.  Since the
+   nonce is relayed with the RA/CA, it MUST be copied to the respective
+   structure, as described in Section 4 and Section 3, for transmission
+   to the Attester.
 
    For example, the PSA attestation token
    [I-D.tschofenig-rats-psa-token] supports nonces of length 32, 48 and
    64 bytes.  Other attestation technologies use nonces of similar
    length.  The assumption in this specification is that the RA/CA have
    out-of-band knowledge about the required nonce length required for
-   the attestation technology used by the end entity.
+   the attestation technology used by the end entity.  The nonces of
+   incorrect length will cause the remote attestation protocol to fail.
 
    When the end entity receives the nonce it MUST use it, if remote
    attestation is available and supports nonces.  It is better for an
@@ -376,7 +378,7 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
    not have to interpret the Evidence format - it is treated as an
    opaque blob.  It is important to note that the nonce is carried in
    the Evidence, either implicitly or explicitly, and it MUST NOT be
-   conveyed in CSR structures.
+   conveyed in CSR structures outside the Evidence payload.
 
    The processing of the CSR containing Evidence is described in
    [I-D.ietf-lamps-csr-attestation].  Note that the issued certificates
@@ -387,9 +389,7 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
 
 
-
-
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 7]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 7]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -445,7 +445,7 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 8]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 8]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -501,7 +501,7 @@ END
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                 [Page 9]
+Tschofenig & Brockhaus    Expires 22 April 2024                 [Page 9]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -557,7 +557,7 @@ Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                [Page 10]
+Tschofenig & Brockhaus    Expires 22 April 2024                [Page 10]
 
 Internet-Draft         Nonce Extension for CMP/EST          October 2023
 
@@ -613,4 +613,4 @@ Authors' Addresses
 
 
 
-Tschofenig & Brockhaus    Expires 20 April 2024                [Page 11]
+Tschofenig & Brockhaus    Expires 22 April 2024                [Page 11]
