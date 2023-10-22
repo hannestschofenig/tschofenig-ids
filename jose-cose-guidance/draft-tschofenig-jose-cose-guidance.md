@@ -41,7 +41,6 @@ normative:
   RFC7516:
   RFC9052:
 informative:
-  I-D.tschofenig-rats-psa-token:
 
 --- abstract
 
