@@ -26,7 +26,7 @@ author:
  -
       ins: H. Tschofenig
       name: Hannes Tschofenig
-      email: hannes.tschofenig@siemens.com
+      email: hannes.tschofenig@gmx.net
       org:
 
  -
@@ -37,6 +37,9 @@ author:
 
 normative:
   RFC2119:
+  RFC7515:
+  RFC7516:
+  RFC9052:
 informative:
   I-D.tschofenig-rats-psa-token:
 
@@ -59,14 +62,18 @@ offered by the library they are using.
 
 JSON Object Signing and Encryption (JOSE) has initially been designed
 to offer provide a security wrapper for access tokens used by the
-OAuth protocol. The larger applicability of a standard for describing
-a security-related meta-data was, however, immediately recognized.
-Today, JOSE is in wide spread use.
+OAuth protocol, particularly a digital signature. The wider
+applicability of a standard for describing security-related
+meta-data was, however, immediately recognized. Today, JOSE is
+in widespread use and the functionality is spread accross various
+specifications (such as {{RFC7515}} for the JSON Web Signature and
+{{RFC7516}} for JSON Web Encryption).
 
-With the development of CBOR a binary encoding format was developed
+With the development of CBOR {{!RFC8949}} a binary encoding format was developed
 to address use cases where JSON was too verbose. A security wrapper
 that uses CBOR-based encoding was needed and CBOR Object Signing
-and Encryption (COSE) was standardized.
+and Encryption (COSE) was standardized and later updated with
+{{!RFC9052}} and {{!RFC9053}}.
 
 The JOSE and COSE specifications have intentionally been kept in
 sync since protocols and payloads today are often described in
@@ -95,26 +102,31 @@ document are to be interpreted as described in RFC 2119 {{RFC2119}}.
 #  Key Identification {#kid}
 
 The security wrappers in JOSE and COSE use a simple design, at least
-for the basic functionality like digital signatures and MACs for a
+for the basic functionality like digital signatures and MACs using a
 single recipient.
 
-The structure is as follows:
+The security wrapper contains the following structure:
 
  - A header, which is split into a protected and unprotected parameters.
- - An optional payload. It is optional because the payload may be detached.
- This is the payload we want to protect. In many applications this
- payload is a JSON-based payload (in case of JOSE) or a CBOR-encoded
- payload (in case of COSE). Various IETF specifications exist that
- standardize the content of these payloads.
+
+ - The payload, which may be detached and will then be conveyed
+ independently. This is the payload we want to protect. In many applications this
+ payload is a JSON-based payload (in case of JOSE) or a CBOR-encoded payload
+ (in case of COSE). There are also standardize payloads, such as JSON Web Token
+ (JWT) {{!RFC7519}} and CBOR Web Token (CWT) {{!RFC8392}}.
+ 
  - A digital signature, a tag (for a MAC), or a ciphertext (for encryption).
 
 The purpose of the header is to provide instructions for the protection of
 the payload, including
 
 * algorithm information used to provide protection of the payload,
+
 * the identification of the key to verify the digital signature, MAC, or
 encryption,
+
 * X.509 certificates and certificate chains,
+
 * countersignature.
 
 Although the layering is quite simple with the header providing the information
@@ -122,15 +134,38 @@ to provide protection of the payload, some specifications and applications
 started to place information for key identification inside the payload. This
 approach destroys the clear layering.
 
-Additionally, it forces a JOSE/COSE parser to defer security processing of the
-payload to a later point in time and to look inside the payload to find the
-appropriate keying material to subsequently verify the payload.
+The use of the 'kid' parameter is the preferred way to identify a key but
+nothing in {{RFC7515}} states that the key identification values must be
+globally unique (and therefore "collision resistant"). If a JOSE-/COSE-protected
+message is intended for external/3rd party recipients, then 
+
+- the 'kid' parameter MUST contain a globally unique value, or
+- other header parameters when combined associated with the 'kid' result in a
+globally unique value.
+
+If a JOSE-/COSE-protected message is used in a domain-specific context only,
+such as within an enterprise or a workload environment, then the uniqueness
+requirements are lifted.
+
+The practice of placing some or all key identification into the payload, instead
+of the JOSE/COSE header, forces a parser to defer security processing of the
+payload to a later point in time, to look inside the payload to find the
+appropriate keying material and to subsequently verify the payload. Since the
+parser implementation does not know what fields will be used for key identification
+it has to expose all information to an application prior to signature verification
+or MAC processing. There is a large risk that application developers make security-
+relevant decisions already prior to the completion of the security processing.
 
 There is no need for such design since there are existing header parameters
 available to store the necessary information. If those headers are insufficient,
-then it is always possible to define new header parameter to convey this informtion.
+then it is always possible to define new header parameter to convey this information.
 This approach also simplifies libraries since they do not need to understand
 the payload content to fetch the correct information.
+
+When key identification-related claims are placed in the payload, those
+claims SHOULD be repeated in the header, as defined in {{!I-D.ietf-cose-cwt-claims-in-headers}} (for COSE)
+and in {{Section 5.3 of !RFC7519}} (for JOSE). This approach should only be
+used as a last resort, when the previous two approaches cannot be used.
 
 Finally, an easy transition from a system using digital signatures over
 payloads to encrypted payloads is not possible since information needed
