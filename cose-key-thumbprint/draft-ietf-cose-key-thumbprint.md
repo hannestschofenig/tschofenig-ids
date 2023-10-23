@@ -387,12 +387,7 @@ EECD0084D19C0258246D65726961646F632E6272616E64796275636B406275636B6C6
 
 Not all of the parameters from the example above are used in the COSE Key
 Thumbprint computation since the required parameters of an elliptic curve
-public key are (as listed in {{ecc}}):
-
-- "kty"
-- "crv"
-- "x"
-- "y"
+public key are (as listed in {{ecc}}) "kty", "crv", "x", and "y".
 
 The resulting COSE Key structure, in CBOR diagnostic format with
 line-breaks added for better readability, with the minimum parameters
