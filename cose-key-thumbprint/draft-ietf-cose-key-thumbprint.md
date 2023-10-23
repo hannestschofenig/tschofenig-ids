@@ -84,10 +84,10 @@ the thumbprint, for instance, by using the COSE Key Thumbprint value as a "kid"
 (key ID) value.
 
 This specification defines how thumbprints of COSE keys are created.
-Additionally, a new CWT confirmation method is registered in the registry
-created by {{RFC8747}}. See Section 3.1 of {{RFC8747}} for details
-about the use of a confirmation claim in a CWT with a proof-of-possession
-key.
+Additionally, a new CWT confirmation method is added to the IANA "CWT
+Confirmation Methods" registry created by {{RFC8747}}. See Section 3.1 of
+{{RFC8747}} for details about the use of a confirmation claim in a CWT
+with a proof-of-possession key.
 
 # Terminology
 
@@ -140,7 +140,7 @@ such as X25519, are:
 
 Details can be found in Section 7.1 of {{RFC9053}}.
 
-## Elliptic Curve Keys w/ x- and y-coordinate pair
+## Elliptic Curve Keys with X- and Y-Coordinate Pair {#ecc}
 
 The required parameters for elliptic curve public keys that use the EC2 key type, such
 as NIST P-256, are:
@@ -386,19 +386,13 @@ EECD0084D19C0258246D65726961646F632E6272616E64796275636B406275636B6C6
 ~~~
 
 Not all of the parameters from the example above are used in the COSE Key
-Thumbprint since the required parameters of an elliptic curve public key are:
+Thumbprint computation since the required parameters of an elliptic curve
+public key are (as listed in {{ecc}}):
 
 - "kty"
 - "crv"
 - "x"
 - "y"
-
-The required order based on Section 4.2.1 of {{RFC8949}} is:
-
-- "y" (label: -3, data type: bstr)
-- "x" (label: -2, data type: bstr)
-- "crv" (label: -1, data type: int)
-- "kty" (label: 1, data type: int)
 
 The resulting COSE Key structure, in CBOR diagnostic format with
 line-breaks added for better readability, with the minimum parameters
@@ -471,7 +465,7 @@ identifiers.
 
 # IANA Considerations {#IANA}
 
-IANA is requested to add the following entry to the "CWT Confirmation
+IANA is requested to add the following entry to the IANA "CWT Confirmation
 Methods" registry established by {{RFC8747}}:
 
 - Confirmation Method Name: ckt
@@ -482,7 +476,7 @@ Methods" registry established by {{RFC8747}}:
 - Change Controller: IESG
 - Specification Document(s): [[This document]]
 
-Furthermore, IANA is requested to add a value to the "OAuth URI" registry
+Furthermore, IANA is requested to add a value to the IANA "OAuth URI" registry
 established with {{!RFC6755}}:
 
 - URN:  urn:ietf:params:oauth:ckt
@@ -497,5 +491,5 @@ JSON Web Key (JWK) Thumbprint specification. This document applies JWK
 Thumbprints to COSE Key structures.
 
 Additionally, we would like to thank Carsten Bormann, Ilari Liusvaara,
-Laurence Lundblade, Daisuke Ajitomi, Michael Richardson, Mike Jones,
+Laurence Lundblade, Daisuke Ajitomi, Michael Richardson, Michael B. Jones,
 and Brendan Moran for their feedback.
