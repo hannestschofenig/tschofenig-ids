@@ -1,0 +1,672 @@
+
+
+
+
+TLS                                                        H. Tschofenig
+Internet-Draft                                                          
+Intended status: Standards Track                               M. Tuexen
+Expires: 27 May 2024                  Muenster Univ. of Applied Sciences
+                                                        24 November 2023
+
+
+       Extended Key Update for Transport Layer Security (TLS) 1.3
+              draft-tschofenig-tls-extended-key-update-00
+
+Abstract
+
+   The Transport Layer Security (TLS) 1.3 specification offers a
+   dedicated message to update cryptographic keys during the lifetime of
+   an ongoing session.  It allows the sender to perform an update of the
+   key and initialization vector and may trigger the recipient, via the
+   request_update field, to transmit a key update message in the reverse
+   direction.
+
+   In environments where sessions are long-lived, such as industrial IoT
+   or telecommunication networks, this key update along is insufficient
+   since perfect forward secrecy is not offered via this mechanism.
+   Earlier versions of TLS allowed the two peers to perform
+   renegotiation, which is a handshake that establishes new
+   cryptographic parameters for an existing session.  When a security
+   vulnerability with the renegotiation mechanism was discovered, RFC
+   5746 was standardized as a fix.  Renegotiation has, however, been
+   removed from TLS 1.3.
+
+   This specification defines an extended key update message that
+   supports perfect forward secrecy using a Diffie-Hellman key exchange.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 27 May 2024.
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 1]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+Copyright Notice
+
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology and Requirements Language . . . . . . . . . . . .   3
+   3.  Extensions  . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   4.  Extended Key Update . . . . . . . . . . . . . . . . . . . . .   4
+     4.1.  Generic Considerations  . . . . . . . . . . . . . . . . .   4
+     4.2.  DTLS 1.3-specific Considerations  . . . . . . . . . . . .   7
+   5.  Updating Traffic Secrets  . . . . . . . . . . . . . . . . . .   9
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  11
+     8.1.  Normative References  . . . . . . . . . . . . . . . . . .  11
+     8.2.  Informative References  . . . . . . . . . . . . . . . . .  11
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  12
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  12
+
+1.  Introduction
+
+   The features of TLS and DTLS have changed over the years and while
+   newer versions optimized and enhanced features (often with the help
+   of extensions) some functionality was removed without replacement.
+   The ability to update keys and initialization vectors with forward
+   secrecy has been added in TLS 1.3 [I-D.ietf-tls-rfc8446bis] using the
+   KeyUpdate message and it intended to (partially) replace
+   renegotiation from earlier TLS versions.  The renegotiation feature,
+   while complex, offered additional functionality that is not supported
+   with TLS 1.3 anymore, including the update keys with a Diffie-Hellman
+   exchange during the lifetime of a session.
+
+
+
+
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 2]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   While such a feature is less relevant in environments with shorter-
+   lived sessions, such as transactions on the web, there are uses of
+   TLS and DTLS where long-lived sessions are common.  In those
+   environments, such as industrial IoT and telecommunication networks,
+   availability is important and an interruption of the communication
+   due to periodic session resumptions is not an option.
+
+   Some deployments have used IPsec in the past and have now decided to
+   switch to TLS or DTLS instead and the requirement for updates of
+   cryptographic keys for an existing session has become a requirement.
+   For IPsec, NIST, BSI, and ANSSI recommends very frequent re-run of
+   Diffie-Hellman to provide forward secrecy and force attackers to
+   perform a dynamic key extraction [RFC7624].  ANSSI writes "It is
+   recommended to force the periodic renewal of the keys, e.g., every
+   hour and every 100 GB of data, in order to limit the impact of a key
+   compromise."  [ANSSI-DAT-NT-003].
+
+   This specification defines a new, extended key update message
+   supporting perfect forward secrecy.  It does so by utilizing a
+   Diffie-Hellman exchange using one of the groups negotiated during the
+   initial exchange.  The support for this extension is signaled using
+   the TLS flags extension mechanism.
+
+   This specification is applicable to both TLS 1.3
+   [I-D.ietf-tls-rfc8446bis] and DTLS 1.3 [RFC9147].  Throughout the
+   specification we do not distinguish between these two protocols
+   unless necessary for better understanding.
+
+2.  Terminology and Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+   To distinguish the key update procedure defined in
+   [I-D.ietf-tls-rfc8446bis] from the key update procedure specified in
+   this document, we use the terms "classic key update" and "extended
+   key update", respectively.
+
+3.  Extensions
+
+   Client and servers use the TLS flags extension
+   [I-D.ietf-tls-tlsflags] to indicate support for the functionality
+   defined in this document.  We call this the "extended_key_update"
+   extension and the corresponding flag is called "Extended_Key_Update"
+   flag.
+
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 3]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   The "Extended_Key_Update" flag proposed by the client in the
+   ClientHello (CH) MUST be acknowledged in the EncryptedExtensions
+   (EE), if the server also supports the functionality defined in this
+   document and is configured to use it.
+
+   If the "Extended_Key_Update" flag is not set, servers ignore any the
+   functionality specified in this document and applications have to
+   rely on the features offered by the TLS 1.3-specified KeyUpdate
+   instead.
+
+4.  Extended Key Update
+
+4.1.  Generic Considerations
+
+   The ExtendedKeyUpdate handshake message is used to indicate an update
+   of cryptographic keys.  This key update process can be sent by either
+   peer after it has sent a Finished message.  Implementations that
+   receive a ExtendedKeyUpdate message prior to receiving a Finished
+   message MUST terminate the connection with an "unexpected_message"
+   alert.
+
+   The design of the ExtendedKeyUpdate message follows the design of the
+   classic KeyUpdate message.  Both allow the update of keys in one
+   direction only.  However, the ExtendedKeyUpdate message requires a
+   full-roundtrip due to the nature of the Diffie-Hellman exchange.
+
+   Figure 1 showns the interaction graphically.  First, support for the
+   functionality in this specification is negotiated in the ClientHello
+   and the EncryptedExtensions messages.  Then, the ExtendedKeyUpdate
+   message is sent to update the application traffic secrets.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 4]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+        Client                                           Server
+
+ Key  ^ ClientHello
+ Exch | + key_share
+      | + signature_algorithms
+      v + Extended_Key_Update       -------->
+                                                   ServerHello  ^ Key
+                                                   + key_share  | Exch
+                                                                v
+                                         {EncryptedExtensions   ^ Server
+                                        + Extended_Key_Update}  | Params
+                                          {CertificateRequest}  v
+                                                 {Certificate}  ^
+                                           {CertificateVerify}  | Auth
+                                                    {Finished}  v
+                                <--------
+      ^ {Certificate}
+ Auth | {CertificateVerify}
+      v {Finished}              -------->
+        [Application Data]      <------->  [Application Data]
+                                   ...
+        [ExtendedKeyUpdate]     -------->
+                                <--------  [ExtendedKeyUpdate]
+                                   ...
+        [ExtendedKeyUpdate]     <-------
+                                -------->  [ExtendedKeyUpdate]
+                                   ...
+        [Application Data]      <------->  [Application Data]
+
+            Figure 1: Extended Key Update Message Exchange.
+
+   The structure of the ExtendedKeyUpdate message is shown below.  The
+   sender starts the key update process and the receiver responds with
+   its key share.  The extended key update always consists of two
+   messages, one from the sender to the receiver and another one from
+   the receiver to the sender.  Both messages use the same format but
+   the response message MUST NOT have the request_update set to
+   update_requested(1).
+
+   The structures for KeyUpdateRequest and KeyShareEntry are defined in
+   [I-D.ietf-tls-rfc8446bis].
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 5]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   enum {
+       update_not_requested(0), update_requested(1), (255)
+   } ;
+
+   struct {
+       KeyUpdateRequest request_update;
+       KeyShareEntry key_share;
+   } ExtendedKeyUpdate;
+
+   If the request_update field is set to "update_requested", then the
+   receiver MUST send an ExtendedKeyUpdate of its own with
+   request_update set to "update_not_requested" prior to sending its
+   next Application Data record.  This mechanism allows either side to
+   force an update to the entire connection, but causes an
+   implementation which receives multiple ExtendedKeyUpdate while it is
+   silent to respond with a single update.  Note that implementations
+   may receive an arbitrary number of messages between sending a
+   ExtendedKeyUpdate with request_update set to "update_requested" and
+   receiving the peer's ExtendedKeyUpdate, because those messages may
+   already be in flight.  However, because send and receive keys are
+   derived from independent traffic secrets, retaining the receive
+   traffic secret does not threaten the forward secrecy of data sent
+   before the sender changed keys.
+
+   Note: Implementations may receive an arbitrary number of messages
+   between one peer sending a ExtendedKeyUpdate and this peer receiving
+   the peer's ExtendedKeyUpdate, because those messages may already be
+   in flight.  This design aspect needs to be taken into account when
+   designing APIs that inform applications using this extended key
+   update procedure to guarantee perfect forward security.
+
+   If implementations independently send their own ExtendedKeyUpdate
+   messages, and they cross in flight, the result is that each side
+   increments keys by two generations.
+
+   Both sender and receiver MUST encrypt their ExtendedKeyUpdate
+   messages with the old keys.  Both sides MUST enforce that a
+   ExtendedKeyUpdate messages with the old key is received before
+   accepting any messages encrypted with the new key.  Failure to do so
+   may allow message truncation attacks.
+
+   With a 128-bit key as in AES-128, rekeying 2^64 times has a high
+   probability of key reuse within a given connection.  Note that even
+   if the key repeats, the IV is also independently generated, so the
+   chance of a joint key/IV collision is much lower.  In order to
+   provide an extra margin of security, sending implementations MUST NOT
+   allow the epoch -- and hence the number of key updates -- to exceed
+   2^48-1.  In order to allow this value to be changed later -- for
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 6]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   instance for ciphers with more than 128-bit keys -- receiving
+   implementations MUST NOT enforce this rule.  If a sending
+   implementation receives a ExtendedKeyUpdate with request_update set
+   to "update_requested", it MUST NOT send its own ExtendedKeyUpdate if
+   that would cause it to exceed these limits.  This may result in an
+   eventual need to terminate the connection when the limits in
+   Section 5.5 of [I-D.ietf-tls-rfc8446bis] are reached.
+
+   The ExtendedKeyUpdate and the KeyUpdates MAY be used in combination,
+   depending on the desired security properties.
+
+4.2.  DTLS 1.3-specific Considerations
+
+   DTLS 1.3 [RFC9147] requires the transmission of an ACK message to
+   ensure the reliable transmission of the KeyUpdate message.  Since the
+   design of the ExtendedKeyUpdate message always requires a full
+   roundtrip there is no need for a dedicated ACK message.
+
+   Figure 2 illustrates an example exchange of the ExtendedKeyUpdate
+   message used to update traffic secrets in both directions in a DTLS
+   1.3 exchange.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 7]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+      Client                                             Server
+
+            /-------------------------------------------\
+           |             Initial Handshake               |
+            \-------------------------------------------/
+
+       [Application Data]         ========>
+       (epoch=3)
+
+                                  <========      [Application Data]
+                                                          (epoch=3)
+
+            /-------------------------------------------\
+           |              Some time later ...            |
+            \-------------------------------------------/
+
+       [ExtendedKeyUpdate]
+       (epoch 3)                  -------->
+
+
+                                  <========      [Application Data]
+                                                          (epoch=3)
+
+                                                [ExtendedKeyUpdate]
+                                  <--------               (epoch=3)
+
+    /----------------------------\
+   |   Key Update (based on DH)   |
+    \----------------------------/
+
+       [Application Data]
+       (epoch=4)                  ========>
+
+                                  <--------     [ExtendedKeyUpdate]
+                                                          (epoch=3)
+
+       [ExtendedKeyUpdate]        -------->
+       (epoch=4)
+
+                                   /----------------------------\
+                                  |   Key Update (based on DH)   |
+                                   \----------------------------/
+
+                                  <========      [Application Data]
+                                                          (epoch=4)
+
+              Figure 2: DTLS 1.3 Extended Key Update Example.
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 8]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   In order to facilitate epoch reconstruction in DTLS 1.3 (see
+   Section 4.2.2 of [RFC9147]), implementations MUST NOT send records
+   with the new keys or send a new ExtendedKeyUpdate messages until the
+   previous key update has been completed.  This avoids having too many
+   epochs in active use.
+
+   Due to loss and/or reordering, DTLS 1.3 implementations may receive a
+   record with an older epoch than the current one (the requirements
+   above preclude receiving a newer record).  They SHOULD attempt to
+   process those records with that epoch (see Section 4.2.2 of [RFC9147]
+   for information on determining the correct epoch) but MAY opt to
+   discard such out-of-epoch records.
+
+   Due to the possibility of a response message of an initial
+   ExtendedKeyUpdate being lost and thereby preventing the sender of the
+   ExtendedKeyUpdate from updating its keying material, receivers MUST
+   retain the pre-update keying material until receipt and successful
+   decryption of a message using the new keys.
+
+5.  Updating Traffic Secrets
+
+   Once the handshake is complete, it is possible for either side to
+   update its sending traffic keys using the ExtendedKeyUpdate handshake
+   message.  The next generation of traffic keys is computed by
+   generating client_/server_application_traffic_secret_N+1 from
+   client_/server_application_traffic_secret_N as described in this
+   section and then re-deriving the traffic keys, as described in
+   Section 7.3 of [I-D.ietf-tls-rfc8446bis].
+
+   There are two changes to the application_traffic_secret computation
+   described in [I-D.ietf-tls-rfc8446bis], namely
+
+   *  the label is adjusted to distinguish it from the classic KeyUpdate
+      message, and
+
+   *  the Diffie-Hellman derived shared secret, as 'dh-secret', is used
+      as input to the HKDF-Expand-Label() function to produce the value
+      sk. sk is subsequently included as a context value in the
+      computation of the application_traffic_secret calculation making
+      the key next generation of the application traffic secret
+      dependent on the previous application traffic secret and the DH-
+      derived value.
+
+   The next-generation application_traffic_secret is computed as
+   follows:
+
+
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                  [Page 9]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   sk = HKDF-Expand-Label(dh-secret, "DH-derived key", "", Hash.length)
+
+   application_traffic_secret_N+1 =
+       HKDF-Expand-Label(application_traffic_secret_N,
+                         "traffic upd 2", sk, Hash.length)
+
+   Once client_/server_application_traffic_secret_N+1 and its associated
+   traffic keys have been computed, implementations SHOULD delete
+   client_/server_application_traffic_secret_N and its associated
+   traffic keys.
+
+6.  Security Considerations
+
+   [RFC9325] provides a good summary of what (perfect) forward secrecy
+   is and how it relates to the TLS protocol.  In summary, it says:
+
+   "Forward secrecy (also called "perfect forward secrecy" or "PFS") is
+   a defense against an attacker who records encrypted conversations
+   where the session keys are only encrypted with the communicating
+   parties' long-term keys.  Should the attacker be able to obtain these
+   long-term keys at some point later in time, the session keys and thus
+   the entire conversation could be decrypted."
+
+   Appendix F of [I-D.ietf-tls-rfc8446bis] goes into details of
+   explaining the security properties of the TLS 1.3 protocol and notes
+   "... forward secrecy without rerunning (EC)DHE does not stop an
+   attacker from doing static key exfiltration."  It concludes with a
+   recommendation by saying: "Frequently rerunning (EC)DHE forces an
+   attacker to do dynamic key exfiltration (or content exfiltration)."
+   (The term key exfiltration is defined in [RFC7624].)
+
+   This specification re-uses public key encryption to update
+   application traffic secrets in both direction.  Unlike the classic
+   Key Update message defined in [I-D.ietf-tls-rfc8446bis], the key
+   update procedure requires to messages.
+
+7.  IANA Considerations
+
+   IANA is requested to add the following value to the "TLS Flags"
+   extension defined in [I-D.ietf-tls-tlsflags]
+
+   *  Value: TBD1
+
+   *  Flag Name: extended_key_update
+
+   *  Messages: CH, EE
+
+   *  Recommended: Y
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                 [Page 10]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   *  Reference: [This document]
+
+8.  References
+
+8.1.  Normative References
+
+   [I-D.ietf-tls-rfc8446bis]
+              Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", Work in Progress, Internet-Draft, draft-
+              ietf-tls-rfc8446bis-09, 7 July 2023,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-tls-
+              rfc8446bis-09>.
+
+   [I-D.ietf-tls-tlsflags]
+              Nir, Y., "A Flags Extension for TLS 1.3", Work in
+              Progress, Internet-Draft, draft-ietf-tls-tlsflags-12, 23
+              July 2023, <https://datatracker.ietf.org/doc/html/draft-
+              ietf-tls-tlsflags-12>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC9147]  Rescorla, E., Tschofenig, H., and N. Modadugu, "The
+              Datagram Transport Layer Security (DTLS) Protocol Version
+              1.3", RFC 9147, DOI 10.17487/RFC9147, April 2022,
+              <https://www.rfc-editor.org/rfc/rfc9147>.
+
+8.2.  Informative References
+
+   [ANSSI-DAT-NT-003]
+              ANSSI, "Recommendations for securing networks with IPsec,
+              Technical Report", August 2015,
+              <https://www.ssi.gouv.fr/uploads/2015/09/NT_IPsec_EN.pdf>.
+
+   [RFC7624]  Barnes, R., Schneier, B., Jennings, C., Hardie, T.,
+              Trammell, B., Huitema, C., and D. Borkmann,
+              "Confidentiality in the Face of Pervasive Surveillance: A
+              Threat Model and Problem Statement", RFC 7624,
+              DOI 10.17487/RFC7624, August 2015,
+              <https://www.rfc-editor.org/rfc/rfc7624>.
+
+   [RFC9325]  Sheffer, Y., Saint-Andre, P., and T. Fossati,
+              "Recommendations for Secure Use of Transport Layer
+              Security (TLS) and Datagram Transport Layer Security
+              (DTLS)", BCP 195, RFC 9325, DOI 10.17487/RFC9325, November
+              2022, <https://www.rfc-editor.org/rfc/rfc9325>.
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                 [Page 11]
+
+Internet-Draft         Extended Key Update for TLS         November 2023
+
+
+   [TLS-Ext-Registry]
+              IANA, "Transport Layer Security (TLS) Extensions",
+              November 2023, <https://www.iana.org/assignments/tls-
+              extensiontype-values>.
+
+Appendix A.  Acknowledgments
+
+   We would like to thank the members of the "TSVWG DTLS for SCTP
+   Requirements Design Team" for their discussion.  The members, in no
+   particular order, are:
+
+   *  Marcelo Ricardo Leitner
+
+   *  Zaheduzzaman Sarker
+
+   *  Magnus Westerlund
+
+   *  John Mattsson
+
+   *  Claudio Porfiri
+
+   *  Xin Long
+
+   *  Michael Tuxen
+
+   *  Hannes Tschofenig
+
+   *  K Tirumaleswar Reddy
+
+   *  Bertrand Rault
+
+   Additionally, we would like to thank the chairs of the Transport and
+   Services Working Group (tsvwg) Gorry Fairhurst and Marten Seemann as
+   well as the responsible area director Martin Duke.
+
+Authors' Addresses
+
+   Hannes Tschofenig
+   Email: hannes.tschofenig@gmx.net
+
+
+   Michael Tuexen
+   Muenster Univ. of Applied Sciences
+   Email: tuexen@fh-muenster.de
+
+
+
+
+
+
+
+Tschofenig & Tuexen        Expires 27 May 2024                 [Page 12]
