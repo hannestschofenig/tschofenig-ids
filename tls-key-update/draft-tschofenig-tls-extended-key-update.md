@@ -205,7 +205,7 @@ The structures for KeyUpdateRequest and KeyShareEntry are defined in
 ~~~
 enum {
     update_not_requested(0), update_requested(1), (255)
-} ;
+} KeyUpdateRequest;
 
 struct {
     KeyUpdateRequest request_update;
