@@ -46,10 +46,13 @@ normative:
   RFC8747:
   RFC8949:
 informative:
+  RFC6024:
   RFC8446:
   RFC8613:
+  RFC9019:
   RFC9147:
   RFC9360:
+
   I-D.ietf-cose-key-thumbprint:
   I-D.ietf-oauth-status-list:
   I-D.mcmillion-keytrans-architecture:
@@ -74,28 +77,20 @@ This specification extends this functionality to CBOR Web Tokens (CWTs).
 The CBOR Object Signing and Encryption (COSE) message structure uses
 references to keys and defines header parameters to carry chains of X.509
 certificates. The header parameters for conveying X.509 certificate chains
-in a COSE payload are defined in {{RFC9360}}. This document is inspired by
-RFC 9360 and re-uses text as much as possible and is intentionally aligned.
+in a COSE payload are defined in {{RFC9360}}.
 
-This specification defines header parameters to convey chains of CBOR Web
-Tokens (CWTs) {{RFC8392}}. The use of chains of CWTs allows a trust
-infrastructure established by CWTs to be used with COSE. The Concise Binary
-Object Representation (CBOR) key structures {{RFC8949}} that have been
-defined in COSE support the use of X.509 certificates. While there is a lot
-of X.509 infrastructure and protocol support available, CWTs are used in
-environments successfully.
+This document is inspired by RFC 9360 and defines header parameters to
+convey chains of CBOR Web Tokens (CWTs) {{RFC8392}}. The use of chains of
+CWTs allows a trust infrastructure established by CWTs to be used with COSE.
+The Concise Binary Object Representation (CBOR) key structures {{RFC8949}}
+that have been defined in COSE support the use of X.509 certificates. This
+specification applies the well-proven concepts to CWTs. These chains of CWTs
+allow path validation similarly to what a X.509 certificate-based Public Key
+Infrastructure (PKI) provides. Since {{RFC8747}} does not define the
+semantics of path validation for CWTs, new terminology is introduced.
 
-These chains of CWTs allow path validation similarly to what a X.509
-certificate-based Public Key Infrastructure (PKI) provides. Applying PKI-based
-concepts is new to CWTs, new terminology is introduced. Path validation
-is an important part of establishing trust in a CWT and Section 6 of
-{{RFC5280}} provides guidance. When applying path validation, as defined
-in RFC 5280, to CWTs the reader needs to treat them as certificates,
-assuming CWTs also carry a public key -- see {{RFC8747}}. Keep in mind
-that many of the advanced features available with an X.509 certificate-based
-PKI are, at the time of writing, not available with CWTs. The authors do,
-however, believe differences will vanish as CWT-based deployments scale.
-
+This document is structured as follows: After introducing some terms, we
+describe path validation for CWTs. Then, we define new header parameters.
 
 # Terminology and Requirements Language
 
@@ -105,10 +100,15 @@ document are to be interpreted as described in RFC 2119 {{RFC2119}}.
 
 The following terms are useful for readers of this document:
 
-- end entity: user of CWT and/or end user system that is the subject of a CWT;
+- End Entity: user of CWT and/or end user system that is the subject of a CWT;
 
-- CA: certification authority; often corresponds to an authorization
-server in the context of CWTs.
+- CA: certification authority; RFC 8747 calls this entity the "issuer" and
+describes it as "the party that creates the CWT and binds the claims about
+the subject to the proof-of-possession key". In an OAuth-based system,
+this entity often corresponds to an authorization server.
+
+- CA CWT: A CWT that is self-issued whereby the same name appears in the
+subject and issuer claims.
 
 - RA: registration authority, i.e., an optional system to which
 a CA delegates certain management functions; while often used in PKI
@@ -122,6 +122,61 @@ lists {{I-D.ietf-oauth-status-list}}.
 CWTs and CRLs and serves as a means of distributing these CWTs and CRLs
 to end entities. These repositories may be append-only databases, in the
 style of {{I-D.mcmillion-keytrans-architecture}}.
+
+- Trust Anchor:  As defined in {{RFC6024}} and {{RFC9019}}, a Trust Anchor
+"represents an authoritative entity via a public key and associated data.
+The public key is used to verify digital signatures, and the associated
+data is used to constrain the types of information for which the trust
+anchor is authoritative." The trust anchor may be a CWT, a raw public key,
+or other structure, as appropriate.
+
+- Subject Public Key (Info): The "confirmation" claim, defined in {{RFC8747}},
+used to carry the public key and the algorithm with which the key is used.
+
+# CWT Path Validation
+
+The goal of path validation is to verify the binding between a subject
+name and the public key, as represented in the target CWT, based
+on the public key of the trust anchor. In most cases, the target
+CWT will be an end entity CWT. Verifying the binding between the name and
+subject public key requires obtaining a sequence of certificates that
+support that binding. For path validation to work CWTs that have a
+minimum number of claims, namely:
+
+- Subject
+- Issuer
+- Confirmation
+
+Valid paths begin with CWTs issued by a trust anchor and the trust anchor
+is an input to the algorithm. The algorithm in Section 6 of {{RFC5280}}
+requires the public key of the CA, the CA's name, and any constraints upon
+the set of paths that may be validated using this key.
+
+The path validation algorithm verifies that a prospective certification
+path (a sequence of n CWTs) satisfies the following conditions:
+
+(a)  for all x in {1, ..., n-1}, the subject of CWT x is the issuer of CWT x+1;
+
+(b)  CWT 1 is issued by the trust anchor;
+
+(c)  CWT n is the CWT to be validated (i.e., the target CWT); and
+
+Note:  When the trust anchor is provided in the form of a self-signed CWT,
+this self-signed CWT is not included as part of the prospective certification path.
+
+As a variation to the algorithm presented in Section 6 of {{RFC5280}}, there
+is no strict requirement for a CWT being valid in terms of its lifetime (as
+indicated by the "Expiration Time" and the "Not Before" claims) since CWTs
+may not necessarily carry these claims and validatity may be determined via
+different means, which are outside the scope of this algorithm.
+
+Path validation is an important part of establishing trust in a CWT and
+when applying path validation, as defined in Section 6 of{{RFC5280}}, to
+CWTs the reader needs to treat them as certificates. It is important to keep
+in mind that many of the advanced features available with an X.509 certificate-based
+PKI are, at the time of writing, not available with CWTs. The authors do,
+however, believe that differences will decrease over time as CWT-based deployments
+scale.
 
 # CWT COSE Header Parameters
 
@@ -160,11 +215,11 @@ cwt-bag:  This header parameter contains a bag of CWTs, which is unordered and
     bucket.  Sending the header parameter in the unprotected header
     bucket allows an intermediary to remove or add CWT.
 
-    The end-entity CWT MUST be integrity protected by COSE.
+    The end entity CWT MUST be integrity protected by COSE.
     This can, for example, be done by sending the header parameter in
     the protected header, sending an 'cwt-bag' in the unprotected header
     combined with an 'cwt-t' in the protected header, or including the
-    end-entity CWT in the external_aad.
+    end entity CWT in the external_aad.
 
     This header parameter allows for a single CWT or a
     bag of CWT to be carried in the message.
@@ -178,7 +233,7 @@ cwt-bag:  This header parameter contains a bag of CWTs, which is unordered and
 
 cwt-chain:  This header parameter contains an ordered array of CWTs.
     The CWTs are to be ordered starting with
-    the CWT containing the end-entity key followed by the
+    the CWT containing the end entity key followed by the
     CWT that signed it, and so on.  There is no requirement
     for the entire chain to be present in the element if there is
     reason to believe that the relying party already has, or can
@@ -195,11 +250,11 @@ cwt-chain:  This header parameter contains an ordered array of CWTs.
     bucket.  Sending the header parameter in the unprotected header
     bucket allows an intermediary to remove or add CWT.
 
-    The end-entity CWT MUST be integrity protected by COSE.
+    The end entity CWT MUST be integrity protected by COSE.
     This can, for example, be done by sending the header parameter in
     the protected header, sending an 'cwt-chain' in the unprotected
     header combined with an 'cwt-t' in the protected header, or
-    including the end-entity CWT in the external_aad.
+    including the end entity CWT in the external_aad.
 
     This header parameter allows for a single CWT or a
     chain of CWTs to be carried in the message.
@@ -211,7 +266,7 @@ cwt-chain:  This header parameter contains an ordered array of CWTs.
         strings is used, with each CWT being in its own byte
         string.
 
-cwt-t:  This header parameter identifies the end-entity CWT
+cwt-t:  This header parameter identifies the end entity CWT
     by a hash value (a thumbprint).  The 'cwt-t' header
     parameter is represented as an array of two elements.  The first
     element is an algorithm identifier that is an integer or a string
@@ -224,14 +279,14 @@ cwt-t:  This header parameter identifies the end-entity CWT
     parameter can be in either a protected or unprotected header
     bucket.
 
-    The identification of the end-entity CWT MUST be integrity
+    The identification of the end entity CWT MUST be integrity
     protected by COSE.  This can be done by sending the header
-    parameter in the protected header or including the end-entity
+    parameter in the protected header or including the end entity
     CWT in the external_aad.
 
     The 'cwt-t' header parameter can be used alone or together with the
     'cwt-bag', 'cwt-chain', or 'cwt-u' header parameters to provide
-    integrity protection of the end-entity CWT.
+    integrity protection of the end entity CWT.
 
     For interoperability, applications that use this header parameter
     MUST support the hash algorithm 'SHA-256' but can use other hash
@@ -254,11 +309,11 @@ cwt-u:  This header parameter provides the ability to identify a CWT
     encoded according to RFC 8392.  If the parameter "usage" is
     set to "chain", this sequence indicates a CWT chain.
 
-    The end-entity CWT MUST be integrity protected by COSE.
+    The end entity CWT MUST be integrity protected by COSE.
     This can, for example, be done by sending the 'cwt-u' in the
     unprotected or protected header combined with an 'cwt-t' in the
-    protected header, or including the end-entity CWT in the
-    external_aad.  As the end-entity CWT is integrity
+    protected header, or including the end entity CWT in the
+    external_aad.  As the end entity CWT is integrity
     protected by COSE, the URI does not need to provide any
     protection.
 
@@ -361,6 +416,10 @@ cwt-u-sender:
 ~~~
 {: #fig-static-ecdh title="Static ECDH Algorithm Values."}
 
+# Example
+
+TBD
+
 #  Security Considerations
 
 Establishing trust in a CWT is a vital part of processing.  A
@@ -384,28 +443,22 @@ any event, both the signature validation and the CWT
 validation MUST be completed successfully before acting on any
 requests.
 
-The end-entity CWT MUST be integrity protected
+The end entity CWT MUST be integrity protected
 by COSE.  Without proof of possession, an attacker can trick the CA
 into issuing an identity-misbinding CWT with someone else's
 "borrowed" public key but with a different subject.  An on-path
 attacker can then perform an identity-misbinding attack by replacing
-the real end-entity CWT in COSE with such an identity-
+the real end entity CWT in COSE with such an identity-
 misbinding CWT.
 
-End-entity CWTs contain identities that a passive on-path attacker
+end entity CWTs contain identities that a passive on-path attacker
 eavesdropping on the conversation can use to identify and track the
-subject. To provide identity protection,COSE can be sent inside
-another security protocol providing confidentiality. The 'cwt-t'
-and 'cwt-u' header parameters are just alternative permanent
-identifiers and can also be used to track the subject.
-
-Before using the key in a CWT, the key MUST be checked
-against the algorithm to be used, and any algorithm-specific checks
-need to be made.  These checks can include validating that points are
-on curves for elliptical curve algorithms and that the sizes of RSA
-keys are within an acceptable range.  The use of unvalidated keys can
-lead to either loss of security or excessive consumption of resources
-(for example, using a 200K RSA key).
+subject.  The 'cwt-t' and 'cwt-u' header parameters are just
+alternative permanent identifiers and can also be used to track
+the subject. To provide identity protection, COSE can be sent inside
+another security protocol providing confidentiality. Additionally,
+the encryption capabilities of COSE itself can be used to protect
+the CWT content.
 
 When processing the 'cwt-u' header parameter, the security
 considerations of {{RFC3986}}, and specifically those defined in
