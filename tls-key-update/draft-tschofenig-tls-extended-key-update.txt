@@ -5,8 +5,10 @@
 TLS                                                        H. Tschofenig
 Internet-Draft                                                          
 Intended status: Standards Track                               M. Tuexen
-Expires: 27 May 2024                  Muenster Univ. of Applied Sciences
-                                                        24 November 2023
+Expires: 23 June 2024                 Muenster Univ. of Applied Sciences
+                                                                T. Reddy
+                                                                   Nokia
+                                                        21 December 2023
 
 
        Extended Key Update for Transport Layer Security (TLS) 1.3
@@ -49,14 +51,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 27 May 2024.
 
 
-
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 1]
+Tschofenig, et al.        Expires 23 June 2024                  [Page 1]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
+
+   This Internet-Draft will expire on 23 June 2024.
 
 Copyright Notice
 
@@ -76,18 +78,18 @@ Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
    2.  Terminology and Requirements Language . . . . . . . . . . . .   3
-   3.  Extensions  . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Extensions  . . . . . . . . . . . . . . . . . . . . . . . . .   4
    4.  Extended Key Update . . . . . . . . . . . . . . . . . . . . .   4
      4.1.  Generic Considerations  . . . . . . . . . . . . . . . . .   4
      4.2.  DTLS 1.3-specific Considerations  . . . . . . . . . . . .   7
    5.  Updating Traffic Secrets  . . . . . . . . . . . . . . . . . .   9
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .  10
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
    8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  11
      8.1.  Normative References  . . . . . . . . . . . . . . . . . .  11
-     8.2.  Informative References  . . . . . . . . . . . . . . . . .  11
+     8.2.  Informative References  . . . . . . . . . . . . . . . . .  12
    Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  12
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  12
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  13
 
 1.  Introduction
 
@@ -100,26 +102,28 @@ Table of Contents
    renegotiation from earlier TLS versions.  The renegotiation feature,
    while complex, offered additional functionality that is not supported
    with TLS 1.3 anymore, including the update keys with a Diffie-Hellman
-   exchange during the lifetime of a session.
+   exchange during the lifetime of a session.  If a traffic secret
+   (application_traffic_secret_N) has been compromised, an attacker can
+   passively eavesdrop on all future data sent on the connection,
+   including data encrypted with application_traffic_secret_N+1,
 
 
 
-
-
-
-
-
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 2]
+Tschofenig, et al.        Expires 23 June 2024                  [Page 2]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
+
+   application_traffic_secret_N+2, etc.
 
    While such a feature is less relevant in environments with shorter-
    lived sessions, such as transactions on the web, there are uses of
    TLS and DTLS where long-lived sessions are common.  In those
    environments, such as industrial IoT and telecommunication networks,
    availability is important and an interruption of the communication
-   due to periodic session resumptions is not an option.
+   due to periodic session resumptions is not an option.  A full
+   handshake with (EC)DHE gives protection against active attackers but
+   prevents the use of long-lived sessions.
 
    Some deployments have used IPsec in the past and have now decided to
    switch to TLS or DTLS instead and the requirement for updates of
@@ -135,7 +139,10 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    supporting perfect forward secrecy.  It does so by utilizing a
    Diffie-Hellman exchange using one of the groups negotiated during the
    initial exchange.  The support for this extension is signaled using
-   the TLS flags extension mechanism.
+   the TLS flags extension mechanism.  The frequent re-running of
+   extended key
+
+   update forces an attacker to do dynamic key exfiltration.
 
    This specification is applicable to both TLS 1.3
    [I-D.ietf-tls-rfc8446bis] and DTLS 1.3 [RFC9147].  Throughout the
@@ -153,6 +160,16 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    this document, we use the terms "classic key update" and "extended
    key update", respectively.
 
+
+
+
+
+
+Tschofenig, et al.        Expires 23 June 2024                  [Page 3]
+
+Internet-Draft         Extended Key Update for TLS         December 2023
+
+
 3.  Extensions
 
    Client and servers use the TLS flags extension
@@ -161,24 +178,15 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    extension and the corresponding flag is called "Extended_Key_Update"
    flag.
 
-
-
-
-
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 3]
-
-Internet-Draft         Extended Key Update for TLS         November 2023
-
-
    The "Extended_Key_Update" flag proposed by the client in the
    ClientHello (CH) MUST be acknowledged in the EncryptedExtensions
    (EE), if the server also supports the functionality defined in this
    document and is configured to use it.
 
    If the "Extended_Key_Update" flag is not set, servers ignore any the
-   functionality specified in this document and applications have to
-   rely on the features offered by the TLS 1.3-specified KeyUpdate
-   instead.
+   functionality specified in this document and applications that
+   require perfect forward security will have to initiate a full
+   handshake.
 
 4.  Extended Key Update
 
@@ -196,6 +204,15 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    direction only.  However, the ExtendedKeyUpdate message requires a
    full-roundtrip due to the nature of the Diffie-Hellman exchange.
 
+   The KeyShare entry in the ExtendedKeyUpdate message MUST be the same
+
+   group mutually supported by the client and server during the initial
+   handshake.  The peers MUST NOT send a KeyShare Entry in the
+   ExtendedKeyUpdate message that is not mutually supported by the
+   client and server during the initial handshake.  An implementation
+   that receives any other value MUST terminate the connection with an
+   "illegal_parameter" alert.
+
    Figure 1 showns the interaction graphically.  First, support for the
    functionality in this specification is negotiated in the ClientHello
    and the EncryptedExtensions messages.  Then, the ExtendedKeyUpdate
@@ -204,26 +221,9 @@ Internet-Draft         Extended Key Update for TLS         November 2023
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 4]
+Tschofenig, et al.        Expires 23 June 2024                  [Page 4]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
 
         Client                                           Server
@@ -277,14 +277,14 @@ Internet-Draft         Extended Key Update for TLS         November 2023
 
 
 
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 5]
+Tschofenig, et al.        Expires 23 June 2024                  [Page 5]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
 
    enum {
        update_not_requested(0), update_requested(1), (255)
-   } ;
+   } KeyUpdateRequest;
 
    struct {
        KeyUpdateRequest request_update;
@@ -323,28 +323,20 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    accepting any messages encrypted with the new key.  Failure to do so
    may allow message truncation attacks.
 
-   With a 128-bit key as in AES-128, rekeying 2^64 times has a high
-   probability of key reuse within a given connection.  Note that even
-   if the key repeats, the IV is also independently generated, so the
-   chance of a joint key/IV collision is much lower.  In order to
-   provide an extra margin of security, sending implementations MUST NOT
-   allow the epoch -- and hence the number of key updates -- to exceed
-   2^48-1.  In order to allow this value to be changed later -- for
+   If a sending implementation receives a ExtendedKeyUpdate with
+   request_update set to "update_requested", it MUST NOT send its own
+   ExtendedKeyUpdate if that would cause it to exceed these limits.
+   This may result in an eventual need to terminate the connection when
+   the limits in Section 5.5 of [I-D.ietf-tls-rfc8446bis] are reached.
 
 
 
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 6]
+
+
+Tschofenig, et al.        Expires 23 June 2024                  [Page 6]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
-
-   instance for ciphers with more than 128-bit keys -- receiving
-   implementations MUST NOT enforce this rule.  If a sending
-   implementation receives a ExtendedKeyUpdate with request_update set
-   to "update_requested", it MUST NOT send its own ExtendedKeyUpdate if
-   that would cause it to exceed these limits.  This may result in an
-   eventual need to terminate the connection when the limits in
-   Section 5.5 of [I-D.ietf-tls-rfc8446bis] are reached.
 
    The ExtendedKeyUpdate and the KeyUpdates MAY be used in combination,
    depending on the desired security properties.
@@ -389,9 +381,17 @@ Internet-Draft         Extended Key Update for TLS         November 2023
 
 
 
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 7]
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires 23 June 2024                  [Page 7]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
 
       Client                                             Server
@@ -445,9 +445,9 @@ Internet-Draft         Extended Key Update for TLS         November 2023
 
 
 
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 8]
+Tschofenig, et al.        Expires 23 June 2024                  [Page 8]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
 
    In order to facilitate epoch reconstruction in DTLS 1.3 (see
@@ -479,19 +479,21 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    section and then re-deriving the traffic keys, as described in
    Section 7.3 of [I-D.ietf-tls-rfc8446bis].
 
-   There are two changes to the application_traffic_secret computation
+   There are three changes to the application_traffic_secret computation
    described in [I-D.ietf-tls-rfc8446bis], namely
+
+   *  The application_traffic_secret_N is not used as an secret as it
+      may be already exfiltrated by the attacker.
 
    *  the label is adjusted to distinguish it from the classic KeyUpdate
       message, and
 
    *  the Diffie-Hellman derived shared secret, as 'dh-secret', is used
       as input to the HKDF-Expand-Label() function to produce the value
-      sk. sk is subsequently included as a context value in the
-      computation of the application_traffic_secret calculation making
-      the key next generation of the application traffic secret
-      dependent on the previous application traffic secret and the DH-
-      derived value.
+      sk. sk is subsequently included as a secret value in the
+      computation of the application_traffic_secret_N+1, making the next
+      generation traffic key of the application traffic secret dependent
+      on the DH-derived value.
 
    The next-generation application_traffic_secret is computed as
    follows:
@@ -499,23 +501,36 @@ Internet-Draft         Extended Key Update for TLS         November 2023
 
 
 
-
-
-Tschofenig & Tuexen        Expires 27 May 2024                  [Page 9]
+Tschofenig, et al.        Expires 23 June 2024                  [Page 9]
 
-Internet-Draft         Extended Key Update for TLS         November 2023
+Internet-Draft         Extended Key Update for TLS         December 2023
 
 
-   sk = HKDF-Expand-Label(dh-secret, "DH-derived key", "", Hash.length)
+   sk = HKDF-Extract(0, dh-secret)
 
    application_traffic_secret_N+1 =
-       HKDF-Expand-Label(application_traffic_secret_N,
-                         "traffic upd 2", sk, Hash.length)
+       Derive-Secret(sk,"traffic upd 2",
+                     application_traffic_secret_N)
+
+   The next generation of traffic keys is computed using the HKDF, as
+   defined in [RFC5869], and
+
+   its two components, HKDF-Extract and HKDF-Expand, as recommended in
+   Appendix
+
+   F.1.1 of [I-D.ietf-tls-rfc8446bis].
 
    Once client_/server_application_traffic_secret_N+1 and its associated
    traffic keys have been computed, implementations SHOULD delete
    client_/server_application_traffic_secret_N and its associated
    traffic keys.
+
+   If a hybrid key exchange, based on [I-D.ietf-tls-hybrid-design], is
+   used then the two shared
+
+   secrets concatenated together serve as input to
+
+   the HKDF-Extract function to produce the value sk.
 
 6.  Security Considerations
 
@@ -537,6 +552,16 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    attacker to do dynamic key exfiltration (or content exfiltration)."
    (The term key exfiltration is defined in [RFC7624].)
 
+
+
+
+
+
+Tschofenig, et al.        Expires 23 June 2024                 [Page 10]
+
+Internet-Draft         Extended Key Update for TLS         December 2023
+
+
    This specification re-uses public key encryption to update
    application traffic secrets in both direction.  Unlike the classic
    Key Update message defined in [I-D.ietf-tls-rfc8446bis], the key
@@ -554,13 +579,6 @@ Internet-Draft         Extended Key Update for TLS         November 2023
    *  Messages: CH, EE
 
    *  Recommended: Y
-
-
-
-Tschofenig & Tuexen        Expires 27 May 2024                 [Page 10]
-
-Internet-Draft         Extended Key Update for TLS         November 2023
-
 
    *  Reference: [This document]
 
@@ -586,6 +604,20 @@ Internet-Draft         Extended Key Update for TLS         November 2023
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
 
+   [RFC5869]  Krawczyk, H. and P. Eronen, "HMAC-based Extract-and-Expand
+              Key Derivation Function (HKDF)", RFC 5869,
+              DOI 10.17487/RFC5869, May 2010,
+              <https://www.rfc-editor.org/rfc/rfc5869>.
+
+
+
+
+
+Tschofenig, et al.        Expires 23 June 2024                 [Page 11]
+
+Internet-Draft         Extended Key Update for TLS         December 2023
+
+
    [RFC9147]  Rescorla, E., Tschofenig, H., and N. Modadugu, "The
               Datagram Transport Layer Security (DTLS) Protocol Version
               1.3", RFC 9147, DOI 10.17487/RFC9147, April 2022,
@@ -597,6 +629,13 @@ Internet-Draft         Extended Key Update for TLS         November 2023
               ANSSI, "Recommendations for securing networks with IPsec,
               Technical Report", August 2015,
               <https://www.ssi.gouv.fr/uploads/2015/09/NT_IPsec_EN.pdf>.
+
+   [I-D.ietf-tls-hybrid-design]
+              Stebila, D., Fluhrer, S., and S. Gueron, "Hybrid key
+              exchange in TLS 1.3", Work in Progress, Internet-Draft,
+              draft-ietf-tls-hybrid-design-09, 7 September 2023,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-tls-
+              hybrid-design-09>.
 
    [RFC7624]  Barnes, R., Schneier, B., Jennings, C., Hardie, T.,
               Trammell, B., Huitema, C., and D. Borkmann,
@@ -610,13 +649,6 @@ Internet-Draft         Extended Key Update for TLS         November 2023
               Security (TLS) and Datagram Transport Layer Security
               (DTLS)", BCP 195, RFC 9325, DOI 10.17487/RFC9325, November
               2022, <https://www.rfc-editor.org/rfc/rfc9325>.
-
-
-
-Tschofenig & Tuexen        Expires 27 May 2024                 [Page 11]
-
-Internet-Draft         Extended Key Update for TLS         November 2023
-
 
    [TLS-Ext-Registry]
               IANA, "Transport Layer Security (TLS) Extensions",
@@ -634,6 +666,13 @@ Appendix A.  Acknowledgments
    *  Zaheduzzaman Sarker
 
    *  Magnus Westerlund
+
+
+
+Tschofenig, et al.        Expires 23 June 2024                 [Page 12]
+
+Internet-Draft         Extended Key Update for TLS         December 2023
+
 
    *  John Mattsson
 
@@ -664,9 +703,26 @@ Authors' Addresses
    Email: tuexen@fh-muenster.de
 
 
+   Tirumaleswar Reddy
+   Nokia
+   Email: kondtir@gmail.com
 
 
 
 
 
-Tschofenig & Tuexen        Expires 27 May 2024                 [Page 12]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.        Expires 23 June 2024                 [Page 13]
