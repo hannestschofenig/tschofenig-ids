@@ -166,7 +166,8 @@ the classic KeyUpdate message. Both allow the update of keys in
 one direction only. However, the ExtendedKeyUpdate message requires
 a full-roundtrip due to the nature of the Diffie-Hellman exchange.
 
-The KeyShare Entry in the ExtendedKeyUpdate message MUST be the same
+The KeyShare entry in the ExtendedKeyUpdate message MUST be the same
+
 group mutually supported by the client and server during the initial
 handshake. The peers MUST NOT send a KeyShare Entry in the ExtendedKeyUpdate
 message that is not mutually supported by the client and server during 
