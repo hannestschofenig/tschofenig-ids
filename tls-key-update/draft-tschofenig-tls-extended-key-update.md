@@ -390,7 +390,8 @@ application_traffic_secret_N+1 =
 
 The next generation of traffic keys is computed using the HKDF, as defined in {{RFC5869}}, and
 
-its two components, HKDF-Extract and HKDF-Expand as recommended in Appendix
+its two components, HKDF-Extract and HKDF-Expand, as recommended in Appendix
+
 F.1.1 of {{I-D.ietf-tls-rfc8446bis}}.
 
 Once client_/server_application_traffic_secret_N+1 and its associated
