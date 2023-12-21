@@ -116,7 +116,8 @@ impact of a key compromise." {{ANSSI-DAT-NT-003}}.
 This specification defines a new, extended key update message supporting perfect
 forward secrecy. It does so by utilizing a Diffie-Hellman exchange using one of the
 groups negotiated during the initial exchange. The support for this extension is
-signaled using the TLS flags extension mechanism. The frequent rerunning of extended key
+signaled using the TLS flags extension mechanism. The frequent re-running of extended key
+
 update forces an attacker to do dynamic key exfiltration.
 
 This specification is applicable to both TLS 1.3 {{I-D.ietf-tls-rfc8446bis}} and
