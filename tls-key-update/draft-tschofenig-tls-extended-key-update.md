@@ -399,7 +399,8 @@ traffic keys have been computed, implementations SHOULD delete
 client_/server_application_traffic_secret_N and its associated
 traffic keys.
 
-If Hybrid key exchange is used {{I-D.ietf-tls-hybrid-design}}, the two shared
+If a hybrid key exchange, based on {{I-D.ietf-tls-hybrid-design}}, is used then the two shared
+
 secrets concatenated together serve as input to
 
 the HKDF-Extract function to produce the value sk.
