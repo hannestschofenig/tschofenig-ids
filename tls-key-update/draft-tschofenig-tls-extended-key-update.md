@@ -33,15 +33,22 @@ author:
       name: Michael Tuexen
       email: tuexen@fh-muenster.de
       org: Muenster Univ. of Applied Sciences
+ -
+      ins: T. Reddy
+      name: Tirumaleswar Reddy
+      email: kondtir@gmail.com
+      org: Nokia  
 
 normative:
   RFC2119:
   I-D.ietf-tls-rfc8446bis:
   I-D.ietf-tls-tlsflags:
   RFC9147:
+  RFC5869:
 informative:
   RFC9325:
   RFC7624:
+  I-D.ietf-tls-hybrid-design:
   ANSSI-DAT-NT-003:
      author:
         org: ANSSI
@@ -86,13 +93,17 @@ with forward secrecy has been added in TLS 1.3 {{I-D.ietf-tls-rfc8446bis}} using
 KeyUpdate message and it intended to (partially) replace renegotiation from earlier
 TLS versions. The renegotiation feature, while complex, offered additional
 functionality that is not supported with TLS 1.3 anymore, including the update
-keys with a Diffie-Hellman exchange during the lifetime of a session.
+keys with a Diffie-Hellman exchange during the lifetime of a session. If a traffic secret (application_traffic_secret_N) has been compromised, an attacker can passively 
+eavesdrop on all future data sent on the connection, including data
+encrypted with application_traffic_secret_N+1, application_traffic_secret_N+2, etc.
 
 While such a feature is less relevant in environments with shorter-lived sessions,
 such as transactions on the web, there are uses of TLS and DTLS where long-lived
 sessions are common. In those environments, such as industrial IoT and
 telecommunication networks, availability is important and an interruption of the
-communication due to periodic session resumptions is not an option.
+communication due to periodic session resumptions is not an option. A full handshake 
+with (EC)DHE gives protection against active attackers but prevents the use 
+of long-lived sessions.
 
 Some deployments have used IPsec in the past and have now decided to switch to TLS
 or DTLS instead and the requirement for updates of cryptographic keys for an existing
@@ -105,7 +116,9 @@ impact of a key compromise." {{ANSSI-DAT-NT-003}}.
 This specification defines a new, extended key update message supporting perfect
 forward secrecy. It does so by utilizing a Diffie-Hellman exchange using one of the
 groups negotiated during the initial exchange. The support for this extension is
-signaled using the TLS flags extension mechanism.
+signaled using the TLS flags extension mechanism. The frequent re-running of extended key
+
+update forces an attacker to do dynamic key exfiltration.
 
 This specification is applicable to both TLS 1.3 {{I-D.ietf-tls-rfc8446bis}} and
 DTLS 1.3 {{RFC9147}}. Throughout the specification we do not distinguish between
@@ -135,8 +148,7 @@ is configured to use it.
 
 If the "Extended_Key_Update" flag is not set, servers
 ignore any the functionality specified in this document and applications
-have to rely on the features offered by the TLS 1.3-specified KeyUpdate
-instead.
+that require perfect forward security will have to initiate a full handshake.
 
 # Extended Key Update
 
@@ -153,6 +165,14 @@ The design of the ExtendedKeyUpdate message follows the design of
 the classic KeyUpdate message. Both allow the update of keys in
 one direction only. However, the ExtendedKeyUpdate message requires
 a full-roundtrip due to the nature of the Diffie-Hellman exchange.
+
+The KeyShare entry in the ExtendedKeyUpdate message MUST be the same
+
+group mutually supported by the client and server during the initial
+handshake. The peers MUST NOT send a KeyShare Entry in the ExtendedKeyUpdate
+message that is not mutually supported by the client and server during 
+the initial handshake. An implementation that receives any other value
+MUST terminate the connection with an "illegal_parameter" alert.
 
 {{fig-key-update}} showns the interaction graphically.
 First, support for the functionality in this specification
@@ -344,32 +364,46 @@ from client_/server_application_traffic_secret_N as described in this
 section and then re-deriving the traffic keys, as described in
 Section 7.3 of {{I-D.ietf-tls-rfc8446bis}}.
 
-There are two changes to the application_traffic_secret computation
+There are three changes to the application_traffic_secret computation
 described in {{I-D.ietf-tls-rfc8446bis}}, namely
 
+- The application_traffic_secret_N is not used as an secret as it
+may be already exfiltrated by the attacker.
 - the label is adjusted to distinguish it from the classic KeyUpdate
 message, and
 - the Diffie-Hellman derived shared secret, as 'dh-secret', is used
 as input to the HKDF-Expand-Label() function to produce the value sk.
-sk is subsequently included as a context value in the computation of
-the application_traffic_secret calculation making the key next
-generation of the application traffic secret dependent on the previous
-application traffic secret and the DH-derived value.
+sk is subsequently included as a secret value in the computation of
+the application_traffic_secret_N+1, making the next generation
+traffic key of the application traffic secret dependent on the
+DH-derived value.
 
 The next-generation application_traffic_secret is computed as follows:
 
 ~~~
-sk = HKDF-Expand-Label(dh-secret, "DH-derived key", "", Hash.length)
+sk = HKDF-Extract(0, dh-secret)
 
 application_traffic_secret_N+1 =
-    HKDF-Expand-Label(application_traffic_secret_N,
-                      "traffic upd 2", sk, Hash.length)
+    Derive-Secret(sk,"traffic upd 2",
+                  application_traffic_secret_N)
 ~~~
+
+The next generation of traffic keys is computed using the HKDF, as defined in {{RFC5869}}, and
+
+its two components, HKDF-Extract and HKDF-Expand, as recommended in Appendix
+
+F.1.1 of {{I-D.ietf-tls-rfc8446bis}}.
 
 Once client_/server_application_traffic_secret_N+1 and its associated
 traffic keys have been computed, implementations SHOULD delete
 client_/server_application_traffic_secret_N and its associated
 traffic keys.
+
+If a hybrid key exchange, based on {{I-D.ietf-tls-hybrid-design}}, is used then the two shared
+
+secrets concatenated together serve as input to
+
+the HKDF-Extract function to produce the value sk.
 
 #  Security Considerations
 
