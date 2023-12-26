@@ -29,10 +29,10 @@ author:
       email: hannes.tschofenig@gmx.net
       org:
  -
-      ins: M. Tuexen
-      name: Michael Tuexen
+      ins: M. Tüxen
+      name: Michael Tüxen
       email: tuexen@fh-muenster.de
-      org: Muenster Univ. of Applied Sciences
+      org: Münster Univ. of Applied Sciences
  -
       ins: T. Reddy
       name: Tirumaleswar Reddy
@@ -166,14 +166,13 @@ one direction only. However, the ExtendedKeyUpdate message requires
 a full-roundtrip due to the nature of the Diffie-Hellman exchange.
 
 The KeyShare entry in the ExtendedKeyUpdate message MUST be the same
-
 group mutually supported by the client and server during the initial
 handshake. The peers MUST NOT send a KeyShare Entry in the ExtendedKeyUpdate
 message that is not mutually supported by the client and server during 
 the initial handshake. An implementation that receives any other value
 MUST terminate the connection with an "illegal_parameter" alert.
 
-{{fig-key-update}} showns the interaction graphically.
+{{fig-key-update}} shows the interaction graphically.
 First, support for the functionality in this specification
 is negotiated in the ClientHello and the EncryptedExtensions
 messages. Then, the ExtendedKeyUpdate message is sent to
@@ -420,10 +419,8 @@ traffic keys have been computed, implementations SHOULD delete
 client_/server_application_traffic_secret_N and its associated
 traffic keys.
 
-If a hybrid key exchange, based on {{I-D.ietf-tls-hybrid-design}}, is used then the two shared
-
-secrets concatenated together serve as input to
-
+If a hybrid key exchange, based on {{I-D.ietf-tls-hybrid-design}}, is used then
+the two shared secrets concatenated together serve as input to
 the HKDF-Extract function to produce the value sk.
 
 #  Security Considerations
@@ -449,7 +446,7 @@ is defined in {{RFC7624}}.)
 This specification re-uses public key encryption to update application
 traffic secrets in both direction. Unlike the classic Key Update message
 defined in  {{I-D.ietf-tls-rfc8446bis}}, the key update procedure requires
-to messages.
+two messages.
 
 # IANA Considerations
 
@@ -494,7 +491,7 @@ no particular order, are:
 - John Mattsson
 - Claudio Porfiri
 - Xin Long
-- Michael Tuxen
+- Michael Tüxen
 - Hannes Tschofenig
 - K Tirumaleswar Reddy
 - Bertrand Rault
