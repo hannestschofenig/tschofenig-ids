@@ -116,8 +116,8 @@ impact of a key compromise." {{ANSSI-DAT-NT-003}}.
 This specification defines a new, extended key update message supporting perfect
 forward secrecy. It does so by utilizing a Diffie-Hellman exchange using one of the
 groups negotiated during the initial exchange. The support for this extension is
-signaled using the TLS flags extension mechanism. The frequent re-running of extended key
-update forces an attacker to do dynamic key exfiltration.
+signaled using the TLS flags extension mechanism. The frequent re-running of extended
+key update forces an attacker to do dynamic key exfiltration.
 
 This specification is applicable to both TLS 1.3 {{I-D.ietf-tls-rfc8446bis}} and
 DTLS 1.3 {{RFC9147}}. Throughout the specification we do not distinguish between
@@ -263,15 +263,38 @@ with the old key is received before accepting any messages encrypted
 with the new key. Failure to do so may allow message truncation
 attacks.
 
-If a sending
-implementation receives a ExtendedKeyUpdate with request_update set to
-"update_requested", it MUST NOT send its own ExtendedKeyUpdate if that would
-cause it to exceed these limits.  This may result in an eventual need to
-terminate the connection when the limits in Section 5.5 of
-{{I-D.ietf-tls-rfc8446bis}} are reached.
+If a sending implementation receives a ExtendedKeyUpdate with
+request_update set to "update_requested", it MUST NOT send its own
+ExtendedKeyUpdate if that would cause it to exceed these limits.
+This may result in an eventual need to terminate the connection
+when the limits in Section 5.5 of {{I-D.ietf-tls-rfc8446bis}} are
+reached.
 
 The ExtendedKeyUpdate and the KeyUpdates MAY be used in combination,
 depending on the desired security properties.
+
+The updated Handshake structure is shown in {{fig-handshake}}.
+
+~~~
+      struct {
+          HandshakeType msg_type;    /* handshake type */
+          uint24 length;             /* bytes in message */
+          select (Handshake.msg_type) {
+              case client_hello:          ClientHello;
+              case server_hello:          ServerHello;
+              case end_of_early_data:     EndOfEarlyData;
+              case encrypted_extensions:  EncryptedExtensions;
+              case certificate_request:   CertificateRequest;
+              case certificate:           Certificate;
+              case certificate_verify:    CertificateVerify;
+              case finished:              Finished;
+              case new_session_ticket:    NewSessionTicket;
+              case key_update:            KeyUpdate;
+			  case extended_key_update:   ExtendedKeyUpdate;
+          };
+      } Handshake;
+~~~
+{: #fig-handshake title="Handshake Structure."}
 
 ## DTLS 1.3-specific Considerations
 
@@ -386,9 +409,10 @@ application_traffic_secret_N+1 =
                   application_traffic_secret_N)
 ~~~
 
-The next generation of traffic keys is computed using the HKDF, as defined
-in {{RFC5869}}, and its two components, HKDF-Extract and HKDF-Expand, as
-recommended in Appendix F.1.1 of {{I-D.ietf-tls-rfc8446bis}}.
+The next generation of traffic keys is computed using the HKDF, as
+defined in {{RFC5869}}, and its two components, HKDF-Extract and
+HKDF-Expand, as recommended in Appendix F.1.1 of
+{{I-D.ietf-tls-rfc8446bis}}.
 
 Once client_/server_application_traffic_secret_N+1 and its associated
 traffic keys have been computed, implementations SHOULD delete
@@ -426,8 +450,8 @@ two messages.
 
 # IANA Considerations
 
-IANA is requested to add the following value to the
-"TLS Flags" extension defined in {{I-D.ietf-tls-tlsflags}}
+IANA is requested to add the following entry to the "TLS Flags" extension
+registry defined in {{I-D.ietf-tls-tlsflags}}:
 
 *  Value: TBD1
 
@@ -438,6 +462,19 @@ IANA is requested to add the following value to the
 *  Recommended: Y
 
 *  Reference: [This document]
+
+IANA is requested to add the following entry to the
+"TLS HandshakeType" {{TLS-Ext-Registry}} registry:
+
+* Value: TBD2
+
+* Description: extended_key_update
+
+* DTLS-OK: Y
+
+*  Reference: [This document]
+
+* Comment:
 
 
 --- back
@@ -462,3 +499,33 @@ no particular order, are:
 Additionally, we would like to thank the chairs of the
 Transport and Services Working Group (tsvwg) Gorry Fairhurst and
 Marten Seemann as well as the responsible area director Martin Duke.
+
+Finally, we would like to thank Martin Thomson for his review of
+this specification.
+
+# Alternative Designs Considered
+
+The design presented in this document utilizes an ephemeral Diffie-Hellman,
+which requires a full roundtrip since both parties need to exchange their
+ephemeral public keys. Since the Key Update design defined in TLS 1.3
+utilizes a one-shot message, this new extension changes the behavior and
+is less efficient.
+
+During the design of this specification two alternatives have been considered,
+which retained the original design spirit of the one-shot Key Update message
+by utilizing an ephemeral-static Diffie-Hellman. The static public key thereby
+represents a previously exchanged Diffie-Hellman public key. For the first 
+Key Update message sent, this public key would thereby be the Diffie-Hellman
+public key from the key share in the initial ClientHello/ServerHello handshake
+message exchange. We considered two designs, one using a classical ephemeral-static
+Diffie-Hellman and a second design based on the Hybrid Public Key Encryption (HPKE)
+specification. HPKE is already used in the encrypted ClientHello and may
+therefore be present already in TLS stacks.
+
+Ultimately, we decided against such an approach since it requires an implementation
+to keep their Diffie-Hellman public and private keys somewhere in memory (even
+though it is possible to utilize available hardware security modules to store
+the private key). The design in this document allows an implementation to discard
+this ephemeral Diffie-Hellman key pair immediately after the key update procedure
+has been finalized.
+
