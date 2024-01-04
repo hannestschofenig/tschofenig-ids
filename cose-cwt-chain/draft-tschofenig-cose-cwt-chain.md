@@ -547,11 +547,16 @@ this document updates the IANA entry of this media type {{RFC6838}}:
 - Change controller:  IESG
 
 Provisional registration?  No
-~~~
+
 
 --- back
 
-# Acknowledgments
+# Contributor
 
 We would like to thank Ken Takayama for his work on the IETF SUIT trust
-domains draft, which created the idea for writing this specification.
+domains draft, which created the idea for writing this specification. Ken
+provided valuable review feedback.
+
+# Acknowledgments
+
+Add your name here.
