@@ -27,7 +27,7 @@ author:
       ins: H. Tschofenig
       name: Hannes Tschofenig
       email: hannes.tschofenig@gmx.net
-      org:
+      org: Siemens
  -
       ins: M. Tüxen
       name: Michael Tüxen
