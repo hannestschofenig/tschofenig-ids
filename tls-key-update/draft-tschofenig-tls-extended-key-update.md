@@ -38,6 +38,11 @@ author:
       name: Tirumaleswar Reddy
       email: kondtir@gmail.com
       org: Nokia  
+ -
+      ins: S. Fries
+      name: Steffen Fries
+      email: steffen.fries@siemens.com
+      org: Siemens
 
 normative:
   RFC2119:
