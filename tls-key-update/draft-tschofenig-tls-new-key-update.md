@@ -134,12 +134,15 @@ Hybrid Public Key Encryption (HPKE) {{RFC9180}}, which offers an easy migration 
 for the integration of post quantum cryptography with its key encapsulation construction
 (KEM). Since HPKE requires the sender to possess the recipient's public key, those public
 keys need to be exchanged upfront. This specification is silent about
-when and how often these public keys are exchanged by the application layer protocol. This is
-an intentional design decision to offer flexibility for developers and there is experience with
-such an approach already from secure end-to-end messaging protocols. To synchronize the
-switch to the new traffic secret, the key updates are directional and accomplished with a new
-key update message. The trigger to switch to the new traffic secrets is necessary since the
-TLS record layer conveys no key identifier like an epoch or a Connection Identifier (CID).
+when and how often these public keys are exchanged by the application layer protocol.
+Note: To accomplish forward secrecy the public key of the recipient can be only used once.
+
+To leave the exchange of the public keys up to the application is an intentional design decision
+to offer flexibility for developers and there is experience with such an approach already from
+secure end-to-end messaging protocols. To synchronize the switch to the new traffic secret,
+the key updates are directional and accomplished with a new key update message. The trigger
+to switch to the new traffic secrets is necessary since the TLS record layer conveys no key
+identifier like an epoch or a Connection Identifier (CID).
 
 The support for the functionality described in this specification is signaled using the
 TLS extension mechanism. Using the extended key update message frequently forces an attacker
@@ -162,7 +165,7 @@ from the key update procedure specified in this document, we use the terms
 This document re-uses the Key Encapsulation Mechanism (KEM) terminology
 from RFC 9180 {{RFC9180}}.
 
-The following terms are used in this document:
+The following abbreviations are used in this document:
 
 - KDF: Key Derivation Function
 - AEAD: Authenticated Encryption with Associated Data
@@ -342,10 +345,7 @@ multiple ExtendedKeyUpdates while it is silent to respond with a single
 update.  Note that implementations may receive an arbitrary number of
 messages between sending a ExtendedKeyUpdate with request_update set to
 "update_requested" and receiving the peer's ExtendedKeyUpdate, because those
-messages may already be in flight.  However, because send and receive
-keys are derived from independent traffic secrets, retaining the
-receive traffic secret does not threaten the forward secrecy of data
-sent before the sender changed keys.
+messages may already be in flight.
 
 If implementations independently send their own ExtendedKeyUpdate with
 request_update set to "update_requested", and they cross in flight,
@@ -409,8 +409,8 @@ traffic keys.
 # Example
 
 {{fig-key-update}} shows the interaction between a TLS 1.3 client
-and server graphically. The example flow shows an update of the sending
-keys of the client.
+and server graphically. This section shows an example message exchange
+where a client updates its sending keys.
 
 There are three phases worthwhile to highlight:
 
@@ -428,6 +428,10 @@ encrypted random value.
 3. When a key update needs to be triggered by the application,
 it instructs the (D)TLS stack to transmit an ExtendedKeyUpdate
 message.
+
+{{fig-key-update}} provides an overview of the exchange starting
+with the initial negotiation followed by the key update, which
+involves the application layer interaction.
 
 ~~~
        Client                                           Server
@@ -450,30 +454,46 @@ Exch | + key_share
 Auth | {CertificateVerify}
      v {Finished}              -------->
                                   ...
- ------------------ Application Layer Exchange -------------------
-                                        "Get HPKE Ciphersuite" API
-
-                               <--------                 [pk]
-
-  CreateRandom() -> rand
-
-  "Encapsulate" API
-   with SealBase(pk, info, aad, rand) -> enc, ct                         
-
-       [enc, ct]               -------->
-
-                                                 "Decapsulate" API
-                    with OpenBase(enc, skR, info, aad, ct) -> rand
-
-                                              "Update-Prepare" API
-  ------------------ Application Layer Exchange -------------------
-
-  "Update-Trigger" API
+                              some time later
+                                  ...
+  +---------------- Application Layer Exchange --------------+
+  |                                                          |
+  |     (a)  Sender sends public key to the client           |
+  |                                                          |
+  |     (b)  Client uses HPKE to generate enc, and ct        |
+  |                                                          |
+  |     (c)  Client sents enc, and ct to the server          |
+  |                                                          |
+  |     (d)  Client triggers the extended key update         |
+  |          at the TLS layer                                |
+  |                                                          |
+  +---------------- Application Layer Exchange --------------+
 
        [ExtendedKeyUpdate]     -------->
                                <--------  [ExtendedKeyUpdate]
 ~~~
 {: #fig-key-update title="Extended Key Update Message Exchange."}
+
+For the server to generate and transmit a public key it is
+necessary to determine whether the extended key update extension
+has been negotiated success and what HPKE ciphersuite was
+selected. This information can be obtained by the application
+by using the "Get HPKE Ciphersuite" API.
+
+Once the public key has been sent to the client, it can use the
+"Encapsulate" API with SealBase(pk, info, aad, rand) to produce
+enc, and ct. A random value has to be passed into the API call.
+
+The client transmit the enc, and ct values to the server, which
+performs the reverse operation using the "Decapsulate" API with
+OpenBase(enc, skR, info, aad, ct) returning the random value.
+
+The server uses the "Update-Prepare" API to get the (D)TLS stack
+ready for a key update.
+
+When the client wants to switch to the new sending key it uses the
+"Update-Trigger" API to inform the (D)TLS library to trigger the
+transmission of the ExtendedKeyUpdate message.
 
 # API Considerations
 
@@ -484,7 +504,7 @@ the extended key update SHOULD provide application programming interfaces
 by which clients and server may request and process the extended key update
 messages.
 
-It is also possible to implement this API outside of the(D) TLS library.
+It is also possible to implement this API outside of the (D)TLS library.
 This may be preferable in cases where the application does not have
 access to a TLS library with these APIs or when TLS is handled independently
 of the application-layer protocol.
