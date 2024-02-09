@@ -47,7 +47,6 @@ author:
 normative:
   RFC2119:
   I-D.ietf-tls-rfc8446bis:
-  I-D.ietf-tls-esni:
   RFC9180:
   RFC9147:
 informative:
@@ -56,6 +55,7 @@ informative:
   RFC9261:
   RFC5246:
   RFC7624:
+  I-D.westerbaan-cfrg-hpke-xyber768d00:
   ANSSI-DAT-NT-003:
      author:
         org: ANSSI
@@ -495,6 +495,27 @@ When the client wants to switch to the new sending key it uses the
 "Update-Trigger" API to inform the (D)TLS library to trigger the
 transmission of the ExtendedKeyUpdate message.
 
+#  DTLS 1.3 Considerations
+
+As with other handshake messages with no built-in response, the
+ExtendedKeyUpdate MUST be acknowledged.  In order to facilitate
+epoch reconstruction implementations MUST NOT send records with
+the new keys or send a new ExtendedKeyUpdate until the previous
+ExtendedKeyUpdate has been acknowledged (this avoids having too
+many epochs in active use).
+
+Due to loss and/or reordering, DTLS 1.3 implementations may receive a
+record with an older epoch than the current one (the requirements
+above preclude receiving a newer record).  They SHOULD attempt to
+process those records with that epoch but MAY opt to discard
+such out-of-epoch records.
+
+Due to the possibility of an ACK message for an ExtendedKeyUpdate
+being lost and thereby preventing the sender of the ExtendedKeyUpdate
+from updating its keying material, receivers MUST retain the
+pre-update keying material until receipt and successful decryption
+of a message using the new keys.
+
 # API Considerations
 
 The creation and processing of the extended key update messages SHOULD be
@@ -564,6 +585,16 @@ This API allows the application to request the (D)TLS stack to initiate
 an extended key update using the message defined in {{ext-key-update}}.
 
 It takes no input values and returns success or failure.
+
+# Post-Quantum Considerations
+
+Hybrid key exchange refers to using multiple key exchange algorithms
+simultaneously and combining the result with the goal of providing
+security even if all but one of the component algorithms is broken.
+It is motivated by transition to post-quantum cryptography.  HPKE can
+be extended to support hybrid post-quantum Key Encapsulation
+Mechanisms (KEMs), as defined in {{I-D.westerbaan-cfrg-hpke-xyber768d00}}
+
 
 #  Security Considerations
 
@@ -651,3 +682,19 @@ Finally, we would like to thank Martin Thomson, Ilari Liusvaara,
 Benjamin Kaduk, Scott Fluhrer, Dennis Jackson, David Benjamin,
 and Thom Wiggers for a review of an initial version of this
 specification.
+
+# Alternative Design
+
+The design presented in this document utilizes HPKE with the Seal/Open
+API calls instead of utilizing Encap/Decap API calls directly. Available
+HPKE libraries expose the former API calls and this simplifies the
+implementation of the solution described in this document. As a
+side-effect, context information can also be passed into these API calls.
+
+The downside of using the currently documented approach is the need to
+additionally encrypt plaintext, which in our case is a random value. It
+may also introduce complexity with the integration of hybrid approach.
+
+We would welcome feedback whether the re-use of existing HPKE libraries
+outweighs the disadvantages.
+
