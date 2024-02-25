@@ -2,7 +2,7 @@
 title: Nonce-based Freshness for Remote Attestation in Certificate Signing Requests (CSRs) for the Certification Management Protocol (CMP) and for Enrollment over Secure Transport (EST)
 
 abbrev: Nonce Extension for CMP/EST
-docname: draft-tschofenig-lamps-nonce-cmp-est-00
+docname: draft-tschofenig-lamps-nonce-cmp-est-01
 category: std
 
 ipr: trust200902
@@ -62,8 +62,8 @@ creation and management. Both protocol provide interactions
 between client systems and PKI management entities, such as a Registration
 Authority (RA) and a Certification Authority (CA).
 
-CMP and EST allow an RA/CA to inform an end entity about the information
-it has to provide in a certification request. When an end entity
+CMP and EST allow an RA/CA to request additional information it has to
+provide in a certification request. When an end entity
 places attestation Evidence in a Certificate Signing Request (CSR)
 it may need to demonstrate freshness of the provided Evidence.
 Attestation technology today often accomplishes this task via the
@@ -179,29 +179,60 @@ request interchangeably.
 # Conveying a Nonce in CMP {#CMP}
 
 Section 5.3.19.16 of {{I-D.ietf-lamps-rfc4210bis}} defines the
-Certificate Request Template (CertReqTemplate) message for use with CMP.
-The CertReqTemplateContent payload, which is sent by the CA/RA in
-response to a request message by the end entity, contains the nonce.
+general request message (genm) and general response (genp). 
+The AttestationNonceRequest payload of the genm message, which is
+send by the end entity to request a nonce, contains optional
+details on the length of nonce the attester requires.  The
+AttestationNonceResponse payload of the genp message, which is
+sent by the CA/RA in response to a request message by the end
+entity, contains the nonce.
 
-The use of the Certificate Request Template request/response message
-exchange leads to an extra roundtrip to convey the nonce from the
-CA/RA to the end entity (and ultimately to the Attester inside the
-end entity).
+~~~
+ GenMsg:    {id-it TBD1}, AttestationNonceRequestValue
+ GenRep:    {id-it TBD2}, AttestationNonceResponseValue | < absent >
 
-The end entity MUST construct a CertReqTemplate request message to trigger
-the RA/CA to transmit a nonce in the response.
+ id-it-AttestationNonceRequest OBJECT IDENTIFIER ::= { id-it TBD1 }
+ AttestationNonceRequestValue ::= SEQUENCE SIZE (1..MAX) OF
+                                     AttestationNonceRequestContent
 
-When the RA/CA receive the CertReqTemplate request message profile
+ AttestationNonceRequestContent ::= SEQUENCE {
+    len ::= INTEGER OPTIONAL,
+    -- indicates the required length of the requested nonce
+    hint ::= EvidenceHint OPTIONAL
+    -- indicates the verifier the needs to provide the nonce
+ }
+
+ id-it-AttestationNonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
+ AttestationNonceResponseValue ::= SEQUENCE SIZE (1..MAX) OF
+                                      AttestationNonceResponseContent
+
+ AttestationNonceResponseContent ::= SEQUENCE {
+    nonce ::= OCTET STRING
+    -- contains the nonce of length len
+    -- provided by the verifier indicated with hint
+ }
+~~~
+
+The use of the general request/response message
+exchange leads to an extra roundtrip to convey the nonce from the CA/
+RA to the end entity (and ultimately to the Attester inside the end
+entity).
+
+The end entity MUST construct a AttestationNonceRequest request message to
+trigger the RA/CA to transmit a nonce in the response.
+
+When the RA/CA receive the AttestationNonceRequest content 
 information is used to determine that the end entity supports this
-specification as well as {{I-D.ietf-lamps-csr-attestation}}. [Open
-Issue: Should request message indicate the remote attestation capability
-of the end entity rather than relying on "policy information"? This may
-also allow to inform the CA/RA about the type of attestation
-technology/technologies available to the end entity.]
+specification as well as {{I-D.ietf-lamps-csr-attestation}}.
 
-If the end entity supports remote attestation and the policy requires Evidence
-in a CSR to be provided, the RA/CA issues a CertReqTemplate response
-containing a nonce in the template.
+[Open Issue: Should request message indicate the remote attestation
+capability of the end entity rather than relying on "policy
+information"?  This may also allow to inform the CA/RA about the type
+of attestation technology/technologies available to the end entity.]
+
+ If the end entity supports remote attestation and the policy requires
+ Evidence in a CSR to be provided, the RA/CA issues a AttestationNonceResponse
+ response containing a nonce.
 
 {{fig-cmp-msg}} showns the interaction graphically.
 
@@ -209,12 +240,13 @@ containing a nonce in the template.
 End Entity                                          RA/CA
 ==========                                      =============
 
-              -->>-- CertReqTemplate request -->>--
-                                               Verify request
-                                               Generate nonce*
-                                               Create response
-              --<<-- CertReqTemplate response --<<--
-                     (nonce)
+              -->>-- AttestationNonceRequest -->>--
+                                                Verify request
+                                                Generate nonce*
+                                                Create response
+              --<<-- AttestationNonceResponse --<<--
+                      (nonce)
+
 Generate key pair
 Generate Evidence*
 Generate certification request message
