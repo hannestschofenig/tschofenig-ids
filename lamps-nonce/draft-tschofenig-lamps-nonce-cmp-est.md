@@ -196,10 +196,10 @@ entity, contains the nonce.
                                      AttestationNonceRequestContent
 
  AttestationNonceRequestContent ::= SEQUENCE {
-    len ::= INTEGER OPTIONAL,
+    len INTEGER OPTIONAL,
     -- indicates the required length of the requested nonce
-    hint ::= EvidenceHint OPTIONAL
-    -- indicates the verifier the needs to provide the nonce
+    hint EvidenceHint OPTIONAL
+    -- indicates which verifier to contact
  }
 
  id-it-AttestationNonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
@@ -207,13 +207,15 @@ entity, contains the nonce.
                                    AttestationNonceResponseContent
 
  AttestationNonceResponseContent ::= SEQUENCE {
-    nonce ::= OCTET STRING
+    nonce OCTET STRING
     -- contains the nonce of length len
     -- provided by the verifier indicated with hint
  }
 ~~~
 
 Note: The EvidenceHint structure is defined in {{I-D.ietf-lamps-csr-attestation}}.
+The hint is intended for an Attester to indicate to the EST server
+which Verifier should be invoked to request a nonce. 
 
 The use of the general request/response message exchange leads to an
 extra roundtrip to convey the nonce from the CA/RA to the end entity
@@ -326,7 +328,7 @@ message is used, as shown below:
 POST /.well-known/est/nonce HTTP/1.1
 Content-Type: application/json
 {
-  "len": "d2JhY2NhbG91cmVqdWFuZGFt",
+  "len": 8,
   "hint": "https://example.com"
 }
 ~~~
@@ -435,4 +437,5 @@ TBD:
 
 # Acknowledgments
 
-We would like to thank Russ Housley, Thomas Fossati, Ionut Mihalcea and Carl Wallace for their review comments.
+We would like to thank Russ Housley, Thomas Fossati, Ionut Mihalcea and Carl Wallace
+for their review comments.
