@@ -44,6 +44,7 @@ normative:
   RFC7030:
   I-D.ietf-lamps-rfc7030-csrattrs:
   RFC5280:
+  RFC5785:
 informative:
   RFC9334:
   I-D.tschofenig-rats-psa-token:
@@ -156,13 +157,12 @@ Party in step (3).
 ~~~
 {: #fig-arch title="Architecture with Background Check Model."}
 
-The functionality of this document is described in three
+The functionality of this document is described in two
 sections, namely: 
 
-- {{CMP}} describes how to convey the nonce CMP,
-- {{EST}} offers the equivalent functionality for EST, and
-- {{asn.1}} contains the ASN.1 description. 
-
+- {{CMP}} describes how to convey the nonce CMP, and
+- {{EST}} offers the equivalent functionality for EST.
+- 
 # Terminology and Requirements Language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -266,20 +266,63 @@ Store certificate
 ~~~
 {: #fig-cmp-msg title="CMP Exchange with Nonce and Evidence."}
 
-
 # Conveying a Nonce in EST {#EST}
 
-There are two ways an EST server can tell an EST client what
-values to use in a CSR, namely using:
+The EST client can request an attestation nonce for its Attester.
+This function is generally performed after requesting CA certificates
+and before other EST functions.
 
-- CSR Attributes Responses, as described in Section 4.5.2 of {{RFC7030}}, and
-- Additional CSR attributes, as described in Appendix B of {{RFC8295}}. 
+The EST server MUST support the use of the path-prefix of "/.well-
+known/" as defined in {{RFC5785}} and the registered name of "est".
+Thus, a valid EST server URI path begins with
+"https://www.example.com/.well-known/est".  Each EST operation is
+indicated by a path-suffix that indicates the intended operation:
 
-The latter functionality corresponds to the use of CSR templates in {{CMP}}.
-While this approach is preferred, an EST deployment may only support RFC 7030
-and for this reason a CSR attribute to convey a nonce is defined.
-Section 3.2 of {{I-D.ietf-lamps-rfc7030-csrattrs}} offers additional
-clarifications for use of CSR attributes.
+The following operation is defined by this specificaion:
+
+~~~
+ +------------------------+-----------------+-------------------+
+ | Operation              |Operation path   | Details           |
+ +========================+=================+===================+
+ | Retrieval of a nonce   | /nonce          | This section      |
+ +------------------------+-----------------+-------------------+
+~~~
+
+The operation path is appended to the path-prefix to form
+the URI used with HTTP GET to perform the desired EST
+operation.  An example valid URI absolute path for the "/nonce"
+operation is "/.well-known/est/nonce".  To retrieve a nonce,
+the EST client would use the following HTTP request-line:
+
+~~~
+GET /.well-known/est/nonce HTTP/1.1
+~~~
+
+The EST server MAY request HTTP-based client authentication, as
+explained in Section 3.2.3 of {{RFC7230}}.
+
+If the request is successful, the EST server response MUST contain
+a HTTP 200 response code with a content-type of "application/json"
+and a JSON object  {{RFC7159}} with the member nonce. The expiry
+member is optional and indicates the time the nonce is considered
+valid. After the expiry time is expired, the session is likely
+garbage collected.
+
+Below is a non-normative example of the response given by the EST server:
+
+~~~
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+    "nonce": "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=",
+    "expiry": "2031-10-12T07:20:50.52Z"
+}
+~~~
+
+[Open Issue: Should we also register a content type for use with
+EST over CoAP where the nonce and the expiry field is encoded in
+a CBOR structure?]
 
 # Nonce Processing Guidelines
 
@@ -334,66 +377,21 @@ extension (TBD1) must be registered.]
 
 #  Security Considerations
 
-This specification adds a nonce to a Certificate Request Message Format
-(CRMF) extension and to PKCS#10 attribute. This specification
-assumes that the nonce does not require confidentiality protection
+This specification defines how to obtain a nonce via CMP and EST. This
+specification assumes that the nonce does not require confidentiality protection
 without impacting the security property of the remote attestation protocol.
-{{RFC9334}} defines the IETF remote attestation architecture
-discusses nonce-based freshness in more detail.
+{{RFC9334}} defines the IETF remote attestation architecture discusses
+nonce-based freshness in great detail.
 
 For the use of Evidence in the CSR the security considerations of
 {{I-D.ietf-lamps-csr-attestation}} are relevant to this document.
 
 # ASN.1 Definitions {#asn.1}
 
-~~~
-PKIX-CMP-KeyAttestationNonceExtn-2023
-  { iso(1) identified-organization(3) dod(6) internet(1) security(5)
-    mechanisms(5) pkix(7) id-mod(0) id-mod-evidenceNonce(TBD2) }
-
-DEFINITIONS IMPLICIT TAGS ::= BEGIN
-
-IMPORTS
-  id-pe
-    FROM PKIX1Explicit-2009 -- from [RFC5912]
-      { iso(1) identified-organization(3) dod(6) internet(1) security(5)
-         mechanisms(5) pkix(7) id-mod(0) id-mod-pkix1-explicit-02(51) }
-  EXTENSION
-    FROM PKIX-CommonTypes-2009  -- From RFC 5912
-      { iso(1) identified-organization(3) dod(6) internet(1) security(5)
-        mechanisms(5) pkix(7) id-mod(0) id-mod-pkixCommon-02(57) } ;
-
-
-id-pe-evidenceNonce OBJECT IDENTIFIER ::= { id-pe TBD1 }
-
-EvidenceNonce ::= OCTET STRING
-
---
--- Evidence Nonce Attribute
---
-
--- For PKCS#10
-attr-evidence ATTRIBUTE ::= {
-  TYPE EvidenceNonce
-  IDENTIFIED BY id-pe-evidenceNonce
-}
-
---
--- Evidence Nonce Extension
---
-
--- For CRMF
-ext-evidenceNonce EXTENSION ::= {
-  TYPE EvidenceNonce
-  IDENTIFIED BY id-pe-evidenceNonce
-}
-
-END
-
-~~~
+TBD:
 
 --- back
 
 # Acknowledgments
 
-We would like to thank Russ Housley and Carl Wallace for their review comments.
+We would like to thank Russ Housley, Thomas Fossati, Ionut Mihalcea and Carl Wallace for their review comments.
