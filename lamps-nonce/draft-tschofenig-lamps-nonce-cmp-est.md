@@ -204,7 +204,7 @@ entity, contains the nonce.
 
  id-it-AttestationNonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
  AttestationNonceResponseValue ::= SEQUENCE SIZE (1..MAX) OF
-                                      AttestationNonceResponseContent
+                                   AttestationNonceResponseContent
 
  AttestationNonceResponseContent ::= SEQUENCE {
     nonce ::= OCTET STRING
@@ -213,6 +213,8 @@ entity, contains the nonce.
  }
 ~~~
 
+Note: The EvidenceHint structure is defined in {{I-D.ietf-lamps-csr-attestation}}.
+
 The use of the general request/response message exchange leads to an
 extra roundtrip to convey the nonce from the CA/RA to the end entity
 (and ultimately to the Attester inside the end entity).
@@ -220,18 +222,14 @@ extra roundtrip to convey the nonce from the CA/RA to the end entity
 The end entity MUST construct a AttestationNonceRequest request message to
 trigger the RA/CA to transmit a nonce in the response.
 
-When the RA/CA receive the AttestationNonceRequest content 
-information is used to determine that the end entity supports this
-specification as well as {{I-D.ietf-lamps-csr-attestation}}.
-
 [Open Issue: Should request message indicate the remote attestation
 capability of the end entity rather than relying on "policy
 information"?  This may also allow to inform the CA/RA about the type
 of attestation technology/technologies available to the end entity.]
 
 If the end entity supports remote attestation and the policy requires
-Evidence in a CSR to be provided, the RA/CA issues a AttestationNonceResponse
-response containing a nonce.
+Evidence in a CSR to be provided, the RA/CA issues an AttestationNonceResponse
+response message containing a nonce.
 
 {{fig-cmp-msg}} showns the interaction graphically.
 
@@ -288,14 +286,58 @@ The following operation is defined by this specificaion:
 ~~~
 
 The operation path is appended to the path-prefix to form
-the URI used with HTTP GET to perform the desired EST
+the URI used with HTTP GET or POST to perform the desired EST
 operation.  An example valid URI absolute path for the "/nonce"
-operation is "/.well-known/est/nonce".  To retrieve a nonce,
-the EST client would use the following HTTP request-line:
+operation is "/.well-known/est/nonce".
+
+An EST client uses a GET or a POST depending on whether parameters
+are included:
+
+- A GET request MUST be used when the EST client does not want to
+convey extra parameters.
+- A POST request MUST be used when parameters, like nonce length
+or a hint about the verification service, are included in the request.
+
+~~~
+ +-------------------+---------------------------------+---------------+
+ | Message type      | Media type(s)                   | Reference     |
+ | (per operation)   |                                 |               |
+ +===================+=================================+===============+
+ | Nonce Request     | N/A (for GET) or                | This section  |
+ |                   | application/json (for POST)     |               |
+ +===================+=================================+===============+
+ | Nonce Response    | application/json                | This section  |
+ |                   |                                 |               |
+ +===================+=================================+===============+
+~~~
+ 
+To retrieve a nonce using a GET, the EST client would use the following
+HTTP request-line:
 
 ~~~
 GET /.well-known/est/nonce HTTP/1.1
 ~~~
+
+To retrieve a nonce by specifying the size of the requested nonce
+(and/or by including a hint about the Verification service) a POST
+message is used, as shown below:
+
+~~~
+POST /.well-known/est/nonce HTTP/1.1
+Content-Type: application/json
+{
+  "len": "d2JhY2NhbG91cmVqdWFuZGFt",
+  "hint": "https://example.com"
+}
+~~~
+
+The payload in a POST request MUST be of content-type of "application/json"
+and MUST contain a JSON object {{RFC7159}} with the member "len" and/or
+"hint". The value of the "len" member MUST be between 8 and 64 (indicating
+the length of the length of the requested nonce value, in bytes). The
+"hint" member contains either be a rfc822Name, a dNSName, a uri, or a test
+value (based on the definition in the EvidenceHint structure from 
+{{I-D.ietf-lamps-csr-attestation}}).
 
 The EST server MAY request HTTP-based client authentication, as
 explained in Section 3.2.3 of {{RFC7030}}.
