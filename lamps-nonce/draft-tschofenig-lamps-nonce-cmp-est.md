@@ -42,7 +42,6 @@ normative:
   I-D.ietf-lamps-rfc4210bis:
   RFC8295:
   RFC7030:
-  I-D.ietf-lamps-rfc7030-csrattrs:
   RFC5280:
   RFC5785:
   RFC7159:
@@ -88,7 +87,7 @@ management. CMP provides interactions between end entities and
 PKI components, such as a Registration Authority (RA) and a
 Certification Authority (CA).
 
-Enrollment over Secure Transport (EST) {{RFC7030}} is another
+Enrollment over Secure Transport (EST) {{RFC7030,RFC8295}} is another
 certificate management protocol, which provides a sub-set
 of the features offered by CMP.
 
