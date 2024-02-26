@@ -81,10 +81,10 @@ Table of Contents
    5.  Nonce Processing Guidelines . . . . . . . . . . . . . . . . .   8
    6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
    7.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
-   8.  ASN.1 Definitions . . . . . . . . . . . . . . . . . . . . . .   9
-   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   9
-     9.1.  Normative References  . . . . . . . . . . . . . . . . . .   9
-     9.2.  Informative References  . . . . . . . . . . . . . . . . .  10
+   8.  ASN.1 Definitions . . . . . . . . . . . . . . . . . . . . . .  10
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  10
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .  11
    Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  11
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  11
 
@@ -252,13 +252,16 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
 
     id-it-AttestationNonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
     AttestationNonceResponseValue ::= SEQUENCE SIZE (1..MAX) OF
-                                         AttestationNonceResponseContent
+                                      AttestationNonceResponseContent
 
     AttestationNonceResponseContent ::= SEQUENCE {
        nonce ::= OCTET STRING
        -- contains the nonce of length len
        -- provided by the verifier indicated with hint
     }
+
+   Note: The EvidenceHint structure is defined in
+   [I-D.ietf-lamps-csr-attestation].
 
    The use of the general request/response message exchange leads to an
    extra roundtrip to convey the nonce from the CA/RA to the end entity
@@ -267,13 +270,10 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
    The end entity MUST construct a AttestationNonceRequest request
    message to trigger the RA/CA to transmit a nonce in the response.
 
-   When the RA/CA receive the AttestationNonceRequest content
-   information is used to determine that the end entity supports this
-   specification as well as [I-D.ietf-lamps-csr-attestation].
-
-
-
-
+   [Open Issue: Should request message indicate the remote attestation
+   capability of the end entity rather than relying on "policy
+   information"?  This may also allow to inform the CA/RA about the type
+   of attestation technology/technologies available to the end entity.]
 
 
 
@@ -282,14 +282,9 @@ Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 5]
 Internet-Draft         Nonce Extension for CMP/EST         February 2024
 
 
-   [Open Issue: Should request message indicate the remote attestation
-   capability of the end entity rather than relying on "policy
-   information"?  This may also allow to inform the CA/RA about the type
-   of attestation technology/technologies available to the end entity.]
-
    If the end entity supports remote attestation and the policy requires
-   Evidence in a CSR to be provided, the RA/CA issues a
-   AttestationNonceResponse response containing a nonce.
+   Evidence in a CSR to be provided, the RA/CA issues an
+   AttestationNonceResponse response message containing a nonce.
 
    Figure 2 showns the interaction graphically.
 
@@ -328,16 +323,6 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
    This function is generally performed after requesting CA certificates
    and before other EST functions.
 
-
-
-
-
-
-Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 6]
-
-Internet-Draft         Nonce Extension for CMP/EST         February 2024
-
-
    The EST server MUST support the use of the path-prefix of "/.well-
    known/" as defined in [RFC5785] and the registered name of "est".
    Thus, a valid EST server URI path begins with
@@ -346,6 +331,13 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
 
    The following operation is defined by this specificaion:
 
+
+
+Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 6]
+
+Internet-Draft         Nonce Extension for CMP/EST         February 2024
+
+
     +------------------------+-----------------+-------------------+
     | Operation              |Operation path   | Details           |
     +========================+=================+===================+
@@ -353,12 +345,63 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
     +------------------------+-----------------+-------------------+
 
    The operation path is appended to the path-prefix to form the URI
-   used with HTTP GET to perform the desired EST operation.  An example
-   valid URI absolute path for the "/nonce" operation is "/.well-
-   known/est/nonce".  To retrieve a nonce, the EST client would use the
+   used with HTTP GET or POST to perform the desired EST operation.  An
+   example valid URI absolute path for the "/nonce" operation is
+   "/.well-known/est/nonce".
+
+   An EST client uses a GET or a POST depending on whether parameters
+   are included:
+
+   *  A GET request MUST be used when the EST client does not want to
+      convey extra parameters.
+
+   *  A POST request MUST be used when parameters, like nonce length or
+      a hint about the verification service, are included in the
+      request.
+
+ +-------------------+---------------------------------+---------------+
+ | Message type      | Media type(s)                   | Reference     |
+ | (per operation)   |                                 |               |
+ +===================+=================================+===============+
+ | Nonce Request     | N/A (for GET) or                | This section  |
+ |                   | application/json (for POST)     |               |
+ +===================+=================================+===============+
+ | Nonce Response    | application/json                | This section  |
+ |                   |                                 |               |
+ +===================+=================================+===============+
+
+   To retrieve a nonce using a GET, the EST client would use the
    following HTTP request-line:
 
    GET /.well-known/est/nonce HTTP/1.1
+
+   To retrieve a nonce by specifying the size of the requested nonce
+   (and/or by including a hint about the Verification service) a POST
+   message is used, as shown below:
+
+   POST /.well-known/est/nonce HTTP/1.1
+   Content-Type: application/json
+   {
+     "len": "d2JhY2NhbG91cmVqdWFuZGFt",
+     "hint": "https://example.com"
+   }
+
+
+
+
+Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 7]
+
+Internet-Draft         Nonce Extension for CMP/EST         February 2024
+
+
+   The payload in a POST request MUST be of content-type of
+   "application/json" and MUST contain a JSON object [RFC7159] with the
+   member "len" and/or "hint".  The value of the "len" member MUST be
+   between 8 and 64 (indicating the length of the length of the
+   requested nonce value, in bytes).  The "hint" member contains either
+   be a rfc822Name, a dNSName, a uri, or a test value (based on the
+   definition in the EvidenceHint structure from
+   [I-D.ietf-lamps-csr-attestation]).
 
    The EST server MAY request HTTP-based client authentication, as
    explained in Section 3.2.3 of [RFC7030].
@@ -384,16 +427,6 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
    over CoAP where the nonce and the expiry field is encoded in a CBOR
    structure?]
 
-
-
-
-
-
-Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 7]
-
-Internet-Draft         Nonce Extension for CMP/EST         February 2024
-
-
 5.  Nonce Processing Guidelines
 
    When the RA/CA is requested or configured to transmit a nonce to an
@@ -409,6 +442,13 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
    nonce is relayed with the RA/CA, it MUST be copied to the respective
    structure, as described in Section 4 and Section 3, for transmission
    to the Attester.
+
+
+
+Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 8]
+
+Internet-Draft         Nonce Extension for CMP/EST         February 2024
+
 
    For example, the PSA attestation token
    [I-D.tschofenig-rats-psa-token] supports nonces of length 32, 48 and
@@ -441,15 +481,6 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
    does not contain the nonce, as explained in
    [I-D.ietf-lamps-csr-attestation].
 
-
-
-
-
-Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 8]
-
-Internet-Draft         Nonce Extension for CMP/EST         February 2024
-
-
 6.  IANA Considerations
 
    [Editor's Note: The ASN.1 module OID (TBD2) and the new private
@@ -466,6 +497,14 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
 
    For the use of Evidence in the CSR the security considerations of
    [I-D.ietf-lamps-csr-attestation] are relevant to this document.
+
+
+
+
+Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 9]
+
+Internet-Draft         Nonce Extension for CMP/EST         February 2024
+
 
 8.  ASN.1 Definitions
 
@@ -496,16 +535,6 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
 
-
-
-
-
-
-Tschofenig & Brockhaus   Expires 29 August 2024                 [Page 9]
-
-Internet-Draft         Nonce Extension for CMP/EST         February 2024
-
-
    [RFC5280]  Cooper, D., Santesson, S., Farrell, S., Boeyen, S.,
               Housley, R., and W. Polk, "Internet X.509 Public Key
               Infrastructure Certificate and Certificate Revocation List
@@ -525,6 +554,13 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
    [RFC7159]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
               Interchange Format", RFC 7159, DOI 10.17487/RFC7159, March
               2014, <https://www.rfc-editor.org/rfc/rfc7159>.
+
+
+
+Tschofenig & Brockhaus   Expires 29 August 2024                [Page 10]
+
+Internet-Draft         Nonce Extension for CMP/EST         February 2024
+
 
    [RFC8295]  Turner, S., "EST (Enrollment over Secure Transport)
               Extensions", RFC 8295, DOI 10.17487/RFC8295, January 2018,
@@ -551,17 +587,6 @@ Internet-Draft         Nonce Extension for CMP/EST         February 2024
               <https://trustedcomputinggroup.org/resource/tpm-library-
               specification/>.
 
-
-
-
-
-
-
-Tschofenig & Brockhaus   Expires 29 August 2024                [Page 10]
-
-Internet-Draft         Nonce Extension for CMP/EST         February 2024
-
-
 Appendix A.  Acknowledgments
 
    We would like to thank Russ Housley, Thomas Fossati, Ionut Mihalcea
@@ -577,31 +602,6 @@ Authors' Addresses
    Hendrik Brockhaus
    Siemens
    Email: hendrik.brockhaus@siemens.com
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
