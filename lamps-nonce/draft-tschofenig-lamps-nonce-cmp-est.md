@@ -87,7 +87,7 @@ management. CMP provides interactions between end entities and
 PKI components, such as a Registration Authority (RA) and a
 Certification Authority (CA).
 
-Enrollment over Secure Transport (EST) {{RFC7030,RFC8295}} is another
+Enrollment over Secure Transport (EST) {{RFC7030}}{{RFC8295}} is another
 certificate management protocol, which provides a sub-set
 of the features offered by CMP.
 
