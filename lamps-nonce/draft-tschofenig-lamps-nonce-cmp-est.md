@@ -45,6 +45,7 @@ normative:
   I-D.ietf-lamps-rfc7030-csrattrs:
   RFC5280:
   RFC5785:
+  RFC7159:
 informative:
   RFC9334:
   I-D.tschofenig-rats-psa-token:
@@ -298,7 +299,7 @@ GET /.well-known/est/nonce HTTP/1.1
 ~~~
 
 The EST server MAY request HTTP-based client authentication, as
-explained in Section 3.2.3 of {{RFC7230}}.
+explained in Section 3.2.3 of {{RFC7030}}.
 
 If the request is successful, the EST server response MUST contain
 a HTTP 200 response code with a content-type of "application/json"
