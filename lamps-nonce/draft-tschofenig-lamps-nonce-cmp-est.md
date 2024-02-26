@@ -162,7 +162,7 @@ sections, namely:
 
 - {{CMP}} describes how to convey the nonce CMP, and
 - {{EST}} offers the equivalent functionality for EST.
-- 
+
 # Terminology and Requirements Language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -213,10 +213,9 @@ entity, contains the nonce.
  }
 ~~~
 
-The use of the general request/response message
-exchange leads to an extra roundtrip to convey the nonce from the CA/
-RA to the end entity (and ultimately to the Attester inside the end
-entity).
+The use of the general request/response message exchange leads to an
+extra roundtrip to convey the nonce from the CA/RA to the end entity
+(and ultimately to the Attester inside the end entity).
 
 The end entity MUST construct a AttestationNonceRequest request message to
 trigger the RA/CA to transmit a nonce in the response.
@@ -230,9 +229,9 @@ capability of the end entity rather than relying on "policy
 information"?  This may also allow to inform the CA/RA about the type
 of attestation technology/technologies available to the end entity.]
 
- If the end entity supports remote attestation and the policy requires
- Evidence in a CSR to be provided, the RA/CA issues a AttestationNonceResponse
- response containing a nonce.
+If the end entity supports remote attestation and the policy requires
+Evidence in a CSR to be provided, the RA/CA issues a AttestationNonceResponse
+response containing a nonce.
 
 {{fig-cmp-msg}} showns the interaction graphically.
 
