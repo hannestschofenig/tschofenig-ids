@@ -36,7 +36,7 @@
       </address>
     </author>
 
-    <date year="2024" month="February" day="26"/>
+    <date year="2024" month="March" day="02"/>
 
     <area>Security</area>
     <workgroup>LAMPS</workgroup>
@@ -45,7 +45,7 @@
     <abstract>
 
 
-<?line 58?>
+<?line 59?>
 
 <t>Certificate Management Protocol (CMP) and Enrollment over Secure
 Transport (EST) define protocol messages for X.509v3 certificate
@@ -74,7 +74,7 @@ the end entity for inclusion in Evidence.</t>
   <middle>
 
 
-<?line 76?>
+<?line 77?>
 
 <section anchor="introduction"><name>Introduction</name>
 
@@ -236,36 +236,33 @@ request interchangeably.</t>
 
 <t>Section 5.3.19.16 of <xref target="I-D.ietf-lamps-rfc4210bis"/> defines the
 general request message (genm) and general response (genp). 
-The AttestationNonceRequest payload of the genm message, which is
+The NonceRequest payload of the genm message, which is
 send by the end entity to request a nonce, contains optional
-details on the length of nonce the attester requires.  The
-AttestationNonceResponse payload of the genp message, which is
+details on the length of nonce the Attester requires.  The
+NonceResponse payload of the genp message, which is
 sent by the CA/RA in response to a request message by the end
 entity, contains the nonce.</t>
 
 <figure><artwork><![CDATA[
- GenMsg:    {id-it TBD1}, AttestationNonceRequestValue
- GenRep:    {id-it TBD2}, AttestationNonceResponseValue | < absent >
+ GenMsg:    {id-it TBD1}, NonceRequestValue
+ GenRep:    {id-it TBD2}, NonceResponseValue | < absent >
 
- id-it-AttestationNonceRequest OBJECT IDENTIFIER ::= { id-it TBD1 }
- AttestationNonceRequestValue ::= SEQUENCE SIZE (1..MAX) OF
-                                     AttestationNonceRequestContent
-
- AttestationNonceRequestContent ::= SEQUENCE {
+ id-it-NonceRequest OBJECT IDENTIFIER ::= { id-it TBD1 }
+ NonceRequestValue ::= SEQUENCE {
     len INTEGER OPTIONAL,
     -- indicates the required length of the requested nonce
     hint EvidenceHint OPTIONAL
-    -- indicates which verifier to contact
+    -- indicates which Verifier to request a nonce from
  }
 
- id-it-AttestationNonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
- AttestationNonceResponseValue ::= SEQUENCE SIZE (1..MAX) OF
-                                   AttestationNonceResponseContent
-
- AttestationNonceResponseContent ::= SEQUENCE {
+ id-it-NonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
+ NonceResponseValue ::= SEQUENCE {
     nonce OCTET STRING
     -- contains the nonce of length len
-    -- provided by the verifier indicated with hint
+    -- provided by the Verifier indicated with hint
+    expiry Time OPTIONAL
+    -- indicates how long the Verifier considers the
+    -- nonce valid
  }
 ]]></artwork></figure>
 
@@ -277,7 +274,7 @@ which Verifier should be invoked to request a nonce.</t>
 extra roundtrip to convey the nonce from the CA/RA to the end entity
 (and ultimately to the Attester inside the end entity).</t>
 
-<t>The end entity MUST construct a AttestationNonceRequest request message to
+<t>The end entity MUST construct a NonceRequest request message to
 trigger the RA/CA to transmit a nonce in the response.</t>
 
 <t>[Open Issue: Should request message indicate the remote attestation
@@ -286,7 +283,7 @@ information"?  This may also allow to inform the CA/RA about the type
 of attestation technology/technologies available to the end entity.]</t>
 
 <t>If the end entity supports remote attestation and the policy requires
-Evidence in a CSR to be provided, the RA/CA issues an AttestationNonceResponse
+Evidence in a CSR to be provided, the RA/CA issues an NonceResponse
 response message containing a nonce.</t>
 
 <t><xref target="fig-cmp-msg"/> showns the interaction graphically.</t>
@@ -295,12 +292,12 @@ response message containing a nonce.</t>
 End Entity                                          RA/CA
 ==========                                      =============
 
-              -->>-- AttestationNonceRequest -->>--
+              -->>-- NonceRequest -->>--
                                                 Verify request
                                                 Generate nonce*
                                                 Create response
-              --<<-- AttestationNonceResponse --<<--
-                      (nonce)
+              --<<-- NonceResponse --<<--
+                      (nonce, expiry)
 
 Generate key pair
 Generate Evidence*
@@ -323,7 +320,7 @@ Store certificate
 </section>
 <section anchor="EST"><name>Conveying a Nonce in EST</name>
 
-<t>The EST client can request an attestation nonce for its Attester.
+<t>The EST client can request a nonce for its Attester.
 This function is generally performed after requesting CA certificates
 and before other EST functions.</t>
 
@@ -331,7 +328,7 @@ and before other EST functions.</t>
 known/" as defined in <xref target="RFC5785"/> and the registered name of "est".
 Thus, a valid EST server URI path begins with
 "https://www.example.com/.well-known/est".  Each EST operation is
-indicated by a path-suffix that indicates the intended operation:</t>
+indicated by a path-suffix that indicates the intended operation.</t>
 
 <t>The following operation is defined by this specificaion:</t>
 
@@ -393,11 +390,10 @@ Content-Type: application/json
 
 <t>The payload in a POST request MUST be of content-type of "application/json"
 and MUST contain a JSON object <xref target="RFC7159"/> with the member "len" and/or
-"hint". The value of the "len" member MUST be between 8 and 64 (indicating
-the length of the length of the requested nonce value, in bytes). The
-"hint" member contains either be a rfc822Name, a dNSName, a uri, or a test
-value (based on the definition in the EvidenceHint structure from 
-<xref target="I-D.ietf-lamps-csr-attestation"/>).</t>
+"hint". The value of the "len" member indicates the length of the requested
+nonce value in bytes. The "hint" member contains either be a rfc822Name, a
+dNSName, a uri, or a test value (based on the definition in the EvidenceHint
+structure from <xref target="I-D.ietf-lamps-csr-attestation"/>).</t>
 
 <t>The EST server MAY request HTTP-based client authentication, as
 explained in Section 3.2.3 of <xref target="RFC7030"/>.</t>
@@ -475,25 +471,36 @@ does not contain the nonce, as explained in
 </section>
 <section anchor="iana-considerations"><name>IANA Considerations</name>
 
-<t>[Editor's Note: The ASN.1 module OID (TBD2) and the new private
-extension (TBD1) must be registered.]</t>
+<t>TBD:</t>
 
 </section>
 <section anchor="security-considerations"><name>Security Considerations</name>
 
-<t>This specification defines how to obtain a nonce via CMP and EST. This
-specification assumes that the nonce does not require confidentiality protection
+<t>This specification defines how to obtain a nonce via CMP and EST and
+assumes that the nonce does not require confidentiality protection
 without impacting the security property of the remote attestation protocol.
 <xref target="RFC9334"/> defines the IETF remote attestation architecture discusses
 nonce-based freshness in great detail.</t>
 
-<t>For the use of Evidence in the CSR the security considerations of
+<t>Section 8.4 of <xref target="I-D.ietf-rats-eat"/> places randomness and privacy requirement
+on the generation of the nonce for use with an Entity Attestation Token (EAT).
+These requirements have been adopted by attestation technologies, such
+as the PSA attestation token <xref target="I-D.tschofenig-rats-psa-token"/> and are of general
+utility:</t>
+
+<t><list style="symbols">
+  <t>The nonce MUST have at least 64 bits of entropy.</t>
+  <t>To avoid the conveyance of privacy-related information in the nonce,
+it should be derived using a salt that originates from a true and
+ reliable random number generator or any other source of randomness.</t>
+</list></t>
+
+<t>Since each specification of an attestation technology offers guidance
+for replay protection with nonces (and other techniques) this document
+needs to defer specific guidance to the respective specifications.</t>
+
+<t>For the use of Evidence in a CSR the security considerations of
 <xref target="I-D.ietf-lamps-csr-attestation"/> are relevant to this document.</t>
-
-</section>
-<section anchor="asn.1"><name>ASN.1 Definitions</name>
-
-<t>TBD:</t>
 
 </section>
 
@@ -534,17 +541,18 @@ nonce-based freshness in great detail.</t>
       <author fullname="Henk Birkholz" initials="H." surname="Birkholz">
          <organization>Fraunhofer SIT</organization>
       </author>
-      <date day="13" month="February" year="2024"/>
+      <date day="1" month="March" year="2024"/>
       <abstract>
-	 <t>   A client requesting a certificate from a Certification Authority (CA)
-   may wish to offer believable claims about the protections afforded to
-   the corresponding private key, such as whether the private key
-   resides on a hardware security module or the protection capabilities
-   provided by the hardware.
+	 <t>   A PKI end entity requesting a certificate from a Certification
+   Authority (CA) may wish to offer believable claims about the
+   protections afforded to the corresponding private key, such as
+   whether the private key resides on a hardware security module or the
+   protection capabilities provided by the hardware.
 
-   This document describes how to encode Evidence produced by an
-   Attester for inclusion in Certificate Signing Requests (CSRs), and
-   any certificates necessary for validating it.
+   This document defines a new PKCS#10 attribute attr-evidence and CRMF
+   extension ext-evidence that allows placing any Evidence data, in any
+   pre-existing format, along with any certificates needed to validate
+   it, into a PKCS#10 or CRMF CSR.
 
    Including Evidence along with a CSR can help to improve the
    assessment of the security posture for the private key, and the
@@ -559,7 +567,7 @@ nonce-based freshness in great detail.</t>
 	 </t>
       </abstract>
    </front>
-   <seriesInfo name="Internet-Draft" value="draft-ietf-lamps-csr-attestation-05"/>
+   <seriesInfo name="Internet-Draft" value="draft-ietf-lamps-csr-attestation-08"/>
    
 </reference>
 
@@ -579,7 +587,7 @@ nonce-based freshness in great detail.</t>
       <author fullname="John Gray" initials="J." surname="Gray">
          <organization>Entrust</organization>
       </author>
-      <date day="19" month="June" year="2023"/>
+      <date day="1" month="March" year="2024"/>
       <abstract>
 	 <t>   This document describes the Internet X.509 Public Key Infrastructure
    (PKI) Certificate Management Protocol (CMP).  Protocol messages are
@@ -588,23 +596,23 @@ nonce-based freshness in great detail.</t>
    as a Registration Authority (RA) and a Certification Authority (CA).
 
    This document obsoletes RFC 4210 by including the updates specified
-   by CMP Updates [RFCAAAA] Section 2 and Appendix A.2 maintaining
+   by CMP Updates RFC 9480 Section 2 and Appendix A.2 maintaining
    backward compatibility with CMP version 2 wherever possible and
    obsoletes both documents.  Updates to CMP version 2 are: improving
    crypto agility, extending the polling mechanism, adding new general
    message types, and adding extended key usages to identify special CMP
-   server authorizations.  Introducing version 3 to be used only for
+   server authorizations.  Introducing CMP version 3 to be used only for
    changes to the ASN.1 syntax, which are: support of EnvelopedData
    instead of EncryptedValue and hashAlg for indicating a hash
    AlgorithmIdentifier in certConf messages.
 
-   In addition to the changes specified in CMP Updates [RFCAAAA] this
+   In addition to the changes specified in CMP Updates RFC 9480 this
    document adds support for management of KEM certificates.
 
 	 </t>
       </abstract>
    </front>
-   <seriesInfo name="Internet-Draft" value="draft-ietf-lamps-rfc4210bis-07"/>
+   <seriesInfo name="Internet-Draft" value="draft-ietf-lamps-rfc4210bis-08"/>
    
 </reference>
 
@@ -755,6 +763,39 @@ nonce-based freshness in great detail.</t>
 </reference>
 
 
+<reference anchor="I-D.ietf-rats-eat">
+   <front>
+      <title>The Entity Attestation Token (EAT)</title>
+      <author fullname="Laurence Lundblade" initials="L." surname="Lundblade">
+         <organization>Security Theory LLC</organization>
+      </author>
+      <author fullname="Giridhar Mandyam" initials="G." surname="Mandyam">
+         </author>
+      <author fullname="Jeremy O&#x27;Donoghue" initials="J." surname="O&#x27;Donoghue">
+         <organization>Qualcomm Technologies Inc.</organization>
+      </author>
+      <author fullname="Carl Wallace" initials="C." surname="Wallace">
+         <organization>Red Hound Software, Inc.</organization>
+      </author>
+      <date day="15" month="January" year="2024"/>
+      <abstract>
+	 <t>   An Entity Attestation Token (EAT) provides an attested claims set
+   that describes state and characteristics of an entity, a device like
+   a smartphone, IoT device, network equipment or such.  This claims set
+   is used by a relying party, server or service to determine the type
+   and degree of trust placed in the entity.
+
+   An EAT is either a CBOR Web Token (CWT) or JSON Web Token (JWT) with
+   attestation-oriented claims.
+
+	 </t>
+      </abstract>
+   </front>
+   <seriesInfo name="Internet-Draft" value="draft-ietf-rats-eat-25"/>
+   
+</reference>
+
+
 <reference anchor="TPM20" target="https://trustedcomputinggroup.org/resource/tpm-library-specification/">
   <front>
     <title>Trusted Platform Module Library Specification, Family 2.0, Level 00, Revision 01.59</title>
@@ -769,12 +810,12 @@ nonce-based freshness in great detail.</t>
     </references>
 
 
-<?line 436?>
+<?line 445?>
 
 <section anchor="acknowledgments"><name>Acknowledgments</name>
 
-<t>We would like to thank Russ Housley, Thomas Fossati, Ionut Mihalcea and Carl Wallace
-for their review comments.</t>
+<t>We would like to thank Russ Housley, Thomas Fossati, Watson Ladd, Ionut Mihalcea
+and Carl Wallace for their review comments.</t>
 
 </section>
 
@@ -782,142 +823,146 @@ for their review comments.</t>
   </back>
 
 <!-- ##markdown-source:
-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
-sHYSvWPromj0hlcaGNz9nz0A+P8BriPpq9hFAAA=
+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
+fda4Pyut1v4fTgEa/wcQ+NAXN0cAAA==
 
 -->
 

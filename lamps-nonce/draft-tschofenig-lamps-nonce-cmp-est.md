@@ -48,6 +48,7 @@ normative:
 informative:
   RFC9334:
   I-D.tschofenig-rats-psa-token:
+  I-D.ietf-rats-eat:
   TPM20:
      author:
         org: Trusted Computing Group
@@ -158,7 +159,7 @@ Party in step (3).
 {: #fig-arch title="Architecture with Background Check Model."}
 
 The functionality of this document is described in two
-sections, namely: 
+sections, namely:
 
 - {{CMP}} describes how to convey the nonce CMP, and
 - {{EST}} offers the equivalent functionality for EST.
@@ -180,48 +181,45 @@ request interchangeably.
 
 Section 5.3.19.16 of {{I-D.ietf-lamps-rfc4210bis}} defines the
 general request message (genm) and general response (genp). 
-The AttestationNonceRequest payload of the genm message, which is
+The NonceRequest payload of the genm message, which is
 send by the end entity to request a nonce, contains optional
-details on the length of nonce the attester requires.  The
-AttestationNonceResponse payload of the genp message, which is
+details on the length of nonce the Attester requires.  The
+NonceResponse payload of the genp message, which is
 sent by the CA/RA in response to a request message by the end
 entity, contains the nonce.
 
 ~~~
- GenMsg:    {id-it TBD1}, AttestationNonceRequestValue
- GenRep:    {id-it TBD2}, AttestationNonceResponseValue | < absent >
+ GenMsg:    {id-it TBD1}, NonceRequestValue
+ GenRep:    {id-it TBD2}, NonceResponseValue | < absent >
 
- id-it-AttestationNonceRequest OBJECT IDENTIFIER ::= { id-it TBD1 }
- AttestationNonceRequestValue ::= SEQUENCE SIZE (1..MAX) OF
-                                     AttestationNonceRequestContent
-
- AttestationNonceRequestContent ::= SEQUENCE {
+ id-it-NonceRequest OBJECT IDENTIFIER ::= { id-it TBD1 }
+ NonceRequestValue ::= SEQUENCE {
     len INTEGER OPTIONAL,
     -- indicates the required length of the requested nonce
     hint EvidenceHint OPTIONAL
-    -- indicates which verifier to contact
+    -- indicates which Verifier to request a nonce from
  }
 
- id-it-AttestationNonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
- AttestationNonceResponseValue ::= SEQUENCE SIZE (1..MAX) OF
-                                   AttestationNonceResponseContent
-
- AttestationNonceResponseContent ::= SEQUENCE {
+ id-it-NonceResponse OBJECT IDENTIFIER ::= { id-it TBD2 }
+ NonceResponseValue ::= SEQUENCE {
     nonce OCTET STRING
     -- contains the nonce of length len
-    -- provided by the verifier indicated with hint
+    -- provided by the Verifier indicated with hint
+    expiry Time OPTIONAL
+    -- indicates how long the Verifier considers the
+    -- nonce valid
  }
 ~~~
 
 Note: The EvidenceHint structure is defined in {{I-D.ietf-lamps-csr-attestation}}.
 The hint is intended for an Attester to indicate to the EST server
-which Verifier should be invoked to request a nonce. 
+which Verifier should be invoked to request a nonce.
 
 The use of the general request/response message exchange leads to an
 extra roundtrip to convey the nonce from the CA/RA to the end entity
 (and ultimately to the Attester inside the end entity).
 
-The end entity MUST construct a AttestationNonceRequest request message to
+The end entity MUST construct a NonceRequest request message to
 trigger the RA/CA to transmit a nonce in the response.
 
 [Open Issue: Should request message indicate the remote attestation
@@ -230,7 +228,7 @@ information"?  This may also allow to inform the CA/RA about the type
 of attestation technology/technologies available to the end entity.]
 
 If the end entity supports remote attestation and the policy requires
-Evidence in a CSR to be provided, the RA/CA issues an AttestationNonceResponse
+Evidence in a CSR to be provided, the RA/CA issues an NonceResponse
 response message containing a nonce.
 
 {{fig-cmp-msg}} showns the interaction graphically.
@@ -239,12 +237,12 @@ response message containing a nonce.
 End Entity                                          RA/CA
 ==========                                      =============
 
-              -->>-- AttestationNonceRequest -->>--
+              -->>-- NonceRequest -->>--
                                                 Verify request
                                                 Generate nonce*
                                                 Create response
-              --<<-- AttestationNonceResponse --<<--
-                      (nonce)
+              --<<-- NonceResponse --<<--
+                      (nonce, expiry)
 
 Generate key pair
 Generate Evidence*
@@ -267,7 +265,7 @@ Store certificate
 
 # Conveying a Nonce in EST {#EST}
 
-The EST client can request an attestation nonce for its Attester.
+The EST client can request a nonce for its Attester.
 This function is generally performed after requesting CA certificates
 and before other EST functions.
 
@@ -275,7 +273,7 @@ The EST server MUST support the use of the path-prefix of "/.well-
 known/" as defined in {{RFC5785}} and the registered name of "est".
 Thus, a valid EST server URI path begins with
 "https://www.example.com/.well-known/est".  Each EST operation is
-indicated by a path-suffix that indicates the intended operation:
+indicated by a path-suffix that indicates the intended operation.
 
 The following operation is defined by this specificaion:
 
@@ -335,11 +333,10 @@ Content-Type: application/json
 
 The payload in a POST request MUST be of content-type of "application/json"
 and MUST contain a JSON object {{RFC7159}} with the member "len" and/or
-"hint". The value of the "len" member MUST be between 8 and 64 (indicating
-the length of the length of the requested nonce value, in bytes). The
-"hint" member contains either be a rfc822Name, a dNSName, a uri, or a test
-value (based on the definition in the EvidenceHint structure from 
-{{I-D.ietf-lamps-csr-attestation}}).
+"hint". The value of the "len" member indicates the length of the requested
+nonce value in bytes. The "hint" member contains either be a rfc822Name, a
+dNSName, a uri, or a test value (based on the definition in the EvidenceHint
+structure from {{I-D.ietf-lamps-csr-attestation}}).
 
 The EST server MAY request HTTP-based client authentication, as
 explained in Section 3.2.3 of {{RFC7030}}.
@@ -415,27 +412,39 @@ does not contain the nonce, as explained in
 
 #  IANA Considerations
 
-[Editor's Note: The ASN.1 module OID (TBD2) and the new private
-extension (TBD1) must be registered.]
+TBD:
 
 #  Security Considerations
 
-This specification defines how to obtain a nonce via CMP and EST. This
-specification assumes that the nonce does not require confidentiality protection
+This specification defines how to obtain a nonce via CMP and EST and
+assumes that the nonce does not require confidentiality protection
 without impacting the security property of the remote attestation protocol.
 {{RFC9334}} defines the IETF remote attestation architecture discusses
 nonce-based freshness in great detail.
 
-For the use of Evidence in the CSR the security considerations of
+Section 8.4 of {{I-D.ietf-rats-eat}} places randomness and privacy requirement
+on the generation of the nonce for use with an Entity Attestation Token (EAT).
+These requirements have been adopted by attestation technologies, such
+as the PSA attestation token {{I-D.tschofenig-rats-psa-token}} and are of general
+utility:
+
+* The nonce MUST have at least 64 bits of entropy.
+
+* To avoid the conveyance of privacy-related information in the nonce,
+  it should be derived using a salt that originates from a true and
+   reliable random number generator or any other source of randomness.
+
+Since each specification of an attestation technology offers guidance
+for replay protection with nonces (and other techniques) this document
+needs to defer specific guidance to the respective specifications.
+
+For the use of Evidence in a CSR the security considerations of
 {{I-D.ietf-lamps-csr-attestation}} are relevant to this document.
 
-# ASN.1 Definitions {#asn.1}
-
-TBD:
 
 --- back
 
 # Acknowledgments
 
-We would like to thank Russ Housley, Thomas Fossati, Ionut Mihalcea and Carl Wallace
-for their review comments.
+We would like to thank Russ Housley, Thomas Fossati, Watson Ladd, Ionut Mihalcea
+and Carl Wallace for their review comments.
