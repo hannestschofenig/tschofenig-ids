@@ -231,11 +231,12 @@ instead.
 
 # Using HPKE
 
-To support interoperability between the two peers, the following payload
+To support interoperability between the two endpoints, the following payload
 structure is defined.
 
 ~~~
 struct {
+    opaque kid<0..2^16-1>;    
     opaque enc<0..2^16-1>;
     opaque ct<32..2^8-1>;
 } HPKE_Payload;
@@ -243,6 +244,11 @@ struct {
 {: #hpke-payload-fig title="HPKE_Payload Structure."}
 
 The fields have the following meaning:
+
+- kid: The identifier of the recipient public key used for the HPKE
+       computation. This allows the sender to indicate what public
+       key it used in case it has multiple public keys for a given
+       recipient.
 
 - enc: The HPKE encapsulated key, used by the peers to decrypt the
 corresponding payload field.
@@ -253,7 +259,7 @@ operation. RAND MUST be at least 32 bytes long but the maximum length
 MUST NOT exceed 255 bytes. This RAND value is input to the
 application_traffic_secret generation, as described in {{key_update}}.
 
-This specification MUST use the HPKE Base mode; authenticated modes
+This specification MUST use the HPKE Base mode; authenticated HPKE modes
 are not supported.
 
 The SealBase() operation requires four inputs, namely
@@ -326,10 +332,14 @@ enum {
 } KeyUpdateRequest;
 
 struct {
+    opaque kid<0..2^16-1>;
     KeyUpdateRequest request_update;
 } ExtendedKeyUpdate;
 ~~~
 {: #extended-key-update-fig title="ExtendedKeyUpdate Structure."}
+
+The kid field indicates the public key of the recipient that was
+used by HPKE to encrypt the random value.
 
 The request_update field indicates whether the recipient of the
 ExtendedKeyUpdate should respond with its own ExtendedKeyUpdate.
@@ -369,19 +379,17 @@ The ExtendedKeyUpdate and the KeyUpdates MAY be used in combination.
 
 The ExtendedKeyUpdate handshake message is used to indicate that
 the sender is updating its sending cryptographic keys.  This message can
-be sent by either peer after three conditions are met:
+be sent by either endpoint after three conditions are met:
 
-- The peer has sent a Finished message.
-- The peer is configured with a public key of the recipient. The process
+- The endpoint has sent a Finished message.
+- The endpoint is configured with a public key of the recipient. The process
 for exchanging and updating these public keys is application-specific.
-- The peer has successfully sent the HPKE payload at the application
+- The endpoint has conveyed the HPKE payload at the application
 layer to the peer. HPKE is used to securely exchange a random number
 using a KEM.
 
-The next generation of traffic keys is computed by generating
-client_/server_application_traffic_secret_N+1 from
-client_/server_application_traffic_secret_N as described in this
-section and then re-deriving the traffic keys as described in
+The next generation of traffic keys is computed as described in this
+section. The traffic keys are derived, as described in
 Section 7.3 of {{I-D.ietf-tls-rfc8446bis}}.
 
 There are two changes to the application_traffic_secret computation
@@ -389,16 +397,16 @@ described in {{I-D.ietf-tls-rfc8446bis}}, namely
 
 - the label is adjusted to distinguish it from the regular KeyUpdate
 message, and
-- the hash of the random value encrypted with HPKE is included as a
-context value making the next generation of the application
-traffic secret dependent on the HPKE-encrypted random value.
+- the random value, which was securely exchanged between the two
+endpoints, is included in the generation of the application
+traffic secret.
 
 The next generation application_traffic_secret is computed as:
 
 ~~~
 application_traffic_secret_N+1 =
-    HKDF-Expand-Label(application_traffic_secret_N,
-                      "traffic up2", Hash(RAND), Hash.length)
+    HKDF-Expand-Label(RAND,
+                      "traffic up2", "", Hash.length)
 ~~~
 
 Once client_/server_application_traffic_secret_N+1 and its associated
@@ -506,7 +514,7 @@ many epochs in active use).
 
 Due to loss and/or reordering, DTLS 1.3 implementations may receive a
 record with an older epoch than the current one (the requirements
-above preclude receiving a newer record).  They SHOULD attempt to
+above preclude receiving a newer record). They SHOULD attempt to
 process those records with that epoch but MAY opt to discard
 such out-of-epoch records.
 
@@ -584,7 +592,8 @@ It returns the success or failure.
 This API allows the application to request the (D)TLS stack to initiate
 an extended key update using the message defined in {{ext-key-update}}.
 
-It takes no input values and returns success or failure.
+It takes an identifier to the public key of the recipient as input and
+returns success or failure.
 
 # Post-Quantum Considerations
 
@@ -594,7 +603,6 @@ security even if all but one of the component algorithms is broken.
 It is motivated by transition to post-quantum cryptography.  HPKE can
 be extended to support hybrid post-quantum Key Encapsulation
 Mechanisms (KEMs), as defined in {{I-D.westerbaan-cfrg-hpke-xyber768d00}}
-
 
 #  Security Considerations
 
@@ -683,7 +691,18 @@ Benjamin Kaduk, Scott Fluhrer, Dennis Jackson, David Benjamin,
 and Thom Wiggers for a review of an initial version of this
 specification.
 
-# Alternative Design
+# Design Rational {#rational}
+
+The design in this document is motivated by long-lived TLS connections,
+which can be observed in, at least, two use cases: industrial IoT
+environments and telecommunication operator networks. In the discussions
+the desire to develop a design that is also compatible with the ongoing
+work on PQC algorithm and the use of KEMs in particular.
+
+HPKE was selected as a building block due to its popularity in IETF
+protocols and the availability of implementations. The core building
+blocks of HPKE (a KEM and a key derivation function) could, howerver,
+be used directly as well.
 
 The design presented in this document utilizes HPKE with the Seal/Open
 API calls instead of utilizing Encap/Decap API calls directly. Available
@@ -695,6 +714,12 @@ The downside of using the currently documented approach is the need to
 additionally encrypt plaintext, which in our case is a random value. It
 may also introduce complexity with the integration of hybrid approach.
 
-We would welcome feedback whether the re-use of existing HPKE libraries
-outweighs the disadvantages.
-
+The use of application layer protocol messages to exchange TLS handshake
+messages is motiviated by the desire to reduce the impact on the TLS
+state machine but also by the prior work on post-handshake authentication
+using "Exported Authenticators". A design that exchanges messages
+at the TLS layer is possible but raises the question about whether
+post-handshake authentication messages should also be exchanged at
+the TLS layer to accomplish some level of uniformity. Even the re-
+introduction of session renegotation, a feature removed with TLS 1.3,
+may seem worthwhile to consider.

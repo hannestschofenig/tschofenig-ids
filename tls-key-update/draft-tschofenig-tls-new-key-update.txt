@@ -5,12 +5,12 @@
 TLS                                                        H. Tschofenig
 Internet-Draft                                                   Siemens
 Intended status: Standards Track                                M. Tüxen
-Expires: 12 August 2024                Münster Univ. of Applied Sciences
+Expires: 3 September 2024              Münster Univ. of Applied Sciences
                                                                 T. Reddy
                                                                    Nokia
                                                                 S. Fries
                                                                  Siemens
-                                                         9 February 2024
+                                                            2 March 2024
 
 
        Extended Key Update for Transport Layer Security (TLS) 1.3
@@ -53,9 +53,9 @@ Status of This Memo
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                 [Page 1]
+Tschofenig, et al.      Expires 3 September 2024                [Page 1]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
    Internet-Drafts are draft documents valid for a maximum of six months
@@ -63,7 +63,7 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 12 August 2024.
+   This Internet-Draft will expire on 3 September 2024.
 
 Copyright Notice
 
@@ -102,16 +102,16 @@ Table of Contents
      13.1.  Normative References . . . . . . . . . . . . . . . . . .  16
      13.2.  Informative References . . . . . . . . . . . . . . . . .  16
    Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  17
-   Appendix B.  Alternative Design . . . . . . . . . . . . . . . . .  18
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  18
+   Appendix B.  Design Rational  . . . . . . . . . . . . . . . . . .  18
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  19
 
 
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                 [Page 2]
+Tschofenig, et al.      Expires 3 September 2024                [Page 2]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
 1.  Introduction
@@ -165,9 +165,9 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                 [Page 3]
+Tschofenig, et al.      Expires 3 September 2024                [Page 3]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
    application layer are specified in this document and we make use of
@@ -221,9 +221,9 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                 [Page 4]
+Tschofenig, et al.      Expires 3 September 2024                [Page 4]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
    *  HPKE: Hybrid Public Key Encryption
@@ -277,9 +277,9 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                 [Page 5]
+Tschofenig, et al.      Expires 3 September 2024                [Page 5]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
    A server that supports and wants to use the extended key update
@@ -300,10 +300,11 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 4.  Using HPKE
 
-   To support interoperability between the two peers, the following
+   To support interoperability between the two endpoints, the following
    payload structure is defined.
 
    struct {
+       opaque kid<0..2^16-1>;
        opaque enc<0..2^16-1>;
        opaque ct<32..2^8-1>;
    } HPKE_Payload;
@@ -311,6 +312,10 @@ Internet-Draft         Extended Key Update for TLS         February 2024
                      Figure 3: HPKE_Payload Structure.
 
    The fields have the following meaning:
+
+   *  kid: The identifier of the recipient public key used for the HPKE
+      computation.  This allows the sender to indicate what public key
+      it used in case it has multiple public keys for a given recipient.
 
    *  enc: The HPKE encapsulated key, used by the peers to decrypt the
       corresponding payload field.
@@ -322,21 +327,22 @@ Internet-Draft         Extended Key Update for TLS         February 2024
       input to the application_traffic_secret generation, as described
       in Section 6.
 
-   This specification MUST use the HPKE Base mode; authenticated modes
-   are not supported.
+   This specification MUST use the HPKE Base mode; authenticated HPKE
+   modes are not supported.
+
+
+
+
+Tschofenig, et al.      Expires 3 September 2024                [Page 6]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
 
    The SealBase() operation requires four inputs, namely
 
    *  the public key of the recipient,
 
    *  context information (info),
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                 [Page 6]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
 
    *  associated data (aad), and
 
@@ -379,20 +385,18 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    "info" parameters are constructed as previously described for
    SealBase().
 
+
+
+
+
+Tschofenig, et al.      Expires 3 September 2024                [Page 7]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
    The OpenBase function will, if successful, decrypt "ct".  When
    decrypted, the result will either return the random value or an
    error.
-
-
-
-
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                 [Page 7]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
 
 5.  Extended Key Update Message
 
@@ -416,10 +420,14 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    } KeyUpdateRequest;
 
    struct {
+       opaque kid<0..2^16-1>;
        KeyUpdateRequest request_update;
    } ExtendedKeyUpdate;
 
                    Figure 4: ExtendedKeyUpdate Structure.
+
+   The kid field indicates the public key of the recipient that was used
+   by HPKE to encrypt the random value.
 
    The request_update field indicates whether the recipient of the
    ExtendedKeyUpdate should respond with its own ExtendedKeyUpdate.  If
@@ -434,6 +442,14 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    implementation which receives multiple ExtendedKeyUpdates while it is
    silent to respond with a single update.  Note that implementations
    may receive an arbitrary number of messages between sending a
+
+
+
+Tschofenig, et al.      Expires 3 September 2024                [Page 8]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
    ExtendedKeyUpdate with request_update set to "update_requested" and
    receiving the peer's ExtendedKeyUpdate, because those messages may
    already be in flight.
@@ -442,13 +458,6 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    with request_update set to "update_requested", and they cross in
    flight, then each side will also send a response, with the result
    that each side increments by two generations.
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                 [Page 8]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
 
    The sender MUST encrypt ExtendedKeyUpdate messages with the old keys
    and the receiver MUST decrypt ExtendedKeyUpdate messages with the old
@@ -467,23 +476,21 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
    The ExtendedKeyUpdate handshake message is used to indicate that the
    sender is updating its sending cryptographic keys.  This message can
-   be sent by either peer after three conditions are met:
+   be sent by either endpoint after three conditions are met:
 
-   *  The peer has sent a Finished message.
+   *  The endpoint has sent a Finished message.
 
-   *  The peer is configured with a public key of the recipient.  The
-      process for exchanging and updating these public keys is
+   *  The endpoint is configured with a public key of the recipient.
+      The process for exchanging and updating these public keys is
       application-specific.
 
-   *  The peer has successfully sent the HPKE payload at the application
+   *  The endpoint has conveyed the HPKE payload at the application
       layer to the peer.  HPKE is used to securely exchange a random
       number using a KEM.
 
-   The next generation of traffic keys is computed by generating
-   client_/server_application_traffic_secret_N+1 from client_/
-   server_application_traffic_secret_N as described in this section and
-   then re-deriving the traffic keys as described in Section 7.3 of
-   [I-D.ietf-tls-rfc8446bis].
+   The next generation of traffic keys is computed as described in this
+   section.  The traffic keys are derived, as described in Section 7.3
+   of [I-D.ietf-tls-rfc8446bis].
 
    There are two changes to the application_traffic_secret computation
    described in [I-D.ietf-tls-rfc8446bis], namely
@@ -491,24 +498,23 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    *  the label is adjusted to distinguish it from the regular KeyUpdate
       message, and
 
-   *  the hash of the random value encrypted with HPKE is included as a
-      context value making the next generation of the application
-      traffic secret dependent on the HPKE-encrypted random value.
+
+
+
+Tschofenig, et al.      Expires 3 September 2024                [Page 9]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
+   *  the random value, which was securely exchanged between the two
+      endpoints, is included in the generation of the application
+      traffic secret.
 
    The next generation application_traffic_secret is computed as:
 
-
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                 [Page 9]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
-
    application_traffic_secret_N+1 =
-       HKDF-Expand-Label(application_traffic_secret_N,
-                         "traffic up2", Hash(RAND), Hash.length)
+       HKDF-Expand-Label(RAND,
+                         "traffic up2", "", Hash.length)
 
    Once client_/server_application_traffic_secret_N+1 and its associated
    traffic keys have been computed, implementations SHOULD delete
@@ -551,15 +557,9 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 
 
-
-
-
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                [Page 10]
+Tschofenig, et al.      Expires 3 September 2024               [Page 10]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
         Client                                           Server
@@ -613,9 +613,9 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                [Page 11]
+Tschofenig, et al.      Expires 3 September 2024               [Page 11]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
    Once the public key has been sent to the client, it can use the
@@ -669,9 +669,9 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                [Page 12]
+Tschofenig, et al.      Expires 3 September 2024               [Page 12]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
    It is also possible to implement this API outside of the (D)TLS
@@ -725,9 +725,9 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                [Page 13]
+Tschofenig, et al.      Expires 3 September 2024               [Page 13]
 
-Internet-Draft         Extended Key Update for TLS         February 2024
+Internet-Draft         Extended Key Update for TLS            March 2024
 
 
    *  a reference to the secret key corresponding to the previously
@@ -755,7 +755,8 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    initiate an extended key update using the message defined in
    Section 5.
 
-   It takes no input values and returns success or failure.
+   It takes an identifier to the public key of the recipient as input
+   and returns success or failure.
 
 10.  Post-Quantum Considerations
 
@@ -772,19 +773,25 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    [RFC9325] provides a good summary of what (perfect) forward secrecy
    is and how it relates to the TLS protocol.  In summary, it says:
 
+
+
+
+
+
+
+
+
+Tschofenig, et al.      Expires 3 September 2024               [Page 14]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
    "Forward secrecy (also called "perfect forward secrecy" or "PFS") is
    a defense against an attacker who records encrypted conversations
    where the session keys are only encrypted with the communicating
    parties' long-term keys.  Should the attacker be able to obtain these
    long-term keys at some point later in time, the session keys and thus
    the entire conversation could be decrypted."
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                [Page 14]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
 
    Appendix F of [I-D.ietf-tls-rfc8446bis] goes into details of
    explaining the security properties of the TLS 1.3 protocol and notes
@@ -825,6 +832,16 @@ Internet-Draft         Extended Key Update for TLS         February 2024
 
    *  Reference: [This document]
 
+
+
+
+
+
+Tschofenig, et al.      Expires 3 September 2024               [Page 15]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
    IANA is also requested to allocate a new value in the "TLS
    HandshakeType" subregistry of the "Transport Layer Security (TLS)
    Extensions" registry [TLS-Ext-Registry], as follows:
@@ -834,13 +851,6 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    *  Description: ExtendedKeyUpdate
 
    *  DTLS-OK: Y
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                [Page 15]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
 
    *  Reference: [This document]
 
@@ -876,6 +886,18 @@ Internet-Draft         Extended Key Update for TLS         February 2024
               Technical Report", August 2015,
               <https://www.ssi.gouv.fr/uploads/2015/09/NT_IPsec_EN.pdf>.
 
+
+
+
+
+
+
+
+Tschofenig, et al.      Expires 3 September 2024               [Page 16]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
    [I-D.westerbaan-cfrg-hpke-xyber768d00]
               Westerbaan, B. and C. A. Wood, "X25519Kyber768Draft00
               hybrid post-quantum KEM for HPKE", Work in Progress,
@@ -887,16 +909,6 @@ Internet-Draft         Extended Key Update for TLS         February 2024
               (TLS) Protocol Version 1.2", RFC 5246,
               DOI 10.17487/RFC5246, August 2008,
               <https://www.rfc-editor.org/rfc/rfc5246>.
-
-
-
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                [Page 16]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
 
    [RFC7296]  Kaufman, C., Hoffman, P., Nir, Y., Eronen, P., and T.
               Kivinen, "Internet Key Exchange Protocol Version 2
@@ -935,6 +947,13 @@ Appendix A.  Acknowledgments
 
    *  Zaheduzzaman Sarker
 
+
+
+Tschofenig, et al.      Expires 3 September 2024               [Page 17]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
    *  Magnus Westerlund
 
    *  John Mattsson
@@ -945,15 +964,6 @@ Appendix A.  Acknowledgments
 
    *  Michael Tuexen
 
-
-
-
-
-Tschofenig, et al.       Expires 12 August 2024                [Page 17]
-
-Internet-Draft         Extended Key Update for TLS         February 2024
-
-
    Additionally, we would like to thank the chairs of the Transport and
    Services Working Group (tsvwg) Gorry Fairhurst and Marten Seemann as
    well as the responsible area director Martin Duke.
@@ -963,7 +973,19 @@ Internet-Draft         Extended Key Update for TLS         February 2024
    Thom Wiggers for a review of an initial version of this
    specification.
 
-Appendix B.  Alternative Design
+Appendix B.  Design Rational
+
+   The design in this document is motivated by long-lived TLS
+   connections, which can be observed in, at least, two use cases:
+   industrial IoT environments and telecommunication operator networks.
+   In the discussions the desire to develop a design that is also
+   compatible with the ongoing work on PQC algorithm and the use of KEMs
+   in particular.
+
+   HPKE was selected as a building block due to its popularity in IETF
+   protocols and the availability of implementations.  The core building
+   blocks of HPKE (a KEM and a key derivation function) could, howerver,
+   be used directly as well.
 
    The design presented in this document utilizes HPKE with the Seal/
    Open API calls instead of utilizing Encap/Decap API calls directly.
@@ -977,8 +999,23 @@ Appendix B.  Alternative Design
    value.  It may also introduce complexity with the integration of
    hybrid approach.
 
-   We would welcome feedback whether the re-use of existing HPKE
-   libraries outweighs the disadvantages.
+   The use of application layer protocol messages to exchange TLS
+   handshake messages is motiviated by the desire to reduce the impact
+   on the TLS state machine but also by the prior work on post-handshake
+
+
+
+Tschofenig, et al.      Expires 3 September 2024               [Page 18]
+
+Internet-Draft         Extended Key Update for TLS            March 2024
+
+
+   authentication using "Exported Authenticators".  A design that
+   exchanges messages at the TLS layer is possible but raises the
+   question about whether post-handshake authentication messages should
+   also be exchanged at the TLS layer to accomplish some level of
+   uniformity.  Even the re- introduction of session renegotation, a
+   feature removed with TLS 1.3, may seem worthwhile to consider.
 
 Authors' Addresses
 
@@ -1005,4 +1042,23 @@ Authors' Addresses
 
 
 
-Tschofenig, et al.       Expires 12 August 2024                [Page 18]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tschofenig, et al.      Expires 3 September 2024               [Page 19]
