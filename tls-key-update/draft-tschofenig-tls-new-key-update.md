@@ -468,9 +468,9 @@ Auth | {CertificateVerify}
   |                                                          |
   |     (a)  Sender sends public key to the client           |
   |                                                          |
-  |     (b)  Client uses HPKE to generate enc, and ct        |
+  |     (b)  Client uses HPKE to generate enc and ct         |
   |                                                          |
-  |     (c)  Client sents enc, and ct to the server          |
+  |     (c)  Client sents enc and ct to the server           |
   |                                                          |
   |     (d)  Client triggers the extended key update         |
   |          at the TLS layer                                |
