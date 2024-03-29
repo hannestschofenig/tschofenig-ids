@@ -232,6 +232,9 @@ Thumbprint calculation and comparing the results.  In these cases,
 the parties will need to know which hash function was used and use
 the same one.
 
+To promote interoperability among implementations, the SHA-256 hash
+algorithm is mandatory to implement.
+
 ## Thumbprints of Keys Not in COSE Key Format
 
 A key need not be in COSE Key format to create a COSE Key Thumbprint
@@ -433,9 +436,6 @@ When the inclusion of certain optional parameters in the thumbprint
 calcuation is important for a given application, this specification
 is not the appropriate choice.
 
-To promote interoperability among implementations, the SHA-256 hash
-algorithm is mandatory to implement.
-
 While thumbprint values are valuable for identifying legitimate keys,
 comparing thumbprint values is not a reliable means of excluding the
 use of particular keys (or transformations thereof). The reason is
@@ -449,8 +449,8 @@ Producing thumbprints of symmetric keys needs to be done with care. Developers
 MUST ensure that the symmetric key has sufficient entropy to prevent
 attackers to precompute tables of symmetric keys with their corresponding
 hash values. This can be prevented if the symmetric key is a randomly
-selected key of at least 128 bit length. Using thumbprints with passwords
-(i.e. low-entropy secrets) is dangerous and MUST be avoided. If a
+selected key of at least 128 bit length. Thumbprints MUST NOT be used 
+with passwords or other low-entropy secrets. If a
 developer is unable to determine whether all symmetric keys used in an
 application have sufficient entropy, then thumbprints of symmetric keys
 MUST NOT be used. In general, using thumbprints of symmetric keys should
@@ -464,11 +464,11 @@ IANA is requested to add the following entry to the IANA "CWT Confirmation
 Methods" registry established by {{RFC8747}}:
 
 - Confirmation Method Name: ckt
-- Confirmation Method Description: COSE Key Thumbprint
+- Confirmation Method Description: COSE Key SHA-256 Thumbprint
 - JWT Confirmation Method Name: jkt
 - Confirmation Key: [[TBD1]]
 - Confirmation Value Type(s): binary string
-- Change Controller: IESG
+- Change Controller: IETF
 - Specification Document(s): [[This document]]
 
 Furthermore, IANA is requested to add a value to the IANA "OAuth URI" registry
@@ -476,7 +476,7 @@ established with {{!RFC6755}}:
 
 - URN:  urn:ietf:params:oauth:ckt
 - Common Name:  COSE Key Thumbprint URI
-- Change controller:  IESG
+- Change controller:  IETF
 - Specification Document:  [[This document]]
 
 # Acknowledgements
