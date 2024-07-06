@@ -5,10 +5,10 @@
 COSE                                                            K. Isobe
 Internet-Draft                                           SECOM CO., LTD.
 Intended status: Standards Track                           H. Tschofenig
-Expires: 25 April 2024                                                  
+Expires: 7 January 2025                                                 
                                                                O. Steele
                                                                Transmute
-                                                         23 October 2023
+                                                             6 July 2024
 
 
         CBOR Object Signing and Encryption (COSE) Key Thumbprint
@@ -17,11 +17,11 @@ Expires: 25 April 2024
 Abstract
 
    This specification defines a method for computing a hash value over a
-   COSE Key. It defines which fields in a COSE Key structure are used in
-   the hash computation, the method of creating a canonical form of the
-   fields, and how to hash the byte sequence.  The resulting hash value
-   can be used for identifying or selecting a key that is the subject of
-   the thumbprint.
+   CBOR Object Signing and Encryption (COSE) Key. It defines which
+   fields in a COSE Key structure are used in the hash computation, the
+   method of creating a canonical form of the fields, and how to hash
+   the byte sequence.  The resulting hash value can be used for
+   identifying or selecting a key that is the subject of the thumbprint.
 
 Status of This Memo
 
@@ -38,11 +38,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 25 April 2024.
+   This Internet-Draft will expire on 7 January 2025.
 
 Copyright Notice
 
-   Copyright (c) 2023 IETF Trust and the persons identified as the
+   Copyright (c) 2024 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
    This document is subject to BCP 78 and the IETF Trust's Legal
@@ -53,9 +53,9 @@ Copyright Notice
 
 
 
-Isobe, et al.             Expires 25 April 2024                 [Page 1]
+Isobe, et al.            Expires 7 January 2025                 [Page 1]
 
-Internet-Draft             COSE Key Thumbprint              October 2023
+Internet-Draft             COSE Key Thumbprint                 July 2024
 
 
    extracted from this document must include Revised BSD License text as
@@ -68,10 +68,10 @@ Table of Contents
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
    3.  COSE Key Thumbprint . . . . . . . . . . . . . . . . . . . . .   3
    4.  Required COSE Key Parameters  . . . . . . . . . . . . . . . .   3
-     4.1.  Octet Key Pair (OKP)  . . . . . . . . . . . . . . . . . .   3
+     4.1.  Octet Key Pair (OKP)  . . . . . . . . . . . . . . . . . .   4
      4.2.  Elliptic Curve Keys with X- and Y-Coordinate Pair . . . .   4
      4.3.  RSA Public Keys . . . . . . . . . . . . . . . . . . . . .   4
-     4.4.  Symmetric Keys  . . . . . . . . . . . . . . . . . . . . .   4
+     4.4.  Symmetric Keys  . . . . . . . . . . . . . . . . . . . . .   5
      4.5.  HSS-LMS . . . . . . . . . . . . . . . . . . . . . . . . .   5
      4.6.  Others  . . . . . . . . . . . . . . . . . . . . . . . . .   5
    5.  Miscellaneous Considerations  . . . . . . . . . . . . . . . .   5
@@ -79,7 +79,7 @@ Table of Contents
      5.2.  Selection of Hash Function  . . . . . . . . . . . . . . .   6
      5.3.  Thumbprints of Keys Not in COSE Key Format  . . . . . . .   6
      5.4.  Relationship to Digests of X.509 Values . . . . . . . . .   6
-     5.5.  Confirmation Methods  . . . . . . . . . . . . . . . . . .   6
+     5.5.  Confirmation Method . . . . . . . . . . . . . . . . . . .   7
      5.6.  COSE Key Thumbprint URIs  . . . . . . . . . . . . . . . .   7
    6.  Example . . . . . . . . . . . . . . . . . . . . . . . . . . .   8
    7.  Security Considerations . . . . . . . . . . . . . . . . . . .  10
@@ -92,27 +92,34 @@ Table of Contents
 
 1.  Introduction
 
-   This specification defines a method for computing a hash value
-   (a.k.a. digest) over a COSE Key structure [RFC9052].  It defines
-   which fields in a COSE Key structure are used in the hash
-   computation, the method of creating a canonical form for those
-   fields, and how to hash the byte sequence.  The resulting hash value
-   can be used for identifying or selecting the key that is the subject
-   of the thumbprint, for instance, by using the COSE Key Thumbprint
-   value as a "kid" (key ID) value.
-
-   This specification defines how thumbprints of COSE keys are created.
-   Additionally, a new CWT confirmation method is added to the IANA "CWT
-   Confirmation Methods" registry created by [RFC8747].  See Section 3.1
-   of [RFC8747] for details about the use of a confirmation claim in a
-   CWT with a proof-of-possession key.
-
+   This specification defines a method for applying a cryptographic hash
+   function (a.k.a. thumbprint) to a CBOR Object Signing and Encryption
+   (COSE) Key structure [RFC9052].  It defines which fields in a COSE
+   Key structure are used in the hash computation, the method of
+   creating a canonical form for those fields, and how to hash the byte
+   sequence.  The resulting hash value can be used for identifying or
+   selecting the key that is the subject of the thumbprint, for
+   instance, by using the COSE Key Thumbprint value as a "kid" (key ID)
+   value.  The use of the thumbprint of the key as a naming scheme is
+   one of the main use cases of this document.  Another use case are key
+   derivation functions that utilize the thumbprints of the public keys
+   of the endpoints, as well as other context, to the derived symmetric
+   key.
 
 
-Isobe, et al.             Expires 25 April 2024                 [Page 2]
+
+
+Isobe, et al.            Expires 7 January 2025                 [Page 2]
 
-Internet-Draft             COSE Key Thumbprint              October 2023
+Internet-Draft             COSE Key Thumbprint                 July 2024
 
+
+   This specification defines how thumbprints of COSE keys are created,
+   see Section 3 and Section 4.  Additionally, a new CBOR Web Token
+   (CWT) confirmation method is added to the IANA "CWT Confirmation
+   Methods" registry created by [RFC8747].  See Section 3.1 of [RFC8747]
+   for details about the use of a confirmation claim in a CWT with a
+   proof-of-possession key.
 
 2.  Terminology
 
@@ -129,7 +136,7 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    1.  Construct a COSE_Key structure (see Section 7 of [RFC9052])
        containing only the required parameters representing the key.
        This specification describes what those required parameters are
-       and what, if necessary, what the unique encoding is.
+       and what, if necessary, the unique encoding is.
 
    2.  Apply the deterministic encoding described in Section 4.2.1 of
        [RFC8949] to the representation constructed in step (1).
@@ -156,19 +163,19 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    subsection below list the required parameters for commonly used key
    types.
 
+
+
+Isobe, et al.            Expires 7 January 2025                 [Page 3]
+
+Internet-Draft             COSE Key Thumbprint                 July 2024
+
+
 4.1.  Octet Key Pair (OKP)
 
    The required parameters for elliptic curve public keys that use the
    OKP key type, such as X25519, are:
 
    *  "kty" (label: 1, data type: int, value: 1)
-
-
-
-Isobe, et al.             Expires 25 April 2024                 [Page 3]
-
-Internet-Draft             COSE Key Thumbprint              October 2023
-
 
    *  "crv" (label: -1, value: int)
 
@@ -209,6 +216,16 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
    *  "e" (label: -2, data type: bstr)
 
+
+
+
+
+
+Isobe, et al.            Expires 7 January 2025                 [Page 4]
+
+Internet-Draft             COSE Key Thumbprint                 July 2024
+
+
 4.4.  Symmetric Keys
 
    The required parameters for a symmetric key are:
@@ -216,15 +233,6 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    *  "kty" (label: 1, data type: int, value: 4)
 
    *  "k" (label: -1, data type: bstr)
-
-
-
-
-
-Isobe, et al.             Expires 25 April 2024                 [Page 4]
-
-Internet-Draft             COSE Key Thumbprint              October 2023
-
 
 4.5.  HSS-LMS
 
@@ -269,17 +277,9 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
 
 
-
-
-
-
-
-
-
-
-Isobe, et al.             Expires 25 April 2024                 [Page 5]
+Isobe, et al.            Expires 7 January 2025                 [Page 5]
 
-Internet-Draft             COSE Key Thumbprint              October 2023
+Internet-Draft             COSE Key Thumbprint                 July 2024
 
 
 5.2.  Selection of Hash Function
@@ -302,6 +302,9 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    cases, the parties will need to know which hash function was used and
    use the same one.
 
+   To promote interoperability among implementations, the SHA-256 hash
+   algorithm MUST be implemented.
+
 5.3.  Thumbprints of Keys Not in COSE Key Format
 
    A key need not be in COSE Key format to create a COSE Key Thumbprint
@@ -311,8 +314,8 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
 5.4.  Relationship to Digests of X.509 Values
 
-   COSE Key Thumbprint values are computed on the COSE Key element
-   required to represent a key, rather than all members of a COSE Key
+   COSE Key Thumbprint values are computed on the COSE Key object
+   required to represent a key, rather than all parameters of a COSE Key
    that the key is represented in.  Thus, they are more analogous to
    applications that use digests of X.509 Subject Public Key Info (SPKI)
    values, which are defined in Section 4.1.2.7 of [RFC5280], than to
@@ -323,20 +326,24 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    is computed over the CBOR representation of that key, rather than
    over an ASN.1 representation of it.
 
-5.5.  Confirmation Methods
+
+
+
+
+
+
+
+Isobe, et al.            Expires 7 January 2025                 [Page 6]
+
+Internet-Draft             COSE Key Thumbprint                 July 2024
+
+
+5.5.  Confirmation Method
 
    [RFC8747] introduced confirmation methods for use with CBOR Web
-   Tokens (CWTs).  CWTs have been defined in [RFC8392].  This
-   specification adds a new confirmation method based on COSE Key
-   Thumbprints.
-
-
-
-
-Isobe, et al.             Expires 25 April 2024                 [Page 6]
-
-Internet-Draft             COSE Key Thumbprint              October 2023
-
+   Tokens (CWTs) with the addition of the "cnf" claim.  CWTs have been
+   defined in [RFC8392].  This specification adds a new confirmation
+   method based on COSE Key Thumbprints.
 
    The proof-of-possession key is identified using the "ckt" claim, the
    COSE Key Thumbprint claim.  This claim contains the value of the COSE
@@ -350,7 +357,8 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    in the CWT.
 
    The following example demonstrates the use of the "ckt" claim in a
-   CWT (with line-breaks inserted for editorial reasons):
+   CWT as part of the confirmation method (with line-breaks inserted for
+   editorial reasons):
 
       {
        /iss/ 1 : "coaps://as.example.com",
@@ -378,21 +386,20 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    The following URI prefix is defined to indicate that the portion of
    the URI following the prefix is a COSE Key Thumbprint:
 
+
+
+
+Isobe, et al.            Expires 7 January 2025                 [Page 7]
+
+Internet-Draft             COSE Key Thumbprint                 July 2024
+
+
      urn:ietf:params:oauth:ckt
 
    To make the hash algorithm being used explicit in a URI, the prefix
    is followed by a hash algorithm identifier and a COSE Key Thumbprint
    value, each separated by a colon character to form a URI representing
    a COSE Key Thumbprint.
-
-
-
-
-
-Isobe, et al.             Expires 25 April 2024                 [Page 7]
-
-Internet-Draft             COSE Key Thumbprint              October 2023
-
 
    Hash algorithm identifiers used in COSE Key Thumbprint URIs MUST be
    values from the "Hash Name String" column in the IANA "Named
@@ -434,21 +441,18 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    This section demonstrates the COSE Key Thumbprint computation for the
    following example COSE Key containing an ECC public key.
 
+
+
+
+
+Isobe, et al.            Expires 7 January 2025                 [Page 8]
+
+Internet-Draft             COSE Key Thumbprint                 July 2024
+
+
    For better readability, the example is first presented in CBOR
    diagnostic format (with the long line broken for display purposes
    only).
-
-
-
-
-
-
-
-
-Isobe, et al.             Expires 25 April 2024                 [Page 8]
-
-Internet-Draft             COSE Key Thumbprint              October 2023
-
 
      {
        / kty set to EC2 = Elliptic Curve Keys /
@@ -494,17 +498,17 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    In CBOR encoding the result is (with line-breaks added for display
    purposes only):
 
+
+
+
+Isobe, et al.            Expires 7 January 2025                 [Page 9]
+
+Internet-Draft             COSE Key Thumbprint                 July 2024
+
+
    A40102200121582065EDA5A12577C2BAE829437FE338701A10AAA375E1BB5B5DE
    108DE439C08551D2258201E52ED75701163F7F9E40DDF9F341B3DC9BA860AF7E0
    CA7CA7E9EECD0084D19C
-
-
-
-
-Isobe, et al.             Expires 25 April 2024                 [Page 9]
-
-Internet-Draft             COSE Key Thumbprint              October 2023
-
 
    Using SHA-256, the resulting thumbprint is:
 
@@ -524,10 +528,7 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    thumbprint calcuation is important for a given application, this
    specification is not the appropriate choice.
 
-   To promote interoperability among implementations, the SHA-256 hash
-   algorithm is mandatory to implement.
-
-   While thumbprint values are valuable for identifying legitimate keys,
+   While thumbprint values are useful for identifying legitimate keys,
    comparing thumbprint values is not a reliable means of excluding the
    use of particular keys (or transformations thereof).  The reason is
    that an attacker may supply a key that is a transformation of a key
@@ -541,13 +542,13 @@ Internet-Draft             COSE Key Thumbprint              October 2023
    to prevent attackers to precompute tables of symmetric keys with
    their corresponding hash values.  This can be prevented if the
    symmetric key is a randomly selected key of at least 128 bit length.
-   Using thumbprints with passwords (i.e. low-entropy secrets) is
-   dangerous and MUST be avoided.  If a developer is unable to determine
-   whether all symmetric keys used in an application have sufficient
-   entropy, then thumbprints of symmetric keys MUST NOT be used.  In
-   general, using thumbprints of symmetric keys should only be used in
-   special applications.  In most other deployment scenarios it is more
-   appropriate to utilize a different naming scheme for key identifiers.
+   Thumbprints MUST NOT be used with passwords or other low-entropy
+   secrets.  If a developer is unable to determine whether all symmetric
+   keys used in an application have sufficient entropy, then thumbprints
+   of symmetric keys MUST NOT be used.  In general, using thumbprints of
+   symmetric keys should only be used in special applications.  In most
+   other deployment scenarios it is more appropriate to utilize a
+   different naming scheme for key identifiers.
 
 8.  IANA Considerations
 
@@ -556,15 +557,14 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
 
 
-
-Isobe, et al.             Expires 25 April 2024                [Page 10]
+Isobe, et al.            Expires 7 January 2025                [Page 10]
 
-Internet-Draft             COSE Key Thumbprint              October 2023
+Internet-Draft             COSE Key Thumbprint                 July 2024
 
 
    *  Confirmation Method Name: ckt
 
-   *  Confirmation Method Description: COSE Key Thumbprint
+   *  Confirmation Method Description: COSE Key SHA-256 Thumbprint
 
    *  JWT Confirmation Method Name: jkt
 
@@ -572,7 +572,7 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
    *  Confirmation Value Type(s): binary string
 
-   *  Change Controller: IESG
+   *  Change Controller: IETF
 
    *  Specification Document(s): [[This document]]
 
@@ -583,7 +583,7 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
    *  Common Name: COSE Key Thumbprint URI
 
-   *  Change controller: IESG
+   *  Change controller: IETF
 
    *  Specification Document: [[This document]]
 
@@ -595,7 +595,8 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
    Additionally, we would like to thank Carsten Bormann, Ilari
    Liusvaara, Laurence Lundblade, Daisuke Ajitomi, Michael Richardson,
-   Michael B.  Jones, and Brendan Moran for their feedback.
+   Michael B.  Jones, Mallory Knodel, Joel Jaeggli, and Brendan Moran
+   for their feedback.
 
 10.  References
 
@@ -612,10 +613,9 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
 
 
-
-Isobe, et al.             Expires 25 April 2024                [Page 11]
+Isobe, et al.            Expires 7 January 2025                [Page 11]
 
-Internet-Draft             COSE Key Thumbprint              October 2023
+Internet-Draft             COSE Key Thumbprint                 July 2024
 
 
    [RFC6755]  Campbell, B. and H. Tschofenig, "An IETF URN Sub-Namespace
@@ -669,9 +669,9 @@ Internet-Draft             COSE Key Thumbprint              October 2023
 
 
 
-Isobe, et al.             Expires 25 April 2024                [Page 12]
+Isobe, et al.            Expires 7 January 2025                [Page 12]
 
-Internet-Draft             COSE Key Thumbprint              October 2023
+Internet-Draft             COSE Key Thumbprint                 July 2024
 
 
    [RFC6234]  Eastlake 3rd, D. and T. Hansen, "US Secure Hash Algorithms
@@ -725,4 +725,4 @@ Authors' Addresses
 
 
 
-Isobe, et al.             Expires 25 April 2024                [Page 13]
+Isobe, et al.            Expires 7 January 2025                [Page 13]
