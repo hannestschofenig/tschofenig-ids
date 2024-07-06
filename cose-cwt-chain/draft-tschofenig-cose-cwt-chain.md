@@ -2,7 +2,7 @@
 title: "CBOR Object Signing and Encryption (COSE): Header Parameters for Carrying and Referencing Chains of CBOR Web Tokens (CWTs)"
 
 abbrev: CWT Chains
-docname: draft-tschofenig-cose-cwt-chain-00
+docname: draft-tschofenig-cose-cwt-chain-01
 category: std
 
 ipr: trust200902
