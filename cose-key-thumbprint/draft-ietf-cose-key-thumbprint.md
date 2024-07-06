@@ -32,7 +32,6 @@ author:
  -
     ins: H. Tschofenig
     name: Hannes Tschofenig
-    organization: University of Applied Sciences Bonn-Rhein-Sieg
     email: hannes.tschofenig@gmx.net
 
  -
