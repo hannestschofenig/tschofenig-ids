@@ -464,7 +464,7 @@ IANA is requested to add the following entry to the IANA "CWT Confirmation
 Methods" registry established by {{RFC8747}}:
 
 - Confirmation Method Name: ckt
-- Confirmation Method Description: COSE Key Thumbprint
+- Confirmation Method Description: COSE Key SHA-256 Thumbprint
 - JWT Confirmation Method Name: jkt
 - Confirmation Key: [[TBD1]]
 - Confirmation Value Type(s): binary string
