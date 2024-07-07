@@ -243,10 +243,8 @@ algorithm MUST be implemented.
 
 ## Thumbprints of Keys Not in COSE Key Format
 
-A key need not be in COSE Key format to create a COSE Key Thumbprint
-of it.  The only prerequisites are that the COSE Key representation of the
-key be defined and the party creating the COSE KEY Thumbprint be in
-possession of the necessary key material.
+Keys that are in other formats can be represented as COSE Keys.
+Any party in possession COSE Keys can use the COSE Key Thumbprint. 
 
 ## Relationship to Digests of X.509 Values
 
