@@ -108,9 +108,8 @@ capitals, as shown here.
 The thumbprint of a COSE Key MUST be computed as follows:
 
 1. Construct a COSE_Key structure (see Section 7 of {{RFC9052}}) containing
-   only the required parameters representing the key. This specification
-   describes what those required parameters are and what, if necessary,
-   the unique encoding is.
+   only the required parameters representing the key as described in 
+   Section 4 of this document.
 
 2. Apply the deterministic encoding described in Section 4.2.1 of {{RFC8949}}
    to the representation constructed in step (1).
@@ -121,6 +120,8 @@ The thumbprint of a COSE Key MUST be computed as follows:
 The resulting value is the COSE Key Thumbprint with H of the COSE Key. The
 details of this computation are further described in subsequent
 sections.
+
+The SHA-256 hash algorithm MUST be supported, other algorithms MAY be supported.
 
 # Required COSE Key Parameters {#required}
 
@@ -238,15 +239,11 @@ Thumbprint calculation and comparing the results.  In these cases,
 the parties will need to know which hash function was used and use
 the same one.
 
-To promote interoperability among implementations, the SHA-256 hash
-algorithm MUST be implemented.
-
 ## Thumbprints of Keys Not in COSE Key Format
 
-A key need not be in COSE Key format to create a COSE Key Thumbprint
-of it.  The only prerequisites are that the COSE Key representation of the
-key be defined and the party creating the COSE KEY Thumbprint be in
-possession of the necessary key material.
+Keys that are in other formats can be represented as COSE Keys.
+Any party in possession of COSE Keys can use the COSE Key Thumbprint. 
+
 
 ## Relationship to Digests of X.509 Values
 
@@ -275,7 +272,7 @@ the COSE Key Thumbprint encoded as a binary string. Instead of
 communicating the actual COSE Key only the thumbprint is conveyed.
 This approach assumes that the recipient is able to obtain the
 identified COSE Key using the thumbprint contained in the "ckt"
-claim. In this case, the issuer of a CWT declares that the
+claim. In this approach, the issuer of a CWT declares that the
 presenter possesses a particular key and that the recipient
 can cryptographically confirm the presenter's proof of possession
 of the key by including a "ckt" claim in the CWT.
@@ -327,9 +324,6 @@ Hash Algorithm Registry" {{IANA.Hash.Algorithms}}. COSE Key Thumbprint URIs
 with hash algorithm identifiers not found in this registry are not
 considered valid and applications will need to detect and handle this
 error, should it occur.
-
-To promote interoperability among implementations, the SHA-256 hash
-algorithm is mandatory to implement.
 
 Since the URN is encoded as a string, the output of the COSE Key
 Thumbprint computation described in {{thumbprint}} MUST be base64url
