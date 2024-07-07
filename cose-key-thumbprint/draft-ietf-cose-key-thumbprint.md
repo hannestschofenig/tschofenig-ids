@@ -242,7 +242,8 @@ the same one.
 ## Thumbprints of Keys Not in COSE Key Format
 
 Keys that are in other formats can be represented as COSE Keys.
-Any party in possession COSE Keys can use the COSE Key Thumbprint. 
+Any party in possession of COSE Keys can use the COSE Key Thumbprint. 
+
 
 ## Relationship to Digests of X.509 Values
 
