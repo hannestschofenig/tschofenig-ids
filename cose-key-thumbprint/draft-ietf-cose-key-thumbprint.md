@@ -121,6 +121,8 @@ The resulting value is the COSE Key Thumbprint with H of the COSE Key. The
 details of this computation are further described in subsequent
 sections.
 
+The SHA-256 hash algorithm MUST be supported, other algorithms MAY be supported.
+
 # Required COSE Key Parameters {#required}
 
 Only the required parameters of a key's representation are used when
@@ -237,9 +239,6 @@ Thumbprint calculation and comparing the results.  In these cases,
 the parties will need to know which hash function was used and use
 the same one.
 
-To promote interoperability among implementations, the SHA-256 hash
-algorithm MUST be implemented.
-
 ## Thumbprints of Keys Not in COSE Key Format
 
 Keys that are in other formats can be represented as COSE Keys.
@@ -324,8 +323,6 @@ Hash Algorithm Registry" {{IANA.Hash.Algorithms}}. COSE Key Thumbprint URIs
 with hash algorithm identifiers not found in this registry are not
 considered valid and applications will need to detect and handle this
 error, should it occur.
-
-The SHA-256 hash algorithm MUST be supported, other algorithms MAY be supported.
 
 Since the URN is encoded as a string, the output of the COSE Key
 Thumbprint computation described in {{thumbprint}} MUST be base64url
