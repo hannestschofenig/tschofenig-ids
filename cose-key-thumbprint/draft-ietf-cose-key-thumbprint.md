@@ -272,7 +272,7 @@ the COSE Key Thumbprint encoded as a binary string. Instead of
 communicating the actual COSE Key only the thumbprint is conveyed.
 This approach assumes that the recipient is able to obtain the
 identified COSE Key using the thumbprint contained in the "ckt"
-claim. In this case, the issuer of a CWT declares that the
+claim. In this approach, the issuer of a CWT declares that the
 presenter possesses a particular key and that the recipient
 can cryptographically confirm the presenter's proof of possession
 of the key by including a "ckt" claim in the CWT.
