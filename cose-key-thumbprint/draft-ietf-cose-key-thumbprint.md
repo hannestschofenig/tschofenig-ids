@@ -325,8 +325,7 @@ with hash algorithm identifiers not found in this registry are not
 considered valid and applications will need to detect and handle this
 error, should it occur.
 
-To promote interoperability among implementations, the SHA-256 hash
-algorithm is mandatory to implement.
+The SHA-256 hash algorithm MUST be supported, other algorithms MAY be supported.
 
 Since the URN is encoded as a string, the output of the COSE Key
 Thumbprint computation described in {{thumbprint}} MUST be base64url
