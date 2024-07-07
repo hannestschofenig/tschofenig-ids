@@ -108,9 +108,8 @@ capitals, as shown here.
 The thumbprint of a COSE Key MUST be computed as follows:
 
 1. Construct a COSE_Key structure (see Section 7 of {{RFC9052}}) containing
-   only the required parameters representing the key. This specification
-   describes what those required parameters are and what, if necessary,
-   the unique encoding is.
+   only the required parameters representing the key as described in 
+   Section 4 of this document.
 
 2. Apply the deterministic encoding described in Section 4.2.1 of {{RFC8949}}
    to the representation constructed in step (1).
