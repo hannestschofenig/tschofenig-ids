@@ -1,7 +1,7 @@
 ---
 title: CBOR Object Signing and Encryption (COSE) Key Thumbprint
 abbrev: COSE Key Thumbprint
-docname: draft-ietf-cose-key-thumbprint-05
+docname: draft-ietf-cose-key-thumbprint-06
 category: std
 
 ipr: trust200902
@@ -32,6 +32,9 @@ author:
  -
     ins: H. Tschofenig
     name: Hannes Tschofenig
+    abbrev: H-BRS
+    organization: University of Applied Sciences Bonn-Rhein-Sieg
+    country: Germany
     email: hannes.tschofenig@gmx.net
 
  -
