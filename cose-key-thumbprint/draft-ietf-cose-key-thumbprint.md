@@ -120,8 +120,7 @@ The thumbprint of a COSE Key MUST be computed as follows:
 3. Hash the bytes produced in step (2) with a cryptographic hash function H.
    For example, SHA-256 {{RFC6234}} may be used as a hash function.
 
-The resulting value is the COSE Key Thumbprint with H of the COSE Key. The
-details of this computation are further described in subsequent
+The details of this computation are further described in subsequent
 sections.
 
 The SHA-256 hash algorithm MUST be supported, other algorithms MAY be supported.
@@ -431,14 +430,14 @@ Using SHA-256, the resulting thumbprint is:
 A COSE Key Thumbprint will only uniquely identify a particular key if a
 single unambiguous COSE Key representation for that key is defined and
 used when computing the COSE Key Thumbprint.
-
-If two asymmetric keys are used by different parties with different
-key identifiers then the COSE Key Thumbprints will still be equal since
-the key identifier itself is not included in the thumbprint calculation
-(similarly to other optional parameters in the COSE_Key structure).
-When the inclusion of certain optional parameters in the thumbprint
-calcuation is important for a given application, this specification
-is not the appropriate choice.
+   
+A COSE Key Thumbprint will only uniquely identify a particular key if a
+single unambiguous COSE Key representation for that key is defined and
+used when computing the COSE Key Thumbprint. Key identifiers are not
+included in the thumbprint calculation (similarly to other optional
+parameters in the COSE_Key structure). If the inclusion
+of specific optional parameters in the thumbprint calculation is important
+for a particular application, this specification would not be suitable.
 
 While thumbprint values are useful for identifying legitimate keys,
 comparing thumbprint values is not a reliable means of excluding the
