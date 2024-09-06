@@ -68,12 +68,12 @@ informative:
 
 --- abstract
 
-This specification defines a method for computing a hash value over a
-CBOR Object Signing and Encryption (COSE) Key. It defines which fields
-in a COSE Key structure are used in the
-hash computation, the method of creating a canonical form of the fields,
-and how to hash the byte sequence. The resulting hash value can be used
-for identifying or selecting a key that is the subject of the thumbprint.
+This specification defines a method for computing a hash value over a CBOR
+Object Signing and Encryption (COSE) Key. It specifies which fields within
+the COSE Key structure are included in the cryptographic hash computation,
+the process for creating a canonical representation of these fields, and how
+to hash the resulting byte sequence. The resulting hash value, referred to
+as a "thumbprint," can be used to identify or select the corresponding key.
 
 --- middle
 
