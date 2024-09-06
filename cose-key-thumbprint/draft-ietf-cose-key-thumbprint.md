@@ -80,9 +80,9 @@ as a "thumbprint," can be used to identify or select the corresponding key.
 # Introduction
 
 This specification defines a method for applying a cryptographic hash function
-(a.k.a. thumbprint) to a CBOR Object Signing and Encryption (COSE) Key structure
-{{RFC9052}}.  It defines which fields
-in a COSE Key structure are used in the hash computation, the method of creating
+to a CBOR Object Signing and Encryption (COSE) Key structure {{RFC9052}}. The
+resulting hash value is called thumbprint. To accomplish this task the document
+defines which fields in a COSE Key structure are used in the hash computation, the method of creating
 a canonical form for those fields, and how to hash the byte sequence.  The resulting
 hash value can be used for identifying or selecting the key that is the subject of
 the thumbprint, for instance, by using the COSE Key Thumbprint value as a "kid"
@@ -91,8 +91,8 @@ of the main use cases of this document. Another use case are key derivation
 functions that utilize the thumbprints of the public keys of the endpoints,
 as well as other context, to the derived symmetric key.
 
-This specification defines how thumbprints of COSE Keys are created, see
-{{thumbprint}} and {{required}}.
+This specification defines how thumbprints of COSE Keys are created for asymmetric
+and symmetric keys, see {{thumbprint}} and {{required}}.
 Additionally, a new CBOR Web Token (CWT) confirmation method is added to the
 IANA "CWT Confirmation Methods" registry created by {{RFC8747}}. See Section 3.1 of
 {{RFC8747}} for details about the use of a confirmation claim in a CWT
@@ -245,8 +245,8 @@ the same one.
 ## Thumbprints of Keys Not in COSE Key Format
 
 Keys that are in other formats can be represented as COSE Keys.
-Any party in possession of COSE Keys can use the COSE Key Thumbprint. 
-
+Any party in possession of a key that is represented as a COSE Key can
+use the COSE Key Thumbprint. 
 
 ## Relationship to Digests of X.509 Values
 
@@ -325,7 +325,7 @@ Hash algorithm identifiers used in COSE Key Thumbprint URIs MUST be values
 from the "Hash Name String" column in the IANA "Named Information
 Hash Algorithm Registry" {{IANA.Hash.Algorithms}}. COSE Key Thumbprint URIs
 with hash algorithm identifiers not found in this registry are not
-considered valid and applications will need to detect and handle this
+considered valid and applications MUST detect and handle this
 error, should it occur.
 
 Since the URN is encoded as a string, the output of the COSE Key
