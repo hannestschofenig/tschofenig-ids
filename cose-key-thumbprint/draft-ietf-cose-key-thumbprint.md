@@ -79,24 +79,26 @@ as a "thumbprint," can be used to identify or select the corresponding key.
 
 # Introduction
 
-This specification defines a method for applying a cryptographic hash function
-to a CBOR Object Signing and Encryption (COSE) Key structure {{RFC9052}}. The
-resulting hash value is called thumbprint. To accomplish this task the document
-defines which fields in a COSE Key structure are used in the hash computation, the method of creating
-a canonical form for those fields, and how to hash the byte sequence.  The resulting
-hash value can be used for identifying or selecting the key that is the subject of
-the thumbprint, for instance, by using the COSE Key Thumbprint value as a "kid"
-(key ID) value. The use of the thumbprint of the key as a naming scheme is one
-of the main use cases of this document. Another use case are key derivation
-functions that utilize the thumbprints of the public keys of the endpoints,
-as well as other context, to the derived symmetric key.
+This specification defines a method for applying a cryptographic
+hash function to a CBOR Object Signing and Encryption (COSE) Key
+structure {{RFC9052}}, resulting in a hash value known as a
+"thumbprint." To achieve this, the document specifies which fields
+in the COSE Key structure are included in the hash computation, the
+process for creating a canonical form of these fields, and how to
+hash the resulting byte sequence. One of the primary use cases for
+this thumbprint is as a naming scheme for identifying or selecting
+the key, such as by using the COSE Key Thumbprint value as a "kid"
+(key ID). Another key use case involves key derivation functions
+that use the thumbprints of public keys from the endpoints, along
+with other context, to derive a symmetric key.
 
-This specification defines how thumbprints of COSE Keys are created for asymmetric
-and symmetric keys, see {{thumbprint}} and {{required}}.
-Additionally, a new CBOR Web Token (CWT) confirmation method is added to the
-IANA "CWT Confirmation Methods" registry created by {{RFC8747}}. See Section 3.1 of
-{{RFC8747}} for details about the use of a confirmation claim in a CWT
-with a proof-of-possession key.
+This specification outlines how thumbprints of COSE Keys are generated
+for both asymmetric and symmetric keys (see {{thumbprint}} and
+{{required}}). Additionally, it introduces a new CBOR Web Token
+(CWT) confirmation method, which is added to the IANA
+"CWT Confirmation Methods" registry established by {{RFC8747}}.
+For further details on the use of a confirmation claim in a CWT
+with a proof-of-possession key, refer to Section 3.1 of {{RFC8747}}.
 
 # Terminology
 
