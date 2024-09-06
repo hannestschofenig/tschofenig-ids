@@ -133,12 +133,12 @@ Only the required parameters of a key's representation are used when
 computing its COSE Key Thumbprint value. This section summarizes the
 required parameters.
 
-The "kty" (label: 1) element MUST be present for all key types and the integer
-value found in the IANA COSE Key Types registry MUST be used. The tstr data
+The "kty" (label: 1) element MUST be present for all key types, and the integer
+value specified in the IANA COSE Key Types registry MUST be used. The tstr data
 type is not used with the kty element.
 
-Many COSE Key parameters depend on the chosen key type. The subsection below list
-the required parameters for commonly used key types.
+Many COSE Key parameters are specific to the chosen key type. The following
+subsections list the required parameters for commonly used key types.
 
 ## Octet Key Pair (OKP)
 
@@ -163,12 +163,13 @@ as NIST P-256, are:
 
 Details can be found in Section 7.1 of {{RFC9053}}.
 
-Note: {{RFC9052}} offers both compressed as well as uncompressed point
-representations. For interoperability, implementations following this
-specification MUST use the uncompressed point representation. Hence,
-the y-coordinate is expressed as a bstr. An implementation that uses
-the compressed point representation MUST compute the uncompressed
-representation for the purpose of the thumbprint calculation.
+Note: {{RFC9052}} supports both compressed and uncompressed point
+representations. For interoperability, implementations adhering to
+this specification MUST use the uncompressed point representation.
+Therefore, the y-coordinate is expressed as a bstr. If an
+implementation uses the compressed point representation, it
+MUST first convert it to the uncompressed form for the purpose
+of thumbprint calculation.
 
 ## RSA Public Keys
 
@@ -204,20 +205,19 @@ parameters, in addition to the "kty" element, are required.
 
 Optional parameters of COSE Keys are intentionally not included in the
 COSE Key Thumbprint computation so that their absence or presence
-in the COSE Key does not alter the resulting value.  The COSE Key
-Thumbprint value is a digest of the parameters required to represent
-the key as a COSE Key -- not of additional data that may also
-accompany the key.
+in the COSE Key does not alter the resulting value. The COSE Key
+Thumbprint is a digest of the essential parameters required to
+represent the key as a COSE Key, rather than any additional data
+that might accompany the key.
 
-Optional parameters are not included so that the COSE Key Thumbprint refers
-to a key -- not a key with an associated set of key attributes.
-Different application contexts might or might not include different
-subsets of optional attributes about the key in the COSE Key structure.
-If these were included in the calculation of the COSE Key Thumbprint,
-the values would be different for those COSE Keys, even though the keys
-are the same. The benefit of including only the required parameters is that the
-COSE Key Thumbprint of any COSE Key representing the key remains the same,
-regardless of any other attributes that are present.
+By excluding optional parameters, the COSE Key Thumbprint consistently
+refers to the key itself, not to a key with additional attributes.
+Different application contexts may include various optional attributes
+in the COSE Key structure. If these optional parameters were included
+in the thumbprint calculation, the resulting values could differ for
+the same key depending on the attributes present. Including only the
+required parameters ensures that the COSE Key Thumbprint remains
+consistent for a given key, regardless of any additional attributes.
 
 Different kinds of thumbprints could be defined by other specifications
 that might include some or all additional COSE Key parameters, if use
@@ -226,22 +226,20 @@ cases arise where such different kinds of thumbprints would be useful.
 ## Selection of Hash Function
 
 A specific hash function must be chosen by an application to compute
-the hash value of the hash input.  For example, SHA-256 {{RFC6234}} might
-be used as the hash function by the application.  While SHA-256 is a
-good default choice at the time of writing, the hash function of
-choice can be expected to change over time as the cryptographic
-landscape evolves.
+the hash value of the hash input. For instance, SHA-256 {{RFC6234}}
+may be used as the hash function. While SHA-256 is a good default
+choice at the time of writing, the preferred hash function may evolve
+as the cryptographic landscape develops.
 
-Note that in many cases, only the party that creates a key will need
-to know the hash function used.  A typical usage is for the producer
-of the key to use the thumbprint value as a "kid" (key ID) value. In
-this case, the consumer of the "kid" treats it as an opaque value that
-it uses to select the key.
+In many cases, only the party that generates the key needs to be
+aware of the hash function used. For example, the key producer might
+use the thumbprint value as a "kid" (key ID). In such scenarios, the
+consumer of the "kid" treats it as an opaque value solely for key
+selection.
 
-However, in some cases, multiple parties will be reproducing the COSE Key
-Thumbprint calculation and comparing the results.  In these cases,
-the parties will need to know which hash function was used and use
-the same one.
+However, when multiple parties are involved in reproducing and
+comparing the COSE Key Thumbprint, it is crucial that they know
+and use the same hash function to ensure consistent results.
 
 ## Thumbprints of Keys Not in COSE Key Format
 
