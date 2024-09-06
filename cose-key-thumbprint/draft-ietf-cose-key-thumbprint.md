@@ -91,7 +91,7 @@ of the main use cases of this document. Another use case are key derivation
 functions that utilize the thumbprints of the public keys of the endpoints,
 as well as other context, to the derived symmetric key.
 
-This specification defines how thumbprints of COSE keys are created, see
+This specification defines how thumbprints of COSE Keys are created, see
 {{thumbprint}} and {{required}}.
 Additionally, a new CBOR Web Token (CWT) confirmation method is added to the
 IANA "CWT Confirmation Methods" registry created by {{RFC8747}}. See Section 3.1 of
