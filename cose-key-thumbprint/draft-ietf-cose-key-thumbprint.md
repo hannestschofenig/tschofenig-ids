@@ -490,4 +490,5 @@ Thumbprints to COSE Key structures.
 
 Additionally, we would like to thank Carsten Bormann, Ilari Liusvaara,
 Laurence Lundblade, Daisuke Ajitomi, Michael Richardson, Michael B. Jones,
-Mallory Knodel, Joel Jaeggli, and Brendan Moran for their feedback.
+Mallory Knodel, Joel Jaeggli, Derrell Piper, Patrik Fältström, Warren Kumari,
+Deb Cooley and Brendan Moran for their feedback.
