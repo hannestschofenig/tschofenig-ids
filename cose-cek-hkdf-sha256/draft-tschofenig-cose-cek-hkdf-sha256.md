@@ -3,7 +3,7 @@ title: "Encryption Key Derivation in the COSE using HKDF with SHA-256"
 abbrev: "Encryption Key Derivation in COSE"
 category: std
 
-docname: draft-tschofenig-cose-cek-hkdf-sha256-latest
+docname: draft-tschofenig-cose-cek-hkdf-sha256-01
 submissiontype: IETF
 number:
 date:
@@ -26,12 +26,19 @@ author:
     org: University of Applied Sciences Bonn-Rhein-Sieg
     abbrev: H-BRS
     email: Hannes.Tschofenig@gmx.net
-    uri: https://www.h-brs.de
+  -
+    name: Russ Housley
+    org: Vigil Security, LLC
+    abbrev: Vigil Security
+    email: housley@vigilsec.com
+  -
+    name: Ken Takayama
+    org: SECOM CO., LTD.
+    email: ken.takayama.ietf@gmail.com
 
 normative:
   RFC9052:
   RFC9053:
-  RFC5084:
   RFC5869:  
   FIPS180:
     title: "Secure Hash Standard (SHS), FIPS PUB 180-4"
@@ -76,8 +83,9 @@ found in {{I-D.ietf-lamps-cms-cek-hkdf-sha256}}.  This attack is generic
 and can apply to other protocols with similar characteristics, such as
 COSE. However, the attack requires several preconditions:
 
-1.  The attacker intercepts a COSE Encrypt payload that uses either
-AES-CCM or AES-GCM {{RFC5084}}.
+1.  The attacker intercepts a COSE Encrypt payload an changes the
+    algorithm identifier to use the same underlying cipher with a different
+    encryption mode, such as AES-GCM to AES-CBC.
 
 2.  The attacker converts the intercepted content into a "garbage" COSE
 Encrypt payload composed of AES-CBC guess blocks.
@@ -179,4 +187,4 @@ Header Parameters" established with {{RFC9052}}.
 
 # Acknowledgments
 
-The author would like to thank Russ Housley and Ken Takayama for their feedback. The content of this document re-uses from the work done by Russ and applies it to COSE.
+Add your name here.
