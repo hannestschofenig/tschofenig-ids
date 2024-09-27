@@ -122,6 +122,160 @@ CEK' = HKDF(CEK, COSE_Encrypt.alg)
 
 {::boilerplate bcp14-tagged}
 
+# Updated Encryption Flow for each Content Key Distribution Method
+
+This section describes the key distribution and encryption flows on sender side.
+Only the payload encryption process will be changed with the mitigation.
+
+{{figure-generating-ecek}} shows that the procedure of generating
+encrypted CEK (eCEK) will never changed by the mitigation.
+
+~~~aasvg
+                  AES-KW                  ECDH+AES-KW     COSE-HPKE
+               .---.  .---.              .---.  .---.    .---.  .---.
+              | PSK || CEK |            | pkR || skS |  | pkR || skS |
+               '-+-'  '-+-'              '-+-'  '-+-'    '-+-'  '-+-'
+                 |      |                  v      v        v      v
+                 |      |               +------------+   .----------.
+                 |      |               |    ECDH    |  |  ContextS  |
+                 |      |               +--+---------+   '-+--------'
+                 |      |                  v               |
+                 |      |               .-----.  .---.     |   .---.
+                 |      |              | DH SS || CIS |    |  | aad |
+                 |      |               '--+--'  '-+-'     |   '-+-'
+                 |      |                  v       v       |  .-'
+                 |      |               +------------+     | |
+                 |      |               |    HKDF    |     | |
+                 |      |               +--+---------+     | |
+                 |      |                  |  .---.        | |  .---.
+                 |      |                  | | CEK |       | | | CEK |
+                 |      |                  |  '-+-'        | |  '-+-'
+                 v      v                  v    v          v v    v
+                +--------+               +--------+       +--------+
+                |  Wrap  |               |  Wrap  |       |  open  |
+                +---+----+               +---+----+       +---+----+
+                    v                        v                v
+                  .----.                   .----.           .----.
+                 | eCEK |                 | eCEK |         | eCEK |
+                  '----'                   '----'           '----'
+
+CEK   : Content Encryption Key
+PSK   : Pre Shared Key
+SS    : Shared Secret
+pkR   : (Static or Ephemeral) recipient's Public key
+skS   : sender's Private key
+CIS   : COSE Context Information Structure
+DH SS : DH-Shared Secret
+eCEK  : encrypted CEK in COSE message
+~~~
+{: #figure-generating-ecek title="eCEK Generation Flow for each Content Key Distribution Method"}
+
+{{figure-generating-encrypted-payload}} depicts that the mitigation layer
+is inserted just before the encrypting the plaintext payload.
+Then the sender will construct a COSE message using
+encrypted payload with CEK', parameters for content encryption and
+parameters for content key distribution methods including eCEK (if exists).
+
+~~~aasvg
+Direct Direct+KDF AES-KW   Direct ECDH    ECDH+AES-KW     COSE-HPKE
+ .---.    .--.    .---.   .---.  .---.       .---.          .---.
+| PSK |  | SS |  | CEK | | pkR || skS |     | CEK |        | CEK |
+ '-+-'    '-+'    '-+-'   '-+-'  '-+-'       '-+-'          '-+-'
+   |        |       |       v      v           |              |
+   |        |       |    +------------+        |              |
+   |        |       |    |    ECDH    |        |              |
+   |        |       |    +-+----------+        |              |
+   |     .-'        |      v                   |              |
+   |    |  .---.    |   .-----.  .---.         |              |
+   |    | | CIS |   |  | DH SS || CIS |        |              |
+   |    |  '-+-'    |   '--+--'  '-+-'         |              |
+   |    v    v      |      v       v           |              |
+   |  +--------+    |    +------------+        |              |
+   |  |  HKDF  |    |    |    HKDF    |        |              |
+   |  +---+----+    |    +-----+------+        |              |
+   v      v         v          v               v              v
++-----------------------------------------------------------------+
+|          CEK' = HKDF(CEK, COSE_Encrypt.alg) [Proposal]          |
++--------------------------------+--------------------------------+
+                                 v
+                            +---------+    .-----------------.
+                            | Encrypt |<--+ Plaintext Payload |
+                            +----+----+    '-----------------'
+                                 v
+                        .------------------.
+                       | Encrypted Payload  |
+                        '------------------'
+
+CEK   : Content Encryption Key
+PSK   : Pre Shared Key
+SS    : Shared Secret
+pkR   : (Static or Ephemeral) recipient's Public key
+skS   : sender's Private key
+CIS   : COSE Context Information Structure
+DH SS : DH-Shared Secret
+~~~
+{: #figure-generating-encrypted-payload title="Payload Encryption Flow for each Content Key Distribution Method"}
+
+# Updated Decryption Flow for Each Content Key Distribution Method
+
+This section describes the decryption flows on recipient side
+for each content key distribution method.
+
+{{figure-decrypting-encrypted-payload}} shows that the mitigation layer
+is inserted between the content key distribution methods and content decryption
+if the cek-hkdf parameter with true value locates in outer header.
+
+~~~aasvg
+Direct Direct+KDF AES-KW   Direct ECDH    ECDH+AES-KW     COSE-HPKE
+ .---.    .--.    .---.   .---.  .---.    .---.  .---.   .---.  .---.
+| PSK |  | SS |  | PSK | | pkS || skR |  | pkS || skR | | pkS || skR |
+ '-+-'    '-+'    '-+-'   '-+-'  '-+-'    '-+-'  '-+-'   '-+-'  '-+-'
+   |        |       |       v      v        v      v       v      v
+   |        |       |    +------------+  +------------+  .----------.
+   |        |       |    |    ECDH    |  |    ECDH    | |  ContextR  |
+   |        |       |    +-+----------+  +--+---------+  '-+--------'
+   |    .--'        |      v                v              |
+   |   |  .---.     |   .-----.  .---.   .-----.  .---.    |   .---.
+   |   | | CIS |    |  | DH SS || CIS | | DH SS || CIS |   |  | aad |
+   |   |  '-+-'     |   '--+--'  '-+-'   '--+--'  '-+-'    |   '-+-'
+   |   v    v       |      v       v        v       v      |  .-'
+   | +--------+     |    +------------+  +------------+    | |
+   | |  HKDF  |     |    |    HKDF    |  |    HKDF    |    | |
+   | +----+---+  .-'     +-----+------+  +---+--------+    | |
+   |      |     | .----.       |             | .----.      | | .----.
+   |      |     || eCEK |      |             || eCEK |     | || eCEK |
+   |      |     | '--+-'       |             | '--+-'      | | '-+--'
+   |      |     v    v         |             v    v        v v   v
+   |      |   +--------+       |           +--------+    +---------+
+   |      |   | Unwrap |       |           | Unwrap |    |  open   |
+   |      |   +---+----+       |           +---+----+    +----+----+
+   v      v       v            v               v              v
+  .----------------------------------------------------------------.
+ |                   Content Encryption Key (CEK)                   |
+  '-------------------------------+--------------------------------'
+                                  v
+    +------------------------------------------------------------+
+    | CEK' = HKDF(CEK, COSE_Encrypt.alg) if cek-hkdf [Proposal]  |
+    +-----------------------------+------------------------------+
+                                  v
+                             +---------+    .-----------------.
+                             | Decrypt |<--+ Encrypted Payload |
+                             +----+----+    '-----------------'
+                                  v
+                         .------------------.
+                        | Plaintext Payload  |
+                         '------------------'
+
+PSK   : Pre Shared Key
+SS    : Shared Secret
+pkS   : (Static or Ephemeral) sender's Public key
+skR   : recipient's Private key
+CIS   : COSE Context Information Structure
+DH SS : DH-Shared Secret
+eCEK  : encrypted CEK in COSE message
+~~~
+{: #figure-decrypting-encrypted-payload title="Payload Decryption Flow for each Content Key Distribution Method"}
+
 # Use of of HKDF with SHA-256 to Derive Encryption Keys
 
 The mitigation uses the HMAC-based Extract-and-Expand Key Derivation
