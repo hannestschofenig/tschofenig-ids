@@ -127,8 +127,8 @@ CEK' = HKDF(CEK, COSE_Encrypt.alg)
 This section describes the key distribution and encryption flows on sender side.
 Only the payload encryption process will be changed with the mitigation.
 
-{{figure-generating-ecek}} shows that the procedures of generating
-encrypted CEK (eCEK) are NOT changed by the mitigation.
+Some content key distribution methods generate encrypted CEK (eCEK) from randomly generated CEK.
+{{figure-generating-ecek}} shows that each procedure is NOT changed by the mitigation.
 
 ~~~aasvg
                   AES-KW                  ECDH+AES-KW     COSE-HPKE
@@ -161,19 +161,17 @@ encrypted CEK (eCEK) are NOT changed by the mitigation.
 
 PSK   : Pre Shared Key
 CEK   : Content Encryption Key
-pkR   : recipient's Public key
-skS   : (Static or Ephemeral) sender's Private key
+pkR   : Recipient's Public Key
+skS   : (Static or Ephemeral) Sender's Private Key
 DH SS : DH-Shared Secret
 CIS   : COSE Context Information Structure
-eCEK  : encrypted CEK in COSE message
+eCEK  : Encrypted CEK into COSE message
 ~~~
 {: #figure-generating-ecek title="eCEK Generation Flow for each Content Key Distribution Method"}
 
-{{figure-generating-encrypted-payload}} depicts that the mitigation layer
+{{figure-generating-encrypted-payload}} shows that the mitigation layer
 is inserted just before the encrypting the plaintext payload.
-Then the sender will construct a COSE message using
-encrypted payload with CEK', parameters for content encryption and
-parameters for content key distribution methods including eCEK (if exists).
+Note that Enc_structure is fed to encryption function (Encrypt) if the COSE_Encrypt.alg is an AEAD.
 
 ~~~aasvg
 Direct Direct+KDF AES-KW   Direct ECDH    ECDH+AES-KW     COSE-HPKE
@@ -183,7 +181,7 @@ Direct Direct+KDF AES-KW   Direct ECDH    ECDH+AES-KW     COSE-HPKE
    |        |       |       v      v           |              |
    |        |       |    +------------+        |              |
    |        |       |    |    ECDH    |        |              |
-   |        |       |    +------------+        |              |
+   |        |       |    +--+---------+        |              |
    |     .-'        |       v                  |              |
    |    |  .---.    |    .-----.  .---.        |              |
    |    | | CIS |   |   | DH SS || CIS |       |              |
@@ -208,8 +206,8 @@ Direct Direct+KDF AES-KW   Direct ECDH    ECDH+AES-KW     COSE-HPKE
 PSK   : Pre Shared Key
 SS    : Shared Secret
 CEK   : Content Encryption Key
-pkR   : (Static or Ephemeral) recipient's Public key
-skS   : sender's Private key
+pkR   : (Static or Ephemeral) Recipient's Public Key
+skS   : Sender's Private Key
 DH SS : DH-Shared Secret
 CIS   : COSE Context Information Structure
 ~~~
@@ -240,6 +238,7 @@ for each content key distribution method.
 {{figure-decrypting-encrypted-payload}} shows that the mitigation layer
 is inserted between the content key distribution methods and content decryption
 if the cek-hkdf parameter with true value locates in outer header.
+Note that Enc_structure is fed to decryption function (Decrypt) if the COSE_Encrypt.alg is an AEAD.
 
 ~~~aasvg
 Direct Direct+KDF AES-KW   Direct ECDH    ECDH+AES-KW     COSE-HPKE
@@ -284,11 +283,11 @@ Direct Direct+KDF AES-KW   Direct ECDH    ECDH+AES-KW     COSE-HPKE
 
 PSK   : Pre Shared Key
 SS    : Shared Secret
-pkS   : (Static or Ephemeral) sender's Public key
-skR   : recipient's Private key
+pkS   : (Static or Ephemeral) Sender's Public Key
+skR   : Recipient's Private Key
 CIS   : COSE Context Information Structure
 DH SS : DH-Shared Secret
-eCEK  : encrypted CEK in COSE message
+eCEK  : Encrypted CEK in COSE message
 ~~~
 {: #figure-decrypting-encrypted-payload title="Payload Decryption Flow for each Content Key Distribution Method"}
 
