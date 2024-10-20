@@ -39,6 +39,7 @@ author:
 normative:
   RFC9052:
   RFC9053:
+  RFC9459:
   RFC5869:  
   FIPS180:
     title: "Secure Hash Standard (SHS), FIPS PUB 180-4"
@@ -115,6 +116,13 @@ sensitive part of the original message.
 
 This attack is thwarted if the encryption key depends upon the
 delivery of the unmodified algorithm identifier.
+
+While {{RFC9459}} requests implementations to use AES-CBC and AES-CTR
+in conjunction with an authentication and integrity mechanism,
+some recipients may violate it and become victims as a result.
+Even the sender uses them with such mechanisms or AEAD cipher
+such as AES-GCM, the attacker may remove them or convert the cipher
+to non-AEAD such as AES-CBC.
 
 The mitigation for this attack has two parts:
 
