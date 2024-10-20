@@ -39,6 +39,7 @@ author:
 normative:
   RFC9052:
   RFC9053:
+  RFC9459:
   RFC5869:  
   FIPS180:
     title: "Secure Hash Standard (SHS), FIPS PUB 180-4"
@@ -62,6 +63,19 @@ informative:
         name: Johannes Roth
     date: November 2023
     target: https://datatracker.ietf.org/meeting/118/materials/slides-118-lamps-attack-against-aead-in-cms
+  AEAD-Downgrade:
+    title: "Legacy Encryption Downgrade Attacks against LibrePGP and CMS"
+    author:
+      -
+        ins: F. Strenzke
+        organization: MTG AG
+        name: Falko Strenzke
+      -
+        ins: J. Roth
+        organization: MTG AG
+        name: Johannes Roth
+    date: July 2024
+    target: https://eprint.iacr.org/2024/1110
 
 --- abstract
 
@@ -83,7 +97,7 @@ found in {{I-D.ietf-lamps-cms-cek-hkdf-sha256}}.  This attack is generic
 and can apply to other protocols with similar characteristics, such as
 COSE. However, the attack requires several preconditions:
 
-1.  The attacker intercepts a COSE Encrypt payload an changes the
+1.  The attacker intercepts a COSE Encrypt payload and changes the
     algorithm identifier to use the same underlying cipher with a different
     encryption mode, such as AES-GCM to AES-CBC.
 
@@ -102,6 +116,13 @@ sensitive part of the original message.
 
 This attack is thwarted if the encryption key depends upon the
 delivery of the unmodified algorithm identifier.
+
+While {{RFC9459}} requests implementations to use AES-CBC and AES-CTR
+in conjunction with an authentication and integrity mechanism,
+some recipients may violate it and become victims as a result.
+Even the sender uses them with such mechanisms or AEAD cipher
+such as AES-GCM, the attacker may remove them or convert the cipher
+to non-AEAD such as AES-CBC.
 
 The mitigation for this attack has two parts:
 
@@ -332,7 +353,7 @@ This mitigation always uses HKDF with SHA-256. One KDF algorithm was selected to
 
 If the attacker removes the cek-hkdf header parameter from the COSE_Encrypt header prior to delivery to the recipient, then the recipient will not attempt to derive CEK', which will deny the recipient access to the content, but will not assist the attacker in recovering the plaintext content.
 
-If the attacker changes the value of the COSE_Encrypt alg parameter prior to delivery to the recipient, then the recipient will derive a different CEK', which will not assist the attacker in recovering the plaintext content. Providing the algorithm identifer as an input to the key derivation function is sufficient to mitigate the attack described in {{RS2023}}, but this mitigation includes both the object identifier and the parameters to protect against some yet-to-be-discovered attack that only manipulates the parameters.
+If the attacker changes the value of the COSE_Encrypt alg parameter prior to delivery to the recipient, then the recipient will derive a different CEK', which will not assist the attacker in recovering the plaintext content. Providing the algorithm identifer as an input to the key derivation function is sufficient to mitigate the attack described in {{RS2023}}{{AEAD-Downgrade}}, but this mitigation includes both the object identifier and the parameters to protect against some yet-to-be-discovered attack that only manipulates the parameters.
 
 Implementations MUST protect the content-encryption keys, this includes the CEK and CEK'. Compromise of a content-encryption key may result in disclosure of the associated encrypted content. Compromise of a content-authenticated-encryption key may result in disclosure of the associated encrypted content or allow modification of the authenticated content and the additional authenticated data (AAD).
 
