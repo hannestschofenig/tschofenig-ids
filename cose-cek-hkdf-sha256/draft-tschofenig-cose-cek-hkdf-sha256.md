@@ -83,7 +83,7 @@ found in {{I-D.ietf-lamps-cms-cek-hkdf-sha256}}.  This attack is generic
 and can apply to other protocols with similar characteristics, such as
 COSE. However, the attack requires several preconditions:
 
-1.  The attacker intercepts a COSE Encrypt payload an changes the
+1.  The attacker intercepts a COSE Encrypt payload and changes the
     algorithm identifier to use the same underlying cipher with a different
     encryption mode, such as AES-GCM to AES-CBC.
 
