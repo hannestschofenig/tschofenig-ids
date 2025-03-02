@@ -61,7 +61,6 @@ informative:
   RFC9147:
   RFC9360:
   RFC9679:
-
   I-D.ietf-oauth-status-list:
   I-D.ietf-keytrans-architecture:
   COSE-IANA:
@@ -70,6 +69,7 @@ informative:
     title: CBOR Object Signing and Encryption (COSE) IANA Registry
     date: December 2023
     target: https://www.iana.org/assignments/cose/
+
 --- abstract
 
 The CBOR Object Signing and Encryption (COSE) message structure uses
