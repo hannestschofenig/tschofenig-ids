@@ -22,17 +22,19 @@ pi:
   inline: yes
   text-list-symbols: -o*+
   docmapping: yes
+
 author:
- -
-      ins: H. Tschofenig
-      name: Hannes Tschofenig
-      email: hannes.tschofenig@gmx.net
-      org:
- -
-      ins: B. Moran
-      name: Brendan Moran
-      organization: Arm Limited
-      email: brendan.moran.ietf@gmail.com
+  -
+    name: Hannes Tschofenig
+    organization: University of Applied Sciences Bonn-Rhein-Sieg
+    abbrev: H-BRS
+    country: Germany
+    email: Hannes.Tschofenig@gmx.net
+  -
+    ins: B. Moran
+    name: Brendan Moran
+    organization: Arm Limited
+    email: brendan.moran.ietf@gmail.com
   -
     name: Henk Birkholz
     org: Fraunhofer SIT
@@ -61,6 +63,7 @@ informative:
   RFC9147:
   RFC9360:
   RFC9679:
+
   I-D.ietf-oauth-status-list:
   I-D.ietf-keytrans-architecture:
   COSE-IANA:
@@ -69,7 +72,6 @@ informative:
     title: CBOR Object Signing and Encryption (COSE) IANA Registry
     date: December 2023
     target: https://www.iana.org/assignments/cose/
-
 --- abstract
 
 The CBOR Object Signing and Encryption (COSE) message structure uses
