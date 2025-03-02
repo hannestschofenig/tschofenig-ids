@@ -2,7 +2,7 @@
 title: "CBOR Object Signing and Encryption (COSE): Header Parameters for Carrying and Referencing Chains of CBOR Web Tokens (CWTs)"
 
 abbrev: CWT Chains
-docname: draft-tschofenig-cose-cwt-chain-01
+docname: draft-tschofenig-cose-cwt-chain-02
 category: std
 
 ipr: trust200902
@@ -33,7 +33,15 @@ author:
       name: Brendan Moran
       organization: Arm Limited
       email: brendan.moran.ietf@gmail.com
-
+  -
+    name: Henk Birkholz
+    org: Fraunhofer SIT
+    abbrev: Fraunhofer SIT
+    email: henk.birkholz@sit.fraunhofer.de
+    street: Rheinstrasse 75
+    code: '64295'
+    city: Darmstadt
+    country: Germany
 
 normative:
   RFC2119:
@@ -52,10 +60,10 @@ informative:
   RFC9019:
   RFC9147:
   RFC9360:
+  RFC9679:
 
-  I-D.ietf-cose-key-thumbprint:
   I-D.ietf-oauth-status-list:
-  I-D.mcmillion-keytrans-architecture:
+  I-D.ietf-keytrans-architecture:
   COSE-IANA:
     author:
       org: IANA
@@ -121,7 +129,7 @@ lists {{I-D.ietf-oauth-status-list}}.
 - repository: a system or collection of distributed systems that stores
 CWTs and CRLs and serves as a means of distributing these CWTs and CRLs
 to end entities. These repositories may be append-only databases, in the
-style of {{I-D.mcmillion-keytrans-architecture}}.
+style of {{I-D.ietf-keytrans-architecture}}.
 
 - Trust Anchor:  As defined in {{RFC6024}} and {{RFC9019}}, a Trust Anchor
 "represents an authoritative entity via a public key and associated data.
@@ -295,7 +303,7 @@ cwt-t:  This header parameter identifies the end entity CWT
     preclude the use (by prior agreement) of other algorithms.
 
     Note: For conveying the thumbprint of a public key alone, see
-    {{I-D.ietf-cose-key-thumbprint}}.
+    {{RFC9679}}.
 
 cwt-u:  This header parameter provides the ability to identify a CWT
     by a URI {{RFC3986}}.  It contains a CBOR text string.
